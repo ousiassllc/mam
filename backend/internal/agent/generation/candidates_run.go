@@ -44,7 +44,7 @@ func (r *candidateRun) plan(ctx context.Context, strategy domain.CandidateStrate
 // the Judge could not evaluate is kept, without a verdict.
 func (r *candidateRun) take(ctx context.Context, s Strategy, strategy domain.CandidateStrategy, spec domain.ShotSpec, number int) (judged, error) {
 	o := r.o
-	job, err := videoJob(ctx, r.sc.images, spec, r.sc.brief, r.ref.Shot.Duration, r.sc.references)
+	job, err := videoJob(ctx, r.sc.images, spec, r.sc.brief, r.ref.Shot, r.sc.references)
 	if err != nil {
 		return judged{}, err
 	}

@@ -196,12 +196,12 @@ func (b Brief) namesTopic() bool {
 	})
 }
 
-// AttachAssets takes uploaded images into Assets and videos into References (UC-1).
+// AttachAssets takes uploaded images into Assets and videos into References (UC-1); an audio file is neither, it stays an attachment (Issue #1153).
 func (b *Brief) AttachAssets(assets []Asset) {
 	for _, a := range assets {
 		if a.Type == AssetImage {
 			b.Assets = appendUnique(b.Assets, a.ID)
-		} else {
+		} else if a.Type != AssetAudio {
 			b.References = appendUnique(b.References, a.ID)
 		}
 	}

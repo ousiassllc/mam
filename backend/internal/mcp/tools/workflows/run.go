@@ -36,6 +36,7 @@ type RunInput struct {
 	References      []AssetRef         `json:"references,omitempty" jsonschema:"参照画像（Project の素材）"`
 	FirstFrame      *AssetRef          `json:"first_frame,omitempty"`
 	LastFrame       *AssetRef          `json:"last_frame,omitempty"`
+	AudioID         string             `json:"audio_id,omitempty" jsonschema:"音声から動画（audio の割り当てがあるワークフロー。Wan 2.2 S2V など）の入力音声。create_upload_ticket（purpose gentest_audio）の audio_id（WAV・MP3・FLAC・OGG・M4A。50 MiB まで）。audio の割り当てがあるワークフローには必須で、無いワークフローに渡すと validation。audio_chunks のワークフローは長さが音声の長さになる（gentest.max_audio_seconds まで）"`
 	Seed            *int64             `json:"seed,omitempty" jsonschema:"シードを固定する（0〜9007199254740991）。省くと実行ごとにランダム。使った seed は結果に残る"`
 	Sampling        *sampling.Settings `json:"sampling,omitempty" jsonschema:"詳細設定: steps（1〜150）・cfg（0〜30）・sampler・scheduler。省いた項目はワークフローの値。ワークフローが受け取らない項目（割り当てが無い）と、速さのモードがあるワークフローの steps・cfg は、警告（kind sampling）を出して使わない"`
 }
@@ -54,14 +55,21 @@ func (h handlers) run(ctx context.Context, in RunInput) (RunOutput, error) {
 	if err != nil {
 		return RunOutput{}, err
 	}
+	audio, consume, err := h.stagedAudio(in.AudioID)
+	if err != nil {
+		return RunOutput{}, err
+	}
 	var rec workflowsvc.RunRecord
 	ref, err := h.r.Jobs.RunResolved(ctx, KindRunWorkflow, func(ctx context.Context) (string, string, error) {
 		var err error
 		rec, err = svc.StartRun(ctx, workflowsvc.RunInput{
 			WorkflowID: in.WorkflowID, Version: in.Version, Prompt: in.Prompt, NegativePrompt: in.NegativePrompt, AspectRatio: in.AspectRatio,
 			Resolution: in.Resolution, DurationSeconds: in.DurationSeconds, References: refs(in.References), FirstFrame: ref(in.FirstFrame), LastFrame: ref(in.LastFrame),
-			Seed: in.Seed, Sampling: samplingOf(in.Sampling),
+			Audio: audio, Seed: in.Seed, Sampling: samplingOf(in.Sampling),
 		})
+		if err == nil {
+			consume()
+		}
 		return rec.ID, "", err
 	})
 	if err != nil {

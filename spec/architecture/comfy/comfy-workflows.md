@@ -41,7 +41,7 @@ ComfyUI のノード画面（[comfy-embedding.md](comfy-embedding.md)）で作�
 
 ## 5. 実行（`run_workflow`・画面なしの試し実行）
 
-保存したグラフと割り当てを、Shot と同じ `comfyui.Backend` で実行する。入力: プロンプト・ネガティブ・縦横比・（動画）解像度と長さ（ワークフローが作れる長さに丸める）・参照画像／最初と最後のフレーム（Project の素材）。Project には何も書かず、Cost Ledger の行も作らない（ワークフロー単体の試し）。結果は `<data-dir>/workflow-runs/<run id>/` に置き、7 日で消す。MCP は `job_id` を返し、`get_job` が進捗と結果（トークン付きのダウンロード URL）を返す。mam の再起動で止まった実行は失敗として扱う。
+保存したグラフと割り当てを、Shot と同じ `comfyui.Backend` で実行する。入力: プロンプト・ネガティブ・縦横比・（動画）解像度と長さ（ワークフローが作れる長さに丸める）・参照画像／最初と最後のフレーム（Project の素材）・音声ファイル。Project には何も書かず、Cost Ledger の行も作らない（ワークフロー単体の試し）。結果は `<data-dir>/workflow-runs/<run id>/` に置き、7 日で消す。MCP は `job_id` を返し、`get_job` が進捗と結果（トークン付きのダウンロード URL）を返す。mam の再起動で止まった実行は失敗として扱う。**音声（Issue #1153）**: 音声の割り当て（`audio`。`LoadAudio` の `audio`。[../local-models.md](../local-models.md) §4.11）を持つ保存・取り込みのワークフローは、音声ファイルを渡して実行する。MCP の `run_workflow` は `audio_id`（`create_upload_ticket` の purpose `gentest_audio` で上げたファイルの ID。単発生成と同じ置き場・同じ形式 WAV・MP3・FLAC・OGG・M4A・50 MiB まで。[../gentest/gentest.md](../gentest/gentest.md) §6.1）を受け、`workflows.Service.StartRun` の `RunInput.Audio`（バイト列）がそれを `VideoRequest.Audio` に入れる。種類はバイト列から読む。**音声が要るのに無い**（`audio` の割り当てがあるのに `audio_id` が無い）と**音声を使わないのに渡した**（割り当てが無い・画像のワークフロー）は、実行を始める前に `*InvalidError`（「音声ファイルが要ります」「このワークフローは音声ファイルを使いません」）で断り、黙って捨てない（断ったとき、上げたファイルは残るので呼び直せる。実行が始まるとファイルは使い切りで消える）。長さは単発生成と同じ規則で、`audio_chunks` のワークフローは音声の長さ（`audiolength.Apply`。読めない・`gentest.max_audio_seconds` を超えると断る）が動画の長さになり、そうでないワークフローは `duration_seconds`（丸め）のまま。取り込んだグラフに `LoadAudio` があれば、割り当て（動画の `audio`）は推測される（`Suggest`）。ワークフローの画面（`GET /workflows`）に実行の欄は無く（実行は MCP と単発生成から）、画面の「割り当て」の表で `audio` の行（動画だけ）を選べる。
 
 ## 6. プロジェクトバンドル
 
@@ -54,3 +54,26 @@ ComfyUI のノード画面（[comfy-embedding.md](comfy-embedding.md)）で作�
 ## 7. 検証できていないこと
 
 実機の ComfyUI と GPU では実行していない（偽の ComfyUI `comfyuitest` が `/object_info`・`/userdata`・`/history`・`/models/<folder>` と実行を再現する）。一部だけ描き直す（#974。`inpaint-sdxl`・`inpaint-flux-dev`）も同じで、マスクの外が元の画素のままかはグラフの `ImageCompositeMasked` のリンクまでを確かめ、画素の比較はしていない。`/history` の記録の形（`prompt` タプルと `extra_data.extra_pnginfo.workflow`）は ComfyUI のソースから読んだもので、実機での確認が残っている。
+
+## 8. 音声の割り当て（Issue #1153）
+
+動画のワークフローの割り当てに、音声ファイルの `audio`（`LoadAudio` の `audio` 入力）を足した。mam が ComfyUI の `POST /upload/image` で音声を上げ、返ったファイル名をこの入力に入れる（画像と同じ送り方）。ComfyUI は `input` ディレクトリのファイルを拡張子から種類を決めて `LoadAudio` の一覧に出すので、ファイル名の拡張子は音声の種類のもの（`.wav` / `.mp3` / `.flac` / `.ogg` / `.m4a`）にして上げる（Python の mimetypes は `.flac`・`.ogg`・`.m4a` も `audio/*` にする。FLAC・OGG・M4A を実機の ComfyUI で読ませたことは**未確認**）。ノード側の警告（§4）は `AudioEncoderLoader` の `audio_encoder_name` を `GET /models/audio_encoders` で照合する。`audio` の割り当てがあるワークフローは**音声が必須**（公開したモデルの `requires_inputs` に `audio`・`video.audio_input` が true）。音声の長さは測らない（切り詰めもしない）。実機の ComfyUI では確かめていない。
+
+### 8.1 音声の長さに合わせる動画（`audio_chunks`。Extend。Issue #1153）
+
+ワークフローの `audio_chunks`（`localcfg.Workflow.AudioChunks`。型は `localcfg/audiochunks.Spec`）は、**動画の長さが音声の長さで決まる**ワークフロー（Wan 2.2 S2V）の印。グラフには最初の 1 チャンクだけを書き、足りない分は実行のたびに mam が公式テンプレート `video_wan2_2_14B_s2v` の「Extend」（`WanSoundImageToVideoExtend` → `KSampler` → `LatentConcat`）を 1 チャンクずつつなぎ足す。このワークフローは `VideoCapabilities.AudioLength`（`localcfg.Caps.AudioLength`）が true になり、`video.durations` は目安にすぎず（長さの丸め `SnapDuration` は秒数をそのまま返す）、長さは音声から決まる（長さを読む・上限は [../gentest/gentest.md](../gentest/gentest.md) §6.1 と `direct.Video`）。
+
+| キー | 意味 |
+|---|---|
+| `chunk_length` | 1 チャンクの `length`（フレーム）。Wan の決まりで **4n+1 かつ 73 以上**（公式は 77。20 の潜在フレーム＝音声の窓 80 フレーム＝16 fps で 5 秒）。最初のチャンクの `frames` の割り当ては、動画の長さに関係なく常にこの値を入れる |
+| `start` | 最初のチャンクの潜在（出力 0）を出すノード（KSampler）。これを読んでいた入力（`VAEDecode` の `samples`）は、最後の Extend の出力へつけ替える |
+| `sampler` | seed・steps・cfg・`sampler_name`・scheduler を、Extend の KSampler にそのまま写すもとのノード（割り当てが値を入れたあとの値） |
+| `trim` | `VAEDecode` と `CreateVideo` の間の `ImageFromBatch`（`batch_index` 0）。`length` に要るフレーム数を mam が入れ、最後のチャンクの余りを切る |
+| `extension` | 足す 1 チャンク分のノード（`{id: {class_type, inputs}}`。id はこの中だけの名前）。入力の値が文字列 `"$prev"` なら「前までの全体の潜在」。この中のノードへのリンクは中に閉じ、ほかのリンクはグラフのノードへ（条件づけ・モデル・音声の符号化・参照画像） |
+| `output` | `extension` の中で、新しいチャンクまで含めた全体の潜在（出力 0）を出すノード（`LatentConcat`） |
+
+**足し方**（`comfyui/extend.Apply`。割り当て・速さのモードを入れたあと、LoRA を挿す前に呼ぶ）: ① チャンク数 `n` は、要るフレーム数 `f`（音声の秒数 × fps を切り上げ。fps はワークフローの `fps`）に、`n` チャンクを復号したフレーム数 `4×(L×n−1)+1`（L は 1 チャンクの潜在フレーム数 `(chunk_length−1)/4+1`）が届く最小の `n`（1 以上）。77 なら `80n−3 ≥ f`、つまり `n = max(1, ceil((f+3)/80))`。② `start` の出力 0 を読む入力をすべて、最後の Extend の `output` につけ替える（Extend のノードを足す**前**に行うので、足したノード自身はつけ替えない）。③ k = 1…n−1 について `extension` を `x<k>_` を頭につけた id で写す（`"$prev"` は k=1 なら `start`、以降は前の `x<k−1>_<output>`）。④ Extend の KSampler の seed・steps・cfg・sampler_name・scheduler に `sampler` の値を写す（denoise は 1 のまま）。⑤ `trim` の `length` に `f` を入れる（`ImageFromBatch` は実際のフレーム数を超える指定を切り詰める）。`f` が 4096（`ImageFromBatch` の上限）を超えるときは `trim` を外し、余り（最後のチャンクの 80 フレーム未満）は切らない。LoRA は挿すときに Extend の KSampler も含めて直す。フレーム数の式は ComfyUI の `nodes_wan.py`（`wan_sound_to_video`）の読みで、**実機で通したものではない**。
+
+**検査**（`validateWorkflow`。保存・取り込み・テンプレートの検査で共通）: 動画のワークフローだけ・`audio` の割り当てが要る・`chunk_length` が 4n+1 かつ 73 以上・`start`・`sampler`（KSampler）・`trim`（`ImageFromBatch`。`length` はリテラル・`image` はリンク）がグラフにある・`extension` に `output` のノードがある・`extension` の id がグラフの id と重ならない・リンクの先が `extension` かグラフにある・どこかの入力が `"$prev"`・`WanSoundImageToVideoExtend` の `length` が `chunk_length` と等しい・`start` の出力を読むノードがグラフにある。`requires_nodes` と許可リスト（コアノードの検査・`nodecat`）は、グラフに加えて `extension` のノードの `class_type` も数える。
+
+公式テンプレートの「先頭フレームを 2 重にして切る」処理は入れない。

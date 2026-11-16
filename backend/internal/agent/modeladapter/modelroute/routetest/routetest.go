@@ -46,12 +46,20 @@ func LocalConfig() modeladapter.Config {
 // Publish makes the models known to domain.ImageModels / VideoModels and to modeladapter.Capabilities for the test (they are process-wide).
 func Publish(t *testing.T) {
 	t.Helper()
-	cfg := LocalConfig()
+	publish(t, LocalConfig(), LocalVideo, LocalVideo2)
+}
+
+// publish makes the image models of the observed configuration and the given video models, defined by cfg, known for the test.
+func publish(t *testing.T, cfg modeladapter.Config, videos ...domain.ModelName) {
+	t.Helper()
 	modeladapter.PublishLocal(cfg.Endpoints, cfg.LocalModels, cfg.Workflows)
 	t.Cleanup(func() { modeladapter.PublishLocal(nil, nil, nil) })
+	vs := make([]string, len(videos))
+	for i, v := range videos {
+		vs[i] = string(v)
+	}
 	modelreg.Set(
-		[]string{string(chatgptid.Flare), string(chatgptid.Sunburst), string(chatgptid.Model), string(LocalImage), string(LocalEdit), string(LocalText)},
-		[]string{string(LocalVideo), string(LocalVideo2)},
+		[]string{string(chatgptid.Flare), string(chatgptid.Sunburst), string(chatgptid.Model), string(LocalImage), string(LocalEdit), string(LocalText)}, vs,
 	)
 	t.Cleanup(func() { modelreg.Set(nil, nil) })
 }

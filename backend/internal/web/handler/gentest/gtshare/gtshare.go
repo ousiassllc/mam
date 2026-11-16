@@ -61,7 +61,7 @@ func PriceText(p modelcatalog.Price) string {
 func ConfirmLines(breakdown []gentest.ModelEstimate) []view.ConfirmLine {
 	lines := make([]view.ConfirmLine, 0, len(breakdown))
 	for _, l := range breakdown {
-		line := view.ConfirmLine{Label: l.Label, Items: l.Items}
+		line := view.ConfirmLine{Label: lineLabel(l), Items: l.Items}
 		switch l.Basis {
 		case modelcatalog.BasisFree:
 			line.Unit, line.Subtotal = "無料（ローカル）", USD(0)

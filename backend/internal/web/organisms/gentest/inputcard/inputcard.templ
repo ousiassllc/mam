@@ -1,0 +1,29 @@
+package inputcard
+
+import "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/audioinput"
+
+// List is the inputs of a batch on the page of a result (nothing when it had none).
+templ List(cards []Card) {
+	if len(cards) > 0 {
+		<div class="flex flex-col gap-2">
+			<h3 class="text-xs text-mute">入力画像・音声</h3>
+			<ul class="flex flex-wrap gap-3" data-testid="gt-inputs-list">
+				for _, in := range cards {
+					@item(in)
+				}
+			</ul>
+		</div>
+	}
+}
+
+// item is an input of a batch: a picture for an image, a player for audio (a speech-to-video model's input; there is no picture to draw).
+templ item(in Card) {
+	<li class={ "flex flex-col gap-1 text-xs", templ.KV("w-32", !in.Audio), templ.KV("w-64", in.Audio) } data-testid="gt-input">
+		if in.Audio {
+			@audioinput.Player(in.URL)
+		} else {
+			<img class="h-24 w-full rounded-md object-cover" src={ in.URL } alt={ in.Role } loading="lazy"/>
+		}
+		<span class="text-mute">{ in.Role }・{ in.Origin }</span>
+	</li>
+}

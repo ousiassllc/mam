@@ -13,6 +13,8 @@ import { type ComposerSnapshot, fieldsToClear, isSendKey, isSuccessResponse } fr
 const THREAD = '#gtc-thread';
 const COMPOSER = '#gtc-composer';
 const CONTENT = '#gtc-content';
+/** The forms that send the sound and the picture of an attachment. */
+const ATTACH = '[data-gtc-attach]';
 /** How far (px) from the bottom still counts as "at the bottom": a line of the last entry may be cut off. */
 const NEAR_BOTTOM = 80;
 
@@ -74,6 +76,13 @@ export function installGentestChat(doc: Document = document): void {
 
   doc.addEventListener('htmx:afterRequest', (event) => {
     const { elt, xhr } = (event as CustomEvent<{ elt: Element; xhr?: { status: number } }>).detail;
+    if (elt.matches(ATTACH)) {
+      // The file of an attachment (the sound / the picture of a speech-to-video model, #1153) was sent on its change; the thread says what came of it. The input is
+      // emptied so that choosing the same file again (after a refusal, or to put it back) is a change too.
+      const input = elt.querySelector<HTMLInputElement>('input[type="file"]');
+      if (input) input.value = '';
+      return;
+    }
     if (elt.closest('[data-gtc-options]')) {
       // A tap on an option card disables the button (hx-disabled-elt) and the swap turns the answered cards off (inert), so the focus drops to <body>: it
       // goes to the box, as after a sent message. Focus the user has put somewhere else meanwhile is left alone.

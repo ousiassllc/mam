@@ -8,7 +8,7 @@ Issue #835。[model-adapters.md](../model-adapters.md)（§9 の実装）に足�
 
 - `direct.Image(ctx, adapter, model, ImageRequest)` / `direct.Video(ctx, adapter, VideoTarget, VideoRequest)`。指定のモデルのバックエンドが無ければ `ErrNoBackend`。結果の `Model` は指定したモデルで、`FellBack` は常に false。
 - **プロンプトはそのまま送る**（補正しない）。ネガティブの欄が無いモデルへの `NegativePrompt` は捨てる（呼び出し側が先に「Avoid: …」をプロンプトに書き足す。`direct.Fold` = `shotprompt.AvoidSentence` と同じ文）。シードを受け付けないモデルへのシードも捨てる。
-- **入力はモデルの能力で検査して拒否する**: 参照画像を使えないモデルに画像があれば `ErrInputsUnsupported`、最初のフレームと自由な参照の併用・最後のフレームだけ・参照が上限超えは `ErrInputsConflict`、モデルが作らない解像度は `ErrResolution`。いずれもベンダーを呼ぶ前なので課金されない。動画の長さは `VideoCapabilities.SnapDuration` で作れる長さに丸める。Runway Gen-4.5 の 1:1 は最初のフレームがあるときだけ（`direct.AspectProblem`。ベンダーは受け付けない。通常の Shot の経路は代替へ切り替えるが、直接呼び出しは失敗する）。単発生成は見積りの時点で警告する。
+- **入力はモデルの能力で検査して拒否する**: 参照画像を使えないモデルに画像があれば `ErrInputsUnsupported`、**音声（`VideoRequest.Audio`）を使えないモデル（`VideoCapabilities.AudioInput` が false）に音声があるときも `ErrInputsUnsupported`**（Issue #1153）、最初のフレームと自由な参照の併用・最後のフレームだけ・参照が上限超えは `ErrInputsConflict`、モデルが作らない解像度は `ErrResolution`。いずれもベンダーを呼ぶ前なので課金されない。動画の長さは `VideoCapabilities.SnapDuration` で作れる長さに丸める。Runway Gen-4.5 の 1:1 は最初のフレームがあるときだけ（`direct.AspectProblem`。ベンダーは受け付けない。通常の Shot の経路は代替へ切り替えるが、直接呼び出しは失敗する）。単発生成は見積りの時点で警告する。
 - **レジリエンスは共有**: `modeladapter.Call[T](ctx, adapter, vendor, clock, model, fn)`（`call[T]` を公開したもの）を通るので、ベンダーごとのサーキットブレーカー・同時実行数（`resilience.Limiter`）・再試行・タイムアウトは通常の呼び出しと同じ。コスト台帳には書かない（呼び出し側が決める。単発生成は書かない）。
 
 ## 2. `Adapter.Unavailable` の拡張
@@ -34,7 +34,7 @@ Issue #835。[model-adapters.md](../model-adapters.md)（§9 の実装）に足�
 
 ## 5. 上限の設定（`gentestcfg`）
 
-`models.json` の `gentest`: `max_items`（既定 50、1 回のバッチの結果の数）・`max_cost_usd`（既定 20。0 は上限なし）。省略は既定。`configcheck` が値を検査し（負の数・0 以下の `max_items`・数値でない値を拒否）、設定画面の「画像・動画モデル」の保存・固定ファイルの規則（`MAM_MODELS_PINNED`）に従う。画面の見積りとジョブの投入の**両方**で検査する。
+`models.json` の `gentest`: `max_items`（既定 50、1 回のバッチの結果の数）・`max_cost_usd`（既定 20。0 は上限なし）・`max_audio_seconds`（既定 60。音声から動画を作るモデルが受け取る音声の長さの上限〔秒〕。`gentestcfg.Limits.AudioSeconds()`。`direct.Video` と見積りが同じ値で断る。[gentest.md](gentest.md) §6.1）。省略は既定。`configcheck` が値を検査し（負の数・0 以下の `max_items`・10〜600 の外の `max_audio_seconds`・数値でない値を拒否）、設定画面の「画像・動画モデル」の保存・固定ファイルの規則（`MAM_MODELS_PINNED`）に従う。画面の見積りとジョブの投入の**両方**で検査する。
 
 ## 改訂履歴
 

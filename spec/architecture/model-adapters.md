@@ -74,7 +74,7 @@
 
 - 今使える（上の判定）。成人向けモデルでない。ライセンスが「不可」でなく、「商用 OK のモデルだけを使う」設定（[model-license.md](model-license.md)）を通る
 - 用途: 画像は `edit_reference` なら参照画像を受け取れるモデルだけ。入力の画像がないと動かないワークフローは、画像には自動では選ばない（すべての画像に入力があるとは限らないため）。動画は動画モデルだけ
-- 入力: Shot に Keyframe（First Frame）があるなら First Frame を受け取れる動画モデルだけ。First Frame を必須とするワークフローは Keyframe があるときだけ。Last Frame・参照画像を必須とするワークフローは自動では選ばない
+- 入力: Shot に Keyframe（First Frame）があるなら First Frame を受け取れる動画モデルだけ（音声つきの Shot の S2V は Keyframe を参照画像として受ける。下の「音声つきの Shot」）。First Frame を必須とするワークフローは Keyframe があるときだけ。Last Frame・参照画像・**音声ファイル**（Wan 2.2 S2V 14B など。Issue #1153）を必須とするワークフローは、**音声のない Shot には自動では選ばない**（理由は「mam が渡さない入力（最後のフレーム・参照画像・音声）が必須」。音声ファイルを入力にするのは、Shot に音声を結び付けたときだけ。Audio Director の声の生成は別の機能）
 - 解像度・長さ: Quality Policy の解像度に対応し、最長のクリップが Shot の長さ以上の動画モデルだけ
 - Quality Policy: 解像度は Quality Policy が決める（上の「解像度」）。Policy ごとに別の割り当てを持つので、切り替えは Policy の経路が使えないときだけ働く
 
@@ -95,6 +95,15 @@
 | API | `models.json` の単価で見積もる | 上限を適用する。1 Take も収まらなければ従来どおり 402 で開始しない |
 
 切り替え後は、**切り替え後のモデル**の単価で見積もる（genplan の見積も、`agent/genplan` に渡す設定が同じ判定を通すので、切り替え後のモデルで出る。Shot の特性は問わず Keyframe ありとして見る）。
+
+**音声つきの Shot（Issue #1153）**: Shot に Project の音声アセット（`asset.type = audio`）を結び付けられる（`shot.shot_spec.audio.asset_id`。[er.md](er.md)。結び付け・外しは Shot 画面・`PUT /shots/:id/audio`・MCP `set_shot_audio`・チャットの `set_shot_audio` が `shotaudiosvc.Service` を通して同じ規則で行う: 生成中・修復中は `conflict`、Prompt が LOCK なら `locked`、音声でないアセット・他の Project のアセットは断る）。音声つきの Shot の動画は、音声を入力に取るモデル（`VideoCapabilities.AudioInput`。S2V）だけが作る。
+
+- 経路: 候補の条件（上）の「入力」が音声つきの Shot では次のとおりになる。**音声を使えないモデルは候補にならない**（理由は「音声を使えない」。割り当てのモデルが S2V でなければ、条件に合う S2V へ替える。理由は「条件に合うモデルを自動選択」として Take に残る）。割り当てを替えるのは**既定のまま**のときだけで、利用者が固定した Video Model（LOCK）と起動オプションで固定した割り当て（`pinned`）は替えず、使える S2V があればそれを示して断る。使える S2V が 1 つもないときは、ジョブを積む前に `ErrNoUsableModel` で断る。文は「この Shot には音声ファイルが付いているため、音声を入力に取る動画モデル（Wan 2.2 S2V 14B など。モデル管理で導入できます）と、その参照画像になる Keyframe か参照画像が要ります。導入するか、Shot の音声を外してください。」で、モデルごとに使えない理由（「音声を使えない」「参照画像が必要（この Shot には Keyframe も参照画像もない）」など）を添える
+- 入力: S2V は First Frame を取らないので、Keyframe は**参照画像として**渡す（`Prepare` が、参照画像の枠があり、Reference Pack の参照も無いときに Keyframe を 1 枚目の参照にする。Pack に参照があるときはそれが絵）。参照画像が必須のモデルは、Shot に Keyframe も参照画像も無いと候補にならない（理由「参照画像が必要（この Shot には Keyframe も参照画像もない）」）。音声は `refimage.Reader.Audio` が Shot の `shot_spec` から読み（ファイルの種類はバイト列から決める）、結び付けた音声が見つからない・音声でない・読めない・上限（`gentest.max_audio_seconds`）を超えるときは、ジョブを積む前に `input_missing` / `input_unsupported` で、どの音声かと選び直すか外すことを添えて断る
+- 長さ: `AudioLength` のモデルの動画の長さは**音声の長さ**で、Shot の計画尺は上限にならない（尺が長いことを理由に候補から外さない）。費用の見積りも音声の長さで出す（ローカルは 0 のまま）。genplan の見積りは、音声つきの Shot だけ音声つき・Keyframe あり・参照画像ありとして同じ判定を通す（`genplan.Builder.Env`）。Candidates・Repair・Retake・Reshoot も同じ音声で作り直す（`videoJob` が毎回 Shot の音声を読む）
+- 音声なしの Shot は変わらない: 音声を必須とするワークフローは、上の理由（「mam が渡さない入力…が必須」）で候補にならない
+- Multi-model routing（[model-adapters-m3.md](model-adapters-m3.md) §13）は音声つきの Shot では使わない（候補が音声を使えるモデルに限られ、`routing_candidate` の重み付けの対象外。方針の経路は同じ条件で選ぶ）
+- 記録: Take の `model_parameters.audio_asset_id`（`TakeLineage`）に作った音声のアセット ID を残す（[er.md](er.md)）
 
 **使ったモデルの記録と見え方**: 画像と動画のどちらも、使ったモデル・経路（`api` / `chatgpt-subscription` / `local`）・選んだ理由（割り当て / 条件に合う自動選択、通過しなかった割り当てとその理由）・費用の扱い（従量課金 / 無料 / 単価不明）を残す。
 
@@ -125,6 +134,7 @@
 - **M1 実装順**: コスト効率と音声同時生成による検証のしやすさを優先し、Kling 3.0 + Seedance 2.0 の2アダプタを先行実装する。Runway Gen-4.5 は M2 で追加した（§9.1、MAX QUALITY のプライマリ）
 - OpenAI Sora 2 は候補から除外: API提供が2026-09-24付で終了済みのため
 - ローカルの動画モデルは ComfyUI の接続先に登録したワークフローで、Quality Policy の主・代替に割り当てられる。OpenAI 互換の動画は対象外（公式 Videos API が 2026-09-24 に終了し、互換サーバーごとに仕様が違うため。[local-models.md](local-models.md) §1）
+- 音声ファイルを入力にする動画モデル（音声から動画を作る S2V。Wan 2.2 S2V 14B）は、単発生成（[gentest/gentest.md](gentest/gentest.md) §6.1）と、**音声を結び付けた Project の Shot（本線。下の §3.1「音声つきの Shot」）**が音声を渡せる。`modeladapter.VideoRequest.Audio`（`*Input`）と `VideoCapabilities.AudioInput`（ワークフローの割り当て `audio` から決まる）を足し、`direct` は音声を使えないモデルへの音声を `ErrInputsUnsupported` で断る。Project の生成が使う `modeladapter.Prepare` も、`VideoJob.Audio` を `AudioInput` のあるモデルにだけ `VideoRequest.Audio` として渡し（`videocaps.CheckAudio`）、音声を使えないモデルへ音声つきのジョブが来たら `input_unsupported`（422）で断る（音声を黙って捨てない）。ワークフローが `audio_chunks` を持つモデル（S2V。`VideoCapabilities.AudioLength` が true）は、動画の長さが**音声の長さ**で決まる: `SnapDuration` は秒数をそのまま返し（`Durations` は目安）、`direct.Video` が `audiolength.Apply`（`modeladapter/audiolength`）で音声の長さ（`audiofile.Duration`。0.1 秒に切り上げ）をリクエストの `DurationSeconds` に入れ（呼び出し側が入れた値は上書きする）、`models.json` の `gentest.max_audio_seconds`（既定 60。`gentestcfg.Limits.AudioSeconds()`）を超える音声と長さを読めない音声を `input_unsupported`（422。「音声が長すぎます（○○ 秒。上限は ○○ 秒）」「音声の長さを読めません」）で、何も送る前に断る。出力の長さ・見積りの費用・結果の記録はこの長さを使う（Project の Shot は `Prepare` が `videocaps.SoundClip` で同じ長さをリクエストに入れ、`refimage.Audio.ClipSeconds` が見積りに使う）。ComfyUI のグラフは `comfyui/extend` が `audio_chunks` に従って Extend を足す（[comfy/comfy-workflows.md](comfy/comfy-workflows.md) §8.1）。ComfyUI へは `POST /upload/image` に 音声の種類の拡張子（`.wav` / `.mp3` / `.flac` / `.ogg` / `.m4a`）で上げて `LoadAudio` に渡す（[local-models.md](local-models.md) §4.11）。クラウドの動画モデルは音声ファイルを入力に取らない（`native_audio` は映像と一緒に音声を作る能力で、別物）
 
 **追加の動画モデル（Issue #872・#873・#874・#875・#876・#878）**: 次の動画モデルは組み込みの識別子（§6）で呼べるが、上の Quality/Cost Policy の既定の主・代替にも Multi-model routing の既定の候補にも**入れていない**（実機で品質と単価を見たうえで別途判断する。使うときは設定画面の「画像・動画モデル」か `models.json` の `policies` で割り当てる）。API・制約・単価は §9.4。
 

@@ -22,7 +22,7 @@
 | `list_comfyui_workflows` | ComfyUI サーバーが持つ保存済みワークフロー（`/userdata`）。同梱版は止まっていれば起動する | `endpoint?` | `workflows[]`: `path`, `name` | はい |
 | `import_workflow_from_comfyui` | ComfyUI のワークフロー（画面の形式）と、その最後の実行の API 形式を取り込む。実行が無ければ `validation`（先に ComfyUI で実行する） | `endpoint?`, `path?`（省略: 最後の実行）, `name?`, `kind?`, `replace_workflow_id?`（既存を更新。版が上がる） | ワークフロー ＋ `check` | いいえ |
 | `check_workflow` | つないでいる ComfyUI にノードとモデルファイルがあるかを照合する。同梱版は起動しない | `workflow_id` | `endpoint`, `reachable`, `reason`, `warnings[]`（`kind`: `node` / `model` / `choice`, `node`, `class_type`, `input`, `value`, `message`） | はい |
-| `run_workflow` | 保存したワークフローを入力の値で実行する。`job_id` を返す | `workflow_id`, `version?`（省略: 現在の版。古い版も、保存してあれば実行できる）, `prompt`, `negative_prompt?`, `aspect_ratio?`, `resolution?`, `duration_seconds?`, `references?[]` / `first_frame?` / `last_frame?`（`project_id`, `asset_id`） | `job_id`, `state`, `model_id`, `warnings[]` | いいえ |
+| `run_workflow` | 保存したワークフローを入力の値で実行する。`job_id` を返す | `workflow_id`, `version?`（省略: 現在の版。古い版も、保存してあれば実行できる）, `prompt`, `negative_prompt?`, `aspect_ratio?`, `resolution?`, `duration_seconds?`, `references?[]` / `first_frame?` / `last_frame?`（`project_id`, `asset_id`）, `audio_id?`（Issue #1153。`create_upload_ticket` の purpose `gentest_audio` の `audio_id`。`audio` の割り当てがあるワークフローには必須） | `job_id`, `state`, `model_id`, `warnings[]` | いいえ |
 | `set_shot_workflow` | Shot の生成方法を動画のワークフローに固定する（Video Model を `model_id` で LOCK）。解除は `set_shot_lock` の `video_model` を `auto` に | `shot_id`, `workflow_id`, `version?`（現在の版のみ） | `shot_id`, `model_id` | いいえ |
 
 ### 画面に出す値（`exposed_inputs`。Issue #977）
@@ -33,6 +33,9 @@
 
 `run_workflow` は `seed`（0〜9007199254740991。省くと実行ごとにランダム）と `sampling`（`steps` 1〜150・`cfg` 0〜30・`sampler`・`scheduler`）を受ける。値は、ワークフローの割り当て（`param` が `steps`・`cfg`・`sampler`・`scheduler`。`update_workflow_assignment` の `assignments[]` に書く。`steps` は `ratio`（0〜1）も付けられ、2 段のサンプラーの切り替えのステップに使う。`frames` は `offset`〔−64〜64 の整数〕も付けられ、フレーム数に足した値を入れる。`frames-2` は `offset: -2`。Issue #1076）が指すノードの入力に入る。省いた項目はグラフの値のまま。割り当てが無い項目と、速さのモードがあるワークフローの `steps`・`cfg` は使わず、出力の `warnings[]` に `kind: sampling` で出す。出力と `get_job` の `result` に、使った `seed` と `sampling`（既定を含む）が残る。範囲外は `validation`。
 
+### 音声の入力（`run_workflow`。Issue #1153）
+
+`audio` の割り当て（`update_workflow_assignment` の `assignments[].param`。動画だけ。`import_workflow_json` は、グラフに `LoadAudio` ノードがあれば `assignments` を省いたときの推測で `audio` を割り当てる）を持つワークフロー（音声から動画を作る Wan 2.2 S2V など）は、`run_workflow` に **`audio_id`**（`create_upload_ticket` の purpose `gentest_audio` でアップロードした音声。WAV・MP3・FLAC・OGG・M4A、50 MiB まで。単発生成の `estimate_generation_test` と同じ置き場）を渡して実行する。種類はバイト列から読む。次の場合は実行を始めずに `validation`（黙って捨てない）: `audio` の割り当てがあるのに `audio_id` が無い（「音声ファイルが要ります」）／割り当てが無い・画像のワークフローに `audio_id` を渡した（「このワークフローは音声ファイルを使いません」）／`audio_id` の上げたファイルが無い（使用済みか 24 時間で消えた）／音声ではないバイト列。`audio_chunks` で長さを音声から取るワークフローでは、音声が読めない・`gentest.max_audio_seconds`（既定 60 秒）を超えるときも断る（`input_unsupported`）。断ったときは上げたファイルが残り、実行が始まるとファイルは消える（使い切り）。`audio_chunks` のワークフローは動画の長さが音声の長さになり、それ以外は `duration_seconds` のまま。参照画像（S2V は 1 枚）は `references[]`（Project の素材）で渡す。
 ### ジョブ（`run_workflow`）
 
 `get_job` の `kind` は `run_workflow`。成功すると `result` に `model_id`・`media`・`download_url`（トークン付き）・`expires_at`・`file_name`・`mime_type`。失敗は `error` に ComfyUI の理由。`done` / `total` は割合（0〜100）。mam の再起動で止まった実行は `failed`。
@@ -50,3 +53,4 @@
 | 1.2 | 2026-11-04 | `settings` に `exposed_inputs`（画面に出す値）を足した（保存・取得・更新。省くと今のまま） | Issue #977（ステージ 2） |
 | 1.3 | 2026-11-06 | `assignments[]` に `offset`（`frames` だけ。フレーム数に足す整数。−64〜64）を足した（`update_workflow_assignment`・`get_workflow`） | Issue #1076 |
 | 1.4 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |
+| 1.5 | 2026-11-16 | `run_workflow` に `audio_id?`（`create_upload_ticket` の purpose `gentest_audio`）を足し、`assignments[].param` に `audio` を足した（`import_workflow_json` は、グラフに `LoadAudio` があれば推測で `audio` を割り当てる）。「音声の入力」の節を足した（音声が要るのに無い・音声を使わないワークフローに渡したときは実行前に断る） | Issue #1153 |

@@ -77,6 +77,8 @@ type Proposal struct {
 	// BatchID is the batch of a confirmed proposal; Reason is why a stale one was refused.
 	BatchID string
 	Reason  string
+	// Audio and Image say, for the card, which attached file the batch uses ("voice.wav（12.3 秒）", "face.png"); empty when it uses none. The request holds the staged copies.
+	Audio, Image string
 	// replaced says a newer estimate was made while this proposal was running: if the press then fails, it is superseded, not pending again (only the newest card can be pressed).
 	replaced bool
 }

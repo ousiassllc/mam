@@ -12,7 +12,7 @@
 
 | purpose | `params` | 上限 | 結果 |
 |---------|---------|------|------|
-| `chat_attachment` | `project_id`（必須） | 動画 300 MB（画像は 20 MB。`service/upload.go` が拡張子ごとに検証） | `{"upload_id", "name", "size_bytes", "expires_at"}`。`post_chat_message` の `attachment_upload_ids` に渡す |
+| `chat_attachment` | `project_id`（必須） | 動画 300 MB（画像は 20 MB、音声〔wav/mp3/flac/ogg/m4a〕は 50 MB。`service/upload.go` が拡張子ごとに検証し、音声は中身の種類が拡張子と一致しなければ `validation`。音声は `asset.type = audio` の Project のアセットになり、Brief には入らない。`attachments[].type` は `audio`） | `{"upload_id", "name", "size_bytes", "expires_at"}`。`post_chat_message` の `attachment_upload_ids` に渡す |
 | `new_project_attachment` | なし | 同上 | 同上。`create_project` の `attachment_upload_ids` に渡す |
 
 ## ダウンロードの種別
@@ -39,7 +39,7 @@
 
 ### `message`（`messages[]` の要素）
 
-`id`（返す順が時系列で、`after` には返された ID を続きの目印として渡す。ID の大小は時系列ではない。取り込んだメッセージは元の ID を持つ）, `role`（`user` / `assistant`）, `kind`（`text` / `question` / `approval` / `keyframe` / `take` / `progress` / `escalation`）, `text`（本文。question・escalation は文面、take はタイトル）, `options[]`（question・escalation のクイック回答）, `non_blocking`, `reply_to_message_id`, `ref_type`, `ref_id`, `approval_status`（`pending` / `approved` / `changes_requested`）, `unrecorded`（記録の無い旧「生成の承認」カードのとき true。承認としては扱わない）, `open`（回答待ち）, `pending`（まだ変わりうる）, `attachments[]`（`asset_id`, `type`, `mime_type`, `size_bytes`）, `take`（`take_id`, `shot_id`, `title`, `badge`, `score`, `summary`）, `job`（progress: `id`, `kind`, `status`, `error`, `next_steps`。`next_steps` は企画のジョブが LLM の API キー未設定で失敗したときだけ。[mcp-tools.md](mcp-tools.md) の `list_jobs` の補足）, `created_at`。
+`id`（返す順が時系列で、`after` には返された ID を続きの目印として渡す。ID の大小は時系列ではない。取り込んだメッセージは元の ID を持つ）, `role`（`user` / `assistant`）, `kind`（`text` / `question` / `approval` / `keyframe` / `take` / `progress` / `escalation`）, `text`（本文。question・escalation は文面、take はタイトル）, `options[]`（question・escalation のクイック回答）, `non_blocking`, `reply_to_message_id`, `ref_type`, `ref_id`, `approval_status`（`pending` / `approved` / `changes_requested`）, `unrecorded`（記録の無い旧「生成の承認」カードのとき true。承認としては扱わない）, `open`（回答待ち）, `pending`（まだ変わりうる）, `attachments[]`（`asset_id`, `type`＝`image` / `video` / `audio`, `mime_type`, `size_bytes`。`audio` は単発生成の音声入力に `source=project_asset` で使える。Issue #1153）, `take`（`take_id`, `shot_id`, `title`, `badge`, `score`, `summary`）, `job`（progress: `id`, `kind`, `status`, `error`, `next_steps`。`next_steps` は企画のジョブが LLM の API キー未設定で失敗したときだけ。[mcp-tools.md](mcp-tools.md) の `list_jobs` の補足）, `created_at`。
 
 ## ルートとの対応
 
@@ -71,3 +71,4 @@
 | 1.4 | 2026-11-08 | `message` の `id` の説明を、「返す順が時系列で、`after` には返された ID を渡す。ID の大小は時系列ではない」に改めた（MCP の入出力スキーマの説明も同じ） | Issue #1116: 「ID は時系列順に増える」と読めたが、取り込んだメッセージは元の ID を持つので大小は順を表さない |
 | 1.5 | 2026-11-08 | `set_confirmation_level`・`respond_approval` のツール説明が、`set_project_mode` と同じ同意の文面（予算上限が数えるのは単価が分かる呼び出しだけ・確実に止めるのは DIRECTOR）を言うことを足した | Issue #1115: 画面・チャット・MCP のツール説明で、止め方の文面を揃える（`spec/spec.md` §4.3） |
 | 1.6 | 2026-11-08 | `update_brief` の行がすでに言っている `confirm=true` の挙動の説明を、この履歴にも書き留めた。`confirm=true` は、チャットの承認と違い、未設定の項目を残し、確認カードも閉じない（Brief と記録のメモだけを書く）。行の表と MCP の入力の説明の文面はこの版では変えていない | Issue #1114 のレビュー指摘: 実装は `ProjectService.UpdateBrief` が Brief とメモだけを書き、カードを閉じない |
+| 1.7 | 2026-11-16 | アップロードの用途 `chat_attachment` が音声（wav/mp3/flac/ogg/m4a。50 MB まで）も受けるようにした。中身の種類が拡張子と一致しなければ `validation`。音声は `asset.type = audio` の Project のアセットになり、Brief には入らない（`list_chat_messages` の `attachments[].type` は `audio`） | Issue #1153 |

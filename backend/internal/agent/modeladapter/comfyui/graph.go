@@ -9,9 +9,11 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/aspectsize"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/extend"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/sampled"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui/stage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/audiochunks"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localhttp"
 	"github.com/ousiassllc/mam/backend/internal/imgprep"
 )
@@ -25,8 +27,10 @@ type values struct {
 	seed             int64
 	width, height    int
 	frames, fps      int
+	clipFrames       int // the frames of the clip when the sound sets its length (audio_chunks): frames is then the length of one chunk (see videoValues)
 	references       []modeladapter.Input
 	first, last      *modeladapter.Input
+	audio            *modeladapter.Input // the sound of a speech-to-video workflow (uploaded like an image; the extension tells the server it is audio)
 	opts             localcfg.ImageOptions
 	mask             *modeladapter.Input // inpaint mask (nil: none); redraw is its strength (nil: the graph's denoise)
 	redraw           *float64
@@ -62,11 +66,19 @@ func (b *Backend) imageValues(req modeladapter.ImageRequest) values {
 
 func videoValues(wf localcfg.Workflow, req modeladapter.VideoRequest) values {
 	w, h := localcfg.VideoSize(req.Resolution, req.AspectRatio, wf.SizeMultiple)
-	return values{
+	v := values{
 		prompt: req.Prompt, negative: req.NegativePrompt, seed: seedOr(req.Seed), width: w, height: h,
 		frames: wf.Frames(req.DurationSeconds), fps: wf.FPSOrDefault(),
-		references: req.References, first: req.FirstFrame, last: req.LastFrame, speedMode: req.SpeedMode, sampling: req.Sampling,
+		references: req.References, first: req.FirstFrame, last: req.LastFrame, audio: req.Audio, speedMode: req.SpeedMode, sampling: req.Sampling,
 	}
+	if ac := wf.AudioChunks; ac != nil {
+		// The first chunk is always a whole chunk; the length of the clip (the sound's, direct.Video put it in the request) says how many chunks follow.
+		v.frames = ac.ChunkLength
+		if req.DurationSeconds > 0 {
+			v.clipFrames = audiochunks.FramesFor(req.DurationSeconds, v.fps)
+		}
+	}
+	return v
 }
 
 // seedOr is the seed the request names, else a new one.
@@ -96,6 +108,8 @@ func (v values) input(a localcfg.Assignment) (in *modeladapter.Input, isImage bo
 		return v.mask, true
 	case localcfg.ParamSourceVideo:
 		return v.source, true
+	case localcfg.ParamAudio:
+		return v.audio, true
 	}
 	return nil, false
 }
@@ -204,6 +218,11 @@ func (b *Backend) build(v values, files map[int]string) (json.RawMessage, error)
 	}
 	if err := applySpeedMode(g, *b.Model.Workflow, v.speedMode); err != nil {
 		return nil, b.Client.Error(http.StatusUnprocessableEntity, "the workflow is unusable: "+err.Error(), nil)
+	}
+	if ac := b.Model.Workflow.AudioChunks; ac != nil { // before the LoRA: it reaches the samplers of the extension too
+		if err := extend.Apply(g, *ac, v.clipFrames); err != nil {
+			return nil, b.Client.Error(http.StatusUnprocessableEntity, "the workflow is unusable: "+err.Error(), nil)
+		}
 	}
 	dropUnused(g, *b.Model.Workflow, v)
 	applyLoRA(g, b.Model.Workflow.LoraModelNode, v.opts.LoRA)

@@ -17,7 +17,7 @@ const (
 	ModeI2V   VideoMode = "i2v"   // a first frame (and the text) to video
 	ModeFLF2V VideoMode = "flf2v" // a first frame and a last frame to the video between them
 	ModeVACE  VideoMode = "vace"  // the VACE family: one model for making and for editing a video with controls and references
-	ModeS2V   VideoMode = "s2v"   // sound (speech, music) to video; mam has no sound input yet, so no catalog model has it
+	ModeS2V   VideoMode = "s2v"   // sound (speech, music) to video: a sound file is an input of the workflow (Issue #1153)
 	ModeR2V   VideoMode = "r2v"   // reference images (people, objects, a background) to video
 )
 
@@ -55,9 +55,10 @@ func (m VideoMode) Label() string {
 //   - t2v is what a text-only workflow is: the model has t2v if and only if a workflow takes the text alone;
 //   - i2v needs a workflow with a first frame, and a first frame is either i2v or (with a last frame) flf2v;
 //   - flf2v needs a workflow with a first and a last frame, and a last frame is flf2v;
-//   - r2v is a workflow that takes reference images, and a workflow with reference images is r2v.
+//   - r2v is a workflow that takes reference images, and a workflow with reference images is r2v;
+//   - s2v is a workflow that takes a sound file (localcfg.ParamAudio), and a workflow with one is s2v.
 //
-// vace and s2v are not tied to an input (a VACE model is one of its own kind; mam has no sound input), so a model may carry them with any workflows.
+// vace is not tied to an input (a VACE model is one of its own kind), so a model may carry it with any workflows.
 func ValidateVideoModes(where string, modes []VideoMode, video bool, d Derived) []error {
 	if !video {
 		if len(modes) > 0 {
@@ -89,5 +90,6 @@ func ValidateVideoModes(where string, modes []VideoMode, video bool, d Derived) 
 	check(!has(ModeFLF2V) || (d.Has(FirstFrame) && d.Has(LastFrame)), "flf2v needs a workflow that takes a first and a last frame")
 	check(!d.Has(LastFrame) || has(ModeFLF2V), "a workflow takes a last frame: flf2v must be listed")
 	check(has(ModeR2V) == d.Has(ReferenceWhole), "r2v must be listed if and only if a workflow takes reference images (workflows give reference: %t)", d.Has(ReferenceWhole))
+	check(has(ModeS2V) == d.AudioInput, "s2v must be listed if and only if a workflow takes a sound file (workflows give an audio input: %t)", d.AudioInput)
 	return errs
 }

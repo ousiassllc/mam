@@ -71,10 +71,10 @@ func (h handlers) listModels(ctx context.Context, in ListModelsInput) (ListModel
 
 // ReferenceInput is an input image of a batch.
 type ReferenceInput struct {
-	Source    string `json:"source" jsonschema:"upload（create_upload_ticket purpose gentest_reference の reference_id）/ project_asset / reference_item（project_id が要る）/ history（単発生成の成功した画像結果の result_id）/ pose_library（ポーズ集 Shisei の画像。id は std_P001_front のような画像 ID で、導入済みのときだけ。役割 pose と使う）/ batch_input（過去のバッチの入力画像。id は結果の詳細の inputs[].input_id。アップロードした画像を同じ条件で使い直すとき）"`
+	Source    string `json:"source" jsonschema:"upload（画像は create_upload_ticket purpose gentest_reference の reference_id、音声は purpose gentest_audio の audio_id）/ project_asset（画像のアセット。音声は type が audio のアセット〔チャットに添付した音声ファイル。list_chat_messages の attachments[].asset_id〕。画像のアセットは音声に、音声のアセットは画像に使えない）/ reference_item（project_id が要る）/ history（単発生成の成功した画像結果の result_id）/ pose_library（ポーズ集 Shisei の画像。id は std_P001_front のような画像 ID で、導入済みのときだけ。役割 pose と使う）/ batch_input（過去のバッチの入力画像・音声。id は結果の詳細の inputs[].input_id。アップロードした画像・音声を同じ条件で使い直すとき）。音声（role audio）は upload と project_asset と batch_input だけ"`
 	ID        string `json:"id" jsonschema:"source に応じた ID"`
-	ProjectID string `json:"project_id,omitempty" jsonschema:"project_asset / reference_item のとき"`
-	Role      string `json:"role,omitempty" jsonschema:"画像: reference（全体。既定）/ face（顔だけ）/ style（画風・雰囲気だけ）/ edit（編集する元の画像）/ pose（ポーズだけ。ポーズ集 Shisei の画像や人形の写真。list_generation_models の reference_roles に pose があるモデルだけ）/ markup（GPT Image 2.6〔API キー〕の編集だけ。1 枚目の入力画像に重ねる透明な PNG で、直したい場所の丸や書き込みを描く。元画像と同じ画素数で、透明な部分があること。1 枚まで、ほかに編集する元の画像が要り、一部だけ描き直すマスクとは一緒に使えない。reference_roles に markup があるモデルだけ。使えないモデルは警告ではなく validation で拒否する）。動画: reference / first_frame / last_frame。list_generation_models の reference_roles に無い役割は警告 role_unsupported で全体の参照として使う"`
+	ProjectID string `json:"project_id,omitempty" jsonschema:"project_asset / reference_item のとき（project_asset の音声のときも）"`
+	Role      string `json:"role,omitempty" jsonschema:"画像: reference（全体。既定）/ face（顔だけ）/ style（画風・雰囲気だけ）/ edit（編集する元の画像）/ pose（ポーズだけ。ポーズ集 Shisei の画像や人形の写真。list_generation_models の reference_roles に pose があるモデルだけ）/ markup（GPT Image 2.6〔API キー〕の編集だけ。1 枚目の入力画像に重ねる透明な PNG で、直したい場所の丸や書き込みを描く。元画像と同じ画素数で、透明な部分があること。1 枚まで、ほかに編集する元の画像が要り、一部だけ描き直すマスクとは一緒に使えない。reference_roles に markup があるモデルだけ。使えないモデルは警告ではなく validation で拒否する）。動画: reference / first_frame / last_frame / audio（音声ファイル。動画だけ。S2V のモデル〔list_generation_models の requires_inputs に audio がある〕に渡す音声。1 つまで。source は upload〔purpose gentest_audio の audio_id〕・project_asset〔プロジェクトの音声アセット。project_id が要る〕・batch_input だけ）。list_generation_models の reference_roles に無い役割は警告 role_unsupported で全体の参照として使う"`
 	// Strength is a pointer: omitted means the default (0.7), 0 is a deliberate "barely".
 	Strength *float64 `json:"strength,omitempty" jsonschema:"画像モデルだけ。参照画像をどれだけ強く反映するか（0〜1、既定 0.7）。モデルごとの実現方法は隠す。動画では指定できない（validation）。強さを実現できるのは同梱 ComfyUI の参照対応モデルだけで、クラウドの画像モデルなどでは無視され、警告も出ない"`
 }
@@ -100,7 +100,7 @@ type RequestInput struct {
 	AspectRatio     string           `json:"aspect_ratio,omitempty" jsonschema:"16:9 のように。省くと画像は 1:1、動画は 16:9"`
 	Resolution      string           `json:"resolution,omitempty" jsonschema:"動画だけ。モデルの resolutions のどれか。省くと 720p かモデルの最初のもの"`
 	DurationSeconds float64          `json:"duration_seconds,omitempty" jsonschema:"動画だけ。省くと 5 秒。モデルが作れる長さに丸める"`
-	References      []ReferenceInput `json:"references,omitempty" jsonschema:"入力画像（画像モデルの参照画像・動画の最初／最後のフレーム）。各画像に role と strength を付けられる。モデルが使える枚数は max_reference_images、役割は reference_roles（list_generation_models）。超えた分は警告 too_many_refs で使わない"`
+	References      []ReferenceInput `json:"references,omitempty" jsonschema:"入力画像（画像モデルの参照画像・動画の最初／最後のフレーム）と、S2V の動画モデルの音声ファイル（role audio。1 つまで）。各画像に role と strength を付けられる。モデルが使える枚数は max_reference_images、役割は reference_roles（list_generation_models）。超えた分は警告 too_many_refs で使わない"`
 	// AvoidReferencePose adds "same pose as reference, ..." to the negative prompt of every model that uses a reference.
 	AvoidReferencePose bool `json:"avoid_reference_pose,omitempty" jsonschema:"画像だけ。参照画像のポーズ・構図を真似ないようにする（参照を使うモデルのネガティブプロンプトに「同じポーズ・構図」を足す。ネガティブの欄が無いモデルは Avoid: として書き足す。参照画像が無い・参照画像を使うモデルが無いときは何も起きず、警告も出ない）"`
 	// LoRA is applied together with the references to every model that supports it.

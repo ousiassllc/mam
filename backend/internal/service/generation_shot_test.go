@@ -138,10 +138,13 @@ func TestGenerateShot_FailureIsReportedInTheChatAndTheShotIsReleased(t *testing.
 
 	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM take`))
 	assert.Zero(t, f.count(t, `SELECT COUNT(*) FROM cost_ledger_entry`), "a failed call is not charged")
-	last := lastMessage(t, f.thread(t, f.projectID))
-	assert.Equal(t, domain.KindText, last.Kind)
-	assert.Contains(t, last.Content, "生成に失敗しました")
-	assert.Contains(t, last.Content, "拒否")
+	// The Shot is released and the job card is finished before the failure reaches the thread: wait for the message itself.
+	require.EventuallyWithT(t, func(c *assert.CollectT) {
+		last := lastMessage(c, f.thread(c, f.projectID))
+		assert.Equal(c, domain.KindText, last.Kind)
+		assert.Contains(c, last.Content, "生成に失敗しました")
+		assert.Contains(c, last.Content, "拒否")
+	}, 30*time.Second, 10*time.Millisecond, "the failure was never reported in the chat")
 
 	f.models.err = nil
 	_, err := f.svc.Generation.GenerateShot(context.Background(), f.shotID, "")

@@ -6,7 +6,7 @@
 
 ### 0.1 確認してから実行する
 
-- **変更する操作は、必ず先に確認カードを出す**（`kind=question`・`ref_type=operation`・`ref_id=<操作の種類>`。#1139 の予算と同じカード。ボタンは実行する操作を `CardBody.option_actions` に持つ）。カードに答えるまで何も変わらない。「やめる」「いいえ」は何も変えない。
+- **変更する操作は、必ず先に確認カードを出す**（`kind=question`・`ref_type=operation`・`ref_id=<操作の種類>`。#1139 の予算と同じカード。ボタンは実行する操作を `CardBody.option_actions` に持つ）。カードに答えるまで何も変わらない。「やめる」「いいえ」は何も変えない。ただし `Immediate` の操作（読み取りと、§0.6 の Shot の音声）はカードを出さない。
 - **全体の設定は、全プロジェクトに効くことをカードに書く**（API キー・プロバイダー・モデルの導入・モデルと LLM の割り当て・LoRA の取り込み。Project ごとの設定ではなく、アプリ全体の設定）。
 - **同じ操作の新しいカードが出ると、古いカードは答えられなくなる**（`latest[ref_id]`。409）。カードは 1 回しか答えられない。書き出しの依頼に見える語り（§5.4）に出た余分なカードも同じ `ref_id` の最新になるので、直前の書き出しのカードを答えられなくすることがある（そのときは、もう一度頼む）。
 - **何も変わらない操作**（すでに同じ設定、ダウンロード用のリンクを出すだけ）は、カードを出さず、そう答える。
@@ -34,8 +34,18 @@ LLM の API キーが未設定でも、「OpenAI の API キーを設定した�
 | `commandinterpreter.Spec` + `Register` | 操作の登録（プロンプトの例と説明、モデルの答えの検査 `Clean`、発言が求めているか `Asked`、モデルを使わない読み取り `Detect`、`AnyMode`・`Confirm`・`Global`・`Immediate`）。操作の引数は `Operation.Args`（操作のパッケージが持つ構造体の JSON） |
 | `chatops.Handler` | `Question`（確認カードの中身。何も変えない）と `Apply`（承認のあとに、画面・MCP と同じサービス層の関数で実行） |
 | `chatops.SecretSubmitter` | 秘密の値（API キー）を受け取る操作だけ。カードの入力欄から専用のエンドポイントで受ける |
-| `chatops.FileOffer` | 画像・動画以外のファイルが添付されたとき（LoRA）に、そのファイルを引き取る |
+| `chatops.FileOffer` | 画像・動画・音声以外のファイルが添付されたとき（LoRA）に、そのファイルを引き取る |
 | `chatwire.Connect(services, chatwire.Settings{…})` | アプリの起動時に、操作をサービスにつなぐ（`backend/internal/app/app.go`。実装は `service/chatwire/*.go`）。つながっていない環境では「この環境では、その設定をチャットから変更できません」と答える |
+
+### 0.6 Shot の音声を付ける・外す（`set_shot_audio`、Issue #1153）
+
+Project のチャットで、Shot に添付した音声ファイルを Wan 2.2 S2V などの入力として結び付ける（[../architecture/model-adapters.md](../architecture/model-adapters.md) §3.1「音声つきの Shot」）。パッケージ `service/chatops/shotaudio`（`spec.go` `handler.go`）。配線は `service/chatwire/shotaudio.go`。同じ関数は Shot 画面・`PUT /api/v1/shots/:id/audio`・MCP `set_shot_audio` と共通の `shotaudiosvc.Service.Set`。
+
+- **Shot を対象にする操作**: `Spec.Shot` を持つ（`Operation.OnShot()`）。Director の指示（`set_lock`・`regenerate` と同じ）と同じく、**DIRECTOR MODE のとき**だけ受け（`AnyMode` なし）、`scene` / `shot` で対象の Shot を決める（決まらないときは、どの Shot かを聞き返す。`DirectorService.execute` が `chatops.WithShot` で対象の Shot をコンテキストに入れて `Apply` を呼ぶ）。
+- **`Immediate`（確認カードを出さない）**: 何も生成せず、お金も使わず、もう一度同じ操作で戻せる（外す・選び直す）ため、§0.1 の例外として、受けたらすぐに付ける・外す。生成は走らない（次の生成から効く。できあがった Take は変わらない）。
+- **`Args`**: `action` は `attach`（この発言の添付の音声を付ける）・`clear`（外す）だけ。モデルが答えるのは `action` のみで、**音声は必ずこの発言に添付した音声ファイル**（Project の音声アセットとして保存済み。チャットに添付した音声は `asset.type = audio` で入る）。以前の発言の音声は名前で呼べない（アセットに名前が無い）ため、選び直しは Shot 画面の選択（`shotaudiosvc.View.Choices`）か MCP の `set_shot_audio`。
+- **断るとき（カードなしで、理由をそのまま答える）**: `attach` で音声ファイルが添付されていない（「音声ファイルが添付されていません…」。画像だけの添付も同じ）、音声が 2 つ以上、対象の Shot が決まらない、生成中・修復中（`conflict`）、Prompt が LOCK（`locked`）、他の Project の音声（`not_found`）、音声でない（`validation`）。`clear` で音声が無いときは「音声が付いていません」と答える。
+- **`Asked`**: 発言が音声の語（「音声」「音源」「オーディオ」「ナレーション」「セリフ」「ボイス」「音楽」「サウンド」「口パク」「喋」「歌」、`wav` / `mp3` / `flac` / `ogg` / `m4a` など）を含むときだけ受ける。モデルが音声に触れない発言（「カメラを外して」）に `clear` を返しても捨てる。`Clean` は `action` が `attach` / `clear` 以外のものも捨てる（モデルの答えだけで `clear` を推測しない）。
 
 ## 1. API キーとプロバイダー
 
@@ -141,7 +151,7 @@ LLM の API キーが未設定でも、「OpenAI の API キーを設定した�
 ### 4.1 添付で引き取る
 
 - **チャットのコンポーザーは `.safetensors` を選べる**（`<input id="composer-files">` の `accept` は `AcceptedUploads + ",.safetensors"`（`web/organisms/chat_composer.templ`）＝ 画像・動画の拡張子 ＋ `.safetensors`。新規プロジェクトの入力欄は従来の `AcceptedUploads` のまま）。ドラッグ＆ドロップも同じ。コンポーザーの JS は拡張子や大きさを検査しないので変更は無い。
-- `.safetensors`（大文字小文字は問わない）のファイルが付いたメッセージは、「対応していない添付」として断らず、`chatops.FileOffer`（`lora.Offer.Accepts`）に渡す。画像・動画は従来どおり Brief の添付になる（同じメッセージに両方付けてもよい）。**LoRA は Brief の素材（asset）にならない**。発言の本文は、書いたとおり（空なら「添付: <ファイル名>」）がスレッドに残る。
+- `.safetensors`（大文字小文字は問わない）のファイルが付いたメッセージは、「対応していない添付」として断らず、`chatops.FileOffer`（`lora.Offer.Accepts`）に渡す。画像・動画は従来どおり Brief の添付になり、音声（wav/mp3/flac/ogg/m4a。Issue #1153）は Project のアセット（`type=audio`）としてメッセージの添付に残る（Brief には入れない。同じメッセージに両方付けてもよい）。**LoRA は Brief の素材（asset）にならない**。発言の本文は、書いたとおり（空なら「添付: <ファイル名>」）がスレッドに残る。
 - ファイルは `LoRAs.Stage` にストリームで渡され、インポート用のフォルダに置かれる（`loras` フォルダにはまだ置かない）。**1 ファイルにつき 1 枚の確認カード**を返す。複数のファイルの一部だけが断られたときは、通る分のカードと、断られたファイルの理由（「取り込めませんでした: <ファイル名>: …」）を返す。
 - **添付を引き取るメッセージは、カードへの返信として記録しない**（`reply_to_message_id` を持たない。`chat_files.go` の `postFiles`）。返信にすると開いているカードが閉じてしまうが、ファイルは何の質問にも答えていないので、開いている Brief の質問や確認カードは開いたまま。取り込み自体が失敗したとき（カードも断りの文も作れなかったとき）は、スレッドに「ファイルを取り込めませんでした: <理由>」と書く（リクエストが途中で終わっていても記録する）。
 
@@ -263,7 +273,7 @@ LLM の API キーが未設定でも、「OpenAI の API キーを設定した�
 - **商品（`assign_product_reference`: geometry / label）・場所（`assign_location_reference`: layout）の参照**: 操作として作っていない（要求は Character の顔・参照だけ。同じ `addFromAsset` と `AssignReference` で足せるが、この Issue の範囲外）。
 - **Reference Library に既にある項目を名前で指す**（「Library の A を主人公の顔に」）: 作っていない。画像を添付したメッセージだけが入口。
 - **枠を空にする**（MCP は `reference_id` 空で空にできる）: 作っていない。
-- **声の参照（`voicereference`）**: チャットは画像・動画しか添付に取らない（`extensions` に音声が無い）ので、声のサンプル音声はチャットに添付できない。
+- **声の参照（`voicereference`）**: チャットは音声ファイルも添付に取る（Issue #1153。`type=audio` のアセット。単発生成の音声入力に使う）が、声の参照（Character の `voice_reference`）への登録はチャットからはしない（`charref` は画像だけを扱い、添付の音声は読まれない）。声のサンプル音声は Character の画面・MCP の用途で登録する。
 - **Series の Character（canon）・Branch の World State**: チャットの操作は主線（`branchID=""`）の Character だけ。Series の canon の顔は Series の画面から。
 - **複数枚の画像**: 1 メッセージ 1 枚だけ（何枚目かを聞く手段が無いため断る）。
 - 以前のメッセージの添付（「さっきの画像を…」）は使わない。このメッセージに添付した画像だけ（`ctx` の添付）。
@@ -300,3 +310,4 @@ LLM の API キーが未設定でも、「OpenAI の API キーを設定した�
 | 1.23 | 2026-11-12 | §3.2 の Detect の Agent の取り方に、据え置いた Agent は変更の対象にしない規則を足した（#1144）: 残す・そのまま・触・変えず・維持・据え置き・キープを含み、役割の語（代替・バックアップ・フォールバック）が無い節に出る Agent は、メッセージ全体で Agent を 1 つに決めるときの数に入れない（「Producer は据え置きで、LLM を GPT にして」は Agent を空にして聞き返し、「Producer は据え置きで、Director の LLM を GPT にして」「Producer は据え置きで、LLM を Claude Opus にして、Director に」は Director だけを変える。今までは Agent が 1 つだけ出ているときに据え置いた Producer を変更の対象にしていた）。役割の語がある節（「Director の代替は残して、LLM を …」）の Agent は今までどおり数える。(4) の例を「Art Director と Director は、LLM を Gemini にして」「Producer は据え置きで、LLM を GPT にして」に直した。§3.2 に、モデル名の語になるカタカナの連なりの現状（半角カタカナは語になり、半角の長音・濁点は連なりを切り、全角の長音だけの連なり `ーー` も語に数える。実装は変えていない）を書いた（#1145） |
 | 1.24 | 2026-11-12 | §5.4 の促す動詞の別形（`exportCommand`）の「節の終わり」の「、」を、あとに「と」「って」が続かないものに絞った（「書き出そう、と思った／書き出そう、って思った」は依頼ではない。「書き出そう、お願い」「書き出せ、すぐに」は依頼） | Issue #1142 のレビュー（1.22 の「書き出そうと思った」は依頼ではない、と食い違っていた） |
 | 1.25 | 2026-11-12 | §3.2 の Detect のモデル名の語になるカタカナの連なりに、半角の長音「ｰ」と濁点・半濁点「ﾞ」「ﾟ」を全角の長音「ー」と同じに入れた（#1150）: 「速い ﾗｰ」は「速い ラー」と同じにモデル名として読め、`ﾊﾞｰｼﾞｮﾝ` は連なりの途中で切れず、半角の `ｰｰ` も全角の `ーー` と同じに語に数える（ただしカタカナも ASCII の英数字も含まない名前はモデル名として読めないまま） | Issue #1150（半角の長音・濁点・半濁点で連なりが切れ、全角と半角で読み方が食い違っていた） |
+| 1.26 | 2026-11-16 | §0.6 を新設し、Shot を対象にする Immediate 操作 `set_shot_audio`（チャットに添付した音声を Shot に結び付ける・外す。DIRECTOR MODE 限定で確認カードは出さない）を足した。§0.1 に Immediate の例外（Shot を対象にする操作）を追記した | Issue #1153 |

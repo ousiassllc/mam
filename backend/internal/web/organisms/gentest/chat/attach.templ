@@ -1,0 +1,33 @@
+package chat
+
+// Attach is the two file inputs under the box: the sound and the picture of a speech-to-video model (Issue #1153). A chosen file is sent at once (hx-trigger
+// change), and the thread says it was attached. The LLM is told the name and the length of the sound, never the contents; it uses a file only when it sets "audio" or
+// "image" in an estimate, and the confirmation card says so. Nothing is generated here.
+templ Attach(p Panel) {
+	<div class="flex flex-wrap items-start gap-x-6 gap-y-2" data-testid="gtc-attach">
+		@fileForm(p.SessionID, KindAudioFile, "音声ファイル（音声から動画を作るモデル用）", AudioAccept, "WAV・MP3・FLAC・OGG・M4A、"+itoa(AudioMaxMiB)+" MiB まで")
+		@fileForm(p.SessionID, KindImageFile, "参照画像（音声から動画を作るモデルの顔など）", ImageAccept, "PNG・JPEG・WebP、"+itoa(MaxImageMiB)+" MiB まで")
+	</div>
+}
+
+templ fileForm(session, kind, label, accept, help string) {
+	<form
+		class="flex max-w-sm flex-col gap-1 text-xs text-mute"
+		hx-post={ filesPath() }
+		hx-target={ "#" + ThreadID }
+		hx-swap="beforeend"
+		hx-encoding="multipart/form-data"
+		hx-trigger="change"
+		hx-sync="this:replace"
+		data-gtc-attach={ kind }
+		data-testid={ "gtc-attach-" + kind }
+	>
+		<input type="hidden" name={ FieldSession } value={ session }/>
+		<input type="hidden" name={ FieldKind } value={ kind }/>
+		<label class="flex flex-col gap-1" for={ "gtc-file-" + kind }>
+			<span>{ label }</span>
+			<input id={ "gtc-file-" + kind } type="file" name={ FieldFile } accept={ accept } class="text-sm" aria-describedby={ "gtc-file-help-" + kind } data-testid={ "gtc-file-" + kind }/>
+		</label>
+		<p id={ "gtc-file-help-" + kind }>{ help }</p>
+	</form>
+}

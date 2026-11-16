@@ -21,7 +21,7 @@ import (
 const (
 	// FromStaged: an image uploaded to the screen or by an MCP upload ticket (StageReference); ID is its staged id.
 	FromStaged = "upload"
-	// FromProjectAsset: an image asset of a Project (ProjectID and the asset's ID).
+	// FromProjectAsset: an image asset of a Project, or an audio asset for the role audio (ProjectID and the asset's ID).
 	FromProjectAsset = "project_asset"
 	// FromReferenceItem: an entry of a Project's Reference Library (ProjectID and the entry's ID).
 	FromReferenceItem = "reference_item"
@@ -239,7 +239,7 @@ func (s *Service) checkReferences(r Request) error {
 	if len(r.References) > MaxReferences {
 		return gterr.Invalid("入力画像は %d 枚までです", MaxReferences)
 	}
-	firsts, lasts := 0, 0
+	firsts, lasts, audios := 0, 0, 0
 	for i := range r.References {
 		ref := &r.References[i]
 		var err error
@@ -248,12 +248,16 @@ func (s *Service) checkReferences(r Request) error {
 		}
 		firsts += btoi(ref.Role == gentestrepo.RoleFirstFrame)
 		lasts += btoi(ref.Role == gentestrepo.RoleLastFrame)
+		audios += btoi(ref.Role == gentestrepo.RoleAudio)
 		if err := checkSource(*ref); err != nil {
 			return err
 		}
 	}
 	if firsts > 1 || lasts > 1 {
 		return gterr.Invalid("最初のフレーム・最後のフレームは 1 枚ずつまでです")
+	}
+	if audios > 1 {
+		return gterr.Invalid("音声ファイルは 1 つまでです")
 	}
 	return nil
 }
@@ -269,11 +273,14 @@ func checkSource(ref RefInput) error {
 	if ref.ID == "" {
 		return gterr.Invalid("入力画像の ID がありません")
 	}
+	if ref.Role == RoleAudio && ref.Source != FromStaged && ref.Source != FromBatchInput && ref.Source != FromProjectAsset {
+		return gterr.Invalid("音声ファイルの取得元は upload・batch_input・project_asset です: %q", ref.Source)
+	}
 	switch ref.Source {
 	case FromStaged, FromHistory, FromPoseLibrary, FromBatchInput:
 	case FromProjectAsset, FromReferenceItem:
 		if ref.ProjectID == "" {
-			return gterr.Invalid("プロジェクトの画像には project_id が要ります")
+			return gterr.Invalid("プロジェクトのファイルには project_id が要ります")
 		}
 	default:
 		return gterr.Invalid("入力画像の取得元が正しくありません: %q（upload / project_asset / reference_item / history / pose_library / batch_input）", ref.Source)

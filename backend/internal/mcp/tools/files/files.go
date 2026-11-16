@@ -27,7 +27,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 			return r.Files.UploadTicketFor(ctx, in.Purpose, in.Params)
 		})
 	mcpkit.Read(r, "get_asset_download_url",
-		"プロジェクトにアップロードされた画像・動画（アセット）のダウンロード URL を発行する（15 分有効）/ Download URL of an uploaded Project asset (valid 15 minutes).",
+		"プロジェクトにアップロードされた画像・動画・音声（アセット）のダウンロード URL を発行する（15 分有効）/ Download URL of an uploaded Project asset (valid 15 minutes).",
 		func(ctx context.Context, in AssetInput) (mcpkit.Link, error) {
 			return r.Files.DownloadURL(ctx, KindProjectAsset, in.ProjectID+"/"+in.AssetID)
 		})

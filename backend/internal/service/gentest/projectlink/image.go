@@ -31,6 +31,9 @@ func (l *Link) ImageFile(ctx context.Context, projectID, id string, reference bo
 	if err != nil {
 		return "", "", err
 	}
+	if a.Type == domain.AssetAudio {
+		return "", "", gterr.Invalid("プロジェクトの %q は音声ファイルです（入力画像には使えません。音声は「音声ファイル」の入力で選びます）", assetID)
+	}
 	if a.Type == domain.AssetVideo || !strings.HasPrefix(a.MimeType, "image/") {
 		return "", "", gterr.Invalid("プロジェクトの %q は画像ではありません", assetID)
 	}

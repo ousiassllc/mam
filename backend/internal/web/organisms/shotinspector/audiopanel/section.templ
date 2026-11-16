@@ -1,0 +1,95 @@
+package audiopanel
+
+import (
+	"strconv"
+
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// Section is the audio of the Shot: what it is tied to, the form that ties another audio asset of the Project and the one that takes it off. A Shot that is being
+// generated or repaired, or whose Prompt is LOCKed, shows the audio read-only with the reason: the server refuses a change then (409 / 423). It answers the form
+// (PUT /shots/:id/audio) with this section only.
+templ Section(d Data) {
+	if d.ShotID != "" {
+		<section id={ ID } aria-label="音声" class="flex flex-col gap-2" data-shot-audio>
+			<h3 class="text-sm font-semibold">音声</h3>
+			<p class="text-sm text-mute">
+				音声をつなぐと、この Shot は音声から動画を作るモデル（Wan 2.2 S2V など）で作られます。動画の長さは音声の長さになり、元になる絵として Keyframe か参照画像が要ります。
+				つなぎ替えは次の生成から効き、できあがった Take は変わりません。{ d.limitText() }
+			</p>
+			if d.Unavailable {
+				<p class="text-sm text-danger" role="alert" data-audio-unavailable>この Shot の音声を読めませんでした。画面を開き直してください。</p>
+			} else {
+				@current(d)
+				if reason := d.readOnlyReason(); reason != "" {
+					<p class="text-sm text-mute" data-audio-blocked>{ reason }</p>
+				} else {
+					@tieForm(d)
+					if d.Current != nil {
+						@untieForm(d)
+					}
+				}
+			}
+		</section>
+	}
+}
+
+// current is the audio the Shot is tied to, or the line that says there is none.
+templ current(d Data) {
+	if d.Current == nil {
+		<p class="text-sm" data-audio-none>音声はつないでいません。</p>
+	} else {
+		<div class="flex flex-col gap-1" data-audio-current>
+			<p class="text-sm">{ d.Current.facts() }</p>
+			if d.Current.hasPlayer() {
+				<audio controls preload="none" class="w-full max-w-sm" src={ paths.Project(d.ProjectID, "assets", d.Current.AssetID) } aria-label="この Shot の音声"></audio>
+			}
+			if d.Current.Problem != "" {
+				<p class="text-sm text-danger" role="alert" data-audio-problem>{ d.Current.Problem }</p>
+			} else if d.needsPicture() {
+				<p class="text-sm text-danger" role="alert" data-audio-no-picture>この Shot には Keyframe も参照画像もありません。音声から動画を作るモデルは絵が 1 枚要るので、Reference Pack を作るか、ライブラリの参照画像を Reference Pack に追加してください。</p>
+			}
+		</div>
+	}
+}
+
+// tieForm picks an audio asset of the Project; with none, it says how to get one in.
+templ tieForm(d Data) {
+	if len(d.Choices) == 0 {
+		<p class="text-sm text-mute" data-audio-empty>
+			つなげる音声がまだありません。プロジェクトのチャットに音声ファイル（{ Formats() }、{ strconv.Itoa(MaxMiB) } MiB まで）を添付すると、プロジェクトの音声として取り込まれます。そのあとで、ここで選べます。
+		</p>
+	} else {
+		<form hx-put={ paths.Shot(d.ShotID, "audio") } hx-target={ "#" + ID } hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]" class="flex flex-wrap items-center gap-2" data-audio-tie>
+			<label for="shot-audio-asset" class="text-xs text-mute">つなぐ音声（プロジェクトの音声から選ぶ）</label>
+			@atoms.Select(atoms.FieldSm, "max-w-full", templ.Attributes{"id": "shot-audio-asset", "name": "asset_id", "required": true}) {
+				if d.Current == nil {
+					<option value="" disabled selected>音声を選んでください</option>
+				}
+				for _, c := range d.Choices {
+					<option value={ c.AssetID } selected?={ d.Current != nil && d.Current.AssetID == c.AssetID }>{ c.Label() }</option>
+				}
+			}
+			@atoms.Button(atoms.TonePrimary, "つなぐ", templ.Attributes{"type": "submit"})
+		</form>
+		<p class="text-xs text-mute">音声の追加は、プロジェクトのチャットに音声ファイル（{ Formats() }、{ strconv.Itoa(MaxMiB) } MiB まで）を添付します。</p>
+	}
+}
+
+// untieForm takes the audio off: the Shot is made as it was before.
+templ untieForm(d Data) {
+	<form hx-put={ paths.Shot(d.ShotID, "audio") } hx-target={ "#" + ID } hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]" data-audio-untie>
+		<input type="hidden" name="asset_id" value=""/>
+		@atoms.Button(atoms.ToneNeutral, "はずす", templ.Attributes{"type": "submit"})
+	</form>
+}
+
+// Placeholder is where the Inspector holds the section until it is read: the audio comes from its own service, so the Inspector asks for it after it is shown
+// (GET /shots/:id/audio answers Section), and what is typed in its other forms is not touched.
+templ Placeholder(shotID string) {
+	<section id={ ID } aria-label="音声" class="flex flex-col gap-2" hx-get={ paths.Shot(shotID, "audio") } hx-trigger="load" hx-swap="outerHTML" data-shot-audio-pending>
+		<h3 class="text-sm font-semibold">音声</h3>
+		<p class="text-sm text-mute">音声を読み込んでいます…</p>
+	</section>
+}

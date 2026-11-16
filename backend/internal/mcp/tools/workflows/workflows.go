@@ -51,7 +51,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 		"つないでいる ComfyUI に、ワークフローのノードとモデルファイルがあるか確かめる（GET /object_info と /models）。足りないものは warnings で返し、実行は止めない。同梱の ComfyUI は起動しない / Warn about nodes and model files the connected ComfyUI lacks.",
 		h.check, mcpkit.OpenWorld())
 	mcpkit.Write(r, "run_workflow",
-		"保存したワークフローを入力（prompt・画像・解像度・長さ）つきで実行する。job_id を返し、get_job で進捗と結果（download_url）を取る。同梱の ComfyUI は止まっていれば起動する。Project には何も書かない / Run a saved workflow with inputs; returns a job_id.",
+		"保存したワークフローを入力（prompt・画像・音声・解像度・長さ）つきで実行する。audio の割り当てがあるワークフローは audio_id（create_upload_ticket purpose gentest_audio）が要る。job_id を返し、get_job で進捗と結果（download_url）を取る。同梱の ComfyUI は止まっていれば起動する。Project には何も書かない / Run a saved workflow with inputs (an audio_id for a speech-to-video one); returns a job_id.",
 		h.run, mcpkit.OpenWorld())
 	mcpkit.Write(r, "set_shot_workflow",
 		"Shot の生成方法をワークフローに固定する（Video Model を comfy:<id>@v<N> で LOCK）。動画のワークフローだけ。解除は set_shot_lock の video_model を auto にする / Pin a Shot to a saved video workflow.",
@@ -94,7 +94,7 @@ type Input struct {
 
 // Assignment says which input of which node a value of mam goes to.
 type Assignment struct {
-	Param  string  `json:"param" jsonschema:"prompt, negative_prompt, seed, width, height, reference_image, steps, cfg, sampler, scheduler, frames, fps, first_frame or last_frame（画像は frames・fps・first_frame・last_frame を使えない）。steps・cfg は数値の入力、sampler・scheduler は文字の入力（KSampler の sampler_name・scheduler）に割り当てる。割り当てると run_workflow の sampling で上書きできる"`
+	Param  string  `json:"param" jsonschema:"prompt, negative_prompt, seed, width, height, reference_image, steps, cfg, sampler, scheduler, frames, fps, first_frame, last_frame or audio（画像は frames・fps・first_frame・last_frame・audio を使えない）。steps・cfg は数値の入力、sampler・scheduler は文字の入力（KSampler の sampler_name・scheduler）に割り当てる。割り当てると run_workflow の sampling で上書きできる。audio は LoadAudio の audio 入力（動画だけ。音声から動画のワークフロー。割り当てると run_workflow に audio_id が要る）"`
 	Node   string  `json:"node" jsonschema:"ノード ID（get_workflow の nodes[].id）"`
 	Input  string  `json:"input" jsonschema:"そのノードの入力名。ほかのノードがつないでいる入力は使えない"`
 	Index  int     `json:"index,omitempty" jsonschema:"reference_image だけ: 何枚目か（0 から、抜けなし）"`

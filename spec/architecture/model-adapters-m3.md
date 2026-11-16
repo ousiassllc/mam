@@ -19,6 +19,8 @@ M3 Issue #26 の仕様。`spec/spec.md` §27 の「Multi-model routing」を、M
 
 Multi-model routing が動かない場合（ユーザーが Video Model を MANUAL / LOCK で固定した Shot、`routing.enabled` が偽）は M1 の挙動のままである。固定された Shot は、その Video Model だけを使い（M1 と同じ）、決定理由に「ユーザーが固定」と記録する。
 
+音声つきの Shot（`shot.shot_spec.audio`。Issue #1153）も動かない場合に入る: 音声を入力に取るモデル（S2V）だけが作れて候補が限られ、Judge 実績で別のモデルに入れ替えると音声を捨てることになるため、Multi-model routing は呼ばず、モデルは [model-adapters.md](model-adapters.md) §3.1「音声つきの Shot」の条件で選ぶ（`routing_candidate` は残さない。決定理由は選んだ理由の 1 行）。
+
 ### 13.2 候補
 
 Quality Policy ごとに候補（`routing.candidates.<policy>`、動画モデル + 解像度）を設定で持つ。既定は、そのポリシーのプライマリ・代替と、残りの動画モデル 1 つ（`policies` の解像度に近い、対応する最小の解像度）:

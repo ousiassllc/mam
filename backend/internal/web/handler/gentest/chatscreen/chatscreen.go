@@ -39,6 +39,7 @@ func Register(engine *gin.Engine, g *gentest.Service, c *chat.Service) {
 		return
 	}
 	engine.POST(paths.GenerationTestChat("messages"), h.Send)
+	engine.POST(paths.GenerationTestChat("files"), h.Attach)
 	engine.POST(paths.GenerationTestChat("proposals", ":id", "confirm"), h.Confirm)
 	engine.POST(paths.GenerationTestChat("proposals", ":id", "dismiss"), h.Dismiss)
 	engine.GET(paths.GenerationTestChat("batches", ":id"), h.Batch)

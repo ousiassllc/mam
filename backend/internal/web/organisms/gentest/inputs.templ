@@ -5,6 +5,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/audioinput"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/facelock"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/inputnotice"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestposes"
@@ -74,6 +75,8 @@ templ inputFields(c Compose) {
 					<span>最後のフレーム</span>
 					<input id="gt-last" type="file" name={ FieldLast } accept="image/png,image/jpeg,image/webp" class="text-sm"/>
 				</label>
+				@audioinput.File()
+				@audioinput.ProjectPicker(paths.GenerationTestPart("picker"), c.Projects)
 			</div>
 		}
 		<p class="text-sm text-danger" role="alert" data-gt-error data-testid="gt-inputs-error" hidden></p>

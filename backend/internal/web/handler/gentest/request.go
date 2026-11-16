@@ -2,7 +2,6 @@ package gentest
 
 import (
 	"errors"
-	"io"
 	"mime/multipart"
 	"net/http"
 	"strconv"
@@ -10,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/ousiassllc/mam/backend/internal/audiofile"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/advform"
@@ -77,16 +77,21 @@ func readForm(c *gin.Context, stage bool) (formState, error) {
 }
 
 func (h Handlers) stage(fh *multipart.FileHeader) (string, error) {
-	f, err := fh.Open()
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = f.Close() }()
-	data, err := io.ReadAll(io.LimitReader(f, gentest.MaxImageBytes+1))
+	data, err := refform.Read(fh, gentest.MaxImageBytes+1)
 	if err != nil {
 		return "", err
 	}
 	id, _, err := h.Svc.StageReference(data)
+	return id, err
+}
+
+// stageAudio stores the audio file of the form (WAV, MP3, FLAC, OGG or M4A: the service reads the kind from the bytes and refuses any other).
+func (h Handlers) stageAudio(fh *multipart.FileHeader) (string, error) {
+	data, err := refform.Read(fh, audiofile.MaxBytes+1)
+	if err != nil {
+		return "", err
+	}
+	id, _, err := h.Svc.StageAudio(data)
 	return id, err
 }
 

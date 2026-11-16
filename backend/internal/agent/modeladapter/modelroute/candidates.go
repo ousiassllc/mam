@@ -63,7 +63,10 @@ type need struct {
 	res      string
 	seconds  float64
 	keyframe bool
-	assigned []domain.ModelName // the models of the assignment, which are not candidates
+	// audio: the Shot has a sound file, which only a model that takes it can make the clip from (Issue #1153); reference: it has an image such a model takes as its one picture (a
+	// Keyframe or a reference of the Reference Pack).
+	audio, reference bool
+	assigned         []domain.ModelName // the models of the assignment, which are not candidates
 }
 
 // requires reports whether the workflow of a local model cannot run without an input image of the role (localcfg.Required*): an image-to-video workflow
@@ -85,22 +88,7 @@ func (e Env) fits(m domain.ModelName, n need) string {
 		}
 		return ""
 	}
-	caps, ok := cfg.VideoCaps(m)
-	switch {
-	case !ok:
-		return "動画モデルではない"
-	case !caps.SupportsResolution(n.res):
-		return fmt.Sprintf("解像度 %s に対応しない", n.res)
-	case n.seconds > 0 && caps.Durations[len(caps.Durations)-1] < n.seconds-1e-9:
-		return fmt.Sprintf("尺 %.0f 秒を 1 本に収められない（最長 %.0f 秒）", n.seconds, caps.Durations[len(caps.Durations)-1])
-	case n.keyframe && !caps.FirstFrame:
-		return "最初のフレーム（Keyframe）を使えない"
-	case !n.keyframe && requires(cfg, m, localcfg.RequiredFirstFrame):
-		return "最初のフレームが必要（この Shot には Keyframe がない）"
-	case requires(cfg, m, localcfg.RequiredLastFrame), requires(cfg, m, localcfg.RequiredReference):
-		return "mam が渡さない入力（最後のフレーム・参照画像）が必須"
-	}
-	return ""
+	return e.fitsVideo(m, n)
 }
 
 // candidates are the usable models of the list that match the request, in the order of the selection rule, and the usable models that do not match

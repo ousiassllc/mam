@@ -171,6 +171,9 @@ func validateTemplateNodes(c *Catalog, where string, w localcfg.Workflow) []erro
 	for _, n := range g {
 		used[n.ClassType] = true
 	}
+	for _, n := range w.ExtensionNodes() { // the nodes of the audio extension are part of the run's graph (Issue #1153)
+		used[n.ClassType] = true
+	}
 	for _, id := range w.RequiresNodes {
 		n, ok := c.Node(id)
 		switch {

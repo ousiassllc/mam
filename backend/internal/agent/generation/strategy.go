@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"math"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/generation/refimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/modelroute"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -71,7 +72,10 @@ func DecideRouted(cfg modeladapter.Config, policy domain.QualityPolicy, shotSeco
 		PolicyPrimary:  domain.RoutingModel{Model: pr.Primary.Model, Resolution: pr.Primary.Resolution},
 		PolicyFallback: domain.RoutingModel{Model: pr.Fallback.Model, Resolution: pr.Fallback.Resolution},
 	}
-
+	var sound *refimage.Audio // the clip of a Shot with audio is as long as its sound, not as long as the lengths a model offers
+	if in != nil {
+		sound = in.Audio
+	}
 	switch {
 	case forced != "":
 		s.Primary = modeladapter.VideoTarget{Model: forced, Resolution: pr.Primary.Resolution}
@@ -79,12 +83,14 @@ func DecideRouted(cfg modeladapter.Config, policy domain.QualityPolicy, shotSeco
 		s.Reasons = append(s.Reasons, fmt.Sprintf("the video model is fixed by the user: %s", forced))
 		decision.Mode, decision.Reason = domain.RoutingFixed, fmt.Sprintf("the video model is fixed by the user: %s", forced)
 	default:
-		if longest(cfg, pr.Primary.Model) < shotSeconds && longest(cfg, pr.Fallback.Model) >= shotSeconds {
+		if sound == nil && longest(cfg, pr.Primary.Model) < shotSeconds && longest(cfg, pr.Fallback.Model) >= shotSeconds {
 			s.Primary, s.Fallback = s.Fallback, s.Primary
 			s.Reasons = append(s.Reasons, fmt.Sprintf("the %.1fs Shot exceeds the longest clip of %s: %s is primary", shotSeconds, pr.Primary.Model, s.Primary.Model))
 		}
 		switch {
 		case in == nil:
+		case in.Audio != nil: // the models that take the sound were chosen already (modelroute): they are not weighed against the others
+			s.Reasons = append(s.Reasons, "the Shot has audio: only models that take a sound file are used, Multi-model routing is not applied")
 		case !cfg.Routing.Enabled:
 			decision.Mode, decision.Reason = domain.RoutingDisabled, "Multi-model routing is switched off: the Quality Policy's assignment is used"
 		default:
@@ -94,8 +100,9 @@ func DecideRouted(cfg modeladapter.Config, policy domain.QualityPolicy, shotSeco
 
 	remaining := budget.Remaining()
 	framed := in != nil && hasKeyframe(in.References)
+	clip := func(m domain.ModelName) float64 { return sound.ClipSeconds(cfg, m, shotSeconds, framed) } // what Prepare asks the model for
 	cost := func(t modeladapter.VideoTarget) float64 {
-		return cfg.VideoCost(t, cfg.ClipSeconds(t.Model, shotSeconds, framed))
+		return cfg.VideoCost(t, clip(t.Model))
 	}
 	perTake := cost(s.Primary)
 	if fit := affordable(remaining, perTake); fit < s.Takes {
@@ -113,7 +120,7 @@ func DecideRouted(cfg modeladapter.Config, policy domain.QualityPolicy, shotSeco
 		s.Reasons = append(s.Reasons, fmt.Sprintf("the budget allows %d of %d Takes", min(fit, s.Takes), s.Takes))
 		s.Takes = min(fit, s.Takes)
 	}
-	s.DurationSeconds = cfg.ClipSeconds(s.Primary.Model, shotSeconds, framed)
+	s.DurationSeconds = clip(s.Primary.Model)
 	s.CostPerTake = perTake
 	if decision.Mode != "" {
 		decision.Primary = domain.RoutingModel{Model: s.Primary.Model, Resolution: s.Primary.Resolution}

@@ -130,7 +130,7 @@ func (s *Service) newBatch(r Request, est Estimate, plans []modelPlan, sources [
 	inputIDs := make([]string, len(sources))
 	for i, src := range sources {
 		inputIDs[i] = domain.NewID()
-		name := "in-" + inputIDs[i] + inputTypes[src.Mime]
+		name := "in-" + inputIDs[i] + InputExt(src.Mime)
 		if err := fsutil.CopyFile(src.Path, filepath.Join(dir, name)); err != nil {
 			return fail(fmt.Errorf("copy input image: %w", err))
 		}

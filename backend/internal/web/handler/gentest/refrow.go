@@ -10,6 +10,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/refform"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/audioinput"
 )
 
 // RefRow answers GET /generation-test/ref-row: the row of one chosen input image ("?ref=<source>:<project>:<id>").
@@ -32,6 +33,9 @@ func (h Handlers) RefRow(c *gin.Context) {
 			}
 		}
 		role = h.Svc.DefaultInputRole(media, c.QueryArray(view.FieldModel), have)
+	}
+	if c.Query(audioinput.RoleParam) == gentest.RoleAudio && r.Source == gentest.FromProjectAsset { // an audio file picked from a Project (Issue #1153)
+		role = gentest.RoleAudio
 	}
 	row, ok := h.refRow(ctx, refform.Input(r, role, nil))
 	if !ok {

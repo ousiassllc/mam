@@ -5,6 +5,7 @@ package inputnotice
 import (
 	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/errorbox"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/audioinput"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -15,11 +16,12 @@ type Check struct {
 	Warnings []string
 }
 
-// Unused is an input image the model of a result was not given: its role in words, why, and the picture.
+// Unused is an input image the model of a result was not given: its role in words, why, and the picture (a player for audio, which has none).
 type Unused struct {
 	Role   string
 	Reason string
 	URL    string
+	Audio  bool
 }
 
 // CheckBox is the notice of the input images of a video form: what the ticked models do with the images attached now, drawn by the server with the
@@ -33,7 +35,7 @@ templ CheckBox(c Check) {
 		data-gt-input-check
 		data-testid="gt-input-check"
 		hx-post={ paths.GenerationTestPart("input-check") }
-		hx-trigger="gt-inputs-changed from:closest form delay:200ms"
+		hx-trigger={ "gt-inputs-changed from:closest form delay:200ms, change from:#" + audioinput.InputID + " delay:200ms" }
 		hx-target="this"
 		hx-swap="outerHTML"
 		hx-sync="this:replace"
@@ -69,7 +71,11 @@ templ UnusedBox(list []Unused) {
 		<ul class="flex flex-col gap-2">
 			for _, u := range list {
 				<li class="flex items-center gap-3" data-testid="gt-unused-item">
-					<img class="h-12 w-12 shrink-0 rounded-md object-cover" src={ u.URL } alt={ u.Role } loading="lazy"/>
+					if u.Audio {
+						@audioinput.Player(u.URL)
+					} else {
+						<img class="h-12 w-12 shrink-0 rounded-md object-cover" src={ u.URL } alt={ u.Role } loading="lazy"/>
+					}
 					<span><span class="mr-2 text-xs text-mute">{ u.Role }</span>{ u.Reason }</span>
 				</li>
 			}

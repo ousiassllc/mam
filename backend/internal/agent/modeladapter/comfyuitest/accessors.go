@@ -65,6 +65,13 @@ func (f *Fake) Uploads() []string {
 	return append([]string(nil), f.uploads...)
 }
 
+// UploadTypes are the Content-Types the files of Uploads were sent with, in the same order.
+func (f *Fake) UploadTypes() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return append([]string(nil), f.types...)
+}
+
 // UploadBodies are the bytes of the files uploaded to /upload/image, in the order of Uploads.
 func (f *Fake) UploadBodies() [][]byte {
 	f.mu.Lock()

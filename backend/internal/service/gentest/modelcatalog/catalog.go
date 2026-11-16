@@ -45,6 +45,8 @@ type VideoCaps struct {
 	FirstFrame         bool      `json:"first_frame"`
 	LastFrame          bool      `json:"last_frame"`
 	NativeAudio        bool      `json:"native_audio"`
+	AudioInput         bool      `json:"audio_input" jsonschema:"音声ファイル（WAV・MP3・FLAC・OGG・M4A。役割 audio）を受け取る。音声から動画を作るモデル（S2V）。true のモデルは音声が必須で、requires_inputs に audio が入る"`
+	LengthFromAudio    bool      `json:"length_from_audio" jsonschema:"クリップの長さは音声ファイルの長さで決まる（S2V。durations は空: 長さは選べず、リクエストの duration_seconds は使われない）。音声が gentest.max_audio_seconds を超えると断られる"`
 }
 
 // Info is a model the screen can choose, with what it can do and why it cannot be chosen now.
@@ -102,7 +104,7 @@ type Info struct {
 	// DenoiseDefault is the redraw strength the workflow uses when a request names none (the template's denoise).
 	DenoiseDefault *float64 `json:"denoise_default,omitempty" jsonschema:"一部だけ描き直すときの描き直しの強さの既定（0 より大きく 1 以下）。supports_inpaint のモデルだけ"`
 	// RequiresInputs are the input images the model cannot run without (first_frame / last_frame / reference): a request without one is stopped before it is sent.
-	RequiresInputs []string `json:"requires_inputs,omitempty" jsonschema:"このモデルが必ず使う入力画像（first_frame / last_frame / reference）。I2V のワークフローは first_frame。リクエストに無い（役割が違う）と、送らずに input_missing で止める。無いモデルは省略"`
+	RequiresInputs []string `json:"requires_inputs,omitempty" jsonschema:"このモデルが必ず使う入力（first_frame / last_frame / reference / audio）。I2V のワークフローは first_frame、音声から動画（S2V）のワークフローは reference と audio。リクエストに無い（役割が違う）と、送らずに input_missing で止める。無いモデルは省略"`
 	// Provider is who serves the model: the vendor of a cloud model ("google", "openai", "kling"...), "chatgpt-subscription" for the ChatGPT subscription's image
 	// model, "local" for a ComfyUI / OpenAI-compatible endpoint model or a saved workflow. Origin is "local" or "api". Both are the words of the filter (modelfilter).
 	Provider string `json:"provider" jsonschema:"提供元（クラウドはベンダー、local はローカル。絞り込みの providers に使う）"`
@@ -274,7 +276,10 @@ func (c Catalog) info(cfg modeladapter.Config, m domain.ModelName, media string)
 	if caps, ok := cfg.VideoCaps(m); ok {
 		mi.Video = &VideoCaps{
 			Durations: slices.Clone(caps.Durations), Resolutions: slices.Clone(caps.Resolutions), MaxReferenceImages: caps.MaxReferenceImages,
-			FirstFrame: caps.FirstFrame, LastFrame: caps.LastFrame, NativeAudio: caps.NativeAudio,
+			FirstFrame: caps.FirstFrame, LastFrame: caps.LastFrame, NativeAudio: caps.NativeAudio, AudioInput: caps.AudioInput, LengthFromAudio: caps.AudioLength,
+		}
+		if caps.AudioLength {
+			mi.Video.Durations = []float64{} // the length is the sound's: there are no lengths to choose from (the form and the tools read length_from_audio)
 		}
 	}
 	mi.Inputs = inputsOf(mi)

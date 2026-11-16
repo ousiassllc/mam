@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"slices"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/audiochunks"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/exposed"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/promptweight"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
@@ -107,6 +108,9 @@ type Workflow struct {
 	QualityPresets *sampling.Presets `json:"quality_presets,omitempty"`
 	// ExposedInputs are the inputs of the graph the screen offers as fields of their own (Issue #977; package exposed); empty: none.
 	ExposedInputs []exposed.Input `json:"exposed_inputs,omitempty"`
+	// AudioChunks marks a workflow whose clip is as long as its sound (Issue #1153, Wan 2.2 S2V): the graph makes one chunk and mam adds the Extend chunks the sound needs (package
+	// audiochunks, comfyui/extend). Its video durations are only informative then (VideoCaps.AudioLength). nil: a clip of the length the request names.
+	AudioChunks *audiochunks.Spec `json:"audio_chunks,omitempty"`
 }
 
 // DefaultFPS is the frame rate of a video workflow that names none.
@@ -132,36 +136,6 @@ func (w Workflow) Frames(seconds float64) int {
 // Has reports whether the workflow has an assignment of p.
 func (w Workflow) Has(p Param) bool {
 	return slices.ContainsFunc(w.Assignments, func(a Assignment) bool { return a.Param == p })
-}
-
-// The inputs RequiredImages names (the words of the generation test's input image roles).
-const (
-	RequiredFirstFrame = "first_frame"
-	RequiredLastFrame  = "last_frame"
-	RequiredReference  = "reference"
-)
-
-// RequiredImages are the input images the workflow cannot run without (the adapter refuses a request that lacks one: comfyui's missing):
-// "first_frame" and "last_frame" when the workflow has that assignment, and "reference" when a reference slot is not optional and the workflow
-// does not list what a run without a reference changes (NoReference).
-func (w Workflow) RequiredImages() []string {
-	var out []string
-	add := func(r string) {
-		if !slices.Contains(out, r) {
-			out = append(out, r)
-		}
-	}
-	for _, a := range w.Assignments {
-		switch {
-		case a.Param == ParamFirstFrame:
-			add(RequiredFirstFrame)
-		case a.Param == ParamLastFrame:
-			add(RequiredLastFrame)
-		case a.Param == ParamReferenceImage && !a.Optional && len(w.NoReference) == 0:
-			add(RequiredReference)
-		}
-	}
-	return out
 }
 
 // Count is the number of assignments of p.
@@ -316,6 +290,7 @@ func validateWorkflow(where string, media Media, w Workflow) []error {
 	errs = append(errs, validateRequiresNodes(where, w)...)
 	errs = append(errs, validateSampling(where, w, g)...)
 	errs = append(errs, validateExposed(where, w, g)...)
+	errs = append(errs, validateAudioChunks(where, media, w, g)...)
 	errs = append(errs, append(validatePromptWeight(where, w), append(validateUpscale(where, media, w, g), validateVideoEnhance(where, media, w, g)...)...)...)
 	if w.FPS < 0 || w.FPS > 240 || w.FramesStep < 0 || w.FramesStep > 64 || w.SizeMultiple < 0 || w.SizeMultiple > 128 {
 		errs = append(errs, fmt.Errorf("%s: fps must be within 0-240, frames_step within 0-64 and size_multiple within 0-128", where))

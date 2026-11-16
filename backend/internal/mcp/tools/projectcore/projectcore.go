@@ -89,7 +89,7 @@ func getProject(svc *service.ProjectService) mcpkit.Handler[ProjectInput, Projec
 type CreateInput struct {
 	Content             string   `json:"content,omitempty" jsonschema:"最初の発言（作りたい動画。4000 文字まで）。添付だけのときは省略できる"`
 	BrandTemplateID     string   `json:"brand_template_id,omitempty" jsonschema:"その Brand Template の制約を新しいプロジェクトにコピーする（list_new_project_templates）"`
-	AttachmentUploadIDs []string `json:"attachment_upload_ids,omitempty" jsonschema:"new_project_attachment で上げたファイルの upload_id（8 件まで）。画像は Brief の Assets、動画は References に入る"`
+	AttachmentUploadIDs []string `json:"attachment_upload_ids,omitempty" jsonschema:"new_project_attachment で上げたファイルの upload_id（8 件まで）。画像は Brief の Assets、動画は References に入る。音声は Brief に入らず、プロジェクトのアセットになる"`
 }
 
 func createProject(svc *service.ProjectService, files *stage.Store) mcpkit.Handler[CreateInput, ProjectOutput] {

@@ -166,9 +166,10 @@ func TestQuestion_NoCharacterYetIsRefused(t *testing.T) {
 func TestQuestion_WithoutAnImageTheChatSaysItMustBeAttached(t *testing.T) {
 	f := &fakeWorld{chars: chars("ミオ")}
 	video := chatops.WithAttachments(context.Background(), []domain.Asset{{ID: "v1", Type: domain.AssetVideo}})
+	audio := chatops.WithAttachments(context.Background(), []domain.Asset{{ID: "s1", Type: domain.AssetAudio}}) // a sound is no picture (Issue #1153)
 	two := chatops.WithAttachments(context.Background(), []domain.Asset{{ID: "a1", Type: domain.AssetImage}, {ID: "a2", Type: domain.AssetImage}})
 
-	for name, ctx := range map[string]context.Context{"none": context.Background(), "video": video, "two": two} {
+	for name, ctx := range map[string]context.Context{"none": context.Background(), "video": video, "audio": audio, "two": two} {
 		_, err := charref.New(f.deps()).Question(ctx, project, ask(t, charref.Args{Character: "ミオ", Slot: "face"}))
 
 		var ref *chatops.Refusal

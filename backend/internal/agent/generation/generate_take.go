@@ -12,15 +12,19 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/stateextractor"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
+	"github.com/ousiassllc/mam/backend/internal/domain/shotaudio"
 	"github.com/ousiassllc/mam/backend/internal/media/gate"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 )
 
-// videoJob assembles the model-independent video request of the Shot: the spec, the Keyframe as first frame and the other references
-// in priority order, from the images images read. seconds is the length of the Shot, not the clip of the primary model: Prepare sizes
-// the clip for each model (a Luma Ray 3.2 clip with a frame is 5 seconds), so a model that takes over makes the clip of the Shot.
-func videoJob(ctx context.Context, images *refimage.Reader, spec domain.ShotSpec, brief domain.Brief, seconds float64, refs []domain.Reference) (modeladapter.VideoJob, error) {
-	job := modeladapter.VideoJob{Spec: spec, DurationSeconds: seconds, AspectRatio: aspectRatio(brief)}
+// videoJob assembles the model-independent video request of the Shot: the spec, the Keyframe as first frame and the other references in priority order, from the images images
+// read, and the sound of a Shot with audio (an error that names it when it cannot be used: refimage.Reader.Audio). The length of the Shot, not the clip of the primary model, is
+// the job's: Prepare sizes the clip for each model (a Luma Ray 3.2 clip with a frame is 5 seconds), so a model that takes over makes the clip of the Shot.
+func videoJob(ctx context.Context, images *refimage.Reader, spec domain.ShotSpec, brief domain.Brief, shot domain.Shot, refs []domain.Reference) (modeladapter.VideoJob, error) {
+	job := modeladapter.VideoJob{Spec: spec, DurationSeconds: shot.Duration, AspectRatio: aspectRatio(brief)}
+	if err := images.ApplyAudio(ctx, shot.ShotSpec, &job); err != nil {
+		return job, err
+	}
 	for _, r := range refs {
 		in, ok, err := images.Input(ctx, r)
 		if err != nil {
@@ -39,7 +43,7 @@ func videoJob(ctx context.Context, images *refimage.Reader, spec domain.ShotSpec
 
 // newImages reads the Reference images of the Project for one run.
 func (o *Orchestrator) newImages(projectID string) *refimage.Reader {
-	return refimage.New(projectID, o.assets, o.files.Read, o.logger)
+	return refimage.New(projectID, o.assets, o.files.Read, o.logger).WithAudio(o.files.Root, func() int { return o.adapter.Config().Gentest.AudioSeconds() })
 }
 
 // recordOf renders the job for both models of the strategy and returns the JSON kept in
@@ -56,7 +60,7 @@ func recordOf(s Strategy, job modeladapter.VideoJob, candidate domain.CandidateS
 		}
 		rec.Requests[t.Model] = recordedRequest{
 			Prompt: req.Prompt, NegativePrompt: req.NegativePrompt, DurationSeconds: req.DurationSeconds,
-			Resolution: req.Resolution, AspectRatio: req.AspectRatio, ReferenceImages: len(req.References), FirstFrame: req.FirstFrame != nil,
+			Resolution: req.Resolution, AspectRatio: req.AspectRatio, ReferenceImages: len(req.References), FirstFrame: req.FirstFrame != nil, Audio: req.Audio != nil,
 		}
 	}
 	return json.Marshal(rec)
@@ -99,6 +103,7 @@ func (o *Orchestrator) makeTake(ctx context.Context, ref repository.ShotRef, pv 
 	// The limit counts model time: the Adapter starts it when a vendor slot is held, not while the
 	// Take waits for other generations to free one.
 	job.MaxTime = limit
+	lineage.AudioAssetID = shotaudio.ID(ref.Shot.ShotSpec) // the sound the clip is made from (empty without audio) is part of what makes the Take reproducible (F-27)
 	out, err := o.adapter.GenerateVideo(ctx, s.Primary, s.Fallback, job)
 	if err != nil {
 		if ctx.Err() == nil && errors.Is(err, modeladapter.ErrTimeLimit) {

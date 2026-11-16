@@ -10,6 +10,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/agegate"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/audiolength"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyui"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
@@ -52,6 +53,8 @@ type RunInput struct {
 	References []AssetRef
 	FirstFrame *AssetRef
 	LastFrame  *AssetRef
+	// Audio is the bytes of the sound file a workflow with an audio assignment makes its clip from (Issue #1153); any other workflow refuses it.
+	Audio []byte
 	// Seed fixes the seed (nil: a new one, which the record keeps). Sampling overrides the steps, cfg, sampler and scheduler of a
 	// workflow that takes them (the assignments steps, cfg, sampler, scheduler); the others are left out with a warning.
 	Seed     *int64
@@ -177,6 +180,10 @@ func (s *Service) prepare(ctx context.Context, saved localcfg.SavedWorkflow, in 
 	if err != nil {
 		return request{}, err
 	}
+	audio, err := audioOf(saved, in.Audio)
+	if err != nil {
+		return request{}, err
+	}
 	if saved.Model.Media == localcfg.MediaImage {
 		if in.FirstFrame != nil || in.LastFrame != nil {
 			return request{}, invalid("画像のワークフローに最初・最後のフレームは渡せません")
@@ -199,6 +206,10 @@ func (s *Service) prepare(ctx context.Context, saved localcfg.SavedWorkflow, in 
 		r.DurationSeconds = caps.Durations[0]
 	}
 	r.DurationSeconds = modeladapter.VideoCapabilities(caps).SnapDuration(r.DurationSeconds)
+	r.Audio = audio
+	if r, err = audiolength.Apply(s.Adapter.Config(), modeladapter.VideoCapabilities(caps), r); err != nil { // a clip as long as its sound takes the length from it
+		return request{}, err
+	}
 	if r.FirstFrame, err = s.loadOne(ctx, in.FirstFrame, caps.FirstFrame, "最初のフレーム"); err != nil {
 		return request{}, err
 	}
@@ -206,38 +217,6 @@ func (s *Service) prepare(ctx context.Context, saved localcfg.SavedWorkflow, in 
 		return request{}, err
 	}
 	return request{video: r}, nil
-}
-
-func (s *Service) loadOne(ctx context.Context, ref *AssetRef, supported bool, what string) (*modeladapter.Input, error) {
-	if ref == nil {
-		return nil, nil
-	}
-	if !supported {
-		return nil, invalid("このワークフローは%sを使いません", what)
-	}
-	in, err := s.loadAll(ctx, []AssetRef{*ref})
-	if err != nil {
-		return nil, err
-	}
-	return &in[0], nil
-}
-
-func (s *Service) loadAll(ctx context.Context, refs []AssetRef) ([]modeladapter.Input, error) {
-	if len(refs) == 0 {
-		return nil, nil
-	}
-	if s.LoadAsset == nil {
-		return nil, invalid("画像の入力はこのアプリでは使えません")
-	}
-	out := make([]modeladapter.Input, 0, len(refs))
-	for _, r := range refs {
-		data, mime, err := s.LoadAsset(ctx, r.ProjectID, r.AssetID)
-		if err != nil {
-			return nil, err
-		}
-		out = append(out, modeladapter.Input{Data: data, MimeType: mime})
-	}
-	return out, nil
 }
 
 // execute runs the workflow and writes the record. It is not resumable: a restart leaves the record running and

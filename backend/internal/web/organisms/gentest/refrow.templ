@@ -2,14 +2,14 @@ package gentest
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/audioinput"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/facelock"
 )
 
 const thumbButton = "rounded-md bg-surface px-2 text-xs leading-5 text-ink hover:text-ink focus-visible:focus-ring"
 
-// RefRow is a chosen input image as a thumbnail: its number (the order the models get the images in), a × to take it out, buttons
-// to move it, and (for an image) a role and a strength. The hidden field ref is what posts it; the images chosen in the browser
-// are drawn from this markup too (the template of inputFields).
+// RefRow is a chosen input as a row of the list: its number (the order the models get the inputs in), a × to take it out and, for an image, a thumbnail, buttons
+// to move it, a role and a strength; the audio of a speech-to-video model is a player and the × only. The hidden field ref posts it; the images chosen in the browser are drawn from this markup too.
 templ RefRow(r Ref, media string, ui RefUI) {
 	<li
 		class="flex flex-col gap-2 rounded-md border border-border bg-surface p-2 text-xs data-[dragging]:opacity-50"
@@ -18,22 +18,26 @@ templ RefRow(r Ref, media string, ui RefUI) {
 		data-ref={ r.Value }
 	>
 		<input type="hidden" name={ FieldRef } value={ r.Value }/>
-		<div class="relative" draggable="true" data-gt-handle>
-			<button type="button" class="block w-full cursor-zoom-in focus-visible:focus-ring" data-gt-zoom aria-label={ "拡大: " + r.Label } title={ r.Label }>
-				if r.ThumbURL != "" {
-					<img class="aspect-square w-full rounded-md object-cover" src={ r.ThumbURL } alt="" draggable="false"/>
-				} else {
-					<img class="aspect-square w-full rounded-md object-cover" alt="" draggable="false"/>
-				}
-			</button>
-			<span class="pointer-events-none absolute left-1 top-1 min-w-5 rounded-sm bg-accent px-2 text-center text-xs leading-5 text-bone" data-gt-badge></span>
-			<button type="button" class={ thumbButton + " absolute right-1 top-1" } data-gt-remove aria-label={ "取り除く: " + r.Label } title="取り除く">×</button>
-			<span class="absolute bottom-1 right-1 flex gap-1">
-				<button type="button" class={ thumbButton } data-gt-move="-1" aria-label={ "前へ: " + r.Label } title="前へ">‹</button>
-				<button type="button" class={ thumbButton } data-gt-move="1" aria-label={ "後ろへ: " + r.Label } title="後ろへ">›</button>
-			</span>
-		</div>
-		@refControls(r, media, ui)
+		if r.Role == audioinput.Role {
+			@audioinput.Body(FieldRolePrefix+r.Value, r.Label, r.ThumbURL)
+		} else {
+			<div class="relative" draggable="true" data-gt-handle>
+				<button type="button" class="block w-full cursor-zoom-in focus-visible:focus-ring" data-gt-zoom aria-label={ "拡大: " + r.Label } title={ r.Label }>
+					if r.ThumbURL != "" {
+						<img class="aspect-square w-full rounded-md object-cover" src={ r.ThumbURL } alt="" draggable="false"/>
+					} else {
+						<img class="aspect-square w-full rounded-md object-cover" alt="" draggable="false"/>
+					}
+				</button>
+				<span class="pointer-events-none absolute left-1 top-1 min-w-5 rounded-sm bg-accent px-2 text-center text-xs leading-5 text-bone" data-gt-badge></span>
+				<button type="button" class={ thumbButton + " absolute right-1 top-1" } data-gt-remove aria-label={ "取り除く: " + r.Label } title="取り除く">×</button>
+				<span class="absolute bottom-1 right-1 flex gap-1">
+					<button type="button" class={ thumbButton } data-gt-move="-1" aria-label={ "前へ: " + r.Label } title="前へ">‹</button>
+					<button type="button" class={ thumbButton } data-gt-move="1" aria-label={ "後ろへ: " + r.Label } title="後ろへ">›</button>
+				</span>
+			</div>
+			@refControls(r, media, ui)
+		}
 	</li>
 }
 

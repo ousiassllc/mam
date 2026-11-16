@@ -7,6 +7,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/repository/bundle"
 	"github.com/ousiassllc/mam/backend/internal/repository/review"
 	"github.com/ousiassllc/mam/backend/internal/service/mainwait"
+	"github.com/ousiassllc/mam/backend/internal/service/shotaudiosvc"
 )
 
 // services assembles the DI root from what was wired.
@@ -38,5 +39,6 @@ func (w *wiring) services() *Services {
 		Review:      &ReviewService{core: c, reviews: review.New(d.DB), editors: w.editors.editors, chatSvc: w.chat, now: time.Now},
 		Analytics:   &AnalyticsService{c},
 		VoiceRef:    w.voiceRef,
+		ShotAudio:   shotaudiosvc.New(shotaudiosvc.Deps{DB: d.DB, Shots: w.r.gens, Assets: c.assets, AssetsDir: d.AssetsDir, Record: c.recordIntervention, MaxSeconds: shotaudiosvc.SecondsOf(d.Models)}),
 	}
 }

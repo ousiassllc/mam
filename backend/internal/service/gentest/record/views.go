@@ -115,7 +115,7 @@ func ViewsOf(list []gentestrepo.Result) []ResultView {
 // InputView is an input image of a batch.
 type InputView struct {
 	ID        string `json:"input_id"`
-	Role      string `json:"role" jsonschema:"reference / face / style / edit / pose / markup（GPT Image 2.6 の編集で、1 枚目の入力画像に重ねる透明な PNG）/ first_frame / last_frame"`
+	Role      string `json:"role" jsonschema:"reference / face / style / edit / pose / markup（GPT Image 2.6 の編集で、1 枚目の入力画像に重ねる透明な PNG）/ first_frame / last_frame / audio（S2V の入力音声。WAV・MP3・FLAC・OGG・M4A）"`
 	MimeType  string `json:"mime_type"`
 	SizeBytes int64  `json:"size_bytes"`
 	// Strength is how strongly an image model was asked to show the reference; absent when the default was used.

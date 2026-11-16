@@ -194,3 +194,19 @@ func TestFaceSwapThatFailsIsAFailedResultWithTheReason(t *testing.T) {
 	assert.Contains(t, f.Detail, "NSFW content detected", "what FaceFusion printed is the detail")
 	assert.NotContains(t, f.Cause+f.Remedy, "NSFW")
 }
+
+// A swap takes pictures: a sound uploaded for a video batch (role audio) is refused up front, not copied in as a face and failed inside FaceFusion.
+func TestFaceSwapRefusesAnAudioFile(t *testing.T) {
+	s := &swapper{out: swapped}
+	r, target, faceRef := swapRig(t, s, &scorer{}, nil)
+	id, _, err := r.Svc.StageAudio(gentesttest.WAV)
+	require.NoError(t, err)
+	audio := gentest.RefInput{Source: gentest.FromStaged, ID: id, Role: gentest.RoleAudio}
+	for name, req := range map[string]face.SwapRequest{"as the face": {Target: target, Face: audio}, "as the target": {Target: audio, Face: faceRef}} {
+		_, err := face.Swap(context.Background(), r.Svc, req)
+		var invalid *gterr.InvalidError
+		require.ErrorAs(t, err, &invalid, name)
+		assert.Contains(t, invalid.Message, "音声", name)
+	}
+	assert.Empty(t, s.asked)
+}

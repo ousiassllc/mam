@@ -30,7 +30,13 @@ func proposalView(session string, p chat.Proposal) view.Proposal {
 	e := p.Estimate
 	v := view.Proposal{
 		ID: p.ID, SessionID: session, State: string(p.State), Open: p.State == chat.StatePending || p.State == chat.StateRunning,
-		Items: e.TotalItems, Total: gtshare.USD(e.TotalUSD), StateText: closedText[p.State], Reason: p.Reason, Facts: factsOf(e.Request),
+		Items: e.TotalItems, Total: gtshare.USD(e.TotalUSD), StateText: closedText[p.State], Reason: p.Reason, Facts: factsOf(e),
+	}
+	if p.Audio != "" { // the files of the conversation the batch uses (Issue #1153): the user confirms them with the rest
+		v.Facts = append(v.Facts, view.KV{Key: "音声ファイル", Value: p.Audio})
+	}
+	if p.Image != "" {
+		v.Facts = append(v.Facts, view.KV{Key: "参照画像", Value: p.Image})
 	}
 	for _, t := range e.Request.Prompts {
 		v.Prompt = append(v.Prompt, view.PromptText{Text: t.Prompt, Negative: t.Negative})
@@ -48,11 +54,12 @@ func proposalView(session string, p chat.Proposal) view.Proposal {
 }
 
 // factsOf is what the user confirms besides the prompts: the kind, the models, how many of each, the shape, and for a video the size and length.
-func factsOf(r gentest.Request) []view.KV {
+func factsOf(e gentest.Estimate) []view.KV {
+	r := e.Request
 	media := map[string]string{gentest.MediaImage: "画像", gentest.MediaVideo: "動画"}[r.Media]
 	facts := []view.KV{{Key: "種類", Value: media}, {Key: "モデル", Value: strings.Join(r.Models, "、")}, {Key: "本数", Value: strconv.Itoa(r.Count) + " 本（モデルとプロンプトの組ごと）"}, {Key: "縦横比", Value: r.AspectRatio}}
 	if r.Media == gentest.MediaVideo {
-		facts = append(facts, view.KV{Key: "解像度", Value: r.Resolution}, view.KV{Key: "長さ", Value: strconv.FormatFloat(r.DurationSeconds, 'f', -1, 64) + " 秒"})
+		facts = append(facts, view.KV{Key: "解像度", Value: r.Resolution}, view.KV{Key: "長さ", Value: gtshare.LengthText(r.DurationSeconds, e.Breakdown)})
 	}
 	return facts
 }

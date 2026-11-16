@@ -42,8 +42,12 @@ type Spec struct {
 	// Setup is true for a Global operation that the chat reads while the Brief is still being drafted (DRAFT): what a new app needs before anything else (the API key of the LLM,
 	// the route of an LLM). Every other message of a DRAFT Project is an answer to the Brief, however much it sounds like a setting ("動画は縦型にして").
 	Setup bool
-	// Immediate is true for an operation that changes nothing and has no card: the chat carries it out at once and tells what it found (a download link).
+	// Immediate is true for an operation that has no card: the chat carries it out at once and tells what it did or found (a download link; the audio of a Shot, which is as easy to take
+	// off again as a LOCK is to set).
 	Immediate bool
+	// Shot is true for an operation carried out on a Shot (DIRECTOR MODE): without a Shot to act on it waits for the answer to "which Shot?" like set_lock and regenerate do, and its
+	// handler finds the Shot in the context (chatops.ShotID).
+	Shot bool
 	// Detect reads the operations a message plainly asks for without the model, so that the chat can still do them while no LLM is set up (the API key of the LLM
 	// itself is the first thing to set). nil: only the model reads the operation.
 	Detect func(message string) []Operation
@@ -69,6 +73,9 @@ func SpecOf(t OpType) (Spec, bool) { s, ok := specs[t]; return s, ok }
 
 // Confirms reports whether the operation waits for the user's confirmation before it is carried out.
 func (o Operation) Confirms() bool { return specs[o.Type].Confirm }
+
+// OnShot reports whether the operation is carried out on a Shot (Spec.Shot).
+func (o Operation) OnShot() bool { return specs[o.Type].Shot }
 
 // Immediate reports whether the operation is carried out at once without a card (Spec.Immediate).
 func (o Operation) Immediate() bool { return specs[o.Type].Immediate }

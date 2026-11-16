@@ -32,6 +32,7 @@ var uploadRoutes = map[string]struct{}{
 	"POST /workflows/import":                                          {},
 	"POST /generation-test/estimate":                                  {},
 	"POST /generation-test/match/estimate":                            {},
+	"POST /generation-test/chat/files":                                {},
 	"POST /model-manager/loras/inspect":                               {},
 }
 

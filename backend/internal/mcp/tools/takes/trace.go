@@ -20,6 +20,7 @@ type TraceOutput struct {
 	ModelUse          *modelreg.Use        `json:"model_use,omitempty" jsonschema:"この Take を作ったモデルと経路（route_kind: api / chatgpt-subscription / local）・費用の基準（cost_basis: priced 従量課金 / free 無料 / unknown 単価不明）・選んだ理由（selection: assignment 割り当てどおり / condition_match 既定の割当が使えないため条件に合うモデルを選んだ。品質の優劣ではない）。古い Take では省略"`
 	PromptVersion     TracePrompt          `json:"prompt_version"`
 	WorldStateVersion int                  `json:"world_state_version" jsonschema:"0 は不明、または World State の版がまだ無かった"`
+	AudioAssetID      string               `json:"audio_asset_id,omitempty" jsonschema:"音声つきの Shot で、この Take を作った音声の asset_id（Issue #1153）。音声なしの Take では省略"`
 	References        []domain.Reference   `json:"references" jsonschema:"モデルに渡した Reference"`
 	Output            *TraceFile           `json:"output,omitempty" jsonschema:"Take のファイル。アーカイブ済みなら省略"`
 	Judgements        []domain.JudgeResult `json:"judgements" jsonschema:"Judge 結果（新しい順）"`
@@ -75,6 +76,7 @@ func getTrace(svc *service.TraceService) mcpkit.Handler[TakeInput, TraceOutput] 
 				AdapterOutput: jsonValue(tr.PromptVersion.AdapterOutput), CreatedAt: tr.PromptVersion.CreatedAt,
 			},
 			WorldStateVersion: tr.WorldStateVersion,
+			AudioAssetID:      tr.AudioAssetID,
 			References:        append([]domain.Reference{}, tr.References...),
 			Judgements:        append([]domain.JudgeResult{}, tr.Judgements...),
 			Repairs:           make([]TraceRepair, 0, len(tr.Repairs)),

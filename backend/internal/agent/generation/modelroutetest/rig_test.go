@@ -49,6 +49,8 @@ type calls struct {
 	mu     sync.Mutex
 	images []domain.ModelName
 	videos []domain.ModelName
+	// requests are the video requests, in order (the sound and the pictures a model was given).
+	requests []modeladapter.VideoRequest
 }
 
 func (c *calls) image(m domain.ModelName) {
@@ -57,10 +59,11 @@ func (c *calls) image(m domain.ModelName) {
 	c.images = append(c.images, m)
 }
 
-func (c *calls) video(m domain.ModelName) {
+func (c *calls) video(m domain.ModelName, req modeladapter.VideoRequest) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.videos = append(c.videos, m)
+	c.requests = append(c.requests, req)
 }
 
 func (c *calls) snapshot() (images, videos []domain.ModelName) {
@@ -80,8 +83,8 @@ func (b backend) GenerateImage(context.Context, string, modeladapter.ImageReques
 	return modeladapter.ImageResult{Data: fakePNG, MimeType: "image/png"}, nil
 }
 
-func (b backend) GenerateVideo(context.Context, string, modeladapter.VideoRequest) (modeladapter.VideoResult, error) {
-	b.log.video(b.model)
+func (b backend) GenerateVideo(_ context.Context, _ string, req modeladapter.VideoRequest) (modeladapter.VideoResult, error) {
+	b.log.video(b.model, req)
 	return modeladapter.VideoResult{File: modeladapter.BlobOf(fakeMP4), MimeType: "video/mp4"}, nil
 }
 
@@ -165,6 +168,7 @@ type rig struct {
 	projectID string
 	shotID    string
 	shotIDs   []string // every Shot of the Project, in order (shotID is the first)
+	assets    string   // the assets directory
 	// usable says which models can be used now; a test changes it as the machine changes.
 	usable func(domain.ModelName) modelfilter.Availability
 }
@@ -175,7 +179,13 @@ func newRig(t *testing.T, config func(*modeladapter.Config)) *rig { return newRi
 // newRigShots is newRig for a Project of n Shots in one Scene.
 func newRigShots(t *testing.T, config func(*modeladapter.Config), n int) *rig {
 	t.Helper()
-	routetest.Publish(t)
+	return newRigWith(t, routetest.Publish, config, n)
+}
+
+// newRigWith is newRigShots with the models published by publish (routetest.PublishSpeech adds a speech-to-video one: the config must hold it too).
+func newRigWith(t *testing.T, publish func(*testing.T), config func(*modeladapter.Config), n int) *rig {
+	t.Helper()
+	publish(t)
 	ctx := context.Background()
 	db := testdb.Open(t)
 	projects, plans, policies, gens := repository.NewProjectRepository(db), repository.NewPlanRepository(db), repository.NewPolicyRepository(db), repository.NewGenerationRepository(db)
@@ -201,7 +211,7 @@ func newRigShots(t *testing.T, config func(*modeladapter.Config), n int) *rig {
 	shots, err := plans.ListShots(ctx, scenes[0].ID)
 	require.NoError(t, err)
 
-	r := &rig{db: db, gens: gens, policies: policies, log: &calls{}, chat: &chatFake{}, jobs: &jobsFake{}, projectID: projectID, shotID: shots[0].ID, usable: routetest.NoAPIKey()}
+	r := &rig{db: db, gens: gens, policies: policies, log: &calls{}, chat: &chatFake{}, jobs: &jobsFake{}, projectID: projectID, shotID: shots[0].ID, usable: routetest.NoAPIKey(), assets: filepath.Join(t.TempDir(), "assets")}
 	for _, sh := range shots {
 		r.shotIDs = append(r.shotIDs, sh.ID)
 	}
@@ -221,7 +231,7 @@ func newRigShots(t *testing.T, config func(*modeladapter.Config), n int) *rig {
 	r.orch = generation.New(generation.Deps{
 		Generations: gens, World: repository.NewWorldRepository(db), Projects: projects, Policies: policies,
 		Assets: repository.NewAssetRepository(db), Repairs: repository.NewRepairRepository(db), Chat: r.chat, Jobs: r.jobs, LLM: reasoner{},
-		Adapter: r.adapter, AssetsDir: filepath.Join(t.TempDir(), "assets"), FreeBytes: func(string) (uint64, error) { return 1 << 40, nil },
+		Adapter: r.adapter, AssetsDir: r.assets, FreeBytes: func(string) (uint64, error) { return 1 << 40, nil },
 	})
 	return r
 }

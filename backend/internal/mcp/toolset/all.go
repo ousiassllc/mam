@@ -32,6 +32,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/runtimemodels"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/serverinfo"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/settings"
+	"github.com/ousiassllc/mam/backend/internal/mcp/tools/shotaudio"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/shotgen"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/shotplan"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/takes"
@@ -57,6 +58,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 	shotplan.Register(r, svc)
 	director.Register(r, svc)
 	shotgen.Register(r, svc)
+	shotaudio.Register(r, svc)
 	takes.Register(r, svc)
 
 	worldnotes.Register(r, svc)

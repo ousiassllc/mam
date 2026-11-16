@@ -46,6 +46,8 @@ func Suggest(graph json.RawMessage, kind localcfg.Media) localcfg.WorkflowSpec {
 					add(localcfg.ParamFrames, id, "length")
 				}
 			}
+		case takesAudio(n, kind, spec):
+			add(localcfg.ParamAudio, id, "audio")
 		case spec.OutputNode == "" && isSaveNode(n.ClassType, kind):
 			spec.OutputNode = id
 		}

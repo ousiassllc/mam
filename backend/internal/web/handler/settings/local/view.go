@@ -74,7 +74,11 @@ func summary(m service.ModelView) string {
 	var parts []string
 	if m.Media == service.MediaVideo {
 		if caps, ok := m.VideoCaps(); ok {
-			parts = append(parts, "長さ "+joinFloats(caps.Durations, "、")+" 秒", strings.Join(caps.Resolutions, "・"),
+			length := "長さ " + joinFloats(caps.Durations, "、") + " 秒"
+			if caps.AudioLength {
+				length = "長さは音声に合わせる"
+			}
+			parts = append(parts, length, strings.Join(caps.Resolutions, "・"),
 				fmt.Sprintf("参照画像 %d 枚", caps.MaxReferenceImages))
 			if caps.FirstFrame || caps.LastFrame {
 				parts = append(parts, map[bool]string{true: "最初・最後のフレーム", false: "最初のフレーム"}[caps.LastFrame])

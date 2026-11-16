@@ -97,6 +97,9 @@ type VideoNeed struct {
 	Keyframe bool
 	// Forced is the Video Model the user fixed for the Shot (a MANUAL or LOCK); it is never replaced.
 	Forced domain.ModelName
+	// Audio is whether the Shot has a sound file (Issue #1153): only a model that takes it is chosen, and the assignment's models that do not are passed over (audioVideo).
+	// Reference is whether it has an image such a model takes as its one picture (a Keyframe, or a reference of its Reference Pack).
+	Audio, Reference bool
 }
 
 // VideoPick is the route a Shot's video is made with.
@@ -122,6 +125,9 @@ func (e Env) Video(q domain.QualityPolicy, vn VideoNeed) (VideoPick, error) {
 	}
 	if err := e.refuse(pair); err != nil {
 		return pick, err
+	}
+	if vn.Audio {
+		return e.audioVideo(q, vn, route, pair)
 	}
 	problems, usable := e.problems(pair)
 	if usable {

@@ -174,6 +174,7 @@ type Rig struct {
 	seed     int64
 	missing  map[domain.ModelName]bool
 	extra    []domain.ModelName // image models with a fake backend besides the built-in ones
+	video    []domain.ModelName // video models with a fake backend besides the built-in ones
 	enhance  []domain.ModelName // video enhancement workflows with a fake backend (WithVideoEnhanceModels)
 }
 
@@ -235,6 +236,9 @@ func NewOn(t testing.TB, db *repository.DB, opts ...Option) *Rig {
 	}
 	for _, m := range r.extra {
 		backends.Image[m] = imageBackend{f, m}
+	}
+	for _, m := range r.video {
+		backends.Video[m] = videoBackend{f, m}
 	}
 	for _, m := range r.enhance {
 		backends.Video[m] = enhanceBackend{f, m}

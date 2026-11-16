@@ -92,15 +92,20 @@ func WithPoseLibrary(lib *poses.Library) Option {
 }
 
 // The local ComfyUI models WithInputModels adds, one for each way a model takes input images (#1009): I2VModel needs a first frame, FLFModel a first and a
-// last frame, T2VModel takes no image, ControlModel is an image model that cannot run without its reference (ControlNet).
+// last frame, T2VModel takes no image, ControlModel is an image model that cannot run without its reference (ControlNet). S2VModel makes the clip from a
+// sound and one reference picture: it cannot run without either (Issue #1153). The four video models have a fake video backend, so a run reaches it.
 var (
 	I2VModel     = domain.ModelName(localcfg.ID(localcfg.KindComfyUI, EndpointName, "i2v"))
 	FLFModel     = domain.ModelName(localcfg.ID(localcfg.KindComfyUI, EndpointName, "flf"))
 	T2VModel     = domain.ModelName(localcfg.ID(localcfg.KindComfyUI, EndpointName, "t2v"))
 	ControlModel = domain.ModelName(localcfg.ID(localcfg.KindComfyUI, EndpointName, "control"))
+	S2VModel     = domain.ModelName(localcfg.ID(localcfg.KindComfyUI, EndpointName, "s2v"))
 )
 
-// WithInputModels adds I2VModel, FLFModel, T2VModel and ControlModel to the rig, with a fake backend, at the endpoint "bundled-comfyui".
+// WAV is a tiny valid WAV file (a 44-byte header and 4 samples of silence) for the audio input of a batch (S2VModel).
+var WAV = append([]byte("RIFF\x30\x00\x00\x00WAVEfmt \x10\x00\x00\x00\x01\x00\x01\x00\x40\x1f\x00\x00\x80\x3e\x00\x00\x02\x00\x10\x00data\x08\x00\x00\x00"), make([]byte, 8)...)
+
+// WithInputModels adds I2VModel, FLFModel, T2VModel, ControlModel and S2VModel to the rig, with a fake backend, at the endpoint "bundled-comfyui".
 func WithInputModels() Option {
 	return func(r *Rig, d *gentest.Deps) {
 		video := &localcfg.VideoSettings{Durations: []float64{5}, Resolutions: []string{"720p"}}
@@ -112,14 +117,17 @@ func WithInputModels() Option {
 			return w
 		}
 		control := &localcfg.Workflow{ReferenceMode: localcfg.ModeControlNet, Assignments: []localcfg.Assignment{{Param: localcfg.ParamReferenceImage, Node: "1", Input: "image"}}}
+		s2v := frame(localcfg.ParamPrompt, localcfg.ParamSeed, localcfg.ParamWidth, localcfg.ParamHeight, localcfg.ParamFrames, localcfg.ParamFPS, localcfg.ParamReferenceImage, localcfg.ParamAudio)
 		r.Config.Endpoints = map[string]localcfg.Endpoint{EndpointName: {Kind: localcfg.KindComfyUI, BaseURL: "http://127.0.0.1:1"}}
 		r.Config.LocalModels = map[string]localcfg.Model{
 			localcfg.Key(EndpointName, "i2v"):     {Media: localcfg.MediaVideo, Workflow: frame(localcfg.ParamFirstFrame), Video: video},
 			localcfg.Key(EndpointName, "flf"):     {Media: localcfg.MediaVideo, Workflow: frame(localcfg.ParamFirstFrame, localcfg.ParamLastFrame), Video: video},
 			localcfg.Key(EndpointName, "t2v"):     {Media: localcfg.MediaVideo, Workflow: frame(), Video: video},
 			localcfg.Key(EndpointName, "control"): {Media: localcfg.MediaImage, Workflow: control},
+			localcfg.Key(EndpointName, "s2v"):     {Media: localcfg.MediaVideo, Workflow: s2v, Video: video},
 		}
 		r.extra = append(r.extra, I2VModel, FLFModel, T2VModel, ControlModel)
+		r.video = append(r.video, I2VModel, FLFModel, T2VModel, S2VModel)
 		d.BundledEndpoint = EndpointName
 		localbackends.Publish(r.Config)
 		r.T.Cleanup(func() { localbackends.Publish(modeladapter.DefaultConfig()) })

@@ -49,6 +49,7 @@ func (s *Service) Confirm(ctx context.Context, sessionID, proposalID string) (Re
 	p.State = StatePending // nothing was generated: the card can be pressed again, unless a newer estimate was made meanwhile
 	if p.replaced {        // the card was replaced while it ran: it is closed for good, and the screen is told (an error would leave its buttons up)
 		p.State = StateSuperseded
+		s.discard(p.Request.References)
 		se.note(gentestchat.RoleTool, "The user pressed the first confirmation card but it had been replaced by a newer estimate meanwhile, nothing was generated. The newest card is the one to press.")
 		return Reply{Changed: []Proposal{*p}, Messages: []Message{{ID: newID(), Kind: KindStatus, Failed: true, Text: "実行しませんでした: 押している間に新しい見積りが作られたため、このカードは使えなくなりました。新しいカードで実行してください"}}}, nil
 	}
@@ -73,6 +74,7 @@ func take(se *session, id string) (*Proposal, error) {
 // stale closes a proposal the service refused and tells the user and the LLM why.
 func (s *Service) stale(se *session, p *Proposal, why string) Reply {
 	p.State, p.Reason = StateStale, why
+	s.discard(p.Request.References)
 	se.note(gentestchat.RoleTool, "The user pressed the confirmation card but the app refused to run it, nothing was generated: "+why+" Estimate again if the user still wants it.")
 	return Reply{
 		Changed:  []Proposal{*p},
@@ -96,6 +98,7 @@ func (s *Service) Dismiss(_ context.Context, sessionID, proposalID string) (Repl
 		return Reply{}, ErrProposalClosed
 	}
 	p.State = StateDismissed
+	s.discard(p.Request.References) // the staged copies of the attached files: the next estimate stages new ones
 	se.note(gentestchat.RoleTool, "The user turned the confirmation card down. Nothing was generated.")
 	return Reply{Changed: []Proposal{*p}}, nil
 }

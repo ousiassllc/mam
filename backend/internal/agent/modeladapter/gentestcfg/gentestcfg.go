@@ -5,6 +5,7 @@ package gentestcfg
 
 import (
 	"errors"
+	"fmt"
 	"math"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/imagematch"
@@ -14,6 +15,10 @@ import (
 const (
 	DefaultMaxItems   = 50
 	DefaultMaxCostUSD = 20.0
+	// DefaultMaxAudioSeconds is the longest sound a speech-to-video model takes, in seconds; MinMaxAudioSeconds and MaxMaxAudioSeconds bound the setting.
+	DefaultMaxAudioSeconds = 60
+	MinMaxAudioSeconds     = 10
+	MaxMaxAudioSeconds     = 600
 )
 
 // Limits bound one batch: the number of results (every model x prompt x count) and the estimated cost. A key that the file
@@ -24,6 +29,9 @@ type Limits struct {
 	MaxItems *int `json:"max_items,omitempty"`
 	// MaxCostUSD is the most the priced results of a batch may be estimated to cost (default 20). 0 is no limit.
 	MaxCostUSD *float64 `json:"max_cost_usd,omitempty"`
+	// MaxAudioSeconds is the longest audio file a speech-to-video model takes, in seconds (default 60, 10 to 600): the clip is as long as the sound, so this is the longest clip
+	// of such a model (Issue #1153; a longer sound is refused before anything is generated).
+	MaxAudioSeconds *int `json:"max_audio_seconds,omitempty"`
 	// MatchFace is the weight and the mapping of the face points of the prompt match (default: the face is not mixed in).
 	MatchFace *imagematch.FaceMix `json:"match_face,omitempty"`
 }
@@ -44,6 +52,14 @@ func (l Limits) Items() int {
 	return *l.MaxItems
 }
 
+// AudioSeconds is the limit of the length of an input audio file in seconds.
+func (l Limits) AudioSeconds() int {
+	if l.MaxAudioSeconds == nil {
+		return DefaultMaxAudioSeconds
+	}
+	return *l.MaxAudioSeconds
+}
+
 // CostUSD is the limit of the estimated cost in USD; 0 means there is none.
 func (l Limits) CostUSD() float64 {
 	if l.MaxCostUSD == nil {
@@ -60,6 +76,9 @@ func (l Limits) Validate() []error {
 	}
 	if c := l.CostUSD(); c < 0 || math.IsNaN(c) || math.IsInf(c, 0) {
 		errs = append(errs, errors.New("gentest.max_cost_usd must be 0 (no limit) or positive"))
+	}
+	if n := l.AudioSeconds(); n < MinMaxAudioSeconds || n > MaxMaxAudioSeconds {
+		errs = append(errs, fmt.Errorf("gentest.max_audio_seconds must be %d to %d", MinMaxAudioSeconds, MaxMaxAudioSeconds))
 	}
 	if err := l.Face().Validate(); err != nil {
 		errs = append(errs, errors.New("gentest.match_face: "+err.Error()))

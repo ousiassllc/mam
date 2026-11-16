@@ -26,7 +26,7 @@
 | `installed` | `all` / `installed_only` / `not_installed_only` | 導入済みか。クラウドのモデルは導入済みの扱い |
 | `origins` | `local` / `api` の一覧 | ローカル（この PC・登録した接続先）か API（クラウド・サブスク）か |
 | `providers` | 文字列の一覧 | 提供元（`local`・`anthropic`・`openai`・`google`・`chatgpt-subscription`・クラウド画像／動画モデルのベンダー名） |
-| `audio` | 真偽値 | 音声つきの動画モデルだけ |
+| `audio` | 真偽値 | 音声つきの動画モデルだけ（映像と一緒に音声を作るモデル。音声ファイルを**入力に取る**モデルは `video_modes` の `s2v`） |
 | `languages` | ISO 639-1 の小文字 2 字の一覧 | 音声モデルの言語（**どれか**。`ja`・`en`）。言語を持たないモデル（画像・動画など）は入らない（Issue #1015。実行環境のモデル `runtimechoices.View.Item` が `Choice.Languages` を渡す。カタログのモデルは `traits.languages`）。パネルは、その画面のモデルの言語が分かれるときだけ「言語」の欄を出す（`Facets.Languages`） |
 | `speeds` / `qualities` | `fast`・`standard`・`slow` / `basic`・`standard`・`high` の一覧 | 速度・品質の目安（**どれか**）。目安が無いモデルは入らない |
 | `video_modes` | `t2v`・`i2v`・`flf2v`・`vace`・`s2v`・`r2v` の一覧 | 動画モデルの種類（**どれか**。Issue #1014。`inputs` と違い、モデルの作者がカタログに書いた「種類」の項目）。種類を持たないモデル（画像・アップスケール・クラウドの動画モデル）は入らない。パネルは動画モデルを並べる画面（モデルマネージャーのカタログと、`modelcards.Facets("video", …)` を使う単発生成・設定・Shot の動画）だけ「動画の種類」の欄を出す（`Facets.VideoModes`）。チップは `動画の種類: T2V（文字から動画）` |
@@ -80,11 +80,11 @@
 | `reference_whole` / `reference_face` / `reference_style` / `reference_pose` | 画像の参照の役割（`reference` / `face` / `style` / `pose`。編集のモデルは 4 つ、img2img・IP-Adapter は全体だけ） |
 | `reference_control` | ControlNet の制御画像 |
 
-モデルの入力は**そのモデルのワークフローすべての和**（例: `wan22-ti2v-5b` は `t2v`・`i2v`・`first_frame`、`ltx-2.5-22b-distilled` は `t2v`・`i2v`・`first_frame`・`last_frame`）。`audio` は、どれかのワークフローの `video.native_audio` が真（LTX-2.5）。API は `mmview.Entry.Inputs`・`Entry.Audio`（カタログ）、`modelcatalog.Info.Inputs`・`Info.Video.NativeAudio`（単発生成）。
+モデルの入力は**そのモデルのワークフローすべての和**（例: `wan22-ti2v-5b` は `t2v`・`i2v`・`first_frame`、`ltx-2.5-22b-distilled` は `t2v`・`i2v`・`first_frame`・`last_frame`）。`audio` は、どれかのワークフローの `video.native_audio` が真（LTX-2.5）で、**映像と一緒に音声を作る**モデルのこと。**音声ファイルを入力に取る**（Wan 2.2 S2V 14B。ワークフローの割り当て `audio`。Issue #1153）ことは `inputs` の値にも `audio` の条件にもしない: `Derived.AudioInput`（`traits.Facts.AudioInput`）として持ち、フィルターでは動画の種類 `video_modes` の `s2v` で絞る（`wan22-s2v-14b` の `inputs` は、参照画像を受けるので `i2v`・`reference_whole`）。API は `mmview.Entry.Inputs`・`Entry.Audio`（カタログ）、`modelcatalog.Info.Inputs`・`Info.Video.NativeAudio`・`Info.Video.AudioInput`（単発生成）。
 
 ### 3.3 検証（`catalog.Validate`・`traits.Traits.Validate`）
 
-`params_b` と `params_label` は両方か両方なし、`params_label` は形に合う、`speed`・`quality` は上の語、`languages` は音声つきのモデルだけで 2 字のコード、`video_modes`（`traits.ValidateVideoModes`）は動画モデルだけ・空でない・語が正しい・重複なし・ワークフローの入力と矛盾しない（`t2v` は文字だけで動くワークフローがあるときだけ、`i2v` は先頭フレームを受けるワークフローが要り、先頭フレームを受けるなら `i2v` か `flf2v` が要る、`flf2v` は先頭と最後のフレームを受けるワークフローが要り、最後のフレームを受けるなら `flf2v` が要る、`r2v` は参照画像を受けるワークフローがあるときだけ。`vace`・`s2v` は入力に縛られない）、`uncensored` なら `adult`、非検閲の語を持つファイル・テンプレートがあれば `uncensored`。テスト: `traitstest`（全件に `traits` と `uncensored` がある・入力がワークフローに従う・パラメータ数・非検閲の一覧・動画モデルの全件に `video_modes` がある・矛盾の拒否）。
+`params_b` と `params_label` は両方か両方なし、`params_label` は形に合う、`speed`・`quality` は上の語、`languages` は音声つきのモデルだけで 2 字のコード、`video_modes`（`traits.ValidateVideoModes`）は動画モデルだけ・空でない・語が正しい・重複なし・ワークフローの入力と矛盾しない（`t2v` は文字だけで動くワークフローがあるときだけ、`i2v` は先頭フレームを受けるワークフローが要り、先頭フレームを受けるなら `i2v` か `flf2v` が要る、`flf2v` は先頭と最後のフレームを受けるワークフローが要り、最後のフレームを受けるなら `flf2v` が要る、`r2v` は参照画像を受けるワークフローがあるときだけ、**`s2v` は音声ファイルを受けるワークフロー〔割り当て `audio`〕があるときだけで、あれば必ず書く**〔Issue #1153。`r2v` と同じ規則〕。`vace` は入力に縛られない）、`uncensored` なら `adult`、非検閲の語を持つファイル・テンプレートがあれば `uncensored`。テスト: `traitstest`（全件に `traits` と `uncensored` がある・入力がワークフローに従う・パラメータ数・非検閲の一覧・動画モデルの全件に `video_modes` がある・矛盾の拒否〔`s2v` は音声のワークフローだけ・音声のワークフローは `s2v` を書く〕）。
 
 ### 3.4 既存のカタログを埋めた結果（2026-11-03）
 

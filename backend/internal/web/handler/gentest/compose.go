@@ -5,7 +5,6 @@ import (
 	"context"
 	"net/http"
 	"slices"
-	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/advform"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gptform"
@@ -17,15 +16,12 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
-	"github.com/ousiassllc/mam/backend/internal/service/gentest/projectlink"
-	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/refform"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/tierform"
 	"github.com/ousiassllc/mam/backend/internal/web/middleware"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentesttier"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
-	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
 // recentPrompts is how many prompts of the history the form offers.
@@ -64,6 +60,7 @@ func (h Handlers) compose(ctx context.Context, f formState) view.Compose {
 		c.Resolutions, c.Durations = videoChoices(models)
 		c.Resolution = pick(f.resol, c.Resolutions, "720p")
 		c.Duration = pick(f.duration, c.Durations, "5")
+		c.LengthNote, c.Durations = gtshare.LengthNote(models, f.models, c.Durations) // a model whose clip is as long as its sound has no length to choose (#1153)
 	}
 	c.SpeedModes, c.SpeedMode = refform.SpeedChoices(models), f.opts.SpeedMode
 	c.Section = advform.SectionOf(f.adv, models, f.models)
@@ -220,6 +217,10 @@ const pickerSize = 60
 // Picker answers GET /generation-test/picker: the images that can be added as inputs, from the Project "?project=<id>" or from
 // the history ("?source=history").
 func (h Handlers) Picker(c *gin.Context) {
+	if c.Query("kind") == "audio" { // the audio assets of a Project, listed next to the file input of the sound (Issue #1153)
+		h.audioPicker(c)
+		return
+	}
 	ctx := c.Request.Context()
 	var rows []view.Ref
 	empty := "プロジェクトを選ぶと、その画像が並びます"
@@ -252,26 +253,6 @@ func (h Handlers) Picker(c *gin.Context) {
 	gtshare.Render(c, http.StatusOK, view.Picker(rows, empty))
 }
 
-func historyRef(r record.ResultView) view.Ref {
-	v := refform.Value{Source: gentest.FromHistory, ID: r.ID}
-	return view.Ref{
-		Value: v.String(), Label: r.ModelLabel + "・" + shorten(r.Prompt, 40), Role: gentest.RoleReference,
-		ThumbURL: paths.GenerationTestPart("results", r.ID, "file"),
-	}
-}
-
-func projectRef(projectID string, im projectImage) view.Ref {
-	source, id := gentest.FromProjectAsset, im.AssetID
-	label := "アセット " + shorten(im.AssetID, 8)
-	if im.ReferenceItemID != "" {
-		source, id, label = gentest.FromReferenceItem, im.ReferenceItemID, im.Name+"（参照）"
-	}
-	return view.Ref{
-		Value: refform.Value{Source: source, ProjectID: projectID, ID: id}.String(), Label: label, Role: gentest.RoleReference,
-		ThumbURL: paths.Project(projectID, "assets", im.AssetID),
-	}
-}
-
 // refRow is the row of an input image the form names, with the role and the strength it holds; false for one that is not there
 // any more (and for an image that was chosen in the browser, whose file is in no list: the browser keeps it).
 func (h Handlers) refRow(ctx context.Context, in gentest.RefInput) (view.Ref, bool) {
@@ -288,13 +269,25 @@ func (h Handlers) refRow(ctx context.Context, in gentest.RefInput) (view.Ref, bo
 		if _, err := h.Svc.InputFile(ctx, r.ID); err != nil {
 			return row, false
 		}
-		row = view.Ref{Value: r.String(), Label: "アップロードした画像（前の生成の入力）", ThumbURL: paths.GenerationTestPart("inputs", r.ID, "file")}
+		row = refform.BatchInputRow(r, in.Role)
+	case gentest.FromStaged: // only the audio that is staged for the form: an image of the browser's own is in no list (the browser keeps it)
+		if _, _, err := h.Svc.StagedFile(r.ID); err != nil || in.Role != gentest.RoleAudio {
+			return row, false
+		}
+		row = refform.StagedAudioRow(r)
 	case gentest.FromPoseLibrary:
 		var ok bool
 		if row, ok = posescreen.RefOf(h.Svc, r.ID); !ok {
 			return row, false
 		}
 	case gentest.FromProjectAsset, gentest.FromReferenceItem:
+		if in.Role == gentest.RoleAudio { // a sound of a Project: an audio asset, never a picture of the Library (Issue #1153)
+			var ok bool
+			if row, ok = h.projectAudioRow(ctx, r); !ok {
+				return row, false
+			}
+			break
+		}
 		images, err := h.Svc.ProjectImages(ctx, r.ProjectID)
 		if err != nil {
 			return row, false
@@ -312,14 +305,3 @@ func (h Handlers) refRow(ctx context.Context, in gentest.RefInput) (view.Ref, bo
 	row.Role, row.Strength = in.Role, in.Strength
 	return row, true
 }
-
-func shorten(s string, n int) string {
-	s = strings.Join(strings.Fields(s), " ")
-	if r := []rune(s); len(r) > n {
-		return string(r[:n]) + "…"
-	}
-	return s
-}
-
-// projectImage is a Project image as the service lists it.
-type projectImage = projectlink.ProjectImage

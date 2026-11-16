@@ -38,7 +38,8 @@ func TestChatComposer_AttachmentInputIsNamedAndItsFocusIsVisible(t *testing.T) {
 
 	input := regexp.MustCompile(`<input[^>]*name="attachments"[^>]*>`).FindString(html)
 	require.NotEmpty(t, input, html)
-	assert.Contains(t, input, `aria-label="画像・動画・LoRA（.safetensors）を添付"`, "the name says what the field accepts (accept has .safetensors)")
+	assert.Contains(t, input, `aria-label="画像・動画・音声・LoRA（.safetensors）を添付"`, "the name says what the field accepts (accept has .safetensors)")
+	assert.Contains(t, input, ".wav,.mp3,.flac,.ogg,.m4a", "the audio files of an attachment (#1153)")
 
 	label := regexp.MustCompile(`<label[^>]*for="composer-files"[^>]*>`).FindString(html)
 	require.NotEmpty(t, label, html)

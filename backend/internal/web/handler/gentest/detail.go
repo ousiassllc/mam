@@ -49,10 +49,10 @@ func (h Handlers) detail(ctx context.Context, d record.ResultDetail, f importbox
 		redrawFrom = paths.GenerationTestPart("results", d.Inpaint.SourceID)
 	}
 	for _, in := range d.Inputs {
-		v.Inputs = append(v.Inputs, view.InputCard{Role: roleText(in), Origin: originText[in.Origin.Kind], URL: paths.GenerationTestPart("inputs", in.ID, "file")})
+		v.Inputs = append(v.Inputs, view.InputCard{Role: roleText(in), Origin: originText[in.Origin.Kind], URL: paths.GenerationTestPart("inputs", in.ID, "file"), Audio: in.Role == gentest.RoleAudio})
 	}
 	for _, u := range d.UnusedInputs {
-		v.Unused = append(v.Unused, inputnotice.Unused{Role: roleNames[u.Role], Reason: u.Reason, URL: paths.GenerationTestPart("inputs", u.InputID, "file")})
+		v.Unused = append(v.Unused, inputnotice.Unused{Role: roleNames[u.Role], Reason: u.Reason, URL: paths.GenerationTestPart("inputs", u.InputID, "file"), Audio: u.Role == gentest.RoleAudio})
 	}
 	names := h.projectNames(ctx)
 	for _, im := range d.Imports {
@@ -85,7 +85,7 @@ func (h Handlers) takesSampling(ctx context.Context, d record.ResultDetail) bool
 
 var roleNames = map[string]string{
 	gentest.RoleReference: "参照", gentest.RoleFirstFrame: "最初のフレーム", gentest.RoleLastFrame: "最後のフレーム",
-	gentest.RoleFace: "顔だけ", gentest.RoleStyle: "画風だけ", gentest.RoleEdit: "編集対象", gentest.RoleMask: "マスク", gentest.RolePose: "ポーズだけ", gentest.RoleMarkup: "マークアップ",
+	gentest.RoleFace: "顔だけ", gentest.RoleStyle: "画風だけ", gentest.RoleEdit: "編集対象", gentest.RoleMask: "マスク", gentest.RolePose: "ポーズだけ", gentest.RoleMarkup: "マークアップ", gentest.RoleAudio: "音声",
 }
 
 // roleText is the role of an input with the strength it was given (none was when the default was used).

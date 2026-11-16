@@ -39,6 +39,7 @@ func TestVideoModesOfModelsThatTheWorkflowsDoNotDecide(t *testing.T) {
 		"wan22-rapid-mega-nsfw-t2v": {traits.ModeT2V, traits.ModeI2V, traits.ModeFLF2V},
 		"ltx-2.3-22b-distilled":     {traits.ModeT2V, traits.ModeI2V, traits.ModeFLF2V},
 		"wan22-i2v-14b":             {traits.ModeI2V},
+		"wan22-s2v-14b":             {traits.ModeS2V, traits.ModeR2V},
 	} {
 		m, ok := c.Model(id)
 		require.True(t, ok, id)
@@ -79,7 +80,13 @@ func TestValidateRefusesBadVideoModes(t *testing.T) {
 	}
 }
 
-// vace and s2v are not tied to an input, so they never make a catalog invalid by themselves.
-func TestVaceAndS2VNeedNoInputOfTheWorkflows(t *testing.T) {
-	assert.Empty(t, mutate(t, "wan22-t2v-14b", func(m *catalog.Model) { m.Traits.VideoModes = []traits.VideoMode{"t2v", "vace", "s2v"} }))
+// vace is not tied to an input, so it never makes a catalog invalid by itself; s2v is tied to the sound file of a workflow (Issue #1153), as r2v is to the references.
+func TestVaceNeedsNoInputOfTheWorkflowsButS2VNeedsASoundWorkflow(t *testing.T) {
+	assert.Empty(t, mutate(t, "wan22-t2v-14b", func(m *catalog.Model) { m.Traits.VideoModes = []traits.VideoMode{"t2v", "vace"} }))
+	errs := mutate(t, "wan22-t2v-14b", func(m *catalog.Model) { m.Traits.VideoModes = []traits.VideoMode{"t2v", "s2v"} })
+	require.Len(t, errs, 1)
+	assert.Contains(t, errs[0].Error(), "s2v must be listed if and only if a workflow takes a sound file")
+	errs = mutate(t, "wan22-s2v-14b", func(m *catalog.Model) { m.Traits.VideoModes = []traits.VideoMode{"r2v"} })
+	require.Len(t, errs, 1, "the sound workflow of the S2V model has to say s2v")
+	assert.Contains(t, errs[0].Error(), "s2v must be listed")
 }

@@ -4,8 +4,8 @@ package organisms
 
 import "github.com/ousiassllc/mam/backend/internal/domain"
 
-// AcceptedUploads is the accept attribute of file inputs (service/upload.go validates for real).
-const AcceptedUploads = ".jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.webm"
+// AcceptedUploads is the accept attribute of file inputs (service/upload.go validates for real): images, videos and audio files (Issue #1153).
+const AcceptedUploads = ".jpg,.jpeg,.png,.webp,.gif,.mp4,.mov,.webm,.wav,.mp3,.flac,.ogg,.m4a"
 
 func stateLabel(s domain.ProjectState) string {
 	switch s {

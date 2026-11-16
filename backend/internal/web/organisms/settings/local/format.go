@@ -48,7 +48,7 @@ func mediaLabel(media string) string {
 var slotLabels = map[string]string{
 	"prompt": "Prompt", "negative_prompt": "Negative Prompt", "seed": "Seed", "width": "幅", "height": "高さ",
 	"steps": "ステップ数 (steps)", "cfg": "CFG", "sampler": "サンプラー (sampler)", "scheduler": "スケジューラー (scheduler)",
-	"frames": "フレーム数", "fps": "fps（入力）", "reference_image": "参照画像", "first_frame": "最初のフレーム", "last_frame": "最後のフレーム",
+	"frames": "フレーム数", "fps": "fps（入力）", "reference_image": "参照画像", "first_frame": "最初のフレーム", "last_frame": "最後のフレーム", "audio": "音声ファイル",
 }
 
 // SlotLabel is the label of the table row of a workflow parameter; index is the reference image number.

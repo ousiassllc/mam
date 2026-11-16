@@ -40,6 +40,7 @@ type recordedRequest struct {
 	AspectRatio     string  `json:"aspect_ratio"`
 	ReferenceImages int     `json:"reference_images"`
 	FirstFrame      bool    `json:"first_frame"`
+	Audio           bool    `json:"audio,omitempty"`
 }
 
 // adapterRecord is the content of prompt_version.model_adapter_output.
@@ -153,7 +154,7 @@ func (o *Orchestrator) generate(ctx context.Context, ref repository.ShotRef, ins
 	if err != nil {
 		return Progress{}, err
 	}
-	job, err := videoJob(ctx, sc.images, spec, brief, shot.Duration, references)
+	job, err := videoJob(ctx, sc.images, spec, brief, shot, references)
 	if err != nil {
 		return Progress{}, err
 	}

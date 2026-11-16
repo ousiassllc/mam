@@ -1,6 +1,6 @@
 // Package refform reads and writes the input images of the generation test form: the chosen images with their role and
 // strength (ref, role_<ref>, strength_<ref>), the options that go with them (avoid_pose, lora, lora_strength, speed_mode) and the files
-// the browser sent (upload, upload_first, upload_last). The handlers of web/handler/gentest use it for the compose form, the
+// the browser sent (upload, upload_first, upload_last, upload_audio). The handlers of web/handler/gentest use it for the compose form, the
 // estimate and the hidden fields of the confirmation.
 package refform
 
@@ -72,7 +72,7 @@ func strengthFor(role, v string) *float64 {
 }
 
 func videoRole(v string) string {
-	if v == gentest.RoleFirstFrame || v == gentest.RoleLastFrame {
+	if v == gentest.RoleFirstFrame || v == gentest.RoleLastFrame || v == gentest.RoleAudio {
 		return v
 	}
 	return gentest.RoleReference
@@ -159,11 +159,11 @@ func Hidden(req gentest.Request) []view.Hidden {
 // place, the role and the strength of that entry. The numbers are positions among the files that arrived, so a file that is not
 // taken (empty) keeps its number: the entry that names it is dropped and the entries after it still get their own files. An entry
 // that names no usable file (out of range, not a number, a number already taken by an earlier entry) is dropped. A file that no
-// entry names (a form without the browser's script) is added as a free reference; the first and the last frame of a video
-// follow.
-func Stage(refs []gentest.RefInput, form *multipart.Form, stage func(*multipart.FileHeader) (string, error)) ([]gentest.RefInput, error) {
+// entry names (a form without the browser's script) is added as a free reference; the first and the last frame of a video and its
+// audio follow. The audio is staged by stageAudio (WAV, MP3, FLAC, OGG or M4A, a limit of its own); every other file by stage.
+func Stage(refs []gentest.RefInput, form *multipart.Form, stage, stageAudio func(*multipart.FileHeader) (string, error)) ([]gentest.RefInput, error) {
 	// staged is the id of each file of a field by position: "" for a file that is empty (not stored).
-	staged := func(field string) (ids []string, err error) {
+	staged := func(field string, stageFile func(*multipart.FileHeader) (string, error)) (ids []string, err error) {
 		if form == nil {
 			return nil, nil
 		}
@@ -172,7 +172,7 @@ func Stage(refs []gentest.RefInput, form *multipart.Form, stage func(*multipart.
 				ids = append(ids, "")
 				continue
 			}
-			id, err := stage(fh)
+			id, err := stageFile(fh)
 			if err != nil {
 				return nil, err
 			}
@@ -180,15 +180,19 @@ func Stage(refs []gentest.RefInput, form *multipart.Form, stage func(*multipart.
 		}
 		return ids, nil
 	}
-	uploads, err := staged(view.FieldUpload)
+	uploads, err := staged(view.FieldUpload, stage)
 	if err != nil {
 		return nil, err
 	}
-	first, err := staged(view.FieldFirst)
+	first, err := staged(view.FieldFirst, stage)
 	if err != nil {
 		return nil, err
 	}
-	last, err := staged(view.FieldLast)
+	last, err := staged(view.FieldLast, stage)
+	if err != nil {
+		return nil, err
+	}
+	audio, err := staged(view.FieldAudio, stageAudio)
 	if err != nil {
 		return nil, err
 	}
@@ -213,7 +217,7 @@ func Stage(refs []gentest.RefInput, form *multipart.Form, stage func(*multipart.
 	for _, ids := range []struct {
 		ids  []string
 		role string
-	}{{first, gentest.RoleFirstFrame}, {last, gentest.RoleLastFrame}} {
+	}{{first, gentest.RoleFirstFrame}, {last, gentest.RoleLastFrame}, {audio, gentest.RoleAudio}} {
 		for _, id := range ids.ids {
 			if id != "" {
 				out = append(out, gentest.RefInput{Source: gentest.FromStaged, ID: id, Role: ids.role})
