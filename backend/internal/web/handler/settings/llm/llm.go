@@ -38,17 +38,20 @@ func SectionData(svc *llmassign.Service, models *llmmodels.Service) view.Data {
 	d := view.Data{Pinned: v.Pinned, Problem: v.Problem, MaxModelLength: llmassign.MaxModelBytes}
 	for _, e := range v.Entries {
 		if e.Unused {
-			d.Unused = append(d.Unused, rowOf(e))
+			d.Unused = append(d.Unused, rowOf(e, models))
 		} else {
-			d.Rows = append(d.Rows, rowOf(e))
+			d.Rows = append(d.Rows, rowOf(e, models))
 		}
+	}
+	if b, ok := keyBanner(v, models); ok {
+		d.KeyBanner = &b
 	}
 	d.Warnings = warnings(v, models)
 	return d
 }
 
-// warnings are the saved routes that name a provider that cannot be used now (no API key, not signed in): llmmodels.Service.Warnings, with the screen that fixes each (#1013).
-// A route that is saved stays; the warning only says so.
+// warnings are the saved routes that name a provider that cannot be used now for a cause other than a missing API key (not signed in, the local server does not answer):
+// llmmodels.Service.Warnings, with the screen that fixes each (#1013). A missing API key is the banner's and the chips' (keyBanner). A route that is saved stays; the warning only says so.
 func warnings(v llmassign.View, models *llmmodels.Service) []view.Warning {
 	if models == nil {
 		return nil
@@ -62,7 +65,13 @@ func warnings(v llmassign.View, models *llmmodels.Service) []view.Warning {
 			llmmodels.Target{Agent: e.Label, Role: "primary", Provider: e.Route.Primary.Provider, Model: e.Route.Primary.Model},
 			llmmodels.Target{Agent: e.Label, Role: "fallback", Provider: e.Route.Fallback.Provider, Model: e.Route.Fallback.Model})
 	}
-	return groupWarnings(models.Warnings(targets))
+	var others []llmmodels.Warning
+	for _, w := range models.Warnings(targets) {
+		if !missingKey(w.Availability) {
+			others = append(others, w)
+		}
+	}
+	return groupWarnings(others)
 }
 
 // roleWords name the slot of a route in a warning.
@@ -84,12 +93,21 @@ func groupWarnings(ws []llmmodels.Warning) []view.Warning {
 	return out
 }
 
-func rowOf(e llmassign.Entry) view.Row {
-	return view.Row{
+// rowOf is the row of an Agent that runs with what it shows of the API keys: a chip under each target whose key is not registered, and the note that it runs on its alternative.
+// An Agent that no code calls says neither: nothing of it runs.
+func rowOf(e llmassign.Entry, models *llmmodels.Service) view.Row {
+	r := view.Row{
 		Agent: e.Agent, Label: e.Label, Purpose: purposes[e.Agent],
 		Primary: target(e.Route.Primary), Fallback: target(e.Route.Fallback),
 		DefaultPrimary: target(e.Default.Primary), DefaultFallback: target(e.Default.Fallback),
 	}
+	if e.Unused {
+		return r
+	}
+	primary, fallback := availability(models, e.Route.Primary.Provider), availability(models, e.Route.Fallback.Provider)
+	r.PrimaryChip, r.FallbackChip = chipOf(primary), chipOf(fallback)
+	r.Note = fallbackNote(primary, fallback, e.Route.Fallback.Model)
+	return r
 }
 
 func target(t llmassign.Target) view.Target { return view.Target(t) }
@@ -162,7 +180,7 @@ func change(c *gin.Context, svc *llmassign.Service, models *llmmodels.Service, r
 	if err == nil {
 		now := svc.View()
 		saved, _ := find(now, agent)
-		row := rowOf(saved)
+		row := rowOf(saved, models)
 		settingshttp.CloseModal(c)
 		settingshttp.Render(c, http.StatusOK, templ.Join(view.RowOOB(row), atoms.ToastOOB(e.Label+done+"。"+appliedNow)))
 		return

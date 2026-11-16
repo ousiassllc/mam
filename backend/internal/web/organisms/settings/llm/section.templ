@@ -28,8 +28,23 @@ templ Section(d Data) {
 				<p class="break-words text-ink" data-testid="llm-problem-detail">{ d.Problem }</p>
 			}
 		}
+		if d.KeyBanner != nil {
+			@settingsui.Banner(atoms.IconKey, "status", "llm-key-banner", bannerTitle(*d.KeyBanner)) {
+				<ul class="flex flex-col gap-1 text-ink" data-testid="llm-key-shortages">
+					for _, s := range d.KeyBanner.Shortages {
+						<li class="break-words" data-testid="llm-key-shortage">
+							<span class="font-semibold">{ s.Provider }</span>
+							<span>{ shortageText(s) }</span>
+						</li>
+					}
+				</ul>
+				<div>
+					@atoms.ButtonLink(atoms.ToneNeutral, "API キーを設定", templ.SafeURL(d.KeyBanner.Route), templ.Attributes{"data-testid": "llm-key-link"})
+				</div>
+			}
+		}
 		if len(d.Warnings) > 0 {
-			@settingsui.Banner(atoms.IconKey, "status", "llm-warnings", "API キーやログインが足りないため、使えない割り当てがあります") {
+			@settingsui.Banner(atoms.IconKey, "status", "llm-warnings", "使えない割り当てがあります") {
 				<ul class="flex flex-col gap-1 text-ink">
 					for _, w := range d.Warnings {
 						<li class="break-words" data-testid="llm-warning">
@@ -142,12 +157,15 @@ templ row(r Row, pinned, oob bool) {
 		@settingsui.RowHead(agentHead) {
 			{ r.Label }
 			<span class="mt-1 block text-xs font-normal text-mute" data-testid="llm-purpose">{ r.Purpose }</span>
+			@rowNote(r.Note)
 		}
 		@settingsui.Cell("") {
 			@modelRef(r.Primary)
+			@chip(r.PrimaryChip)
 		}
 		@settingsui.Cell("") {
 			@modelRef(r.Fallback)
+			@chip(r.FallbackChip)
 		}
 		@settingsui.Cell("whitespace-nowrap") {
 			<span class="flex flex-col items-start gap-1">
@@ -163,5 +181,23 @@ templ row(r Row, pinned, oob bool) {
 				@atoms.SmallButtonFor(atoms.ToneNeutral, "編集", r.Label, modal.OpenAttrs(paths.LLMAgentEdit(r.Agent), FocusKey(r.Agent)))
 			}
 		}
+	}
+}
+
+// chip is the small label under the name of a target whose API key is not registered, on a line of its own: the short word as a quiet badge (a light ground with the muted
+// ink). The full reason is the tooltip and, for a screen reader, the text after the word. The banner above the table is the way to fix it, once for all of them.
+templ chip(c Chip) {
+	if c.Label != "" {
+		<span class="mt-1 block w-fit">
+			@atoms.BadgeWith(atoms.BadgeMuted, c.Label, templ.Attributes{"title": c.Title, "data-testid": "llm-chip"})
+			<span class="sr-only">：{ c.Title }</span>
+		</span>
+	}
+}
+
+// rowNote is what the row does now when its primary cannot be used and its alternative can, under the purpose: the muted ink, no colour of a state.
+templ rowNote(text string) {
+	if text != "" {
+		<span class="mt-1 block text-xs font-normal text-mute" data-testid="llm-row-note">{ text }</span>
 	}
 }

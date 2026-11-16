@@ -16,7 +16,7 @@ import (
 // form is the modal of an Agent drawn from the row held in e (typed: the model names are what the modal's form held, which a refusal draws again; the saved row
 // otherwise). Each target's provider and model are one field, the model picker.
 func form(ctx context.Context, models *llmmodels.Service, e llmassign.Entry, blame string) view.Form {
-	row := rowOf(e)
+	row := rowOf(e, models)
 	return view.Form{
 		Row: row, MaxModelLength: llmassign.MaxModelBytes, Blame: blame,
 		Primary:  modelField(ctx, models, "primary", row.Primary, row.DefaultPrimary, blame),
