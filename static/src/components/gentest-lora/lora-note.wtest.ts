@@ -94,7 +94,11 @@ describe('the note under the LoRA choice (#1119)', () => {
     const warns = note().filter((t) => t?.startsWith('⚠'));
     expect(warns).to.have.length(1);
     expect(warns[0]).to.contain('「Qwen-Image 2.1」は Qwen-Image 用のモデルです');
-    expect(q('[data-gt-lora-note] li[role="alert"]')).to.not.equal(null);
+    const alert = q('[data-gt-lora-note] li[role="alert"]');
+    expect(alert).to.not.equal(null);
+    expect(alert.className, 'a mismatch of the base model is in the ink of the page, not yellow (#1163)').to.equal(
+      'text-ink',
+    );
     qwen.checked = false;
     qwen.dispatchEvent(new Event('change', { bubbles: true }));
     expect(note().some((t) => t?.startsWith('⚠'))).to.equal(false);

@@ -33,11 +33,11 @@ func runtimeBadge(r Runtime) (atoms.BadgeTone, string) {
 	case r.Install != nil:
 		return atoms.BadgeInfo, "導入中"
 	case r.Broken:
-		return atoms.BadgeWarn, "ファイルが見つかりません"
+		return atoms.BadgeMuted, "ファイルが見つかりません"
 	case !r.Installed:
 		return atoms.BadgeNeutral, "未導入"
 	case r.Weights.State == "missing" || r.Weights.State == "unverified":
-		return atoms.BadgeWarn, "導入済み（重みが不足）"
+		return atoms.BadgeMuted, "導入済み（重みが不足）"
 	}
 	return view.StateBadge(r.State)
 }

@@ -52,7 +52,7 @@ templ Section(d Data) {
 				<p class="text-xs text-mute" hidden?={ d.Format != FormatSVG } data-gt-gpt-hint="svg" data-testid="gt-gpt-svg-hint">{ SVGHint }</p>
 				<p class="text-xs text-mute" data-testid="gt-gpt-markup-hint">{ MarkupHint }</p>
 			</div>
-			<ul class="flex flex-col gap-1 text-sm text-warning" hidden?={ len(d.Notes) == 0 } role="status" data-gt-gpt-notes data-testid="gt-gpt-notes">
+			<ul class="flex flex-col gap-1 text-sm text-ink" hidden?={ len(d.Notes) == 0 } role="status" data-gt-gpt-notes data-testid="gt-gpt-notes">
 				for _, n := range d.Notes {
 					<li class="break-words">{ n }</li>
 				}

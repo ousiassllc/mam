@@ -2,6 +2,7 @@ package chat
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/resulttile"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -57,14 +58,18 @@ templ ProposalCard(p Proposal) {
 			</table>
 		</div>
 		if p.Unknown != "" {
-			<p class="text-sm text-warning" data-testid="gtc-unknown">{ p.Unknown }</p>
+			@settingsui.Note(atoms.IconInfo, "note", "gtc-unknown") {
+				{ p.Unknown }
+			}
 		}
 		if len(p.Warnings) > 0 {
-			<ul class="list-disc pl-5 text-xs text-warning" data-testid="gtc-warnings">
-				for _, w := range p.Warnings {
-					<li>{ w }</li>
-				}
-			</ul>
+			@settingsui.Banner(atoms.IconWarning, "note", "gtc-warnings", "実行の前に知っておくこと") {
+				<ul class="list-disc pl-5 text-ink">
+					for _, w := range p.Warnings {
+						<li>{ w }</li>
+					}
+				</ul>
+			}
 		}
 		if p.Open {
 			<div class="flex flex-wrap items-center gap-2">

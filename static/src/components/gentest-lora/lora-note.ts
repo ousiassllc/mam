@@ -68,7 +68,7 @@ function draw(note: HTMLElement, lines: NoteLine[]): void {
     ...lines.map((line) => {
       const li = document.createElement('li');
       li.textContent = (line.tone === 'warn' ? '⚠ ' : '') + line.text;
-      li.className = line.tone === 'warn' ? 'text-warning' : 'text-mute';
+      li.className = line.commercial ? 'text-warning' : line.tone === 'warn' ? 'text-ink' : 'text-mute';
       if (line.tone === 'warn') li.setAttribute('role', 'alert');
       return li;
     }),

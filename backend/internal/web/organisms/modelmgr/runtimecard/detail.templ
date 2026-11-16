@@ -4,6 +4,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/weightlist"
 )
 
@@ -21,17 +22,20 @@ templ RuntimeDetail(r Runtime) {
 			case !r.Supported:
 				@runtimeUnsupported(r)
 			case !r.Writable:
-				<div class="flex flex-col gap-1 rounded-lg border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="alert" data-testid="mm-runtime-readonly">
-					<p>mam.exe のあるフォルダ（{ r.Dir }）に書き込めません。書き込める場所に置き直してください。</p>
-					<p class="text-sm">{ r.WritableError }</p>
-				</div>
+				@settingsui.Banner(atoms.IconWarning, "alert", "mm-runtime-readonly", "mam.exe のあるフォルダ（"+r.Dir+"）に書き込めません。書き込める場所に置き直してください。") {
+					<p class="text-ink">{ r.WritableError }</p>
+				}
 		}
 		if r.ID == OllamaID {
-			<p class="text-sm text-warning" role="note" data-testid="mm-ollama-noauth">このサーバーには認証がありません。信用できないソフトを同じ PC で動かさないでください（待ち受けはこの PC の中だけです）。Ollama のクラウド機能は無効にしています。</p>
+			@settingsui.Note(atoms.IconInfo, "note", "mm-ollama-noauth") {
+				このサーバーには認証がありません。信用できないソフトを同じ PC で動かさないでください（待ち受けはこの PC の中だけです）。Ollama のクラウド機能は無効にしています。
+			}
 		}
 		@runtimeFacts(r)
 		if r.Weights.Message != "" {
-			<p class="text-sm text-warning" data-testid="mm-runtime-weights-message">{ r.Weights.Message }</p>
+			@settingsui.Note(atoms.IconInfo, "note", "mm-runtime-weights-message") {
+				{ r.Weights.Message }
+			}
 		}
 		<p class="text-sm text-mute">
 			{ r.Name } は mam とは別のプログラムで、mam には含まれません。公式の配布先から実行時に取得し、SHA-256 を確かめてから使います。
@@ -55,17 +59,17 @@ templ RuntimeDetail(r Runtime) {
 
 // runtimeUnsupported says why the runtime cannot run on this machine (the sentence of the catalog: macOS has its own) and what to use instead.
 templ runtimeUnsupported(r Runtime) {
-	<div class="flex flex-col gap-1 rounded-lg border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="note" data-testid="mm-runtime-unsupported">
-		<p data-testid="mm-runtime-reason">{ r.Reason }</p>
+	@settingsui.Banner(atoms.IconWarning, "note", "mm-runtime-unsupported", "この PC では使えません") {
+		<p class="text-ink" data-testid="mm-runtime-reason">{ r.Reason }</p>
 		if r.Fallback != "" {
-			<p data-testid="mm-runtime-fallback">
+			<p class="text-ink" data-testid="mm-runtime-fallback">
 				{ r.Fallback }
 				if r.PurposeID == PurposeLLM {
 					<a class="underline" href="#mm-llm-use" data-modal-close data-testid="mm-runtime-fallback-link">「使うサーバー」で「別のサーバー」を選ぶ</a>
 				}
 			</p>
 		}
-	</div>
+	}
 }
 
 templ runtimeFacts(r Runtime) {
@@ -76,7 +80,7 @@ templ runtimeFacts(r Runtime) {
 				<div class="col-span-2"><dt class="text-mute">待ち受け（この PC の中だけ）</dt><dd><code data-testid="mm-runtime-url">{ r.URL }</code></dd></div>
 			}
 			if r.UpdateAvailable {
-				<div class="col-span-2 text-warning"><dt>更新</dt><dd>固定版 { r.PinnedVersion } があります（導入済み: { r.Version }）</dd></div>
+				<div class="col-span-2"><dt>更新</dt><dd>固定版 { r.PinnedVersion } があります（導入済み: { r.Version }）</dd></div>
 			}
 		}
 		<div><dt class="text-mute">必要な空き容量</dt><dd data-testid="mm-runtime-need">{ r.Need }</dd></div>

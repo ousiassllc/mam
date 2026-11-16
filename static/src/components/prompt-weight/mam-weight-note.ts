@@ -1,5 +1,6 @@
 import { html, LitElement, nothing } from 'lit';
 import { customElement } from 'lit/decorators.js';
+import { NOTICE_NOTE, noticeIcon } from '../notice/notice';
 import { chosenFacts, watchChosen } from './chosen-models';
 import { cautionOf } from './weight-facts';
 
@@ -39,6 +40,6 @@ export class MamWeightNote extends LitElement {
     const text = this.text();
     return text === ''
       ? nothing
-      : html`<p class="text-xs text-warning" role="status" data-testid="gt-weight-caution-text">${text}</p>`;
+      : html`<div class=${NOTICE_NOTE} role="status" data-testid="gt-weight-caution-text">${noticeIcon('info')}<p class="min-w-0 break-words">${text}</p></div>`;
   }
 }

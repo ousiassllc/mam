@@ -185,7 +185,7 @@ export class MamPromptWeight extends LitElement {
         }
       </div>
       <div id=${noteID} role="status" data-testid="gt-weight-note">
-        ${notes.map((n) => html`<p class="text-warning">${n}</p>`)}
+        ${notes.map((n) => html`<p class="text-ink">${n}</p>`)}
       </div>
     </div>`;
   }

@@ -71,6 +71,8 @@ describe('the note under the LoRA choice (#1119)', () => {
     expect(on.filter((l) => l.tone === 'warn').map((l) => l.text)).toEqual([
       '「商用OKのモデルだけを使う」がオンですが、この LoRA は商用OKと確認できていません。生成は止めません。',
     ]);
+    expect(on.filter((l) => l.commercial)).toHaveLength(1);
+    expect(loraNote(known(), [qwen], false).filter((l) => l.tone === 'warn' && l.commercial)).toHaveLength(0); // a base model that does not fit is not a licence
   });
 
   it('reads the commercial answer without ever defaulting to 商用OK', () => {

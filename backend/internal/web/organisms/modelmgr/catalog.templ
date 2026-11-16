@@ -7,6 +7,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/installbtn"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/reason"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -30,7 +31,7 @@ templ CatalogList(c Catalog) {
 		@refresh.Bar(catalogURL(c), CatalogID, c.UpdatedAt)
 		@notice(c.Message, "mm-catalog")
 		if c.Blocked != "" {
-			<p class="text-sm text-warning" data-testid="mm-catalog-blocked">{ c.Blocked }</p>
+			@settingsui.NoteText(atoms.IconInfo, "note", "mm-catalog-blocked", c.Blocked)
 		}
 		@modelpick.Summary(c.Filter)
 		<ul id={ ModelsID } role="list" class={ modelcard.GridClass } data-testid="mm-models">
@@ -55,7 +56,7 @@ func StateTone(state string) (atoms.BadgeTone, string) {
 	case "installing":
 		return atoms.BadgeInfo, "導入中"
 	case "incomplete":
-		return atoms.BadgeWarn, "ファイルが不足"
+		return atoms.BadgeMuted, "ファイルが不足"
 	}
 	return atoms.BadgeNeutral, "未導入"
 }
@@ -87,25 +88,25 @@ func ModelCardID(id string) string { return "mm-model-" + id }
 func modelBadges(m Model) []modelcard.Badge {
 	out := modelcard.Facts{Adult: m.Adult, ParamsLabel: m.ParamsLabel, VideoModes: m.VideoModes, VRAMMinGB: m.VRAMMinGB}.Badges() // the badges every model card shares (成人向け, parameters, video modes, VRAM)
 	if m.NeedsToken {
-		out = append(out, modelcard.Badge{Tone: atoms.BadgeWarn, Label: "HF トークンが必要", Attrs: templ.Attributes{"data-testid": "mm-token-badge"}})
+		out = append(out, modelcard.Badge{Tone: atoms.BadgeMuted, Label: "HF トークンが必要", Attrs: templ.Attributes{"data-testid": "mm-token-badge"}})
 	}
 	if m.NeedsNodes != "" && m.State != "installed" {
-		out = append(out, modelcard.Badge{Tone: atoms.BadgeWarn, Label: "追加ノードが必要", Attrs: templ.Attributes{"data-testid": "mm-nodes-badge"}})
+		out = append(out, modelcard.Badge{Tone: atoms.BadgeMuted, Label: "追加ノードが必要", Attrs: templ.Attributes{"data-testid": "mm-nodes-badge"}})
 	}
 	if m.LowDisk && m.State != "installed" && m.State != "installing" {
 		out = append(out, modelcard.Badge{Tone: atoms.BadgeError, Label: "空きが足りません", Attrs: templ.Attributes{"data-testid": "mm-low-disk"}})
 	}
 	if m.PartialNote != "" {
-		out = append(out, modelcard.Badge{Tone: atoms.BadgeWarn, Label: "一部未導入（任意ファイル）", Attrs: templ.Attributes{"data-testid": "mm-partial-badge", "title": m.PartialNote}})
+		out = append(out, modelcard.Badge{Tone: atoms.BadgeMuted, Label: "一部未導入（任意ファイル）", Attrs: templ.Attributes{"data-testid": "mm-partial-badge", "title": m.PartialNote}})
 	}
 	if m.PlatformWarning != "" {
-		out = append(out, modelcard.Badge{Tone: atoms.BadgeWarn, Label: "この PC は対象外の見込み", Attrs: templ.Attributes{"data-testid": "mm-platform-warning"}})
+		out = append(out, modelcard.Badge{Tone: atoms.BadgeMuted, Label: "この PC は対象外の見込み", Attrs: templ.Attributes{"data-testid": "mm-platform-warning"}})
 	}
 	switch m.VRAMFit {
 	case "short":
 		out = append(out, modelcard.Badge{Tone: atoms.BadgeError, Label: "VRAM が足りない見込み", Attrs: templ.Attributes{"data-testid": "mm-vram-fit", "data-fit": m.VRAMFit}})
 	case "limited":
-		out = append(out, modelcard.Badge{Tone: atoms.BadgeWarn, Label: "VRAM に余裕なし", Attrs: templ.Attributes{"data-testid": "mm-vram-fit", "data-fit": m.VRAMFit}})
+		out = append(out, modelcard.Badge{Tone: atoms.BadgeMuted, Label: "VRAM に余裕なし", Attrs: templ.Attributes{"data-testid": "mm-vram-fit", "data-fit": m.VRAMFit}})
 	}
 	return out
 }
@@ -220,7 +221,7 @@ templ ConsentDialog(c Consent) {
 			<p class="text-sm text-warning" data-testid="mm-consent-adult">{ c.AdultNotice }</p>
 		}
 		if c.PlatformWarning != "" {
-			<p class="text-sm text-warning" data-testid="mm-consent-platform-warning">{ c.PlatformWarning }</p>
+			@settingsui.NoteText(atoms.IconInfo, "note", "mm-consent-platform-warning", c.PlatformWarning)
 		}
 		if len(c.Sources) > 0 {
 			<p class="text-sm text-ink" data-testid="mm-consent-sources">原本の場所: { joinNames(c.Sources) }</p>

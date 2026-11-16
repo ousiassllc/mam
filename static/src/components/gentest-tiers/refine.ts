@@ -171,7 +171,7 @@ function mark(t: Tracked, on: boolean): void {
   if (on && !existing) {
     const badge = document.createElement('span');
     badge.setAttribute('data-gt-mark', '');
-    badge.className = 'text-xs text-warning';
+    badge.className = 'text-xs text-ink';
     badge.textContent = '● 変えた';
     if (t.before) t.host.before(badge);
     else t.host.prepend(badge);

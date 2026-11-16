@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 )
 
 func itoa(n int) string { return strconv.Itoa(n) }
@@ -19,7 +20,9 @@ var starters = []Option{
 // opening the page again starts a new one (the batches it ran stay in the history).
 templ Chat(p Panel) {
 	if p.Unavailable {
-		<p class="rounded-lg border border-border p-4 text-sm text-warning" role="status" data-testid="gtc-unavailable">チャットに使う LLM が決まっていません。設定の「LLM の割り当て」で Prompt Planner のモデルを選ぶと使えます。それまでは「生成する」のフォームで作れます。</p>
+		@settingsui.Note(atoms.IconInfo, "status", "gtc-unavailable") {
+			チャットに使う LLM が決まっていません。設定の「LLM の割り当て」で Prompt Planner のモデルを選ぶと使えます。それまでは「生成する」のフォームで作れます。
+		}
 	} else {
 		@chatPanel(p)
 	}

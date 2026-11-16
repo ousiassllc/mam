@@ -20,7 +20,7 @@ func assetStateBadge(state string) (atoms.BadgeTone, string) {
 	case "unverified":
 		return atoms.BadgeInfo, "未確認"
 	}
-	return atoms.BadgeWarn, "なし"
+	return atoms.BadgeMuted, "なし"
 }
 
 // List lists the weights and dependencies of a runtime in the detail modal of its card: for each one where it comes from, its license

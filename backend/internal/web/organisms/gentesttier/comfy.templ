@@ -2,6 +2,7 @@ package gentesttier
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -21,7 +22,9 @@ templ OpenInComfy() {
 templ ComfyOpenResult(msg string) {
 	<div id={ ComfyOpenID } aria-live="polite" data-testid="gt-comfy-open-result">
 		if msg != "" {
-			<p class="text-sm text-warning" role="alert">{ msg }</p>
+			@settingsui.Note(atoms.IconWarning, "alert", "gt-comfy-open-error") {
+				{ msg }
+			}
 		}
 	</div>
 }

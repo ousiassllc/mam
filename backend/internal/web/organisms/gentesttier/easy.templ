@@ -4,6 +4,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/pick"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestadv"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -98,14 +99,14 @@ templ EasyPick(e EasyData, card templ.Component) {
 			<p class="text-sm text-mute" data-testid="gt-easy-model">
 				使うモデル: <span class="text-ink">{ e.ModelLabel }</span>
 				if e.ModelNote != "" {
-					<span class="block text-warning" data-testid="gt-easy-model-note">{ e.ModelNote }</span>
+					<span class="block text-ink" data-testid="gt-easy-model-note">{ e.ModelNote }</span>
 				}
 			</p>
 		} else if e.Reason != "" {
-			<p class="text-sm text-warning" role="status" data-testid="gt-easy-nomodel">
+			@settingsui.Note(atoms.IconInfo, "status", "gt-easy-nomodel") {
 				{ e.Reason }
 				<a class="underline" href={ templ.SafeURL(e.ModelsURL) }>モデルマネージャーを開く</a>
-			</p>
+			}
 		}
 		if e.IntentHint != "" {
 			<p class="text-sm text-mute" data-testid="gt-easy-hint">{ e.IntentHint }</p>

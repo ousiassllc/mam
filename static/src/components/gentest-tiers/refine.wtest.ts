@@ -83,6 +83,10 @@ describe('the こだわり tier marks what was changed and puts it back (spec/co
     expect(q('[data-gt-refine-item]').textContent).to.contain('ステップ数: 30（元は 15）');
     expect(q<HTMLElement>('[data-gt-adv-field="steps"]').hasAttribute('data-gt-changed')).to.equal(true);
     expect(q('[data-gt-adv-field="steps"] [data-gt-mark]').textContent).to.contain('変えた');
+    expect(
+      q('[data-gt-adv-field="steps"] [data-gt-mark]').className,
+      'the mark is in the ink of the page, not yellow (#1163)',
+    ).to.equal('text-xs text-ink');
     expect(q<HTMLElement>('[data-gt-reset-all]').hidden).to.equal(false);
     type(range, '15');
     expect(items()).to.deep.equal([]);

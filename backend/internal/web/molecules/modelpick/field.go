@@ -39,7 +39,7 @@ type FieldData struct {
 	// Invalid marks the field a refusal is about (aria-invalid, described by DescribedBy) and takes the focus (Autofocus).
 	Invalid, Autofocus bool
 	DescribedBy        string
-	// Note is the line under the field in the warning colour (the saved model cannot be used now).
+	// Note is the quiet line under the field (settingsui.Note: the saved model cannot be used now).
 	Note string
 	// TestID names the field for the tests.
 	TestID string

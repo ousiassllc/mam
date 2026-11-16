@@ -3,6 +3,7 @@ package facecard
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 )
 
@@ -11,7 +12,7 @@ func stateBadge(c Card) (atoms.BadgeTone, string) {
 	case StateInstalled:
 		return atoms.BadgeOK, "導入済み"
 	case StateUnverified:
-		return atoms.BadgeWarn, "ファイルあり（SHA-256 は未確認）"
+		return atoms.BadgeMuted, "ファイルあり（SHA-256 は未確認）"
 	}
 	return atoms.BadgeNeutral, "未導入"
 }
@@ -33,11 +34,10 @@ templ Section(c Card) {
 			}
 		</p>
 		if c.OffReason == "runtime_unavailable" {
-			<div class="flex flex-col gap-1 rounded-lg border border-warning/60 p-2 text-xs text-warning" role="note" data-testid="mm-face-models-runtime">
-				<p class="">モデルは入っていますが、顔の類似度はオフです（ONNX Runtime のライブラリが使えません）</p>
-				<p>{ c.OffCause }</p>
-				<p>{ c.OffFix }</p>
-			</div>
+			@settingsui.Banner(atoms.IconWarning, "note", "mm-face-models-runtime", "モデルは入っていますが、顔の類似度はオフです（ONNX Runtime のライブラリが使えません）") {
+				<p class="text-xs text-ink">{ c.OffCause }</p>
+				<p class="text-xs text-ink">{ c.OffFix }</p>
+			}
 		}
 		<p class="break-all text-sm text-mute" data-testid="mm-face-models-dir">導入先: <code>{ c.ModelDir }</code>（起動オプション --face-model-dir で変えられます）</p>
 		<ul class="flex flex-col gap-2 text-xs" data-testid="mm-face-models-files">

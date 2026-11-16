@@ -6,6 +6,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/companion"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/companion/facefusion"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/companion/ffmpeg"
@@ -169,9 +170,9 @@ templ modelsHelp() {
 
 // engineNeeded is the line above the model list while the bundled engine is not installed or not running: what the buttons below wait for, and where it is.
 templ engineNeeded() {
-	<p class="text-sm text-warning" role="status" data-testid="mm-engine-needed">
+	@settingsui.Note(atoms.IconInfo, "status", "mm-engine-needed") {
 		ComfyUI エンジンが未導入か、停止しています。モデルを使うには
 		<a class="underline" href={ templ.SafeURL(paths.ModelManagerPart(mmcat.ComfyUI)) } data-testid="mm-engine-needed-link">ComfyUI エンジン</a>
 		を導入して起動してください。
-	</p>
+	}
 }

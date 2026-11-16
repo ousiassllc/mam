@@ -2,7 +2,7 @@ package settingsui
 
 import "github.com/ousiassllc/mam/backend/internal/web/atoms"
 
-// Banner is the one box of the settings screens for a cause that stops or changes something (an API key that is not registered, a sign-in that has expired, a file that
+// Banner is the one box of the settings, model manager and single generation screens for a cause that stops or changes something (an API key that is not registered, a sign-in that has expired, a file that
 // cannot be read): the sentence of the cause as the title, one line for each thing it touches, and the one button that fixes it, as the children. The state is told by
 // the small icon at the left, a thin line beside it and the words, all in the ink of the page: no colour of a state (color-rules.md). role is "status", or "alert" for
 // what must interrupt a screen reader.
@@ -16,7 +16,7 @@ templ Banner(icon atoms.IconName, role, testID, title string) {
 	</section>
 }
 
-// Note is one quiet note of a screen in the ink of the page with a small icon: what to know, not an alarm. For a few words use a Badge of BadgeMuted instead.
+// Note is one quiet note of those screens in the ink of the page with a small icon: what to know, not an alarm. For a few words use a Badge of BadgeMuted instead.
 templ Note(icon atoms.IconName, role, testID string) {
 	<div class="flex items-start gap-2 text-sm text-ink" role={ role } data-testid={ testID }>
 		@atoms.Icon(icon, "h-5 w-5 shrink-0 text-mute")
@@ -24,4 +24,22 @@ templ Note(icon atoms.IconName, role, testID string) {
 			{ children... }
 		</p>
 	</div>
+}
+
+// NoteText is a Note of one plain sentence (no link inside).
+templ NoteText(icon atoms.IconName, role, testID, text string) {
+	@Note(icon, role, testID) {
+		{ text }
+	}
+}
+
+// BannerList is a Banner whose body is the list of the things to know, one line each, in the ink of the page.
+templ BannerList(icon atoms.IconName, role, testID, title string, items []string) {
+	@Banner(icon, role, testID, title) {
+		<ul class="list-disc pl-5 text-ink">
+			for _, item := range items {
+				<li>{ item }</li>
+			}
+		</ul>
+	}
 }

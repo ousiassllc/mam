@@ -39,7 +39,7 @@ type Card struct {
 	// Commercial is the commercial-use answer as an icon (nil: the card has none).
 	Commercial *commercial.View
 	// Pick, when set, makes the card a choice (PickItem). Reason says why it cannot be chosen now (the card is then dimmed and cannot be chosen). Note is the one
-	// line in the warning colour under the badges (what a reader must know before choosing: a commercial condition).
+	// line in the ink of the page under the badges (what a reader must know before choosing: a commercial condition; the mark of the answer stays amber).
 	Pick   *Pick
 	Reason *Reason
 	Note   string

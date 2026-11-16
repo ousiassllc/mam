@@ -3,6 +3,7 @@ package gentesttier
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -27,7 +28,9 @@ templ RecipePanel(d RecipeData) {
 			<p class="text-sm text-success" role="status" data-testid="gt-recipes-notice">{ d.Notice }</p>
 		}
 		if d.Error != "" {
-			<p class="text-sm text-warning" role="alert" data-testid="gt-recipes-error">{ d.Error }</p>
+			@settingsui.Note(atoms.IconWarning, "alert", "gt-recipes-error") {
+				{ d.Error }
+			}
 		}
 		if d.Unavailable {
 			<p class="text-sm text-mute" data-testid="gt-recipes-unavailable">このアプリではレシピを保存できません</p>
@@ -78,7 +81,9 @@ templ recipeRow(r RecipeRow) {
 			}
 		</div>
 		if !r.Usable {
-			<p class="text-sm text-warning" data-testid="gt-recipe-reason">使えません: { r.Reason }</p>
+			@settingsui.Note(atoms.IconInfo, "note", "gt-recipe-reason") {
+				使えません: { r.Reason }
+			}
 		}
 		<div class="flex flex-wrap items-center gap-2">
 			if r.Usable {

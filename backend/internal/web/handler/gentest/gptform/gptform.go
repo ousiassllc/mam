@@ -146,7 +146,7 @@ func CardOf(card modelcard.Card, m modelcatalog.Info) modelcard.Card {
 		})
 	case m.GPTImageRefusal != "":
 		card.Badges = append(card.Badges, modelcard.Badge{
-			Tone: atoms.BadgeWarn, Label: "複雑さ・GIF・SVG・マークアップは使えません",
+			Tone: atoms.BadgeMuted, Label: "複雑さ・GIF・SVG・マークアップは使えません",
 			Attrs: templ.Attributes{"data-testid": "gt-model-gpt-refused", "title": m.GPTImageRefusal},
 		})
 	}

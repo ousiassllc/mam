@@ -28,6 +28,8 @@ export interface ModelFamily {
 export interface NoteLine {
   tone: 'info' | 'warn';
   text: string;
+  /** A warning about the licence (commercial use): the one line of the note that keeps the colour of a warning (spec/components/color-rules.md). */
+  commercial?: true;
 }
 
 const COMMERCIAL_TEXT: Record<Commercial, string> = {
@@ -77,6 +79,7 @@ export function loraNote(lora: LoRAFacts | null, models: ModelFamily[], commerci
   if (commercialOnly && lora.commercial !== 'yes') {
     lines.push({
       tone: 'warn',
+      commercial: true,
       text: '「商用OKのモデルだけを使う」がオンですが、この LoRA は商用OKと確認できていません。生成は止めません。',
     });
   }

@@ -100,7 +100,7 @@ func withLTXLikeMemory() mmtest.Option {
 }
 
 // A model shows how this PC's GPU stands to its VRAM guideline (Issue #927): 16 GB for a 32 GB recommendation is 「動くが制約あり」 with the
-// limits, in the warning colour; a smaller GPU is told it will probably not run; a GPU that meets the recommendation, or a model with no
+// limits, in the ink of the page (the card has a muted badge); a smaller GPU is told it will probably not run; a GPU that meets the recommendation, or a model with no
 // higher recommendation, gets the plain line; no known GPU memory says nothing. #954: the card carries a badge for the two warnings and the
 // sentence is in the modal that the card opens.
 func TestCatalog_ACardSaysHowTheGPUStandsToTheModelsVRAM(t *testing.T) {
@@ -124,7 +124,8 @@ func TestCatalog_ACardSaysHowTheGPUStandsToTheModelsVRAM(t *testing.T) {
 	assert.Contains(t, bd, `data-fit="limited"`)
 	assert.Contains(t, bd, "動くが制約あり")
 	assert.Contains(t, bd, "INT8・タイル VAE・オフロードが前提で遅い")
-	assert.Contains(t, bd, "text-warning")
+	assert.Regexp(t, `class="[^"]*text-ink[^"]*" data-testid="mm-vram-fit-text"`, bd, "a GPU with no room to spare is said in the ink of the page: the yellow is for the licence marks (#1163)")
+	assert.NotRegexp(t, `class="[^"]*text-warning[^"]*" data-testid="mm-vram-fit-text"`, bd)
 	assert.Contains(t, bd, "推奨 32 GB 以上", "the recommendation is in the guideline of the modal")
 	s.rig.GPUReport.Adapters = []gpu.Adapter{{Name: "NVIDIA GeForce RTX", VRAMBytes: 12288 << 20}}
 	assert.Contains(t, card(t, s.get(paths.ModelManagerPart("models")).Body.String(), "m-b"), `data-fit="limited"`, "the list does not run the detection again at every draw")

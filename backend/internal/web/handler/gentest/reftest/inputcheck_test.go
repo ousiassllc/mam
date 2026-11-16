@@ -74,6 +74,9 @@ func TestEstimateWarnsInABoxOfItsOwnWhenOnlySomeImagesAreLeftOut(t *testing.T) {
 	assert.Contains(t, body, "使われない入力画像があります")
 	assert.Contains(t, body, "最後のフレームを使えない")
 	assert.NotContains(t, body, `data-testid="gt-confirm-warnings"`, "the input warnings are not repeated in the plain list")
+	assert.Contains(t, body, "border-l-2", "the box is a banner in the ink of the page (#1163)")
+	assert.NotContains(t, body, "text-warning")
+	assert.NotContains(t, body, "bg-warning")
 }
 
 func (s *screen) inputCheck(form url.Values) string {
@@ -118,6 +121,7 @@ func TestTheInputNoticeIsTheSameCheckAsTheEstimate(t *testing.T) {
 	body = s.inputCheck(mk(i2v, "first_frame", "last_frame"))
 	assert.NotContains(t, body, "error-box")
 	assert.Contains(t, body, `data-testid="gt-input-warnings"`, "the last frame the model leaves out is a warning, not a stop")
+	assert.NotContains(t, body, "text-warning", "a warning of the notice is a banner in the ink of the page (#1163)")
 	assert.Contains(t, body, "最後のフレーム")
 
 	assert.NotContains(t, s.inputCheck(mk(flf, "first_frame", "last_frame")), "gt-input-warnings")

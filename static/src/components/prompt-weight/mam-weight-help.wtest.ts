@@ -132,6 +132,10 @@ describe('<mam-weight-note>: the short caution beside the prompt for a model tha
     expect(note.textContent).to.contain('効きません');
     expect(note.textContent).to.contain('文で言い換えてください');
     expect(note.textContent).not.to.contain('comfyui:');
+    const line = note.querySelector('[data-testid="gt-weight-caution-text"]') as HTMLElement;
+    expect(line.getAttribute('role')).to.equal('status');
+    expect(line.className, 'the caution is a quiet note in the ink of the page (#1163)').to.contain('text-ink');
+    expect(note.innerHTML).not.to.contain('text-warning');
   });
 
   it('names every such model once, and comes and goes with the choice', async () => {
