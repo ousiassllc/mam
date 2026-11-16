@@ -15,6 +15,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/direct"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/viaprovider"
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -180,6 +181,29 @@ func TestTheConcurrencyLimitOfTheVendorStaysInForce(t *testing.T) {
 	}
 	wg.Wait()
 	assert.Equal(t, int32(1), flux.peak.Load())
+}
+
+func TestVideoRefusesAnOmniClipWithTwoFramesOverTheInterpolationLimit(t *testing.T) {
+	omni := &fakeVideo{}
+	a := adapter(modeladapter.DefaultConfig(), modeladapter.Backends{Video: map[domain.ModelName]modeladapter.VideoBackend{domain.ModelGeminiOmniFlash: omni}})
+	target := modeladapter.VideoTarget{Model: domain.ModelGeminiOmniFlash, Resolution: "720p"}
+	frame := &modeladapter.Input{Data: []byte("f"), MimeType: "image/png"}
+
+	_, err := direct.Video(t.Context(), a, target, modeladapter.VideoRequest{Prompt: "p", DurationSeconds: 14, FirstFrame: frame, LastFrame: frame})
+	var refused *apperr.Error
+	require.ErrorAs(t, err, &refused, "the interpolation of two frames makes up to 10 seconds: the API refuses more, so the call is refused, not shortened")
+	assert.Equal(t, apperr.CodeInputUnsupported, refused.Code)
+	assert.Empty(t, omni.reqs, "nothing is sent to the vendor")
+
+	out, err := direct.Video(t.Context(), a, target, modeladapter.VideoRequest{Prompt: "p", DurationSeconds: 10, FirstFrame: frame, LastFrame: frame})
+	require.NoError(t, err)
+	out.File.Discard()
+	assert.Equal(t, 10.0, out.DurationSeconds, "10 seconds is the limit itself")
+
+	out, err = direct.Video(t.Context(), a, target, modeladapter.VideoRequest{Prompt: "p", DurationSeconds: 14, FirstFrame: frame})
+	require.NoError(t, err)
+	out.File.Discard()
+	assert.Equal(t, 14.0, out.DurationSeconds, "one frame goes up to 15 seconds")
 }
 
 func TestVideoSnapsTheLengthChecksTheInputsAndKeepsTheSeedForRunwayOnly(t *testing.T) {

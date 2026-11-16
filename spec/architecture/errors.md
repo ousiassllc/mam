@@ -171,6 +171,7 @@ templ Box(p Props)
 | `chatgpt.ErrNoImageModel` | `image_unavailable`（ベンダーの 400 は症状なので、詳細にだけ残す） |
 | `chatgpt.ErrImageModelPinned` | `image_model_pinned`（固定したモデルの拒否。直し方は更新ではなく固定を直すこと） |
 | `direct.ErrInputsUnsupported` / `ErrInputsConflict` / `ErrResolution` | `input_unsupported` |
+| `videocaps.CheckInterpolation`（Gemini Omni Flash に First と Last の両方で 10 秒超。`apperr` を直接返し、原因に上限を書く） | `input_unsupported` |
 | `llm.ErrInvalidOutput` | `llm_invalid_output` |
 | `localllm.IsUnreachable`（プロバイダー `local` の `APIError`: status 0・原因あり・タイムアウトでもキャンセルでもない） | `local_llm_unreachable`（`net.Error` より先） |
 | `fetch.ErrChecksum` / `ErrSize` | `download_corrupt` |

@@ -16,6 +16,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/shotprompt"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/viaprovider"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/videocaps"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -77,7 +78,8 @@ func Image(ctx context.Context, a *modeladapter.Adapter, model domain.ModelName,
 // Video makes one clip with the model of target at the resolution of target. The length is snapped to one the model
 // produces (VideoCapabilities.SnapDuration; the output says which). The inputs are checked against the model's capabilities
 // and refused when it cannot take them (ErrInputsUnsupported, ErrInputsConflict), and so is a resolution it does not produce
-// (ErrResolution). A seed or a negative prompt for a model without that field is dropped. There is no time limit beyond the vendor's timeout.
+// (ErrResolution) and, for Gemini Omni Flash, a length over 10 seconds with both a first and a last frame (videocaps.CheckInterpolation,
+// an apperr input_unsupported). A seed or a negative prompt for a model without that field is dropped. There is no time limit beyond the vendor's timeout.
 func Video(ctx context.Context, a *modeladapter.Adapter, target modeladapter.VideoTarget, req modeladapter.VideoRequest) (modeladapter.VideoOutput, error) {
 	if err := a.Gate.Check(target.Model); err != nil {
 		return modeladapter.VideoOutput{}, err
@@ -98,6 +100,9 @@ func Video(ctx context.Context, a *modeladapter.Adapter, target modeladapter.Vid
 		return modeladapter.VideoOutput{}, fmt.Errorf("%w: %s", err, target.Model)
 	}
 	req.DurationSeconds = caps.SnapDuration(req.DurationSeconds)
+	if e := videocaps.CheckInterpolation(target.Model, req.DurationSeconds, req.FirstFrame != nil && req.LastFrame != nil); e != nil {
+		return modeladapter.VideoOutput{}, e
+	}
 	req.Resolution = target.Resolution
 	if req.AspectRatio == "" {
 		req.AspectRatio = domain.DefaultAspectRatio

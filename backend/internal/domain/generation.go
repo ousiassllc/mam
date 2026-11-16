@@ -25,7 +25,7 @@ const (
 	ModelKling3             ModelName = "kling-3.0"
 	ModelSeedance2          ModelName = "seedance-2.0"
 	ModelRunwayGen45        ModelName = "runway-gen-4.5"
-	ModelGeminiOmniFlash    ModelName = "gemini-omni-flash" // Gemini Omni Flash (gemini-omni-1.1-flash), the Gemini API's video model
+	ModelGeminiOmniFlash    ModelName = "gemini-omni-flash" // Gemini Omni Flash (gemini-omni-1.2-flash), the Gemini API's video model
 	ModelKling4             ModelName = "kling-4.0"         // Kling 4.0 on the new API (Bearer API key); ModelKling3 stays on the old one
 	ModelSeedance25         ModelName = "seedance-2.5"      // Seedance 2.5 (dreamina-seedance-2-5-260628), up to 30 seconds
 	ModelMiniMaxH3          ModelName = "minimax-h3"        // MiniMax H3 (MiniMax-H3), 4-15 seconds, 768P / 2K
