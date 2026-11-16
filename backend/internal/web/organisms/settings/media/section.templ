@@ -54,22 +54,13 @@ templ Status(d Data, oob bool) {
 		}
 	>
 		if d.Pinned {
-			<p class="text-sm text-warning" role="status" data-testid="model-assignment-pinned">{ d.PinnedNote }</p>
+			@quietNote("model-assignment-pinned", d.PinnedNote)
 		}
-		if len(d.Warnings) > 0 {
-			<ul class="flex flex-col gap-1 text-sm text-warning" data-testid="model-assignment-warnings">
-				for _, w := range d.Warnings {
-					<li data-testid="model-assignment-warning">
-						{ w.Message }
-						if w.Route != "" {
-							<a class="underline" href={ templ.SafeURL(w.Route) }>設定を開く</a>
-						}
-					</li>
-				}
-			</ul>
+		if d.KeyBanner != nil {
+			@keyBanner(*d.KeyBanner)
 		}
 		if d.GatedNote != "" {
-			<p class="text-sm text-warning" role="status" data-testid="model-assignment-gated">{ d.GatedNote }</p>
+			@quietNote("model-assignment-gated", d.GatedNote)
 		}
 		if !d.Pinned && d.Customized {
 			<div>
@@ -128,8 +119,9 @@ templ imageRow(r ImageRow, pinned, oob bool) {
 			{ r.Label }
 			<span class="mt-1 block text-xs font-normal text-mute">{ r.Hint }</span>
 			if r.ReferenceNote != "" {
-				<span class="mt-1 block text-xs font-normal text-warning" role="status" data-testid="model-assignment-reference-note">{ r.ReferenceNote }</span>
+				<span class="mt-1 block text-xs font-normal text-mute" role="status" data-testid="model-assignment-reference-note">{ r.ReferenceNote }</span>
 			}
+			@rowNote(r.Note)
 		}
 		@settingsui.Cell(modelCell) {
 			@imageTarget(r.Primary)
@@ -151,20 +143,22 @@ templ imageTarget(t ImageTarget) {
 		<span class="text-xs text-mute">（高速版）</span>
 	}
 	if t.Unusable {
-		<span class="text-xs text-warning">{ UnusableSuffix }</span>
+		<span class="text-xs text-mute">{ UnusableSuffix }</span>
 	}
+	@chip(t.Chip)
 }
 
 templ policyRow(r PolicyRow, pinned, oob bool) {
 	@settingsui.TableRowItem(settingsui.TableRow{ID: PolicyRowID(r.Policy), TestID: "model-assignment-policy", Attrs: templ.Attributes{"data-policy": r.Policy}, OOB: oob}) {
 		@settingsui.RowHead("") {
 			{ r.Label }
+			@rowNote(r.Note)
 		}
 		@settingsui.Cell(modelCell) {
-			@policyTarget(r.Primary, r.PrimaryUnusable)
+			@policyTarget(r.Primary, r.PrimaryUnusable, r.PrimaryChip)
 		}
 		@settingsui.Cell(modelCell) {
-			@policyTarget(r.Fallback, r.FallbackUnusable)
+			@policyTarget(r.Fallback, r.FallbackUnusable, r.FallbackChip)
 		}
 		@settingsui.Cell("") {
 			{ strconv.Itoa(r.Takes) }
@@ -177,9 +171,10 @@ templ policyRow(r PolicyRow, pinned, oob bool) {
 	}
 }
 
-templ policyTarget(value string, unusable bool) {
+templ policyTarget(value string, unusable bool, c Chip) {
 	{ value }
 	if unusable {
-		<span class="text-xs text-warning">{ UnusableSuffix }</span>
+		<span class="text-xs text-mute">{ UnusableSuffix }</span>
 	}
+	@chip(c)
 }

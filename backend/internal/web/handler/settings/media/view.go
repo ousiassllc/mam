@@ -48,13 +48,8 @@ func Data(v modelsettings.View) media.Data {
 	if len(v.Gated) > 0 {
 		d.GatedNote = gatedNote(v.Gated)
 	}
-	for _, u := range v.Unusable {
-		d.Warnings = append(d.Warnings, media.Warning{Message: unusableNote(u), Route: u.Availability.Route})
-	}
-	for _, r := range v.Routes {
-		if w, ok := routeNote(r); ok {
-			d.Warnings = append(d.Warnings, w)
-		}
+	if b, ok := keyBanner(v); ok {
+		d.KeyBanner = &b
 	}
 	for _, p := range modelsettings.ImagePurposes() {
 		d.Images = append(d.Images, imageRow(v, p, v.Images[p]))
@@ -80,9 +75,10 @@ func imageRow(v modelsettings.View, p modelsettings.ImagePurpose, r modelsetting
 	}
 	return media.ImageRow{
 		Purpose: string(p), Label: purposes[p].label, Hint: purposes[p].hint,
-		Primary:       media.ImageTarget{Model: string(r.Primary.Model), Fast: r.Primary.Fast, Unusable: !usable(r.Primary.Model)},
-		Fallback:      media.ImageTarget{Model: string(r.Fallback.Model), Fast: r.Fallback.Fast, Unusable: !usable(r.Fallback.Model)},
+		Primary:       media.ImageTarget{Model: string(r.Primary.Model), Fast: r.Primary.Fast, Unusable: !usable(r.Primary.Model), Chip: imageChip(v, string(r.Primary.Model))},
+		Fallback:      media.ImageTarget{Model: string(r.Fallback.Model), Fast: r.Fallback.Fast, Unusable: !usable(r.Fallback.Model), Chip: imageChip(v, string(r.Fallback.Model))},
 		ReferenceNote: referenceNote(r, v.ImageModels),
+		Note:          imageNote(v, p),
 	}
 }
 
@@ -97,24 +93,9 @@ func policyRow(v modelsettings.View, q domain.QualityPolicy, r modelsettings.Pol
 		Policy: string(q), Label: q.Label(), Takes: r.Takes,
 		Primary: choiceValue(r.Primary.Model, r.Primary.Resolution), Fallback: choiceValue(r.Fallback.Model, r.Fallback.Resolution),
 		PrimaryUnusable: !usable(r.Primary), FallbackUnusable: !usable(r.Fallback),
+		PrimaryChip: videoChip(v, string(r.Primary.Model)), FallbackChip: videoChip(v, string(r.Fallback.Model)),
+		Note: policyNote(v, q),
 	}
-}
-
-// unusableNote says which saved route names a model that cannot be used now, and why.
-func unusableNote(u modelsettings.UnusableRoute) string {
-	slot := map[string]string{"primary": "主モデル", "fallback": "代替モデル"}[u.Role]
-	what := "画像モデル"
-	key := u.Key
-	if u.Media == "video" {
-		what, key = "動画モデル", domain.QualityPolicy(u.Key).Label()
-	} else {
-		for _, p := range modelsettings.ImagePurposes() {
-			if string(p) == u.Key {
-				key = purposes[p].label
-			}
-		}
-	}
-	return key + " の" + what + "（" + slot + "）は " + string(u.Model) + " を指していますが、使えません: " + u.Availability.Message
 }
 
 // gatedNote says that the saved assignment names adult models that are not offered while the age confirmation is off.

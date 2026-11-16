@@ -12,7 +12,7 @@
 - **同じ意味に新しいクラスや `/opacity` を足さない。** 枠は `-/60`、薄い面は `/10`（弱い）か `/20`（バッジのような塗り）。足したいときは、画面のクラスを変えるのでなく、この文書の表を変える（テストの `colorAllowlist` も同じ版で変える）。
 - プリズム（`--prism-*`）はロゴ・ヒーロー・キービジュアル専用で、UI のクラスに使わない。フォーカスだけが `--focus`（プリズムの blue を薄く借りる）を使う。
 - コントラストは `a11y/contrast_test.go`（補助の文字に `text-neutral-500` を使わない）と `a11y/field_border_test.go`（入力欄の枠は、ライト・ダークのどちらでも面に対して 3:1 以上）が守る。
-- 共通部品が表の正: 色は `atoms.Badge`（`BadgeNeutral`・`BadgeInfo`・`BadgeWarn`・`BadgeOK`・`BadgeError`）と `atoms.Button`（`TonePrimary`・`ToneDanger`・`ToneNeutral`）から決まる。画面・molecules・organisms・Lit は、同じ意味ならこれと同じクラスを使う。
+- 共通部品が表の正: 色は `atoms.Badge`（`BadgeNeutral`・`BadgeMuted`〔薄い地に `text-mute`。表の「キー未登録」〕・`BadgeInfo`・`BadgeWarn`・`BadgeOK`・`BadgeError`）と `atoms.Button`（`TonePrimary`・`ToneDanger`・`ToneNeutral`）から決まる。画面・molecules・organisms・Lit は、同じ意味ならこれと同じクラスを使う。
 - **フォーカスの輪**は色のクラスでなく、`focus-ring`（`tokens.css` の `@utility`。`outline: 2px solid var(--focus)` + `outline-offset: 2px`）を `focus-visible:focus-ring`・`peer-focus-visible:focus-ring` のように付ける。`ring-*` / `ring-offset-*` の影の輪は使わない。
 
 ## 2. 検査の範囲

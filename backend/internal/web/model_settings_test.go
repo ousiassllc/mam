@@ -231,8 +231,7 @@ func TestModelSettings_AnAdultModelOfTheSavedAssignmentIsShownAsUnusableWhileThe
 	assert.NotContains(t, s.page(), `data-testid="model-assignment-gated"`)
 }
 
-// #1113: the screen says what a generation would do with a route whose saved models cannot be used: run on a model that matches the conditions (a default
-// route), or be refused (a route the user set), and names the screen that fixes it.
+// #1113: the row of a route whose saved models cannot be used says what a generation would do: run on a model that matches the conditions, or be refused.
 func TestModelSettings_ARouteThatCannotBeUsedSaysWhatAGenerationWouldDo(t *testing.T) {
 	file := filepath.Join(t.TempDir(), "data", "models.json")
 	s := newConfiguredModelScreen(t, file, false, func(settings *settingsroutes.Services) {
@@ -246,7 +245,9 @@ func TestModelSettings_ARouteThatCannotBeUsedSaysWhatAGenerationWouldDo(t *testi
 
 	html := s.page()
 
-	assert.Contains(t, html, "新規リファレンス の画像モデル: 割り当てが使えないため、生成は条件に合う利用可能なモデル flux-2（API・従量課金）で行います。品質で選んだモデルではありません")
-	assert.Contains(t, html, domain.QualityBalanced.Label()+" の動画モデル: 動画（Quality Policy: balanced）に使えるモデルがありません", "no video model can be used: the note says the generation is refused")
-	assert.NotContains(t, html, "プレビュー の画像モデル: ", "the purposes no generation asks for are left out")
+	assert.Contains(t, html, `data-kind="substitute"`)
+	assert.Contains(t, html, "割り当てが使えないため、生成は条件に合う利用可能なモデル flux-2（API・従量課金）で行います。品質で選んだモデルではありません")
+	assert.Contains(t, html, `data-kind="blocked"`, "no video model can be used: the note says the generation is refused")
+	assert.Contains(t, html, "使えるモデルがありません。生成は断られます。")
+	assert.Equal(t, 5, strings.Count(html, "model-assignment-row-note"), "the two image purposes a generation asks for and the three policies: the purposes no generation asks for are left out")
 }

@@ -11,6 +11,13 @@ import (
 // used, the model that would be used and why, and the usable candidates of a route that is blocked.
 type RouteReport = modelroute.RouteReport
 
+// The statuses of a RouteReport (modelroute.Status*): the assignment can be used as it is, a model that matches the conditions takes its place, or the generation is refused.
+const (
+	RouteAssignment = modelroute.StatusAssignment
+	RouteCondition  = modelroute.StatusCondition
+	RouteBlocked    = modelroute.StatusBlocked
+)
+
 // SetAdult registers the predicate "this model is an adult one" (mmview.Adult: the rating and everything the age gate treats as adult): such a model is never a candidate of View.Routes, as it is never
 // chosen on its own by a generation. nil (the default) knows none. It must be set before the service is used.
 func (s *Service) SetAdult(adult func(modelID string) bool) { s.adult = adult }
