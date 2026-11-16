@@ -2,6 +2,7 @@ package restart
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -40,50 +41,57 @@ templ Slot(d Data) {
 	</div>
 }
 
-// Panel is the notice with the buttons. It draws nothing when there is nothing to say.
+// panelTitle is the sentence of the banner: the settings that wait for a restart, or, with none waiting (a request was answered), what the buttons are for.
+func (d Data) panelTitle() string {
+	if len(d.Pending) > 0 {
+		return "保存した設定のうち、再起動すると反映されるものがあります"
+	}
+	return "再起動して反映"
+}
+
+// Panel is the notice with the buttons: one banner (the settings that wait, one for each line, and the buttons), in the ink of the page like every banner of the
+// settings screens. It draws nothing when there is nothing to say. #restart-panel is the box a save reads again.
 templ Panel(d Data) {
 	if d.Visible() {
-		<section id="restart-panel" class="mb-4 flex flex-col gap-2 rounded-md border border-warning/60 bg-warning/10 px-4 py-3" aria-label="再起動して反映" data-testid="restart-panel">
-			if len(d.Pending) > 0 {
-				<p class="text-sm text-warning" data-testid="restart-pending">
-					保存した設定のうち、再起動すると反映されるものがあります:
-					for i, p := range d.Pending {
-						if i > 0 {
-							、
-						}
-						<span data-testid="restart-pending-item">{ p }</span>
-					}
-				</p>
-			}
-			if d.Restarting {
-				<p class="text-sm text-success" role="status" data-testid="restart-notice">{ d.Notice }</p>
-			} else {
-				if d.Notice != "" {
-					<p class="text-sm text-success" role="status" data-testid="restart-notice">{ d.Notice }</p>
-				}
-				if d.Error != "" {
-					<p class="text-sm text-danger" role="alert" data-testid="restart-error">{ d.Error }</p>
-				}
-				if len(d.Busy) > 0 {
-					<ul class="list-disc pl-5 text-sm text-ink" data-testid="restart-busy">
-						for _, b := range d.Busy {
-							<li>{ b }</li>
+		<div id="restart-panel" class="mb-4">
+			@settingsui.Banner(atoms.IconInfo, "status", "restart-panel", d.panelTitle()) {
+				if len(d.Pending) > 0 {
+					<ul class="flex flex-col gap-1 text-ink" data-testid="restart-pending">
+						for _, p := range d.Pending {
+							<li class="break-words" data-testid="restart-pending-item">{ p }</li>
 						}
 					</ul>
 				}
-				if d.CanRestart && !d.Waiting {
-					<div class="flex flex-wrap items-center gap-2">
-						@button("再起動して反映", "refuse", "再起動します。実行中の作業があるときは、再起動せずに知らせます。よろしいですか？", "restart-now")
-						if len(d.Busy) > 0 {
-							@button("作業が終わったら再起動する", "wait", "作業が終わるまで待ってから再起動します。よろしいですか？", "restart-wait")
-						}
-					</div>
-				}
-				if !d.CanRestart {
-					<p class="text-sm text-ink" data-testid="restart-manual">このビルドは自分で再起動できません。アプリを終了して、起動し直してください。</p>
+				if d.Restarting {
+					<p class="text-sm text-success" role="status" data-testid="restart-notice">{ d.Notice }</p>
+				} else {
+					if d.Notice != "" {
+						<p class="text-sm text-success" role="status" data-testid="restart-notice">{ d.Notice }</p>
+					}
+					if d.Error != "" {
+						<p class="text-sm text-danger" role="alert" data-testid="restart-error">{ d.Error }</p>
+					}
+					if len(d.Busy) > 0 {
+						<ul class="list-disc pl-5 text-sm text-ink" data-testid="restart-busy">
+							for _, b := range d.Busy {
+								<li>{ b }</li>
+							}
+						</ul>
+					}
+					if d.CanRestart && !d.Waiting {
+						<div class="flex flex-wrap items-center gap-2">
+							@button("再起動して反映", "refuse", "再起動します。実行中の作業があるときは、再起動せずに知らせます。よろしいですか？", "restart-now")
+							if len(d.Busy) > 0 {
+								@button("作業が終わったら再起動する", "wait", "作業が終わるまで待ってから再起動します。よろしいですか？", "restart-wait")
+							}
+						</div>
+					}
+					if !d.CanRestart {
+						<p class="text-sm text-ink" data-testid="restart-manual">このビルドは自分で再起動できません。アプリを終了して、起動し直してください。</p>
+					}
 				}
 			}
-		</section>
+		</div>
 	}
 }
 

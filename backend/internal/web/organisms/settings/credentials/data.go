@@ -53,6 +53,26 @@ type ProviderModel struct {
 	// KeyLabel is the provider whose key the model needs now ("OpenRouter"); KeySet whether it is stored. Both empty for the official provider (the keys of the cards below).
 	KeyLabel string
 	KeySet   bool
+	// KeyProvider is the provider of the card that stores that key ("openrouter"): the banner's button opens its modal. Empty with KeyLabel.
+	KeyProvider string
+}
+
+// keyShortage is the models that the chosen provider serves but whose key is not stored, with the provider and its card: one cause (the key), so the list
+// shows one banner for them instead of one button for each.
+type keyShortage struct {
+	Provider, Label string
+	Models          []string
+}
+
+func missingKey(models []ProviderModel) keyShortage {
+	var s keyShortage
+	for _, m := range models {
+		if m.Supported && m.KeyLabel != "" && !m.KeySet {
+			s.Provider, s.Label = m.KeyProvider, m.KeyLabel
+			s.Models = append(s.Models, m.Label)
+		}
+	}
+	return s
 }
 
 // ProviderData is the choice of the API provider and how it serves the models.
@@ -93,7 +113,7 @@ func (p ProviderView) card(oob, unavailable bool) settingsui.Card {
 		Title: p.Label, Description: p.Purpose, OOB: oob,
 	}
 	if unavailable {
-		c.Tone, c.State = atoms.BadgeWarn, "状態を確認できません"
+		c.Tone, c.State = atoms.BadgeMuted, "状態を確認できません"
 	} else if p.Configured {
 		c.Tone, c.State = atoms.BadgeOK, "設定済み"
 	} else {

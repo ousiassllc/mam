@@ -15,17 +15,40 @@ type Target struct {
 // Summary is the target as one line: "anthropic / claude-…".
 func (t Target) Summary() string { return t.Provider + " / " + t.Model }
 
+// Chip is the small label under the name of a target that cannot be used now for want of its API key ("キー未登録"); Title is the full reason (the tooltip and what a
+// screen reader reads). The zero Chip is no chip.
+type Chip struct{ Label, Title string }
+
 // Row is the assignment of one Agent: what it is for, the primary target, the fallback used when it fails, and the
 // defaults the program ships (shown beside the fields of the modal, so that a change can be undone by hand).
 type Row struct {
 	Agent   string
 	Label   string
 	Purpose string // what the Agent is for, in one line
+	// Note is what the row would do now when its primary cannot be used and its fallback can ("代替で動きます…"), under the purpose; "" when there is nothing to say.
+	Note    string
 	Primary Target
 	// Fallback is the target the Agent switches to when the primary fails.
-	Fallback        Target
-	DefaultPrimary  Target
-	DefaultFallback Target
+	Fallback Target
+	// PrimaryChip and FallbackChip say that the API key of the provider of the target is not registered.
+	PrimaryChip, FallbackChip Chip
+	DefaultPrimary            Target
+	DefaultFallback           Target
+}
+
+// KeyShortage is one missing API key: the provider as the API keys screen names it and the Agents (their short names, in the order of the table) that name a model of it.
+type KeyShortage struct {
+	Provider string
+	Agents   []string
+}
+
+// KeyBanner is the one banner that says that Agents name models whose API key is not registered. Rows is how many Agents run (the ones listed above "現在は使われません"),
+// Blocked how many cannot run at all (neither the primary nor the alternative can be used and an API key is missing), Covered how many run on their alternative because
+// the API key of the primary is missing. Shortages say which key lets which Agents use their models (the biggest first), and Route is the screen that registers the keys.
+type KeyBanner struct {
+	Rows, Blocked, Covered int
+	Route                  string
+	Shortages              []KeyShortage
 }
 
 // Customized is whether the row differs from the default.
@@ -33,8 +56,13 @@ func (r Row) Customized() bool {
 	return r.Primary != r.DefaultPrimary || r.Fallback != r.DefaultFallback
 }
 
-// Warning is a saved route that names a provider that cannot be used now: the sentence, and the screen that fixes it (Route; "" when none helps).
-type Warning struct{ Message, Route string }
+// Warning is one provider that cannot be used now and is named by saved routes: the provider, why it cannot be used (Reason), the saved routes that name it
+// (Uses: "Writer（脚本）のプライマリ"...) and the screen that fixes it (Route; "" when none helps). The routes of one cause (the same provider, the same reason) are one Warning.
+type Warning struct {
+	Provider, Reason string
+	Uses             []string
+	Route            string
+}
 
 // Data is the category: Rows are the Agents that run; Unused are the Agents whose route no code reads yet, listed apart.
 // Pinned means the operator fixed the file by a start option: the assignment is
@@ -46,7 +74,9 @@ type Data struct {
 	Unused  []Row
 	Pinned  bool
 	Problem string
-	// Warnings say which saved routes name a provider that cannot be used now (no API key, not signed in), each with where to fix it (#1013).
+	// KeyBanner is the banner of the API keys that are not registered; nil when no Agent is blocked or covered by it.
+	KeyBanner *KeyBanner
+	// Warnings say which saved routes name a provider that cannot be used now for another reason (not signed in, the local server does not answer), each with where to fix it (#1013).
 	Warnings       []Warning
 	Notice         string
 	Error          string

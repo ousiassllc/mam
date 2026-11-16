@@ -73,9 +73,9 @@ func SettingsLines(configured, total int, keysErr error, login *Login) []molecul
 	var out []molecules.StatusLine
 	switch {
 	case keysErr != nil:
-		out = line(atoms.BadgeWarn, "キーストアを利用できません")
+		out = line(atoms.BadgeMuted, "キーストアを利用できません")
 	case configured == 0:
-		out = line(atoms.BadgeWarn, fmt.Sprintf("API キー %d / %d 件", configured, total))
+		out = line(atoms.BadgeMuted, fmt.Sprintf("API キー %d / %d 件", configured, total))
 	default:
 		out = line(atoms.BadgeInfo, fmt.Sprintf("API キー %d / %d 件", configured, total))
 	}
@@ -84,7 +84,7 @@ func SettingsLines(configured, total int, keysErr error, login *Login) []molecul
 	}
 	switch {
 	case login.NeedsRelogin:
-		return append(out, molecules.StatusLine{Tone: atoms.BadgeWarn, Text: "ChatGPT: 再ログインが必要"})
+		return append(out, molecules.StatusLine{Tone: atoms.BadgeMuted, Text: "ChatGPT: 再ログインが必要"})
 	case login.SignedIn:
 		return append(out, molecules.StatusLine{Tone: atoms.BadgeOK, Text: "ChatGPT: ログイン済み"})
 	}

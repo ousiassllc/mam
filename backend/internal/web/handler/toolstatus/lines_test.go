@@ -54,11 +54,11 @@ func TestSettingsLines(t *testing.T) {
 	}{
 		{"keys and signed in", 3, nil, &toolstatus.Login{SignedIn: true}, []molecules.StatusLine{
 			{Tone: atoms.BadgeInfo, Text: "API キー 3 / 10 件"}, {Tone: atoms.BadgeOK, Text: "ChatGPT: ログイン済み"}}},
-		{"no key is a warning", 0, nil, &toolstatus.Login{}, []molecules.StatusLine{
-			{Tone: atoms.BadgeWarn, Text: "API キー 0 / 10 件"}, {Tone: atoms.BadgeNeutral, Text: "ChatGPT: 未ログイン"}}},
+		{"no key is a quiet note", 0, nil, &toolstatus.Login{}, []molecules.StatusLine{
+			{Tone: atoms.BadgeMuted, Text: "API キー 0 / 10 件"}, {Tone: atoms.BadgeNeutral, Text: "ChatGPT: 未ログイン"}}},
 		{"relogin wins over signed in", 1, nil, &toolstatus.Login{SignedIn: true, NeedsRelogin: true}, []molecules.StatusLine{
-			{Tone: atoms.BadgeInfo, Text: "API キー 1 / 10 件"}, {Tone: atoms.BadgeWarn, Text: "ChatGPT: 再ログインが必要"}}},
-		{"key store unreadable", 0, errors.New("keyring down"), nil, one(atoms.BadgeWarn, "キーストアを利用できません")},
+			{Tone: atoms.BadgeInfo, Text: "API キー 1 / 10 件"}, {Tone: atoms.BadgeMuted, Text: "ChatGPT: 再ログインが必要"}}},
+		{"key store unreadable", 0, errors.New("keyring down"), nil, one(atoms.BadgeMuted, "キーストアを利用できません")},
 		{"no ChatGPT service: the key line only", 2, nil, nil, one(atoms.BadgeInfo, "API キー 2 / 10 件")},
 	}
 	for _, tt := range tests {

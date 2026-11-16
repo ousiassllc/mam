@@ -4,6 +4,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -36,7 +37,9 @@ templ Section(d Data) {
 			<p class="text-sm text-danger" role="alert" data-testid="local-models-problem">{ d.Problem }</p>
 		} else {
 			if d.Pinned {
-				<p class="text-sm text-warning" role="status" data-testid="local-models-pinned">{ d.PinnedNote }</p>
+				@settingsui.Note(atoms.IconInfo, "status", "local-models-pinned") {
+					{ d.PinnedNote }
+				}
 			}
 			<ul role="list" class="grid grid-cols-1 gap-4">
 				@molecules.ToolCardItem(ManagerCard())

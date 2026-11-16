@@ -67,7 +67,7 @@ func connected(ctx context.Context, svc *localmodels.Service, names []string, de
 func healthLines(ok, total int) []molecules.StatusLine {
 	tone := atoms.BadgeOK
 	if ok < total {
-		tone = atoms.BadgeWarn
+		tone = atoms.BadgeMuted
 	}
 	return []molecules.StatusLine{line(tone, "%d 件中 %d 件に接続できます", total, ok)}
 }

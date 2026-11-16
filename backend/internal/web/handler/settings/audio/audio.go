@@ -94,13 +94,13 @@ func localOf(l *audiosettings.Local) *view.Local {
 func stateText(s audiosettings.State) (string, atoms.BadgeTone) {
 	switch s {
 	case audiosettings.StateUnsupported:
-		return "この PC では使えません", atoms.BadgeWarn
+		return "この PC では使えません", atoms.BadgeMuted
 	case audiosettings.StateInstalling:
 		return "導入中", atoms.BadgeInfo
 	case audiosettings.StateNotInstalled:
 		return "未導入", atoms.BadgeNeutral
 	case audiosettings.StateWeightsMissing:
-		return "重みが未取得", atoms.BadgeWarn
+		return "重みが未取得", atoms.BadgeMuted
 	case audiosettings.StateStarting:
 		return "起動しています", atoms.BadgeInfo
 	case audiosettings.StateRunning:

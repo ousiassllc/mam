@@ -2,6 +2,7 @@ package settingsui_test
 
 import (
 	"context"
+	"io"
 	"strings"
 	"testing"
 
@@ -164,4 +165,41 @@ func TestCardItem_MarksComeBeforeTheStateAndAreBadgesWithWords(t *testing.T) {
 
 	card.Marks, card.State = nil, ""
 	assert.NotContains(t, render(t, settingsui.CardItem(card)), "inline-block rounded-full", "no badge when there is nothing to say")
+}
+
+func renderWith(t *testing.T, c templ.Component, children string) string {
+	t.Helper()
+	body := templ.ComponentFunc(func(_ context.Context, w io.Writer) error {
+		_, err := io.WriteString(w, children)
+		return err
+	})
+	var sb strings.Builder
+	require.NoError(t, c.Render(templ.WithChildren(context.Background(), body), &sb))
+	return sb.String()
+}
+
+// A Banner is the box of one cause: the title, the lines and the one button, in the ink of the page with an icon and a thin line at the left and no colour of a state.
+func TestBanner_HoldsTheTitleAndItsChildrenWithoutAStateColour(t *testing.T) {
+	html := renderWith(t, settingsui.Banner(atoms.IconKey, "alert", "x-banner", "足りません"), `<ul><li>一行</li></ul><a href="/settings/api-keys">API キーを設定</a>`)
+
+	assert.Contains(t, html, `role="alert"`)
+	assert.Contains(t, html, `data-testid="x-banner"`)
+	assert.Contains(t, html, `border-l-2`)
+	assert.Contains(t, html, `>足りません</p>`)
+	assert.Contains(t, html, `<li>一行</li>`)
+	assert.Contains(t, html, `API キーを設定</a>`)
+	for _, colour := range []string{"warning", "danger", "success", "info"} {
+		assert.NotContains(t, html, colour)
+	}
+}
+
+// A Note is one quiet sentence with an icon, in the ink of the page.
+func TestNote_IsTheSentenceInTheInkOfThePage(t *testing.T) {
+	html := renderWith(t, settingsui.Note(atoms.IconInfo, "status", "x-note"), "固定されています")
+
+	assert.Contains(t, html, `role="status"`)
+	assert.Contains(t, html, `data-testid="x-note"`)
+	assert.Contains(t, html, `text-ink`)
+	assert.Contains(t, html, `固定されています`)
+	assert.NotContains(t, html, "warning")
 }

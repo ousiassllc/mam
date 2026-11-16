@@ -16,6 +16,9 @@ const (
 	MenuLabel = "メニュー"
 	// LabelTheme names the button that switches between the Light and the Dark theme (static/src/components/theme).
 	LabelTheme = "ライト / ダークを切り替える"
+	// TextTheme is what the theme button shows: the open menu is 224px wide, where the whole of LabelTheme would break into two lines. It is the first words of
+	// LabelTheme, so the accessible name (LabelTheme) contains the visible text.
+	TextTheme = "ライト / ダーク"
 
 	itemClass   = "flex min-h-10 items-center gap-3 rounded-md border-l-2 px-3 py-1 text-sm transition-colors hover:bg-accent-soft hover:text-ink focus-visible:focus-ring motion-reduce:transition-none"
 	idleClass   = " border-transparent text-ink"
@@ -107,7 +110,7 @@ templ menu(s State, folded bool) {
 			class="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-mute transition-colors hover:bg-accent-soft hover:text-ink focus-visible:focus-ring motion-reduce:transition-none max-md:justify-center"
 		>
 			@atoms.Icon(atoms.IconTheme, "h-5 w-5")
-			<span class="max-md:sr-only group-data-[folded=true]:sr-only">{ LabelTheme }</span>
+			<span class="min-w-0 truncate whitespace-nowrap max-md:sr-only group-data-[folded=true]:sr-only">{ TextTheme }</span>
 		</button>
 	</nav>
 }

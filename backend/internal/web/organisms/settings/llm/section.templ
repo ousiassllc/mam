@@ -1,6 +1,9 @@
 package llm
 
 import (
+	"slices"
+	"strings"
+
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
@@ -21,19 +24,43 @@ templ Section(d Data) {
 			<p class="text-sm text-ink" data-testid="llm-pinned">起動オプション（--llm-config / MAM_LLM_CONFIG）で固定されています。この画面では変更できません。</p>
 		}
 		if d.Problem != "" {
-			<p class="text-sm text-warning" role="alert" data-testid="llm-problem">保存済みの設定ファイルを読み込めません（表示は既定値です）: { d.Problem }</p>
+			@settingsui.Banner(atoms.IconWarning, "alert", "llm-problem", "保存済みの設定ファイルを読み込めません（表示は既定値です）") {
+				<p class="break-words text-ink" data-testid="llm-problem-detail">{ d.Problem }</p>
+			}
+		}
+		if d.KeyBanner != nil {
+			@settingsui.Banner(atoms.IconKey, "status", "llm-key-banner", bannerTitle(*d.KeyBanner)) {
+				<ul class="flex flex-col gap-1 text-ink" data-testid="llm-key-shortages">
+					for _, s := range d.KeyBanner.Shortages {
+						<li class="break-words" data-testid="llm-key-shortage">
+							<span class="font-semibold">{ s.Provider }</span>
+							<span>{ shortageText(s) }</span>
+						</li>
+					}
+				</ul>
+				<div>
+					@atoms.ButtonLink(atoms.ToneNeutral, "API キーを設定", templ.SafeURL(d.KeyBanner.Route), templ.Attributes{"data-testid": "llm-key-link"})
+				</div>
+			}
 		}
 		if len(d.Warnings) > 0 {
-			<ul class="flex flex-col gap-1 text-sm text-warning" data-testid="llm-warnings">
-				for _, w := range d.Warnings {
-					<li data-testid="llm-warning">
-						{ w.Message }
-						if w.Route != "" {
-							<a class="underline" href={ templ.SafeURL(w.Route) }>設定を開く</a>
+			@settingsui.Banner(atoms.IconKey, "status", "llm-warnings", "使えない割り当てがあります") {
+				<ul class="flex flex-col gap-1 text-ink">
+					for _, w := range d.Warnings {
+						<li class="break-words" data-testid="llm-warning">
+							<span class="font-semibold">{ w.Provider }</span>: { w.Reason }
+							<span class="text-mute">（{ strings.Join(w.Uses, "、") } が指しています）</span>
+						</li>
+					}
+				</ul>
+				if routes := warningRoutes(d.Warnings); len(routes) > 0 {
+					<div class="flex flex-wrap gap-2">
+						for _, r := range routes {
+							@atoms.ButtonLink(atoms.ToneNeutral, "設定を開く", templ.SafeURL(r), templ.Attributes{"data-testid": "llm-warning-link"})
 						}
-					</li>
+					</div>
 				}
-			</ul>
+			}
 		}
 		if d.Notice != "" {
 			<p class="text-sm text-success" role="status" data-testid="llm-notice">{ d.Notice }</p>
@@ -64,6 +91,17 @@ templ Section(d Data) {
 			</details>
 		}
 	</section>
+}
+
+// warningRoutes are the screens that fix the warnings, each once and in the order the warnings name them: one button for each screen, not one for each line.
+func warningRoutes(ws []Warning) []string {
+	var routes []string
+	for _, w := range ws {
+		if w.Route != "" && !slices.Contains(routes, w.Route) {
+			routes = append(routes, w.Route)
+		}
+	}
+	return routes
 }
 
 // helpSubject is what the "?" beside the restart notice explains.
@@ -115,15 +153,19 @@ templ row(r Row, pinned, oob bool) {
 		@settingsui.RowHead("") {
 			{ r.Label }
 			<span class="mt-1 block text-xs font-normal text-mute xl:hidden">{ r.Purpose }</span>
+			@rowNote(r.Note, "xl:hidden")
 		}
 		@settingsui.Cell(purposeClass + " text-mute") {
 			{ r.Purpose }
+			@rowNote(r.Note, "")
 		}
 		@settingsui.Cell("min-w-40") {
 			{ r.Primary.Summary() }
+			@chip(r.PrimaryChip)
 		}
 		@settingsui.Cell("min-w-40") {
 			{ r.Fallback.Summary() }
+			@chip(r.FallbackChip)
 		}
 		@settingsui.Cell("whitespace-nowrap") {
 			<span class="flex flex-col items-start gap-1">
@@ -139,5 +181,24 @@ templ row(r Row, pinned, oob bool) {
 				@atoms.SmallButtonFor(atoms.ToneNeutral, "編集", r.Label, modal.OpenAttrs(paths.LLMAgentEdit(r.Agent), FocusKey(r.Agent)))
 			}
 		}
+	}
+}
+
+// chip is the small label under the name of a target whose API key is not registered, on a line of its own: the short word as a quiet badge (a light ground with the muted
+// ink). The full reason is the tooltip and, for a screen reader, the text after the word. The banner above the table is the way to fix it, once for all of them.
+templ chip(c Chip) {
+	if c.Label != "" {
+		<span class="mt-1 block w-fit">
+			@atoms.BadgeWith(atoms.BadgeMuted, c.Label, templ.Attributes{"title": c.Title, "data-testid": "llm-chip"})
+			<span class="sr-only">：{ c.Title }</span>
+		</span>
+	}
+}
+
+// rowNote is what the row does now when its primary cannot be used and its alternative can, under the purpose: the muted ink, no colour of a state. class is what the place adds (the
+// copy under the name of the Agent is only for a window narrower than xl, where the purpose column is hidden).
+templ rowNote(text, class string) {
+	if text != "" {
+		<span class={ "mt-1 block text-xs font-normal text-mute", class } data-testid="llm-row-note">{ text }</span>
 	}
 }

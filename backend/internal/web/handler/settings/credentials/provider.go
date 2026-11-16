@@ -82,7 +82,7 @@ func providerChoice(c *gin.Context, k Keys, statuses []service.CredentialStatus)
 	for _, m := range v.Models {
 		pm := view.ProviderModel{Label: m.Label, Supported: m.Supported, Why: m.Why, Prices: pricesText(m.PerSecond)}
 		if m.Supported && v.Selected != modelsettings.ProviderOfficial {
-			pm.KeyLabel, pm.KeySet = v.Selected.Label(), keySet[v.Selected.Vendor()]
+			pm.KeyLabel, pm.KeyProvider, pm.KeySet = v.Selected.Label(), v.Selected.Vendor(), keySet[v.Selected.Vendor()]
 		}
 		d.Models = append(d.Models, pm)
 	}

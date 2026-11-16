@@ -69,6 +69,8 @@ func TestHealth_SaysHowManyEndpointsAnswerAndTheOverviewCardReadsIt(t *testing.T
 	rec := s.get(paths.LocalModelsHealth())
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.Contains(t, rec.Body.String(), "2 件中 1 件に接続できます")
+	assert.Contains(t, rec.Body.String(), `bg-accent-soft text-mute`, "an endpoint that does not answer is a quiet chip")
+	assert.NotContains(t, rec.Body.String(), "warning", "and not yellow")
 	assert.Equal(t, "no-store", rec.Header().Get("Cache-Control"))
 }
 

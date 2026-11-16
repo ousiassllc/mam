@@ -58,7 +58,7 @@ func (d Data) card() molecules.ToolCard {
 	tone := atoms.BadgeNeutral
 	text := d.State
 	if d.Problem != "" {
-		tone, text = atoms.BadgeWarn, d.State+"（"+d.Problem+"）"
+		tone, text = atoms.BadgeMuted, d.State+"（"+d.Problem+"）"
 	}
 	return molecules.ToolCard{
 		ID: "llm-local", Href: templ.SafeURL(paths.ModelManagerCategory(paths.MMLocalLLM)), Icon: atoms.IconNetwork, Title: "ローカル LLM サーバー", Description: description,

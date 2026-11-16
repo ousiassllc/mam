@@ -50,9 +50,9 @@ templ endpointDetails(e Endpoint) {
 	</div>
 	@KeyRow(e.Name, e.Key)
 	if e.NoPage {
-		<p class="text-sm text-warning" data-testid="local-endpoint-no-page">
+		@settingsui.Note(atoms.IconWarning, "status", "local-endpoint-no-page") {
 			「{ e.Name }」は接続先の追加の画面と同じ URL になるため、この接続先のモデルは開けません。削除して、別の名前で作り直してください。
-		</p>
+		}
 	}
 }
 
@@ -130,7 +130,7 @@ templ KeyRow(endpoint string, k Key) {
 			<span class="text-xs text-mute">API キー（任意）:</span>
 			if k.Unavailable {
 				<span data-testid="local-key-state">
-					@atoms.Badge(atoms.BadgeWarn, "キーストアを利用できません")
+					@atoms.Badge(atoms.BadgeMuted, "キーストアを利用できません")
 				</span>
 			} else if k.Configured {
 				<span data-testid="local-key-state">
@@ -183,7 +183,7 @@ templ TestResult(t TestView) {
 			<p class="whitespace-pre-line text-danger" role="alert">{ t.Message }</p>
 		}
 		if t.Note != "" {
-			<p class="text-warning" data-testid="local-test-note">{ t.Note }</p>
+			<p class="text-ink" data-testid="local-test-note">{ t.Note }</p>
 		}
 		if len(t.Models) > 0 {
 			<p class="text-mute" data-testid="local-test-models">モデル: { joinNames(t.Models) }</p>
