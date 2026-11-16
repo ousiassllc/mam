@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/viaprovider"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/modelfilter"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
@@ -168,4 +169,29 @@ func TestView_AdultModelsAreNeverCandidatesOfTheReport(t *testing.T) {
 		}
 	}
 	require.True(t, found, "the report has the route of image/new_reference")
+}
+
+// #1157: an unusable route says whose API key the model is called with, so that the screen can group the models by the key they need. The key is the vendor the model
+// is called through (modeladapter.Config.VendorOf), which the video API provider setting changes: Kling 3.0 is fal.ai's when fal.ai is the provider.
+func TestView_UnusableRoutesSayWhoseKeyTheModelNeeds(t *testing.T) {
+	svc, _ := newService(t)
+	svc.SetAvailability(noKey(domain.ModelNanoBanana, domain.ModelGPTImage26Flare, domain.ModelKling3, domain.ModelSeedance2, domain.ModelRunwayGen45))
+	vendors := func() map[domain.ModelName]string {
+		v, err := svc.View()
+		require.NoError(t, err)
+		out := map[domain.ModelName]string{}
+		for _, u := range v.Unusable {
+			out[u.Model] = u.Vendor
+		}
+		return out
+	}
+
+	assert.Equal(t, map[domain.ModelName]string{
+		domain.ModelNanoBanana: "google", domain.ModelGPTImage26Flare: "openai", domain.ModelKling3: "kling", domain.ModelSeedance2: "seedance", domain.ModelRunwayGen45: "runway",
+	}, vendors(), "the maker's own API by default")
+
+	require.NoError(t, svc.SaveVideoProvider(viaprovider.Fal))
+	got := vendors()
+	assert.Equal(t, "fal", got[domain.ModelKling3], "the model fal.ai serves is called with fal.ai's key")
+	assert.Equal(t, "seedance", got[domain.ModelSeedance2], "a model the provider does not serve keeps its maker's key")
 }

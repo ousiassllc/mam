@@ -31,7 +31,11 @@ type UnusableRoute struct {
 	// Media is "image" or "video"; Key is the image purpose or the Quality Policy; Role is "primary" or "fallback".
 	Media, Key, Role string
 	Model            domain.ModelName
-	Availability     modelfilter.Availability
+	// Vendor is the vendor whose API key the model is called with (modeladapter.Config.VendorOf: the video provider setting applied, so Kling 3.0 through
+	// OpenRouter is OpenRouter's): the credential.Store key that is missing when the reason is modelfilter.ReasonNoKey. The handler layer reads it as a
+	// plain string (it may not import the agent layer).
+	Vendor       string
+	Availability modelfilter.Availability
 }
 
 // unusableRoutes lists the routes of cfg that name a model that cannot be used now, images first, in the order of the screen.
@@ -39,7 +43,7 @@ func (s *Service) unusableRoutes(cfg modeladapter.Config) []UnusableRoute {
 	var out []UnusableRoute
 	add := func(media, key, role string, m domain.ModelName) {
 		if a := s.availabilityOf(m); !a.Available {
-			out = append(out, UnusableRoute{Media: media, Key: key, Role: role, Model: m, Availability: a})
+			out = append(out, UnusableRoute{Media: media, Key: key, Role: role, Model: m, Vendor: string(cfg.VendorOf(m)), Availability: a})
 		}
 	}
 	for _, p := range modeladapter.ImagePurposes() {

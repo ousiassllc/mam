@@ -6,10 +6,13 @@ type BadgeTone string
 // Badge tones.
 const (
 	BadgeNeutral BadgeTone = "neutral"
-	BadgeInfo    BadgeTone = "info"
-	BadgeWarn    BadgeTone = "warn"
-	BadgeOK      BadgeTone = "ok"
-	BadgeError   BadgeTone = "error"
+	// BadgeMuted is the quietest label: a light ground with the muted ink (the "キー未登録" beside a model that cannot be used now), for a state that is a fact
+	// of the table and not an alarm.
+	BadgeMuted BadgeTone = "muted"
+	BadgeInfo  BadgeTone = "info"
+	BadgeWarn  BadgeTone = "warn"
+	BadgeOK    BadgeTone = "ok"
+	BadgeError BadgeTone = "error"
 )
 
 func badgeClass(tone BadgeTone) string {
@@ -27,6 +30,8 @@ func badgeColors(tone BadgeTone) string {
 		return "bg-success/20 text-success"
 	case BadgeError:
 		return "bg-danger/20 text-danger"
+	case BadgeMuted:
+		return "bg-accent-soft text-mute"
 	}
 	return "bg-accent-soft text-ink"
 }

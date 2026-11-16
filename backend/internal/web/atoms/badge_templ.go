@@ -14,10 +14,13 @@ type BadgeTone string
 // Badge tones.
 const (
 	BadgeNeutral BadgeTone = "neutral"
-	BadgeInfo    BadgeTone = "info"
-	BadgeWarn    BadgeTone = "warn"
-	BadgeOK      BadgeTone = "ok"
-	BadgeError   BadgeTone = "error"
+	// BadgeMuted is the quietest label: a light ground with the muted ink (the "キー未登録" beside a model that cannot be used now), for a state that is a fact
+	// of the table and not an alarm.
+	BadgeMuted BadgeTone = "muted"
+	BadgeInfo  BadgeTone = "info"
+	BadgeWarn  BadgeTone = "warn"
+	BadgeOK    BadgeTone = "ok"
+	BadgeError BadgeTone = "error"
 )
 
 func badgeClass(tone BadgeTone) string {
@@ -35,6 +38,8 @@ func badgeColors(tone BadgeTone) string {
 		return "bg-success/20 text-success"
 	case BadgeError:
 		return "bg-danger/20 text-danger"
+	case BadgeMuted:
+		return "bg-accent-soft text-mute"
 	}
 	return "bg-accent-soft text-ink"
 }
@@ -124,7 +129,7 @@ func BadgeWith(tone BadgeTone, text string, attrs templ.Attributes) templ.Compon
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/badge.templ`, Line: 41, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/badge.templ`, Line: 46, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -201,7 +206,7 @@ func BadgeIcon(tone BadgeTone, icon IconName, text string, attrs templ.Attribute
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/badge.templ`, Line: 48, Col: 14}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/badge.templ`, Line: 53, Col: 14}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {

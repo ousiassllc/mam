@@ -16,9 +16,6 @@ const (
 	SlotFallback = "fallback"
 )
 
-// Warning is a saved route that names a model that cannot be used now: the sentence and the screen that fixes it (Route; "" when none helps).
-type Warning struct{ Message, Route string }
-
 // ImageModelField is the name of the model field of an image purpose's slot (the hidden input of its model picker).
 func ImageModelField(purpose, slot string) string { return "image_" + purpose + "_" + slot + "_model" }
 
@@ -64,14 +61,17 @@ type ImageModel struct {
 }
 
 // ImageTarget is the saved choice of one slot of an image purpose. Unusable: the model is not among the choices (an adult
-// model while the age confirmation is off), so the slot cannot be used until another is chosen.
+// model while the age confirmation is off), so the slot cannot be used until another is chosen. Chip is why a model among
+// the choices cannot be used now (no API key...).
 type ImageTarget struct {
 	Model    string
 	Fast     bool
 	Unusable bool
+	Chip     Chip
 }
 
-// ImageRow is one image purpose. ReferenceNote, when set, says which of its models do not use reference images.
+// ImageRow is one image purpose. ReferenceNote, when set, says which of its models do not use reference images. Note says
+// what a generation would do with the route when its models cannot all be used.
 type ImageRow struct {
 	Purpose       string
 	Label         string
@@ -79,10 +79,11 @@ type ImageRow struct {
 	Primary       ImageTarget
 	Fallback      ImageTarget
 	ReferenceNote string
+	Note          RowNote
 }
 
-// PolicyRow is one Quality Policy: the video models (a VideoChoice.Value each), whether each is unusable, and the number
-// of Takes.
+// PolicyRow is one Quality Policy: the video models (a VideoChoice.Value each), whether each is unusable (not among the
+// choices) or has a Chip (among them, but cannot be used now), the number of Takes, and the Note of the route.
 type PolicyRow struct {
 	Policy           string
 	Label            string
@@ -90,7 +91,10 @@ type PolicyRow struct {
 	Fallback         string
 	PrimaryUnusable  bool
 	FallbackUnusable bool
+	PrimaryChip      Chip
+	FallbackChip     Chip
 	Takes            int
+	Note             RowNote
 }
 
 // Data is the category: the saved assignment (the app applies a saved change at once). Pinned: the file was fixed by a
@@ -107,11 +111,11 @@ type Data struct {
 	Problem    string
 	// GatedNote, when set, says the saved assignment names adult models that are not offered while the age confirmation is off.
 	GatedNote string
-	// Warnings say which saved routes name a model that cannot be used now (no API key, not signed in, not installed...), each with where it is fixed (#1013). The
-	// routes stay; the warning only says so.
-	Warnings []Warning
-	Images   []ImageRow
-	Policies []PolicyRow
+	// KeyBanner, when set, is the one banner for the models of the saved assignment whose API key is not registered (#1157). Other reasons a model cannot be used now
+	// (not signed in, not installed...) are the Chip of the model and the Note of its row. The routes stay; the screen only says so.
+	KeyBanner *KeyBanner
+	Images    []ImageRow
+	Policies  []PolicyRow
 }
 
 // ImageForm is what the modal of an image purpose is drawn from: the row (after a refusal, what was typed), the models that

@@ -1,0 +1,86 @@
+package media
+
+import (
+	"strconv"
+	"strings"
+
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
+
+// bannerTitle says how many rows of the assignment cannot run for want of an API key and how many run on their alternative. With no row that cannot run it
+// only says that some run on their alternative.
+func bannerTitle(b KeyBanner) string {
+	if b.Blocked == 0 {
+		return "一部は代替モデルで動いています"
+	}
+	title := "API キーが足りないため、用途・Quality Policy " + strconv.Itoa(b.Rows) + " 件のうち " + strconv.Itoa(b.Blocked) + " 件で生成できません"
+	if b.Covered > 0 {
+		title += "。" + strconv.Itoa(b.Covered) + " 件は代替モデルで動いています"
+	}
+	return title
+}
+
+// shortageText says which models the key lets the assignment use.
+func shortageText(s KeyShortage) string {
+	return "のキーを入れると、" + strings.Join(s.Models, "、") + " が使えるようになります"
+}
+
+// keyBanner is the one banner for the models whose API key is not registered: the sentence of the cause, one line for each missing key (the provider and the
+// models it would let the assignment use), and the one button to the screen that registers the keys. The state is told by the icon
+// and the words, in the ink of the page: a thin line at the left, no colour of a state.
+templ keyBanner(b KeyBanner) {
+	<section class="flex gap-3 rounded-md border border-border border-l-2 bg-surface p-3 text-sm" role="status" data-testid="model-assignment-key-banner">
+		@atoms.Icon(atoms.IconKey, "mt-1 h-5 w-5 shrink-0 text-mute")
+		<div class="flex min-w-0 flex-1 flex-col gap-2">
+			<p class="font-semibold text-ink" data-testid="model-assignment-key-banner-title">{ bannerTitle(b) }</p>
+			<ul class="flex flex-col gap-1 text-ink" data-testid="model-assignment-key-shortages">
+				for _, s := range b.Shortages {
+					<li class="break-words" data-testid="model-assignment-key-shortage">
+						<span class="font-semibold">{ s.Provider }</span>
+						<span>{ shortageText(s) }</span>
+					</li>
+				}
+			</ul>
+			<div>
+				@atoms.ButtonLink(atoms.ToneNeutral, "API キーを設定", templ.SafeURL(b.Route), templ.Attributes{"data-testid": "model-assignment-key-link"})
+			</div>
+		</div>
+	</section>
+}
+
+// quietNote is a note of the section in the ink of the page with a small icon (the age gate, the file fixed by a start-up option): no colour of a state.
+templ quietNote(testID, text string) {
+	<div class="flex items-start gap-2 text-sm text-ink" role="status" data-testid={ testID }>
+		@atoms.Icon(atoms.IconInfo, "h-5 w-5 shrink-0 text-mute")
+		<p class="min-w-0 break-words">{ text }</p>
+	</div>
+}
+
+// chip is the small label under the name of a model (on a line of its own, in the column of the primary model as in the one of the alternative) that cannot be used now: the short word as a quiet badge (a light ground with the muted ink). The full reason is the
+// tooltip and, for a screen reader, the text after the word. A chip with a Route links to the screen that fixes it.
+templ chip(c Chip) {
+	if c.Label != "" {
+		if c.Route != "" {
+			<a class="mt-1 block w-fit underline" href={ templ.SafeURL(c.Route) }>
+				@chipBadge(c)
+			</a>
+		} else {
+			<span class="mt-1 block w-fit">
+				@chipBadge(c)
+			</span>
+		}
+	}
+}
+
+templ chipBadge(c Chip) {
+	@atoms.BadgeWith(atoms.BadgeMuted, c.Label, templ.Attributes{"title": c.Title, "data-testid": "model-chip"})
+	<span class="sr-only">：{ c.Title }</span>
+}
+
+// rowNote is what a generation would do with the route of a row whose models cannot all be used, under the name of the row: the muted ink, and the ink of the page
+// when the generation is refused.
+templ rowNote(n RowNote) {
+	if n.Text != "" {
+		<span class={ "mt-1 block text-xs font-normal", templ.KV("text-ink", n.Kind == NoteBlocked), templ.KV("text-mute", n.Kind != NoteBlocked) } data-testid="model-assignment-row-note" data-kind={ n.Kind }>{ n.Text }</span>
+	}
+}

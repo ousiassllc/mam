@@ -101,11 +101,13 @@ type View struct {
 	// Pinned: the file was fixed by --model-config; the assignment is shown but cannot be changed.
 	Pinned bool
 	// Customized: the file overrides at least one image purpose or Quality Policy.
-	Customized  bool
-	Images      map[modeladapter.ImagePurpose]modeladapter.ImageRoute
-	Policies    map[domain.QualityPolicy]modeladapter.PolicyRoute
-	ImageModels []ImageOption
-	VideoModels []VideoOption
+	Customized bool
+	// PreferOpenAI is the setting prefer_openai of the file: while it is on, new references run on the OpenAI-unified purpose.
+	PreferOpenAI bool
+	Images       map[modeladapter.ImagePurpose]modeladapter.ImageRoute
+	Policies     map[domain.QualityPolicy]modeladapter.PolicyRoute
+	ImageModels  []ImageOption
+	VideoModels  []VideoOption
 	// Gated are the adult models the saved routes still name while the age confirmation is off: they are not among
 	// ImageModels / VideoModels, generation with them is refused, and Save refuses a route that names one.
 	Gated []domain.ModelName
@@ -154,15 +156,16 @@ func (s *Service) View() (View, error) {
 	}
 	def := modeladapter.DefaultConfig()
 	v := View{
-		Pinned:      s.pinned,
-		Customized:  !maps.Equal(cfg.Images, def.Images) || !maps.Equal(cfg.Policies, def.Policies),
-		Images:      cfg.Images,
-		Policies:    cfg.Policies,
-		ImageModels: imageOptions(cfg, s.gated),
-		VideoModels: videoOptions(cfg, s.gated),
-		Gated:       s.gatedRoutes(cfg),
-		Unusable:    s.unusableRoutes(cfg),
-		Routes:      s.routes(cfg),
+		Pinned:       s.pinned,
+		Customized:   !maps.Equal(cfg.Images, def.Images) || !maps.Equal(cfg.Policies, def.Policies),
+		PreferOpenAI: cfg.PreferOpenAI,
+		Images:       cfg.Images,
+		Policies:     cfg.Policies,
+		ImageModels:  imageOptions(cfg, s.gated),
+		VideoModels:  videoOptions(cfg, s.gated),
+		Gated:        s.gatedRoutes(cfg),
+		Unusable:     s.unusableRoutes(cfg),
+		Routes:       s.routes(cfg),
 	}
 	s.withAvailability(v.ImageModels, v.VideoModels)
 	return v, nil
