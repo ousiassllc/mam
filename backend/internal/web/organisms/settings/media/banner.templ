@@ -56,16 +56,16 @@ templ quietNote(testID, text string) {
 	</div>
 }
 
-// chip is the small label beside a model that cannot be used now: the short word as a quiet badge (a light ground with the muted ink). The full reason is the
+// chip is the small label under the name of a model (on a line of its own, in the column of the primary model as in the one of the alternative) that cannot be used now: the short word as a quiet badge (a light ground with the muted ink). The full reason is the
 // tooltip and, for a screen reader, the text after the word. A chip with a Route links to the screen that fixes it.
 templ chip(c Chip) {
 	if c.Label != "" {
 		if c.Route != "" {
-			<a class="ml-1 underline" href={ templ.SafeURL(c.Route) }>
+			<a class="mt-1 block w-fit underline" href={ templ.SafeURL(c.Route) }>
 				@chipBadge(c)
 			</a>
 		} else {
-			<span class="ml-1">
+			<span class="mt-1 block w-fit">
 				@chipBadge(c)
 			</span>
 		}

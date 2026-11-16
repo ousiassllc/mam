@@ -54,7 +54,7 @@ func Data(v modelsettings.View) media.Data {
 	for _, q := range domain.QualityPolicies() {
 		d.Policies = append(d.Policies, policyRow(v, q, v.Policies[q]))
 	}
-	if b, ok := keyBanner(v, len(d.Images)+len(d.Policies)); ok {
+	if b, ok := keyBanner(v); ok {
 		d.KeyBanner = &b
 	}
 	return d

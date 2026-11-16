@@ -86,8 +86,11 @@ const editColumn = "whitespace-nowrap text-right"
 // takesColumn keeps the header of the number of Takes on one line and the column as wide as its content (w-px: the narrowest the header lets it be).
 const takesColumn = "w-px whitespace-nowrap"
 
-// modelCell keeps the name of a model from being broken into pieces by a row head that takes the width.
+// modelCell keeps a column of models from being squeezed by a row head that takes the width.
 const modelCell = "min-w-36"
+
+// modelName keeps the name of a model on one line: it is never broken into pieces.
+const modelName = "whitespace-nowrap"
 
 func imageColumns(pinned bool) []settingsui.Column {
 	cols := []settingsui.Column{{Header: "用途"}, {Header: "主モデル"}, {Header: "代替モデル"}}
@@ -141,7 +144,7 @@ templ imageRow(r ImageRow, pinned, oob bool) {
 }
 
 templ imageTarget(t ImageTarget) {
-	{ t.Model }
+	<span class={ modelName }>{ t.Model }</span>
 	if t.Fast {
 		<span class="text-xs text-mute">（高速版）</span>
 	}
@@ -175,7 +178,7 @@ templ policyRow(r PolicyRow, pinned, oob bool) {
 }
 
 templ policyTarget(value string, unusable bool, c Chip) {
-	{ value }
+	<span class={ modelName }>{ value }</span>
 	if unusable {
 		<span class="text-xs text-mute">{ UnusableSuffix }</span>
 	}

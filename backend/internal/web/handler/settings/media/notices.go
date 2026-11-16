@@ -3,6 +3,7 @@ package media
 import (
 	"slices"
 
+	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/modelfilter"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/service/modelsettings"
@@ -84,18 +85,49 @@ func providerLabel(id string) string {
 // routeKey names one row of the two tables: an image purpose or a Quality Policy.
 type routeKey struct{ media, key string }
 
-// keyBanner counts the rows of the tables (rows: how many there are, image purposes and Quality Policies together) that the missing API keys touch, and groups the
-// missing keys by the key they need, the biggest shortage first (which provider's key, which models it would let the assignment use). A row is
+// counted reports whether a row of the tables is one the banner counts: a purpose or a Quality Policy that a generation can run on. The preview purpose is
+// asked for by no feature, and the OpenAI-unified one only while the setting prefer_openai is on; both stay in the table, but a key that only they need
+// is nothing the banner asks for.
+func counted(preferOpenAI bool, mediaName, key string) bool {
+	if mediaName != "image" {
+		return true
+	}
+	switch modelsettings.ImagePurpose(key) {
+	case modelsettings.PurposePreview:
+		return false
+	case modelsettings.PurposeUnifiedOpenAI:
+		return preferOpenAI
+	}
+	return true
+}
+
+// countedRows is how many rows of the two tables the banner counts (T): the image purposes that counted says yes to and every Quality Policy.
+func countedRows(preferOpenAI bool) int {
+	n := len(domain.QualityPolicies())
+	for _, p := range modelsettings.ImagePurposes() {
+		if counted(preferOpenAI, "image", string(p)) {
+			n++
+		}
+	}
+	return n
+}
+
+// keyBanner counts the rows of the tables that the missing API keys touch (only the rows counted says yes to; T is how many of them there are), and groups the
+// missing keys by the key they need, the biggest shortage first (which provider's key, which models it would let the assignment use). A key that only
+// rows not counted need has no line. A row is
 //   - blocked when neither its primary nor its alternative can be used and one of them lacks its API key: nothing of it runs until a key is put in;
 //   - covered when its primary lacks its API key and its alternative can be used: it runs on the alternative.
 //
 // A row whose primary runs is neither, whatever its alternative lacks. It is false when no row is blocked or covered.
-func keyBanner(v modelsettings.View, rows int) (media.KeyBanner, bool) {
-	b := media.KeyBanner{Rows: rows}
+func keyBanner(v modelsettings.View) (media.KeyBanner, bool) {
+	b := media.KeyBanner{Rows: countedRows(v.PreferOpenAI)}
 	index := map[string]int{} // vendor -> position in b.Shortages
 	unusable := map[routeKey]map[string]bool{}
 	noKey := map[routeKey]map[string]bool{}
 	for _, u := range v.Unusable {
+		if !counted(v.PreferOpenAI, u.Media, u.Key) {
+			continue
+		}
 		rk := routeKey{u.Media, u.Key}
 		if unusable[rk] == nil {
 			unusable[rk], noKey[rk] = map[string]bool{}, map[string]bool{}
