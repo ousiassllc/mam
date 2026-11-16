@@ -17,7 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
-const omniAPIModel = "gemini-omni-1.1-flash"
+const omniAPIModel = "gemini-omni-1.2-flash"
 
 func omniRequest() modeladapter.VideoRequest {
 	return modeladapter.VideoRequest{Prompt: "A cat on a windowsill.", DurationSeconds: 5, Resolution: "720p", AspectRatio: "16:9"}
@@ -75,7 +75,8 @@ func TestGeminiOmniBackendAsksForTheVideoPollsTheFileAndDownloadsIt(t *testing.T
 	assert.EqualValues(t, 3, polls.Load(), "the file is polled until it is ACTIVE")
 	assert.Equal(t, "k", downloadKey.Load())
 	assert.Equal(t, omniAPIModel, submitted["model"])
-	assert.Equal(t, map[string]any{"type": "video", "aspect_ratio": "16:9", "resolution": "720p", "delivery": "uri"}, submitted["response_format"])
+	assert.Equal(t, map[string]any{"type": "video", "aspect_ratio": "16:9", "resolution": "720p", "delivery": "uri", "duration": "5s"}, submitted["response_format"],
+		"the length goes to the API as response_format.duration: it wins over the prompt, and the model makes 10 seconds without it")
 	assert.Equal(t, map[string]any{"video_config": map[string]any{"task": "text_to_video"}}, submitted["generation_config"])
 	assert.Equal(t, []any{map[string]any{"type": "text", "text": "A cat on a windowsill."}}, submitted["input"], "no images for a text-to-video request")
 }

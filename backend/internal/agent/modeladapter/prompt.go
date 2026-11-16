@@ -6,6 +6,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/shotprompt"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/viaprovider"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/videocaps"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -33,7 +34,7 @@ type VideoJob struct {
 
 // Prepare renders the Canonical Shot Spec for one video model: an English prompt, a negative
 // prompt for models that take one, the clip length the model supports and the inputs it can use
-// (capped by its capabilities).
+// (capped by its capabilities). Gemini Omni Flash with two frames over 10 seconds is refused (videocaps.CheckInterpolation).
 func Prepare(target VideoTarget, job VideoJob) (VideoRequest, error) {
 	return publishedConfig().Prepare(target, job)
 }
@@ -98,5 +99,5 @@ func (c Config) Prepare(target VideoTarget, job VideoJob) (VideoRequest, error) 
 	default: // models without a negative prompt get the constraints as part of the prompt
 		req.Prompt = shotprompt.Fit(body, constraints+shotprompt.AvoidSentence(avoid), 2400)
 	}
-	return req, nil
+	return req, videocaps.CheckInterpolation(target.Model, req.DurationSeconds, req.FirstFrame != nil && req.LastFrame != nil)
 }

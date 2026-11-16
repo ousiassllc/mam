@@ -12,8 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
-// omniReferenceGuide is the closing sentence the Omni guide asks for with reference images, so that they are not used as
-// literal first frames (https://ai.google.dev/gemini-api/docs/omni, "Declaring sources and references").
+// omniReferenceGuide closes a prompt with reference images so that they are not used as literal first frames (https://ai.google.dev/gemini-api/docs/omni).
 const omniReferenceGuide = " Use the given image(s) as references for video generation. The images should not be used as literal initial frames."
 
 // geminiOmniBackend calls Gemini Omni Flash through the Interactions API (spec/architecture/model-adapters.md §9.1): the clip
@@ -95,7 +94,7 @@ func (b geminiOmniBackend) body(apiModel string, req VideoRequest) ([]byte, erro
 		"model": apiModel,
 		"input": input,
 		"response_format": map[string]any{
-			"type": "video", "aspect_ratio": req.AspectRatio, "resolution": req.Resolution, "delivery": "uri",
+			"type": "video", "aspect_ratio": req.AspectRatio, "resolution": req.Resolution, "delivery": "uri", "duration": strconv.Itoa(int(req.DurationSeconds)) + "s",
 		},
 	}
 	if task != "" {

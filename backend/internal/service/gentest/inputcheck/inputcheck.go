@@ -44,8 +44,8 @@ type Plan struct {
 	Used   []int
 	Unused []Unused
 	Notes  []Note
-	// FirstFrame says the model is given a first frame.
-	FirstFrame bool
+	// FirstFrame says the model is given a first frame, LastFrame a last frame (it needs a first frame too).
+	FirstFrame, LastFrame bool
 }
 
 // Model is what the check needs to know of a chosen model.
@@ -165,7 +165,7 @@ func frames(caps modeladapter.VideoCapabilities, label string, roles []string) P
 	p.Used = append(p.Used, free...)
 	slices.Sort(p.Used)
 	p.Unused = UnusedOf(len(roles), p.Used, func(i int) string { return reasons[i] })
-	p.FirstFrame = first
+	p.FirstFrame, p.LastFrame = first, last
 	return p
 }
 

@@ -26,8 +26,8 @@ func defaultModels() map[domain.ModelName]ModelConfig {
 		domain.ModelSeedance2: {Model: "seedance-2-0", CostPerSecond: map[string]float64{"480p": 0.07, "720p": 0.15, "1080p": 0.37}},
 		// Runway prices in credits (12 credits per second of Gen-4.5, 1 credit = USD 0.01).
 		domain.ModelRunwayGen45: {Model: "gen4.5", CostPerSecond: map[string]float64{"720p": 0.12}},
-		// Gemini Omni Flash prices in tokens ($17.50 per million video output tokens, 5,792 per second of 720p video): about USD 0.10 per second.
-		domain.ModelGeminiOmniFlash: {Model: "gemini-omni-1.1-flash", CostPerSecond: map[string]float64{"720p": 0.10}},
+		// Gemini Omni 1.2 Flash prices in tokens ($12.00 per million): 5,792 per second of 720p video (USD 0.0695), 8,688 per second of upscaled 1080p (USD 0.104).
+		domain.ModelGeminiOmniFlash: {Model: "gemini-omni-1.2-flash", CostPerSecond: map[string]float64{"720p": 0.0695, "1080p": 0.104}},
 		// Kling 4.0 prices in units (1 unit = USD 0.14 list price): 1.0 per second at 720p, 1.5 at 1080p, no video input; the pricing page marks them "preview" (spec §9.4).
 		domain.ModelKling4: {Model: "kling-4.0", CostPerSecond: map[string]float64{"720p": 0.14, "1080p": 0.21}},
 		// Seedance 2.5 prices in tokens ($10.70 per million at 480p and 720p, $11.70 at 1080p; no video input): the official per-second figures of a 16:9 clip.

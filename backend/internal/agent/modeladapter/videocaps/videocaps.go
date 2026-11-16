@@ -3,7 +3,12 @@
 // defined as this package's Capabilities (a defined type with the same fields), so that one converts to the other.
 package videocaps
 
-import "github.com/ousiassllc/mam/backend/internal/domain"
+import (
+	"fmt"
+
+	"github.com/ousiassllc/mam/backend/internal/apperr"
+	"github.com/ousiassllc/mam/backend/internal/domain"
+)
 
 // Capabilities is what a video model can do (modeladapter.VideoCapabilities).
 type Capabilities struct {
@@ -20,6 +25,19 @@ type Capabilities struct {
 	NativeAudio bool
 	// AudioInput means the model is given a sound file (speech to video: Wan 2.2 S2V; VideoRequest.Audio).
 	AudioInput bool
+}
+
+// CheckInterpolation refuses (apperr input_unsupported, HTTP 422) a clip with both a first and a last frame (both) that is longer than
+// Gemini Omni Flash makes from two frames, 10 seconds (the official Omni guide, "Limitations": the API returns invalid argument; one
+// image or text goes up to 15 seconds). The length is not shortened and no frame is dropped. Any other request or model passes (nil).
+func CheckInterpolation(m domain.ModelName, seconds float64, both bool) error {
+	const limit = 10
+	if m != domain.ModelGeminiOmniFlash || !both || seconds <= limit {
+		return nil
+	}
+	return apperr.New(apperr.CodeInputUnsupported).
+		WithCause(fmt.Sprintf("最初と最後のフレームの両方を使うと、Gemini Omni Flash は %d 秒までの動画しか作れません（指定は %g 秒）。長さを %d 秒以下にするか、どちらかのフレームを外してください。", limit, seconds, limit)).
+		WithDetail(fmt.Sprintf("%s makes at most %d seconds from a first and a last frame, the request is %g seconds", m, limit, seconds))
 }
 
 // WholeSeconds lists the lengths from..to in whole seconds.
@@ -55,11 +73,11 @@ func Of(m domain.ModelName) (Capabilities, bool) {
 		// Text-to-video and image-to-video (first frame only) at 720p; no free reference images.
 		return Capabilities{Durations: []float64{2, 3, 4, 5, 6, 7, 8, 9, 10}, Resolutions: []string{"720p"}, FirstFrame: true}, true
 	case domain.ModelGeminiOmniFlash:
-		// 3-10 s, 24 FPS, with native sound. 360p, 1080p and 4K exist but only the 720p price is published per second, so only
-		// 720p is offered. First and last frame, or free reference images (the two are exclusive in Prepare); no length parameter:
-		// the length is asked for in the prompt. The official documentation states no limit for reference images: 6 is its example.
+		// 3-15 s in whole seconds, 24 FPS, with native sound. 360p and 4K exist too, but only 720p and 1080p (upscaled) are offered:
+		// they are the sizes of a video of a Shot. First and last frame, or free reference images (the two are exclusive in Prepare); the length is sent as
+		// response_format.duration. The two frames make up to 10 s only (CheckInterpolation refuses more). The official documentation states a limit of 6 reference images.
 		return Capabilities{
-			Durations: []float64{3, 4, 5, 6, 7, 8, 9, 10}, Resolutions: []string{"720p"},
+			Durations: WholeSeconds(3, 15), Resolutions: []string{"720p", "1080p"},
 			MaxReferenceImages: 6, FirstFrame: true, LastFrame: true, NativeAudio: true,
 		}, true
 	case domain.ModelKling4:

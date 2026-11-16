@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
 
@@ -15,9 +16,10 @@ import (
 // by their identifier, but the default Quality Policies and Multi-model routing candidates do not use them.
 
 var (
-	omniTarget   = modeladapter.VideoTarget{Model: domain.ModelGeminiOmniFlash, Resolution: "720p"}
-	kling4Target = modeladapter.VideoTarget{Model: domain.ModelKling4, Resolution: "1080p"}
-	seed25Target = modeladapter.VideoTarget{Model: domain.ModelSeedance25, Resolution: "720p"}
+	omniTarget     = modeladapter.VideoTarget{Model: domain.ModelGeminiOmniFlash, Resolution: "720p"}
+	omni1080Target = modeladapter.VideoTarget{Model: domain.ModelGeminiOmniFlash, Resolution: "1080p"}
+	kling4Target   = modeladapter.VideoTarget{Model: domain.ModelKling4, Resolution: "1080p"}
+	seed25Target   = modeladapter.VideoTarget{Model: domain.ModelSeedance25, Resolution: "720p"}
 )
 
 func TestAddedModelsAreVideoModelsOfTheirVendorWithAPriceAndNoDefaultRoute(t *testing.T) {
@@ -27,7 +29,7 @@ func TestAddedModelsAreVideoModelsOfTheirVendorWithAPriceAndNoDefaultRoute(t *te
 		vendor modeladapter.Vendor
 		apiID  string
 	}{
-		{domain.ModelGeminiOmniFlash, modeladapter.VendorGoogle, "gemini-omni-1.1-flash"},
+		{domain.ModelGeminiOmniFlash, modeladapter.VendorGoogle, "gemini-omni-1.2-flash"},
 		{domain.ModelKling4, modeladapter.VendorKling4, "kling-4.0"},
 		{domain.ModelSeedance25, modeladapter.VendorSeedance, "dreamina-seedance-2-5-260628"},
 		{domain.ModelMiniMaxH3, modeladapter.VendorMiniMax, "MiniMax-H3"},
@@ -60,18 +62,21 @@ func TestAddedModelsAreVideoModelsOfTheirVendorWithAPriceAndNoDefaultRoute(t *te
 
 func TestGeminiOmniFlashIsPricedFromTheOfficialTokenRate(t *testing.T) {
 	cfg := modeladapter.DefaultConfig()
-	// 5,792 tokens per second of 720p video at USD 17.50 per million output tokens is 0.1014 USD; Google states "approximately $0.10".
-	assert.InDelta(t, 0.5, cfg.VideoCost(omniTarget, 5), 1e-9)
-	assert.InDelta(t, 5792*17.5/1e6, cfg.Models[domain.ModelGeminiOmniFlash].CostPerSecond["720p"], 0.002)
+	// $12.00 per million output tokens: 5,792 tokens per second of 720p video is 0.0695 USD, 8,688 tokens per second of 1080p is 0.104 USD.
+	assert.InDelta(t, 0.0695*5, cfg.VideoCost(omniTarget, 5), 1e-9)
+	assert.InDelta(t, 0.104*5, cfg.VideoCost(omni1080Target, 5), 1e-9)
+	assert.InDelta(t, 5792*12.0/1e6, cfg.Models[domain.ModelGeminiOmniFlash].CostPerSecond["720p"], 0.0001)
+	assert.InDelta(t, 8688*12.0/1e6, cfg.Models[domain.ModelGeminiOmniFlash].CostPerSecond["1080p"], 0.0005)
 }
 
 func TestPrepareForGeminiOmniFlashSnapsToTheClipLengthsAndKeepsOneKindOfImage(t *testing.T) {
 	caps, ok := modeladapter.Capabilities(domain.ModelGeminiOmniFlash)
 	require.True(t, ok)
-	assert.Equal(t, []string{"720p"}, caps.Resolutions)
+	assert.Equal(t, []string{"720p", "1080p"}, caps.Resolutions)
 	assert.True(t, caps.NativeAudio)
-	assert.Equal(t, 3.0, caps.SnapDuration(1), "clips are 3 to 10 seconds")
-	assert.Equal(t, 10.0, caps.SnapDuration(30))
+	assert.Equal(t, 3.0, caps.SnapDuration(1), "clips are 3 to 15 seconds")
+	assert.Equal(t, 12.0, caps.SnapDuration(11.5))
+	assert.Equal(t, 15.0, caps.SnapDuration(30))
 
 	job := fullJob()
 	job.DurationSeconds = 6.2
@@ -83,13 +88,38 @@ func TestPrepareForGeminiOmniFlashSnapsToTheClipLengthsAndKeepsOneKindOfImage(t 
 	assert.Empty(t, req.References, "a model reads either the frames or the references")
 	assert.Empty(t, req.NegativePrompt, "Omni has no negative prompt: the avoid list is part of the prompt")
 	assert.Contains(t, req.Prompt, "Avoid: blurry")
-	assert.Contains(t, req.Prompt, "Duration 7 seconds", "the length is asked for in the prompt: there is no length parameter")
+	assert.Contains(t, req.Prompt, "Duration 7 seconds", "the prompt names the length too; the API field (response_format.duration) is what the model obeys")
 	assert.False(t, cjk.MatchString(req.Prompt))
+
+	job.DurationSeconds = 10
+	req, err = modeladapter.Prepare(omniTarget, job)
+	require.NoError(t, err)
+	assert.Equal(t, 10.0, req.DurationSeconds, "two frames make up to 10 seconds")
+	assert.NotNil(t, req.LastFrame)
+
+	job.DurationSeconds = 12
+	_, err = modeladapter.Prepare(omniTarget, job)
+	var refused *apperr.Error
+	require.ErrorAs(t, err, &refused, "the interpolation of two frames over 10 seconds is refused, not shortened: the API refuses it")
+	assert.Equal(t, apperr.CodeInputUnsupported, refused.Code)
+	assert.Contains(t, refused.Cause, "10 秒")
+	job.LastFrame = nil
+	req, err = modeladapter.Prepare(omniTarget, job)
+	require.NoError(t, err)
+	assert.Equal(t, 12.0, req.DurationSeconds, "one frame goes up to 15 seconds")
 
 	job.FirstFrame, job.LastFrame = nil, nil
 	req, err = modeladapter.Prepare(omniTarget, job)
 	require.NoError(t, err)
 	assert.Len(t, req.References, 6)
+	assert.Equal(t, 12.0, req.DurationSeconds)
+
+	job.DurationSeconds = 14.2
+	req, err = modeladapter.Prepare(omni1080Target, job)
+	require.NoError(t, err)
+	assert.Equal(t, 15.0, req.DurationSeconds, "Omni 1.2 makes up to 15 seconds")
+	assert.Equal(t, "1080p", req.Resolution)
+	assert.Contains(t, req.Prompt, "Duration 15 seconds")
 }
 
 func TestKling4IsPricedFromTheOfficialUnitPrice(t *testing.T) {
