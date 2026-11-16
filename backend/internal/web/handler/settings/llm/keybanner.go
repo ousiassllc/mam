@@ -64,15 +64,17 @@ func shortName(label string) string {
 	return name
 }
 
-// keyBanner counts the Agents that run (T: not the ones under "現在は使われません") and those that the missing API keys touch, and groups the missing keys by provider,
-// the biggest shortage first (which key lets which Agents use their models). An Agent is
+// keyBanner counts the Agents that run (T: not the ones under "現在は使われません") and those that the missing API keys touch, and says for each missing key how many of them
+// it puts back on their primary. An Agent is
 //   - blocked when neither its primary nor its alternative can be used and one of them lacks its API key: nothing of it runs until a key is put in;
 //   - covered when its primary lacks its API key and its alternative can be used: it runs on the alternative.
 //
-// An Agent whose primary runs is neither, whatever its alternative lacks. It is false when no Agent is blocked or covered.
+// A key's line names the blocked and covered Agents whose primary is of that provider and lacks its key (the key brings them back to the primary), so the lines add up to
+// the blocked and covered Agents the title counts. An Agent whose primary runs is in no line, whatever its alternative lacks, and a key that brings no Agent back has no
+// line. It is false when no Agent is blocked or covered.
 func keyBanner(v llmassign.View, models *llmmodels.Service) (view.KeyBanner, bool) {
 	var b view.KeyBanner
-	var order []string // the providers in the order they first lack their key
+	var order []string // the providers in the order their first Agent is put back
 	agents := map[string][]string{}
 	for _, e := range v.Entries {
 		if e.Unused {
@@ -86,21 +88,17 @@ func keyBanner(v llmassign.View, models *llmmodels.Service) (view.KeyBanner, boo
 			b.Blocked++
 		case noPrimary && fallback.Available:
 			b.Covered++
+		default:
+			continue
 		}
-		for _, p := range []struct {
-			provider string
-			missing  bool
-		}{{e.Route.Primary.Provider, noPrimary}, {e.Route.Fallback.Provider, noFallback}} {
-			if !p.missing {
-				continue
-			}
-			if _, ok := agents[p.provider]; !ok {
-				order = append(order, p.provider)
-			}
-			if name := shortName(e.Label); !slices.Contains(agents[p.provider], name) {
-				agents[p.provider] = append(agents[p.provider], name)
-			}
+		if !noPrimary {
+			continue // its primary lacks something else than the key: no key brings it back
 		}
+		p := e.Route.Primary.Provider
+		if _, ok := agents[p]; !ok {
+			order = append(order, p)
+		}
+		agents[p] = append(agents[p], shortName(e.Label))
 	}
 	if b.Blocked == 0 && b.Covered == 0 {
 		return view.KeyBanner{}, false

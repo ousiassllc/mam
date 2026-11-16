@@ -93,7 +93,7 @@ func TestSection_TheMissingKeysAreOneBannerAndTheRowsSayWhichModelLacksItsKey(t 
 	d := llm.Data{
 		KeyBanner: &llm.KeyBanner{
 			Rows: 12, Blocked: 5, Covered: 4, Route: "/settings/api-keys",
-			Shortages: []llm.KeyShortage{{Provider: "OpenAI", Agents: []string{"Producer", "Writer", "Director", "Editor", "Repair"}}, {Provider: "Google（Gemini）", Agents: []string{"Director"}}},
+			Shortages: []llm.KeyShortage{{Provider: "Anthropic（Claude）", Agents: []string{"Director", "Storyboard", "Prompt Planner", "Repair", "Command Interpreter"}}, {Provider: "Google（Gemini）", Agents: []string{"Art Director", "Video Judge", "Editor", "State Extractor"}}},
 		},
 		Rows: []llm.Row{
 			{Agent: "art_director", Label: "Art Director", Purpose: "参照画像を解析する", Primary: llm.Target{Provider: "google", Model: "g"}, Fallback: llm.Target{Provider: "openai", Model: "o"}, PrimaryChip: chip, Note: "代替で動きます: 主モデルが使えないため、代替モデル o を使います"},
@@ -106,7 +106,7 @@ func TestSection_TheMissingKeysAreOneBannerAndTheRowsSayWhichModelLacksItsKey(t 
 	assert.Equal(t, 1, strings.Count(html, `data-testid="llm-key-banner"`))
 	assert.Contains(t, html, "API キーが足りないため、Agent 12件のうち 5 件で使えません。4 件は代替モデルで動いています")
 	assert.Equal(t, 2, strings.Count(html, `data-testid="llm-key-shortage"`), "one line for each key")
-	assert.Contains(t, html, "のキーを入れると、Producer・Writer など 5 件が使えるようになります")
+	assert.Contains(t, html, "のキーを入れると、Director・Storyboard など 5 件が使えるようになります")
 	assert.Equal(t, 1, strings.Count(html, `href="/settings/api-keys"`))
 	assert.Equal(t, 3, strings.Count(html, `data-testid="llm-chip"`), "the targets without a key: one in the first row, two in the second")
 	assert.Equal(t, 2, strings.Count(html, "代替で動きます"), "under the purpose, and under the name of the Agent for a narrow window")
