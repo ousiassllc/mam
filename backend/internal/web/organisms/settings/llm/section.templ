@@ -112,7 +112,6 @@ templ table(id, caption string, rows []Row, pinned bool) {
 func columns(pinned bool) []settingsui.Column {
 	cols := []settingsui.Column{
 		{Header: "Agent"},
-		{Header: "用途", Class: purposeClass},
 		{Header: "プライマリ"},
 		{Header: "代替"},
 		{Header: "変更"},
@@ -123,9 +122,14 @@ func columns(pinned bool) []settingsui.Column {
 	return cols
 }
 
-// purposeClass hides the purpose column of a window narrower than xl: the side navigation takes a fifth of a 1024 px window,
-// and the cells of a column that narrow break the names of the models, so the purpose is then under the name of the Agent.
-const purposeClass = "hidden xl:table-cell"
+// agentHead is the width of the first column: wide enough that the name of an Agent is not broken into many lines, capped so that the columns of the models keep the
+// rest. The purpose of the Agent is the sentence under its name (as the purpose of an image is in the image table), not a column of its own.
+const agentHead = "min-w-48 max-w-xs"
+
+// modelRef is a target on one or two lines: the provider and the model are never broken inside, only between them when the column is narrow.
+templ modelRef(t Target) {
+	<span class="whitespace-nowrap">{ t.Provider } /</span> <span class="whitespace-nowrap">{ t.Model }</span>
+}
 
 // RowOOB is the row of an Agent as the answer of a save: it replaces the row with its id out of band. Put it first in the
 // answer: a <tr> is read as a row only at the head of the response.
@@ -135,18 +139,15 @@ templ RowOOB(r Row) {
 
 templ row(r Row, pinned, oob bool) {
 	@settingsui.TableRowItem(settingsui.TableRow{ID: RowID(r.Agent), TestID: "llm-row", Attrs: templ.Attributes{"data-agent": r.Agent}, OOB: oob}) {
-		@settingsui.RowHead("") {
+		@settingsui.RowHead(agentHead) {
 			{ r.Label }
-			<span class="mt-1 block text-xs font-normal text-mute xl:hidden">{ r.Purpose }</span>
+			<span class="mt-1 block text-xs font-normal text-mute" data-testid="llm-purpose">{ r.Purpose }</span>
 		}
-		@settingsui.Cell(purposeClass + " text-mute") {
-			{ r.Purpose }
+		@settingsui.Cell("") {
+			@modelRef(r.Primary)
 		}
-		@settingsui.Cell("min-w-40") {
-			{ r.Primary.Summary() }
-		}
-		@settingsui.Cell("min-w-40") {
-			{ r.Fallback.Summary() }
+		@settingsui.Cell("") {
+			@modelRef(r.Fallback)
 		}
 		@settingsui.Cell("whitespace-nowrap") {
 			<span class="flex flex-col items-start gap-1">

@@ -98,15 +98,14 @@ Kling などのクラウド動画モデルを、**どこの API で呼ぶか**�
 
 | 列 | 内容 |
 |----|------|
-| Agent（行見出し） | `labels` の名称（例: 「Writer（脚本）」） |
-| 用途 | 1 行の説明（`labels` の括弧の中ではなく、`model-adapters.md` §2 の選定理由から短く。文言は §7 の質問 2） |
-| プライマリ | 「anthropic / claude-…」（要約。折り返す） |
+| Agent（行見出し） | `labels` の名称（例: 「Writer（脚本）」）。**その下に用途を補足で置く**（`text-xs text-mute`・`data-testid="llm-purpose"`。「画像・動画モデル」の表の用途の補足と同じ形。`labels` の括弧の中ではなく、`model-adapters.md` §2 の選定理由から短く。文言は §7 の質問 2）。用途の列はない。行見出しの幅は `max-w-xs` で抑える |
+| プライマリ | 「anthropic / claude-…」（要約。**折り返さない**: `whitespace-nowrap`。列は、用途の列をなくしたぶん広い） |
 | 代替 | 同上 |
 | 変更 | `Badge`: 「既定」（neutral）／「変更あり」（info）。既定の判定は `Route == Default` |
 | 操作 | 「編集」（`SmallButtonFor`、`aria-label`「編集: Writer（脚本）」） |
 
 - 使われていない Agent（`Unused`: Orchestrator・Final QC）は、今と同じく折りたたみ（`<details>`「現在は使われません」）に入れ、表の下に置く。折りたたみの中の表も同じ列・同じ編集。
-- 14 行で、1440×900 では 1 画面に収まらず main がスクロールする。「用途」列は `xl:`（1280 px）以上でだけ出し、狭いときは行見出しの下に 1 行で出す（実装で変更: 当初は `lg:` の案だったが、サイドナビで表が約 700 px に狭まる 1024×700 の実画面で、`lg:` ではモデル名が割れて読みにくかった。2026-10-25 に両方を撮って比べた）。
+- 14 行で、1440×900 では 1 画面に収まらず main がスクロールする。用途は列にせず、どの幅でも行見出し（Agent 名）の下の補足に置く（Issue #1164。以前は `xl:` 以上でだけ「用途」列を出し、狭いときは補足にしていたが、Agent の列が細くなって 4〜5 行に折れ、モデル名も割れていた。列をひとつ減らしてプライマリ・代替に幅を回し、モデル名は折り返さない）。
 - 実装（2026-10-25）: 全体の「既定に戻す」は「すべて既定に戻す」（`hx-confirm`。`DELETE /settings/llm`）。モーダルの 422 は `llmassign.InvalidError` の `Role`・`Field` で問題の欄に `aria-invalid`・`autofocus`。「再起動で反映」の印（`Badge` warn）は保存した直後の行だけ。『この Agent を既定に戻す』の確認なしは `destructive_confirm_test` の例外に理由つきで足した。用途の 1 行（§7 の質問 2）は `model-adapters.md` §2 の選定理由から要約した（`handler/settings/llm/purposes.go`）。`PUT /settings/llm`（全体）は MCP のツールとテストのために残し、応答は表の区画（`#llm-assignment-panel`）。
 - ローカル LLM サーバー（#1008。**#1104 で、欄はモデルマネージャーへ移った**。状態: 実装済み）: 表の下に、欄を持たない `molecules.ToolCardItem` のカード 1 枚「ローカル LLM サーバー」を置く。1 行の状態（`data-testid="llm-local-state"`。「今は <名前> に呼び出します」。`use` の読み取りだけ。値は local-llm.md §11）と、「モデルマネージャーで設定する」のリンク（`data-testid="llm-local-link"`。`paths.ModelManagerPart("local-llm")`）。ベース URL・API キー・キーの削除・Ollama のメモリ降ろし・「この PC の llama.cpp を使う」・接続テストの欄とルート（`PUT /settings/llm/local`・`POST /settings/llm/local/test`）は、モデルマネージャーの `local-llm`（`#mm-llm-connection`・`#mm-llm-use`）へ移して設定からは外す（[model-manager-screen.md](model-manager-screen.md)「ローカル LLM の統合（#1104）」）。「API キーとログイン」のカードは変えない。#1008 当時の記述（欄・`use_managed`・`use_managed_present`）は `spec/architecture/local-llm.md` §5.1・§10.1 の移し先の欄に読み替える。詳細は `spec/architecture/local-llm.md` §5・§11
 
@@ -256,3 +255,4 @@ Kling などのクラウド動画モデルを、**どこの API で呼ぶか**�
 | 0.35 | 2026-11-16 | §3 の「割り当てが使えないときの注意」を、1 行ずつの黄色の文章から、API キー未登録の 1 つのバナー（行の数 T・N・k と、キーごとのプロバイダー・モデル）・モデル名の横のチップ「キー未登録」・行の下の注（代替で動く／条件に合うモデルで行う／断られる）に改めた。黄色の文字を外した | Issue #1157 |
 | 0.36 | 2026-11-16 | バナーの T・N・k からプレビューの用途を外し、「OpenAI で統一」は `prefer_openai` がオンのときだけ数える（数えない行にしか効かないキーの行も出さない）。モデル名は折らず、チップは主・代替の両方とも名前の下の行に出す | Issue #1157 |
 | 0.37 | 2026-11-16 | 設定画面の黄色の警告を #1157 と同じ形（原因ごとの 1 つのバナー・静かな 1 文・`BadgeMuted` のチップ）にそろえることを、冒頭の「警告の形」に書いた。サイドバーのテーマボタンの文言を短くした | Issue #1160 |
+| 0.38 | 2026-11-16 | §2 の表から「用途」の列をなくし、用途を Agent 名の下の補足にした（画像・動画モデルの表と同じ形）。プライマリ・代替の列を広げ、モデル名は折り返さない | Issue #1164 |

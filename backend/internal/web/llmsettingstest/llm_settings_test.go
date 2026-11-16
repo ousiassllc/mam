@@ -33,8 +33,8 @@ func TestLLMSettings_TheScreenIsATableWithARowForEveryAgentAndKeepsTheUnusedOnes
 	}
 	director := regexp.MustCompile(`(?s)<tr id="llm-row-director".*?</tr>`).FindString(html)
 	def := llm.DefaultConfig().Routes[llm.AgentDirector]
-	assert.Contains(t, director, string(def.Primary.Provider)+" / "+def.Primary.Model, "the summary of the primary")
-	assert.Contains(t, director, string(def.Fallback.Provider)+" / "+def.Fallback.Model, "and of the fallback")
+	assert.Contains(t, plainText(director), string(def.Primary.Provider)+" / "+def.Primary.Model, "the summary of the primary")
+	assert.Contains(t, plainText(director), string(def.Fallback.Provider)+" / "+def.Fallback.Model, "and of the fallback")
 	assert.Contains(t, director, "既定")
 	assert.NotContains(t, director, "変更あり")
 
@@ -92,7 +92,7 @@ func TestLLMSettings_ASavedAgentIsWhatTheNextStartLoadsAndTheAnswerIsItsRow(t *t
 	assert.Equal(t, "modal-close", rec.Header().Get("HX-Trigger-After-Swap"))
 	assert.True(t, strings.HasPrefix(body, `<tr id="llm-row-director"`), "a <tr> is read as a row only at the head of the answer: %s", body)
 	assert.Contains(t, body, `hx-swap-oob="true"`)
-	assert.Contains(t, body, "google / gemini-x")
+	assert.Contains(t, plainText(body), "google / gemini-x")
 	assert.Contains(t, body, "変更あり")
 	assert.NotContains(t, body, "再起動で反映", "a saved route is in effect at once: the row does not wait for a restart")
 	assert.Contains(t, body, savedNoticeFor("Director（Scene / Shot の計画）"))
@@ -109,7 +109,7 @@ func TestLLMSettings_ASavedAgentIsWhatTheNextStartLoadsAndTheAnswerIsItsRow(t *t
 
 	// A reload shows it saved.
 	row := regexp.MustCompile(`(?s)<tr id="llm-row-director".*?</tr>`).FindString(s.page())
-	assert.Contains(t, row, "google / gemini-x")
+	assert.Contains(t, plainText(row), "google / gemini-x")
 	assert.Contains(t, row, "変更あり")
 	assert.NotContains(t, row, "再起動で反映")
 
@@ -196,7 +196,7 @@ func TestLLMSettings_TheWholeSaveAndResetStay(t *testing.T) {
 	orchestrator, err := cfg.RouteFor(llm.AgentOrchestrator)
 	require.NoError(t, err)
 	assert.Equal(t, "claude-sonnet-x", orchestrator.Fallback.Model)
-	assert.Contains(t, s.page(), "google / gemini-x", "a reload shows the saved one")
+	assert.Contains(t, plainText(s.page()), "google / gemini-x", "a reload shows the saved one")
 
 	rec = s.request(http.MethodDelete, nil)
 
@@ -237,4 +237,9 @@ func TestLLMSettings_APinnedFileIsATableToReadAndNeverWritten(t *testing.T) {
 		assert.Contains(t, rec.Body.String(), "固定されて", req.method+" "+req.path)
 	}
 	assert.NoFileExists(t, s.file)
+}
+
+// plainText is the text of the markup as it reads: the provider and the model of a target are two elements (the model is never broken), read as "provider / model".
+func plainText(markup string) string {
+	return strings.Join(strings.Fields(regexp.MustCompile(`<[^>]*>`).ReplaceAllString(markup, " ")), " ")
 }

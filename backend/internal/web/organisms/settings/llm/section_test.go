@@ -95,3 +95,20 @@ func TestSection_TheUnreadableFileIsOneAlertBannerWithoutYellow(t *testing.T) {
 		assert.NotContains(t, html, yellow)
 	}
 }
+
+// The purpose of an Agent is the sentence under its name (as in the table of the image models), not a column of its own, so the columns of the models are the ones
+// that take the width; the name of a model is on one line, never broken.
+func TestSection_ThePurposeIsUnderTheAgentNameAndTheModelsAreNotBroken(t *testing.T) {
+	def := llm.Target{Provider: "anthropic", Model: "claude-sonnet-4-5"}
+	fallback := llm.Target{Provider: "openai", Model: "gpt-5-mini"}
+	row := llm.Row{Agent: "director", Label: "Director", Purpose: "構成を計画する", Primary: def, Fallback: fallback, DefaultPrimary: def, DefaultFallback: fallback}
+
+	html := renderSection(t, llm.Data{Rows: []llm.Row{row}})
+
+	assert.NotContains(t, html, `>用途</th>`, "no column for the purpose")
+	assert.Equal(t, 1, strings.Count(html, "構成を計画する"), "the purpose is told once")
+	assert.Regexp(t, `(?s)<th scope="row"[^>]*>\s*Director\s*<span[^>]*data-testid="llm-purpose">構成を計画する</span>`, html)
+	assert.Contains(t, html, `<span class="whitespace-nowrap">claude-sonnet-4-5</span>`, "the name of a model is on one line")
+	assert.Contains(t, html, `<span class="whitespace-nowrap">gpt-5-mini</span>`)
+	assert.Equal(t, 5, strings.Count(html, `<th scope="col"`), "Agent, primary, fallback, changed and the operation column that only assistive technology reads")
+}
