@@ -74,7 +74,9 @@ func (s *Service) CheckInputs(r Request) InputCheck {
 			s.planImage(r, &plans[i])
 		} else {
 			caps, _ := s.Adapter.Config().VideoCaps(domain.ModelName(m.ID))
-			plans[i].seconds = caps.SnapDuration(r.DurationSeconds)
+			if !caps.AudioLength { // a clip as long as its sound has no length to round (the sound is not read here: the form's check is about which inputs are attached)
+				plans[i].seconds = caps.SnapDuration(r.DurationSeconds)
+			}
 			plans[i].applyInputs(inputcheck.Video(caps, m.Label, rolesOf(r)))
 		}
 		for _, w := range plans[i].warnings {

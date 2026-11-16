@@ -76,6 +76,7 @@ templ inputFields(c Compose) {
 					<input id="gt-last" type="file" name={ FieldLast } accept="image/png,image/jpeg,image/webp" class="text-sm"/>
 				</label>
 				@audioinput.File()
+				@audioinput.ProjectPicker(paths.GenerationTestPart("picker"), c.Projects)
 			</div>
 		}
 		<p class="text-sm text-danger" role="alert" data-gt-error data-testid="gt-inputs-error" hidden></p>

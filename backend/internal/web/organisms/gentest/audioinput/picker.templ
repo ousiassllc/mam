@@ -1,0 +1,42 @@
+package audioinput
+
+import "github.com/ousiassllc/mam/backend/internal/web/atoms"
+
+// ProjectPicker picks the sound from the audio assets of a Project, next to the file input: the Projects as a select, and under it the Project's audio files
+// (Picks) with a player and the button that adds one to the inputs.
+templ ProjectPicker(pickerURL string, projects []Project) {
+	<div class="flex max-w-sm flex-col gap-1" data-testid="gt-audio-project">
+		<label class="flex flex-col gap-1 text-xs text-mute" for="gt-audio-project">
+			<span>プロジェクトの音声から選ぶ</span>
+			@atoms.Select(atoms.FieldMd, "max-w-xs", templ.Attributes{
+				"id": "gt-audio-project", "name": ProjectField, "hx-get": pickerURL + "?kind=audio", "hx-trigger": "change",
+				"hx-target": "#" + PickerID, "hx-swap": "innerHTML", "hx-include": "this",
+			}) {
+				<option value="">（選んでください）</option>
+				for _, p := range projects {
+					<option value={ p.ID }>{ p.Name }</option>
+				}
+			}
+		</label>
+		<div id={ PickerID } data-testid="gt-audio-picker" aria-live="polite"></div>
+	</div>
+}
+
+// Picks lists the audio files of a Project: each has a player (nothing is fetched until it is played) and an "追加" button that appends its row to the inputs.
+templ Picks(picks []Pick, empty string, rows Rows) {
+	if len(picks) == 0 {
+		<p class="text-xs text-mute" data-testid="gt-audio-picker-empty">{ empty }</p>
+	}
+	<ul class="flex flex-col gap-2">
+		for _, p := range picks {
+			<li class="flex flex-col gap-1 rounded-lg border border-border p-2 text-xs" data-testid="gt-audio-pick">
+				<span class="break-words text-ink">{ p.Label }</span>
+				@Player(p.URL)
+				@atoms.SmallButtonFor(atoms.ToneNeutral, "追加", p.Label, templ.Attributes{
+					"type": "button", "data-ref": p.Value, "hx-get": rows.URL + "?" + RoleParam + "=" + Role + "&ref=" + p.Value, "hx-target": rows.Target, "hx-swap": "beforeend",
+					"hx-include": rows.Include, "hx-sync": "this",
+				})
+			</li>
+		}
+	</ul>
+}

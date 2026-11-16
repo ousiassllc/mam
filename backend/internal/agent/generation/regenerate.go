@@ -108,7 +108,11 @@ func (o *Orchestrator) regenerationStrategy(ctx context.Context, ref repository.
 	if err != nil {
 		return Strategy{}, err
 	}
-	s.DurationSeconds = cfg.ClipSeconds(primary.Model, ref.Shot.Duration, framed)
+	sound, err := images.Audio(ctx, ref.Shot.ShotSpec) // read by decide already: the clip of a Shot with audio is as long as its sound
+	if err != nil {
+		return Strategy{}, err
+	}
+	s.DurationSeconds = sound.ClipSeconds(cfg, primary.Model, ref.Shot.Duration, framed)
 	s.CostPerTake = cfg.VideoCost(primary, s.DurationSeconds)
 	if affordable(budget.Remaining(), s.CostPerTake) == 0 {
 		return Strategy{}, ErrBudgetExceeded
@@ -194,7 +198,7 @@ func (o *Orchestrator) Regenerate(ctx context.Context, ref repository.ShotRef, r
 	if err != nil {
 		return "", err
 	}
-	job, err := videoJob(ctx, images, spec, brief, shot.Duration, references)
+	job, err := videoJob(ctx, images, spec, brief, shot, references)
 	if err != nil {
 		return "", err
 	}

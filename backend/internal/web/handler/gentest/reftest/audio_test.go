@@ -99,13 +99,13 @@ func TestTheAudioFileOfTheFormIsEstimatedConfirmedAndSentToTheModel(t *testing.T
 	assert.Len(t, calls[0].Video.References, 1, "the picture is the reference, not the audio")
 }
 
-// What is not a WAV or an MP3 is refused with the words that name them, whatever its name says, and nothing is sent.
-func TestAnAudioFileThatIsNotWavOrMp3IsRefused(t *testing.T) {
+// What is none of the five kinds (WAV, MP3, FLAC, OGG, M4A) is refused with the words that name them, whatever its name says, and nothing is sent.
+func TestAnAudioFileThatIsNotOneOfTheFiveKindsIsRefused(t *testing.T) {
 	s := newScreen(t, gentesttest.WithInputModels())
 	for name, data := range map[string][]byte{"a picture named .wav": gentesttesPNG(), "text": []byte("hello, this is not sound")} {
 		rec := s.postFiles(paths.GenerationTestPart("estimate"), s2vForm(string(gentesttest.S2VModel)), pictureFile, file{"upload_audio", "voice.wav", data})
 		assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, name)
-		assert.Contains(t, html.UnescapeString(rec.Body.String()), "WAV か MP3", name)
+		assert.Contains(t, html.UnescapeString(rec.Body.String()), "WAV・MP3・FLAC・OGG・M4A のどれか", name)
 	}
 	assert.Empty(t, s.rig.Fake.Calls())
 }
@@ -185,7 +185,7 @@ func TestAnAudioInputOfTheFormIsARowWithAPlayerNotAPicture(t *testing.T) {
 		assert.NotContains(t, audioRow, absent)
 	}
 	assert.Contains(t, rows[0], "<img", "the picture keeps its thumbnail")
-	assert.Contains(t, body, `type="file" name="upload_audio" accept="audio/wav,audio/mpeg,.wav,.mp3"`)
+	assert.Contains(t, body, `type="file" name="upload_audio" accept="audio/wav,audio/mpeg,audio/flac,audio/ogg,audio/mp4,.wav,.mp3,.flac,.ogg,.m4a"`)
 }
 
 // The page of a result plays the audio it was made from, and the audio a model was not given is not a picture either.
@@ -241,7 +241,7 @@ func (s *screen) stagedRefs(pictureRole, audioRole string) []gentest.RefInput {
 func TestTheVideoFormOffersTheAudioFileAndTheCardOfTheModelThatNeedsIt(t *testing.T) {
 	s := newScreen(t, gentesttest.WithInputModels())
 	body := s.fragment(paths.GenerationTestPart("form") + "?media=video")
-	assert.Contains(t, body, "音声ファイル（S2V・WAV か MP3）")
+	assert.Contains(t, body, "音声ファイル（S2V・WAV・MP3・FLAC・OGG・M4A）")
 	assert.Contains(t, body, "50 MiB まで")
 	assert.Equal(t, 1, strings.Count(body, `data-testid="gt-model-audio"`), "the S2V model only")
 	assert.NotContains(t, s.fragment(paths.GenerationTestPart("form")+"?media=image"), `name="upload_audio"`, "an image form has no audio")

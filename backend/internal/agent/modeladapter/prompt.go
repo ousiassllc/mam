@@ -26,6 +26,8 @@ type VideoJob struct {
 	// takes free reference images reads them and leaves the frames out, any other model keeps
 	// its frames, so the fail over model gets the input it can use.
 	PreferReferences bool
+	Audio            *Input  // the sound of a Shot with audio (Issue #1153): the job goes only to a model that takes it (videocaps.CheckAudio)
+	AudioSeconds     float64 // the length of Audio, measured by the caller: the clip of a model whose clip is as long as its sound is this long
 	// MaxTime bounds the time the model calls of the job take (Max generation time of the Quality/Cost
 	// Policy; 0: no bound). The time starts when the first vendor concurrency slot is held: waiting for
 	// a slot is not time the model spent. When it runs out GenerateVideo fails with ErrTimeLimit.
@@ -64,6 +66,12 @@ func (c Config) Prepare(target VideoTarget, job VideoJob) (VideoRequest, error) 
 	if req.AspectRatio == "" {
 		req.AspectRatio = domain.DefaultAspectRatio
 	}
+	if job.Audio != nil {
+		if err := videocaps.CheckAudio(target.Model, videocaps.Capabilities(caps)); err != nil {
+			return VideoRequest{}, err
+		}
+		req.Audio, req.DurationSeconds = job.Audio, videocaps.SoundClip(videocaps.Capabilities(caps), req.DurationSeconds, job.AudioSeconds)
+	}
 	useReferences := job.PreferReferences && caps.MaxReferenceImages > 0 && len(job.References) > 0
 	if caps.FirstFrame && !useReferences {
 		req.FirstFrame = job.FirstFrame
@@ -81,23 +89,16 @@ func (c Config) Prepare(target VideoTarget, job VideoJob) (VideoRequest, error) 
 			req.References = job.References[:n]
 		}
 	}
+	// A model of a sound takes one picture to speak or sing in and has no first frame to put the Keyframe in: with no free reference the Keyframe is that picture.
+	if req.Audio != nil && req.FirstFrame == nil && len(req.References) == 0 && caps.MaxReferenceImages > 0 && job.FirstFrame != nil {
+		req.References = []Input{*job.FirstFrame}
+	}
 
 	body, constraints, avoid := shotprompt.Describe(job.Spec, req.DurationSeconds, len(req.References) > 0 || req.FirstFrame != nil)
-	switch target.Model {
-	case domain.ModelKling3, c.negativeModel(target.Model):
+	if target.Model == domain.ModelKling3 || target.Model == c.negativeModel(target.Model) {
 		req.Prompt, req.NegativePrompt = shotprompt.FitNegative(body, constraints, avoid, 2400, 400, viaprovider.FoldsNegative(c.VideoProvider, target.Model))
-	case domain.ModelKling4: // no negative prompt field (the prompt takes negative descriptions); English input up to 26,000 characters
-		req.Prompt = shotprompt.Fit(body, constraints+shotprompt.AvoidSentence(avoid), 26000)
-	case domain.ModelMiniMaxH3, domain.ModelMiniMaxH3Max: // no negative prompt field; up to 7000 characters
-		req.Prompt = shotprompt.Fit(body, constraints+shotprompt.AvoidSentence(avoid), 7000)
-	case domain.ModelWan3: // no negative prompt field; up to 20,000 characters (the API cuts the rest, which would lose the Constraints)
-		req.Prompt = shotprompt.Fit(body, constraints+shotprompt.AvoidSentence(avoid), 20000)
-	case domain.ModelLumaRay32: // no negative prompt field; 1 to 6,000 characters
-		req.Prompt = shotprompt.Fit(body, constraints+shotprompt.AvoidSentence(avoid), 6000)
-	case domain.ModelRunwayGen45: // no negative prompt, and a 1000 character limit: Constraints and the avoid list are kept whole
-		req.Prompt = shotprompt.Fit(body, constraints+shotprompt.AvoidSentence(avoid), 1000)
-	default: // models without a negative prompt get the constraints as part of the prompt
-		req.Prompt = shotprompt.Fit(body, constraints+shotprompt.AvoidSentence(avoid), 2400)
+	} else { // no negative prompt field: the Constraints and the avoid list are part of the prompt, within the model's limit
+		req.Prompt = shotprompt.Fit(body, constraints+shotprompt.AvoidSentence(avoid), shotprompt.PromptLimit(target.Model))
 	}
 	return req, videocaps.CheckInterpolation(target.Model, req.DurationSeconds, req.FirstFrame != nil && req.LastFrame != nil)
 }

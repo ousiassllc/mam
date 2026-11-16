@@ -160,7 +160,7 @@ func Hidden(req gentest.Request) []view.Hidden {
 // taken (empty) keeps its number: the entry that names it is dropped and the entries after it still get their own files. An entry
 // that names no usable file (out of range, not a number, a number already taken by an earlier entry) is dropped. A file that no
 // entry names (a form without the browser's script) is added as a free reference; the first and the last frame of a video and its
-// audio follow. The audio is staged by stageAudio (WAV or MP3, a limit of its own); every other file by stage.
+// audio follow. The audio is staged by stageAudio (WAV, MP3, FLAC, OGG or M4A, a limit of its own); every other file by stage.
 func Stage(refs []gentest.RefInput, form *multipart.Form, stage, stageAudio func(*multipart.FileHeader) (string, error)) ([]gentest.RefInput, error) {
 	// staged is the id of each file of a field by position: "" for a file that is empty (not stored).
 	staged := func(field string, stageFile func(*multipart.FileHeader) (string, error)) (ids []string, err error) {

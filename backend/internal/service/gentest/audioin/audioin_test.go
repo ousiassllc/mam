@@ -10,82 +10,47 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/audiofile"
+	"github.com/ousiassllc/mam/backend/internal/audiofile/audiofiletest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/audioin"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 )
 
-// mp3Frame is the header of an MPEG-1 layer III frame (128 kbit/s, 44.1 kHz): what an MP3 without an ID3 tag starts with.
-var mp3Frame = []byte{0xFF, 0xFB, 0x90, 0x00, 0x00, 0x00}
-
-func TestSniffReadsTheKindFromTheBytes(t *testing.T) {
+// Every kind is stored under the extension of the kind that was read from its bytes, not of anything the client said.
+func TestStageStoresTheBytesUnderTheExtensionOfTheirKindNotOfAnythingTheClientSaid(t *testing.T) {
 	cases := []struct {
 		name string
 		data []byte
 		mime string
+		file string
 	}{
-		{"wav", gentesttest.WAV, audioin.WAV},
-		{"mp3 with an ID3 tag", []byte("ID3\x04\x00\x00\x00\x00\x00\x00"), audioin.MP3},
-		{"mp3 with a bare frame header", mp3Frame, audioin.MP3},
-		{"mp3 at 2 bytes short of a header", mp3Frame[:2], ""},
-		{"png", gentesttest.PNG, ""},
-		{"text", []byte("hello, this is not a sound"), ""},
-		{"flac", []byte("fLaC\x00\x00\x00\x22"), ""},
-		{"riff that is not wave (an AVI)", []byte("RIFF\x00\x00\x00\x00AVI LIST"), ""},
-		{"aac in an ADTS frame (layer bits 00)", []byte{0xFF, 0xF1, 0x50, 0x80, 0x00}, ""},
-		{"mpeg audio layer II", []byte{0xFF, 0xFD, 0x90, 0x00}, ""},
-		{"mpeg audio with the reserved version", []byte{0xFF, 0xEB, 0x90, 0x00}, ""},
-		{"mpeg audio with the bad bitrate", []byte{0xFF, 0xFB, 0xF0, 0x00}, ""},
-		{"mpeg audio with the reserved sample rate", []byte{0xFF, 0xFB, 0x9C, 0x00}, ""},
-		{"empty", nil, ""},
+		{"wav", gentesttest.WAV, audiofile.WAV, "id0001.wav"},
+		{"mp3", audiofiletest.MP3(false, 2), audiofile.MP3, "id0001.mp3"},
+		{"flac", audiofiletest.FLAC(44100, 44100), audiofile.FLAC, "id0001.flac"},
+		{"ogg vorbis", audiofiletest.OGGVorbis(44100, 44100), audiofile.OGG, "id0001.ogg"},
+		{"ogg opus", audiofiletest.OGGOpus(312, 48000), audiofile.OGG, "id0001.ogg"},
+		{"m4a", audiofiletest.M4A(0, 44100, 44100, true), audiofile.M4A, "id0001.m4a"},
+		{"m4a of the brand isom (an Android recorder's file)", audiofiletest.MP4WithBrand("isom", 44100, 44100, "soun"), audiofile.M4A, "id0001.m4a"},
+		{"m4a of the brand mp42 (ffmpeg's file)", audiofiletest.MP4WithBrand("mp42", 44100, 44100, "soun"), audiofile.M4A, "id0001.m4a"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			mime, ok := audioin.Sniff(c.data)
-			assert.Equal(t, c.mime != "", ok)
+			dir := filepath.Join(t.TempDir(), "staging")
+			id, mime, err := audioin.Stage(dir, c.data, func() string { return "id0001" })
+			require.NoError(t, err)
+			assert.Equal(t, c.file, id)
 			assert.Equal(t, c.mime, mime)
+			got, err := os.ReadFile(filepath.Join(dir, id))
+			require.NoError(t, err)
+			assert.Equal(t, c.data, got)
 		})
 	}
 }
 
-func TestTheTypeAndTheExtensionOfAKindAreOneContract(t *testing.T) {
-	for mime, ext := range map[string]string{audioin.WAV: ".wav", audioin.MP3: ".mp3"} {
-		assert.True(t, audioin.Is(mime))
-		assert.Equal(t, ext, audioin.Ext(mime))
-		back, ok := audioin.MimeOfExt(ext)
-		assert.True(t, ok)
-		assert.Equal(t, mime, back)
-	}
-	for _, mime := range []string{"image/png", "audio/flac", "audio/ogg", ""} {
-		assert.False(t, audioin.Is(mime), mime)
-		assert.Empty(t, audioin.Ext(mime), mime)
-	}
-	for _, ext := range []string{".png", ".flac", ".WAV", ""} {
-		_, ok := audioin.MimeOfExt(ext)
-		assert.False(t, ok, ext)
-	}
-}
-
-func TestStageStoresTheBytesUnderTheExtensionOfTheirKindNotOfAnythingTheClientSaid(t *testing.T) {
-	dir := filepath.Join(t.TempDir(), "staging")
-	next := func() string { return "id0001" }
-	id, mime, err := audioin.Stage(dir, gentesttest.WAV, next)
-	require.NoError(t, err)
-	assert.Equal(t, "id0001.wav", id)
-	assert.Equal(t, audioin.WAV, mime)
-	got, err := os.ReadFile(filepath.Join(dir, id))
-	require.NoError(t, err)
-	assert.Equal(t, gentesttest.WAV, got)
-
-	id, mime, err = audioin.Stage(dir, mp3Frame, func() string { return "id0002" })
-	require.NoError(t, err)
-	assert.Equal(t, "id0002.mp3", id)
-	assert.Equal(t, audioin.MP3, mime)
-}
-
 func TestStageRefusesAnEmptyOversizedOrNotAudioFileAndWritesNothing(t *testing.T) {
-	huge := append([]byte("RIFF\x00\x00\x00\x00WAVE"), make([]byte, audioin.MaxBytes)...) // 12 bytes over the limit
-	atLimit := append([]byte("RIFF\x00\x00\x00\x00WAVE"), make([]byte, audioin.MaxBytes-12)...)
+	huge := append([]byte("RIFF\x00\x00\x00\x00WAVE"), make([]byte, audiofile.MaxBytes)...) // 12 bytes over the limit
+	atLimit := append([]byte("RIFF\x00\x00\x00\x00WAVE"), make([]byte, audiofile.MaxBytes-12)...)
 	cases := []struct {
 		name string
 		data []byte
@@ -93,8 +58,12 @@ func TestStageRefusesAnEmptyOversizedOrNotAudioFileAndWritesNothing(t *testing.T
 	}{
 		{"empty", nil, "1 バイト以上 50 MiB 以下"},
 		{"over the limit", huge, "1 バイト以上 50 MiB 以下"},
-		{"a png", gentesttest.PNG, "WAV か MP3"},
-		{"a text", []byte(strings.Repeat("x", 100)), "WAV か MP3"},
+		{"a png", gentesttest.PNG, "WAV・MP3・FLAC・OGG・M4A のどれか"},
+		{"a text", []byte(strings.Repeat("x", 100)), "WAV・MP3・FLAC・OGG・M4A のどれか"},
+		{"an ogg of video (Theora)", audiofiletest.OGGTheora(), audioin.NotAudioMessage},
+		{"an mp4 video of the brand mp42 (sound and video tracks)", audiofiletest.MP4WithBrand("mp42", 1000, 5000, "soun", "vide"), audioin.NotAudioMessage},
+		{"an mp4 video of the brand isom (a video track)", audiofiletest.MP4WithBrand("isom", 1000, 5000, "vide"), audioin.NotAudioMessage},
+		{"an mp4 of the brand isom that has no moov box", audiofiletest.MP4NoMoov("isom"), audioin.NotAudioMessage},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -113,14 +82,7 @@ func TestStageRefusesAnEmptyOversizedOrNotAudioFileAndWritesNothing(t *testing.T
 	assert.NoError(t, err)
 }
 
-// An ID3 prefix alone is not an MP3: a FLAC with an ID3v2 tag, or a text that happens to start with "ID3", has no valid tag header (version, flags, size bytes of 7 bits).
-func TestSniffRefusesAnID3PrefixThatIsNoTagHeader(t *testing.T) {
-	for name, data := range map[string][]byte{
-		"text starting with ID3":   []byte("ID3 is the name of a tag"),
-		"size bytes over 7 bits":   []byte("ID3\x04\x00\x00\xff\xff\xff\xff"),
-		"a version that is no tag": []byte("ID3\x09\x00\x00\x00\x00\x00\x00"),
-	} {
-		_, ok := audioin.Sniff(data)
-		assert.False(t, ok, name)
-	}
+// The sentence every entrance refuses a file with names all five kinds, so that a user is told the same everywhere.
+func TestTheRefusalNamesEveryKind(t *testing.T) {
+	assert.Equal(t, "音声ファイルは WAV・MP3・FLAC・OGG・M4A のどれかにしてください", audioin.NotAudioMessage)
 }

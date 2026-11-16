@@ -2,7 +2,7 @@
  "id": "audio2video-wan22-s2v-14b",
  "label": "Wan 2.2 S2V 14B: 参照画像と音声から動画",
  "media": "video",
- "description": "Wan 2.2 S2V 14B（fp8 の wan2.2_s2v_14B_fp8_scaled.safetensors、テキストエンコーダー umt5_xxl_fp8_e4m3fn_scaled.safetensors、音声エンコーダー wav2vec2_large_english_fp16.safetensors、VAE wan_2.1_vae.safetensors）で、参照画像 1 枚（話す人・歌う人）と音声ファイル 1 つ（話し声・音楽）から、音声に合わせて動く動画を作る（S2V）標準ノードだけのワークフロー。ComfyUI の公式テンプレート（video_wan2_2_14B_s2v の lightx2v なしの 20 ステップ側）に従う: LoadAudio → AudioEncoderEncode（wav2vec2）の出力と LoadImage の参照画像を WanSoundImageToVideo に渡し、ModelSamplingSD3（shift 8）の後ろの 1 つの KSampler（uni_pc / simple・20 ステップ・cfg 6）で作り、CreateVideo に入力の音声をそのままつけて保存する。公式の Extend（77 フレームずつ足して長くするサブグラフ）と、先頭フレームを 2 重にして切る処理（切るフレーム数が Extend の数で変わると公式のメモにある）は入れない: 1 回で 5 秒（16fps・81 フレーム）の 1 本だけ作る。音声は先頭から動画の長さの分だけが使われるが、保存される動画の音声は入力の音声のまま（公式テンプレートと同じ・切り詰めない）。音声ファイルは必須（audio の代入先は LoadAudio の audio）。GPU では未実行（実機での生成は未確認）。",
+ "description": "Wan 2.2 S2V 14B（fp8 の wan2.2_s2v_14B_fp8_scaled.safetensors、テキストエンコーダー umt5_xxl_fp8_e4m3fn_scaled.safetensors、音声エンコーダー wav2vec2_large_english_fp16.safetensors、VAE wan_2.1_vae.safetensors）で、参照画像 1 枚（話す人・歌う人）と音声ファイル 1 つ（話し声・音楽）から、音声と同じ長さの動画を作る（S2V）標準ノードだけのワークフロー。ComfyUI の公式テンプレート（video_wan2_2_14B_s2v の lightx2v なしの 20 ステップ側）に従う: LoadAudio → AudioEncoderEncode（wav2vec2）の出力と LoadImage の参照画像を WanSoundImageToVideo に渡し、ModelSamplingSD3（shift 8）の後ろの 1 つの KSampler（uni_pc / simple・20 ステップ・cfg 6）で最初の 77 フレーム（音声の 5 秒分）を作り、VAEDecode → ImageFromBatch（音声の長さの分のフレームに切る）→ CreateVideo に入力の音声をそのままつけて保存する。動画の長さは音声の長さで決まる（長さの選択は使わない）: グラフには最初の 1 チャンクだけが入っていて、音声がそれより長いときは mam が実行のたびに公式の Extend（WanSoundImageToVideoExtend → KSampler → LatentConcat。audio_chunks.extension に書いてある 1 チャンク分）を必要なだけ（5 秒につき 1 つ）つなぎ足す。音声の長さは mam が読み（gentest.max_audio_seconds が上限・既定 60 秒）、最後のチャンクの余りは ImageFromBatch で切る。公式の「先頭フレームを 2 重にする」処理は入れない。保存される動画の音声は入力の音声のまま（公式テンプレートと同じ・切り詰めない）。音声ファイルは必須（audio の代入先は LoadAudio の audio）。GPU では未実行（実機での生成は未確認）。",
  "model": {
   "media": "video",
   "video": {"durations": [5], "resolutions": ["480p", "720p"]},
@@ -19,10 +19,11 @@
     "54": {"class_type": "ModelSamplingSD3", "inputs": {"shift": 8, "model": ["37", 0]}},
     "6": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["38", 0]}},
     "7": {"class_type": "CLIPTextEncode", "inputs": {"text": "", "clip": ["38", 0]}},
-    "93": {"class_type": "WanSoundImageToVideo", "inputs": {"width": 640, "height": 640, "length": 81, "batch_size": 1, "positive": ["6", 0], "negative": ["7", 0], "vae": ["39", 0], "audio_encoder_output": ["56", 0], "ref_image": ["52", 0]}},
+    "93": {"class_type": "WanSoundImageToVideo", "inputs": {"width": 640, "height": 640, "length": 77, "batch_size": 1, "positive": ["6", 0], "negative": ["7", 0], "vae": ["39", 0], "audio_encoder_output": ["56", 0], "ref_image": ["52", 0]}},
     "3": {"class_type": "KSampler", "inputs": {"seed": 0, "steps": 20, "cfg": 6, "sampler_name": "uni_pc", "scheduler": "simple", "denoise": 1, "model": ["54", 0], "positive": ["93", 0], "negative": ["93", 1], "latent_image": ["93", 2]}},
     "80": {"class_type": "VAEDecode", "inputs": {"samples": ["3", 0], "vae": ["39", 0]}},
-    "82": {"class_type": "CreateVideo", "inputs": {"fps": 16, "images": ["80", 0], "audio": ["58", 0]}},
+    "96": {"class_type": "ImageFromBatch", "inputs": {"image": ["80", 0], "batch_index": 0, "length": 77}},
+    "82": {"class_type": "CreateVideo", "inputs": {"fps": 16, "images": ["96", 0], "audio": ["58", 0]}},
     "113": {"class_type": "SaveVideo", "inputs": {"filename_prefix": "video/mam", "format": "auto", "codec": "auto", "video": ["82", 0]}}
    },
    "assignments": [
@@ -43,7 +44,19 @@
    "output_node": "113",
    "fps": 16,
    "frames_step": 4,
-   "size_multiple": 16
+   "size_multiple": 16,
+   "audio_chunks": {
+    "chunk_length": 77,
+    "start": "3",
+    "sampler": "3",
+    "trim": "96",
+    "output": "cat",
+    "extension": {
+     "ext": {"class_type": "WanSoundImageToVideoExtend", "inputs": {"length": 77, "positive": ["6", 0], "negative": ["7", 0], "vae": ["39", 0], "video_latent": "$prev", "audio_encoder_output": ["56", 0], "ref_image": ["52", 0]}},
+     "ks": {"class_type": "KSampler", "inputs": {"seed": 0, "steps": 20, "cfg": 6, "sampler_name": "uni_pc", "scheduler": "simple", "denoise": 1, "model": ["54", 0], "positive": ["ext", 0], "negative": ["ext", 1], "latent_image": ["ext", 2]}},
+     "cat": {"class_type": "LatentConcat", "inputs": {"dim": "t", "samples1": "$prev", "samples2": ["ks", 0]}}
+    }
+   }
   }
  }
 }

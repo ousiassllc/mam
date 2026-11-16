@@ -31,7 +31,7 @@ func uploadBody(in *modeladapter.Input, filename string) ([]byte, string, error)
 }
 
 // extension is the file extension the server derives the media type of an uploaded input from (a video the extension of its container: LoadVideo
-// lists the files of the input directory by their content type, LoadAudio too: a sound is .wav or .mp3).
+// lists the files of the input directory by their content type, LoadAudio too: a sound is .wav, .mp3, .flac, .ogg or .m4a).
 func extension(mime string) string {
 	switch strings.ToLower(strings.TrimSpace(mime)) {
 	case "image/jpeg", "image/jpg":
@@ -42,6 +42,12 @@ func extension(mime string) string {
 		return ".wav"
 	case "audio/mpeg":
 		return ".mp3"
+	case "audio/flac":
+		return ".flac"
+	case "audio/ogg":
+		return ".ogg"
+	case "audio/mp4":
+		return ".m4a"
 	case "video/mp4":
 		return ".mp4"
 	case "video/webm":

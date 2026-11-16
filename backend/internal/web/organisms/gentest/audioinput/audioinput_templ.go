@@ -45,7 +45,7 @@ func File() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\"><span>音声ファイル（S2V・WAV か MP3）</span> <input id=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\"><span>音声ファイル（S2V・WAV・MP3・FLAC・OGG・M4A）</span> <input id=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -84,14 +84,14 @@ func File() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" class=\"text-sm\" aria-describedby=\"gt-audio-help\" data-testid=\"gt-audio-file\"></label><p id=\"gt-audio-help\" class=\"text-xs text-mute\">音声から動画を作るモデル（S2V）だけが使います。音声の先頭から動画の長さ分を使います。WAV・MP3、")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" class=\"text-sm\" aria-describedby=\"gt-audio-help\" data-testid=\"gt-audio-file\"></label><p id=\"gt-audio-help\" class=\"text-xs text-mute\">音声から動画を作るモデル（S2V）だけが使います。音声の長さがそのまま動画の長さになります（長さの上限は設定で決まります）。WAV・MP3・FLAC・OGG・M4A、")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(MaxMiB))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/audioinput/audioinput.templ`, Line: 12, Col: 210}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/audioinput/audioinput.templ`, Line: 12, Col: 283}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {

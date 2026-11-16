@@ -40,10 +40,9 @@ templ MessageFrame(m domain.ThreadMessage) {
 	</article>
 }
 
-// AttachmentStrip shows the images and videos attached to a message. An attachment has no caption
-// of its own (an uploaded reference image or a generated clip), so each one is named by its place
-// among the attachments ("添付画像 2 / 3"). The videos have no <track kind="captions">: no caption
-// file exists for a clip the user uploaded or a vendor generated, and the app does not produce one.
+// AttachmentStrip shows the images, videos and audio files attached to a message. An attachment has no caption of its own, so each one is named by its place
+// among the attachments ("添付画像 2 / 3"). The videos have no <track kind="captions">: no caption file exists for a clip the user uploaded or a vendor
+// generated, and the app does not produce one. An audio file (Issue #1153) is a player that fetches nothing until it is played (it may be 50 MiB).
 templ AttachmentStrip(projectID string, assets []domain.Asset) {
 	<ul class="mt-2 flex flex-wrap gap-2" data-attachments>
 		for i, a := range assets {
@@ -52,6 +51,8 @@ templ AttachmentStrip(projectID string, assets []domain.Asset) {
 					<a href={ AssetURL(projectID, a.ID) } target="_blank" rel="noopener">
 						<img src={ string(AssetURL(projectID, a.ID)) } alt={ attachmentLabel("添付画像", i, len(assets)) } loading="lazy" class="h-24 rounded-md border border-border object-cover"/>
 					</a>
+				} else if a.Type == domain.AssetAudio {
+					<audio src={ string(AssetURL(projectID, a.ID)) } aria-label={ attachmentLabel("添付音声", i, len(assets)) } controls preload="none" class="w-64"></audio>
 				} else {
 					<video src={ string(AssetURL(projectID, a.ID)) } aria-label={ attachmentLabel("添付動画", i, len(assets)) } controls preload="metadata" class="h-32 rounded-md border border-border"></video>
 				}

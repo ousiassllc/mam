@@ -25,7 +25,7 @@
 | `delete_credential` | API キーを削除する（未設定でもエラーにならない。冪等） | `provider` | 同上 | いいえ（破壊的） |
 | `list_upload_purposes` | アップロードできる用途と、必須項目・上限サイズ | なし | `purposes[]`: `purpose`, `description`, `max_bytes`, `params[]`（`name`, `description`, `required`） | はい |
 | `create_upload_ticket` | 用途に結び付いた、15 分・1 回限りのアップロード URL を発行する | `purpose`, `params` | `url`, `expires_at`, `purpose`, `method`（`POST`）, `content_type`（`multipart/form-data`）, `file_field`（`file`）, `headers`, `max_bytes`, `curl_example` | いいえ（破壊的でない） |
-| `get_asset_download_url` | Project にアップロードされた画像・動画（アセット）のダウンロード URL（15 分） | `project_id`, `asset_id` | `url`, `expires_at`, `file_name` | はい |
+| `get_asset_download_url` | Project にアップロードされた画像・動画・音声（アセット）のダウンロード URL（15 分） | `project_id`, `asset_id` | `url`, `expires_at`, `file_name` | はい |
 
 ### `list_jobs` の補足
 
@@ -71,7 +71,7 @@ ffmpeg・FaceFusion の実行ファイルの場所と MCP のトークンはチ�
 
 用途は各ドメインのパッケージが `Files.RegisterUpload` で足す（チャットの添付・音声サンプルなど）。足したら、この表かドメイン別のファイルに書く。
 
-単発生成の用途 `gentest_reference`（入力画像。画像だけ）と `gentest_audio`（入力の音声ファイル。WAV か MP3・50 MiB。結果 `{"audio_id", "mime_type"}`。Issue #1153）は [mcp-tools-generation-test.md](mcp-tools-generation-test.md) の「アップロードの用途とダウンロードの種類」に書く。
+単発生成の用途 `gentest_reference`（入力画像。画像だけ）と `gentest_audio`（入力の音声ファイル。WAV・MP3・FLAC・OGG・M4A・50 MiB。結果 `{"audio_id", "mime_type"}`。Issue #1153）は [mcp-tools-generation-test.md](mcp-tools-generation-test.md) の「アップロードの用途とダウンロードの種類」に書く。
 
 ### ファイル URL の使い方
 
@@ -135,3 +135,4 @@ MCP ツールの対象外: MCP サーバー自身の設定（待ち受け先の�
 | 1.21 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |
 | 1.22 | 2026-11-11 | 「プロバイダー ID」の一覧に `openrouter`・`fal`・`replicate` を足した（画面の 18 個と同じ）。1.20 の行に欠けていた変更理由の欄を足した | PR #1141 のレビュー指摘 |
 | 1.23 | 2026-11-15 | 「アップロードの用途」の表の下に、単発生成の用途 `gentest_reference`・`gentest_audio`（Wan 2.2 S2V の音声ファイル。WAV・MP3・50 MiB）の置き場を足した | Issue #1153（関連: #1014・PR #1152） |
+| 1.24 | 2026-11-16 | `gentest_audio` の形式を WAV・MP3・FLAC・OGG・M4A に広げた。`get_asset_download_url` の対象に Project の音声アセットを足した | Issue #1153 |

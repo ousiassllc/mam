@@ -14,7 +14,7 @@ const PurposeChatAttachment = "chat_attachment"
 func registerPurpose(f *mcpkit.Files, svc *service.Services, files *stage.Store) {
 	f.RegisterUpload(mcpkit.UploadSpec{
 		Purpose:     PurposeChatAttachment,
-		Description: "チャットの発言に添付する画像（jpg/png/webp/gif、20 MB まで）・動画（mp4/mov/webm、300 MB まで）。応答の upload_id を post_chat_message の attachment_upload_ids に渡す（15 分以内）/ A file for a chat message; pass the returned upload_id to post_chat_message.",
+		Description: "チャットの発言に添付する画像（jpg/png/webp/gif、20 MB まで）・動画（mp4/mov/webm、300 MB まで）・音声（wav/mp3/flac/ogg/m4a、50 MB まで。アセットの type は audio で、単発生成の音声入力に source=project_asset で使える。Brief には入らない）。応答の upload_id を post_chat_message の attachment_upload_ids に渡す（15 分以内）/ A file for a chat message; pass the returned upload_id to post_chat_message.",
 		MaxBytes:    service.MaxVideoBytes,
 		Params:      []mcpkit.UploadParam{{Name: "project_id", Description: "発言するプロジェクト", Required: true}},
 		Handle: func(ctx context.Context, in mcpkit.UploadInput) (any, error) {

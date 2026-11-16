@@ -36,7 +36,7 @@ func registerModels(r *mcpkit.Registrar, h handlers) {
 
 // Assignment says which input of which node a value of mam goes to.
 type Assignment struct {
-	Param string `json:"param" jsonschema:"prompt, negative_prompt, seed, width, height, reference_image, reference_denoise, steps, cfg, sampler, scheduler, frames, fps, first_frame or last_frame（画像は frames・fps・first_frame・last_frame を使えない）。steps・cfg は数値の入力、sampler・scheduler は文字の入力（KSampler の sampler_name・scheduler など）に割り当てる"`
+	Param string `json:"param" jsonschema:"prompt, negative_prompt, seed, width, height, reference_image, reference_denoise, steps, cfg, sampler, scheduler, frames, fps, first_frame, last_frame or audio（画像は frames・fps・first_frame・last_frame・audio を使えない。audio は LoadAudio の audio 入力で、動画だけ）。steps・cfg は数値の入力、sampler・scheduler は文字の入力（KSampler の sampler_name・scheduler など）に割り当てる"`
 	Node  string `json:"node" jsonschema:"ノード ID（import_local_workflow の nodes[].id）"`
 	Input string `json:"input" jsonschema:"そのノードの入力名。ほかのノードがつないでいる入力は使えない"`
 	Index int    `json:"index,omitempty" jsonschema:"reference_image だけ: 何枚目か（0 から、抜けなし）"`
@@ -191,6 +191,7 @@ type Model struct {
 	MaxReferences     int                `json:"max_reference_images,omitempty" jsonschema:"参照画像の上限（割り当てから決まる。ComfyUI の画像・動画）。単発生成の list_generation_models と同じ値"`
 	FirstFrame        bool               `json:"first_frame,omitempty"`
 	LastFrame         bool               `json:"last_frame,omitempty"`
+	LengthFromAudio   bool               `json:"length_from_audio,omitempty" jsonschema:"動画の長さが音声ファイルの長さで決まる（audio_chunks のあるワークフロー。S2V）。video.durations は目安で、長さは選べない"`
 	CostPerImageUSD   float64            `json:"cost_per_image_usd"`
 	CostPerSecondUSD  float64            `json:"cost_per_second_usd"`
 	UsedBy            []string           `json:"used_by" jsonschema:"割り当て先（images.<purpose>.primary、policies.<policy>.fallback など）。あるうちは削除できない"`
@@ -207,7 +208,7 @@ func modelOf(m localmodels.ModelView) Model {
 		out.ExposedInputs = w.ExposedInputs
 	}
 	if caps, ok := m.VideoCaps(); ok {
-		out.MaxReferences, out.FirstFrame, out.LastFrame = caps.MaxReferenceImages, caps.FirstFrame, caps.LastFrame
+		out.MaxReferences, out.FirstFrame, out.LastFrame, out.LengthFromAudio = caps.MaxReferenceImages, caps.FirstFrame, caps.LastFrame, caps.AudioLength
 	}
 	if caps := m.ReferenceCaps(); caps.Max > 0 {
 		out.MaxReferences, out.ReferenceMode = caps.Max, string(caps.Mode)

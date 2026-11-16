@@ -11,6 +11,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/repository"
 	"github.com/ousiassllc/mam/backend/internal/service/approvalack"
+	"github.com/ousiassllc/mam/backend/internal/service/chatops"
 )
 
 // execute carries out the operations of a Command: an operation that asks for confirmation (set_budget) becomes a confirmation card and is carried out by the
@@ -49,6 +50,14 @@ func (s *DirectorService) execute(ctx context.Context, project domain.Project, r
 	}
 
 	for _, op := range cmd.Operations {
+		if op.OnShot() && op.Immediate() { // the audio of a Shot: set before the Shot is regenerated, which starts from it
+			res, err := s.applyOp(chatops.WithShot(ctx, ref.Shot.ID), project, op)
+			if err != nil {
+				return out, err
+			}
+			out.lines = append(out.lines, res.text)
+			continue
+		}
 		if op.Type != commandinterpreter.OpSetLock {
 			continue
 		}
@@ -95,13 +104,13 @@ func (s *DirectorService) execute(ctx context.Context, project domain.Project, r
 
 // needsShot reports whether the operation is carried out on a Shot.
 func needsShot(op commandinterpreter.Operation) bool {
-	return op.Regenerates() || op.Type == commandinterpreter.OpCreateBranch || (op.Type == commandinterpreter.OpSetLock && op.Parameter.ValidForShot())
+	return op.Regenerates() || op.OnShot() || op.Type == commandinterpreter.OpCreateBranch || (op.Type == commandinterpreter.OpSetLock && op.Parameter.ValidForShot())
 }
 
 // confirmAndRemember posts the confirmation cards of the operations that ask for confirmation (director_ops.go), then keeps the notes the director asked for.
 func (s *DirectorService) confirmAndRemember(ctx context.Context, project domain.Project, cmd commandinterpreter.Command, out *outcome) error {
 	for _, op := range cmd.Operations {
-		if op.Immediate() { // nothing changes: what it found (a download link) is told at once
+		if op.Immediate() && !op.OnShot() { // nothing changes: what it found (a download link) is told at once
 			res, err := s.applyOp(ctx, project, op)
 			if err != nil {
 				return err

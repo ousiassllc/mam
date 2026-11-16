@@ -72,13 +72,13 @@ func TestTheAudioInputIsRefusedWhereItCannotBeUsed(t *testing.T) {
 	}{
 		{"two sounds", two, "音声ファイルは 1 つまで"},
 		{"a sound for an image batch", asImage, "音声は動画だけ"},
-		{"a picture as the sound", pngAsSound, "WAV か MP3"},
+		{"a picture as the sound", pngAsSound, "WAV・MP3・FLAC・OGG・M4A のどれか"},
 		{"a sound as a first frame", soundAs("first_frame"), "PNG・JPEG・WebP"},
 		{"a sound as a reference picture of an image batch", soundAsImage, "PNG・JPEG・WebP"},
-		{"a sound from a Project asset", from(gentest.FromProjectAsset), "upload か batch_input"},
-		{"a sound from the history", from(gentest.FromHistory), "upload か batch_input"},
-		{"a sound from the pose library", from(gentest.FromPoseLibrary), "upload か batch_input"},
-		{"a sound from a reference item", from(gentest.FromReferenceItem), "upload か batch_input"},
+		{"a sound from a Project asset without the Project", from(gentest.FromProjectAsset), "project_id が要ります"},
+		{"a sound from the history", from(gentest.FromHistory), "upload・batch_input・project_asset"},
+		{"a sound from the pose library", from(gentest.FromPoseLibrary), "upload・batch_input・project_asset"},
+		{"a sound from a reference item", from(gentest.FromReferenceItem), "upload・batch_input・project_asset"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
@@ -139,7 +139,7 @@ func TestTheSoundOfAnEarlierBatchIsAnInputAgain(t *testing.T) {
 	_, err = r.Svc.Estimate(ctx, bad)
 	var invalidErr *gterr.InvalidError
 	require.ErrorAs(t, err, &invalidErr)
-	assert.Contains(t, invalidErr.Message, "WAV か MP3")
+	assert.Contains(t, invalidErr.Message, "WAV・MP3・FLAC・OGG・M4A のどれか")
 	bad = videoReq([]string{string(gentesttest.I2VModel)}, gentest.RefInput{Source: gentest.FromBatchInput, ID: sound, Role: "first_frame"})
 	_, err = r.Svc.Estimate(ctx, bad)
 	require.ErrorAs(t, err, &invalidErr)

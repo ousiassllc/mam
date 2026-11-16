@@ -28,10 +28,10 @@ func TestBrief_SettingAValueAfterDelegatingTakesTheValue(t *testing.T) {
 	assert.Equal(t, "高級", b.Mood)
 }
 
-func TestBrief_AttachAssetsSortsImagesAndVideosIntoAssetsAndReferences(t *testing.T) {
+func TestBrief_AttachAssetsSortsImagesAndVideosIntoAssetsAndReferencesAndLeavesAudioOut(t *testing.T) {
 	var b domain.Brief
 	b.AttachAssets([]domain.Asset{
-		{ID: "img", Type: domain.AssetImage},
+		{ID: "img", Type: domain.AssetImage}, {ID: "voice", Type: domain.AssetAudio},
 		{ID: "vid", Type: domain.AssetVideo},
 		{ID: "img", Type: domain.AssetImage},
 	})

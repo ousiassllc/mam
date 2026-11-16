@@ -15,6 +15,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/audiofile"
+	"github.com/ousiassllc/mam/backend/internal/audiofile/audiofiletest"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit/mcptest"
@@ -22,7 +24,6 @@ import (
 	mcpgentest "github.com/ousiassllc/mam/backend/internal/mcp/tools/gentest"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/jobs"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
-	"github.com/ousiassllc/mam/backend/internal/service/gentest/audioin"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 )
@@ -90,23 +91,35 @@ func (r *rig) s2vBatch(model domain.ModelName, audioID string) map[string]any {
 	return map[string]any{"media": "video", "models": []string{string(model)}, "prompts": []map[string]any{{"prompt": "a singer"}}, "references": refs}
 }
 
-func TestUploadStagesWAVAndMP3ByTheirBytesAndRefusesAnythingElse(t *testing.T) {
+func TestUploadStagesEveryKindByItsBytesAndRefusesAnythingElse(t *testing.T) {
 	r := newRig(t)
 	var ticket mcpkit.UploadTicket
 	r.CallOK("create_upload_ticket", map[string]any{"purpose": mcpgentest.PurposeAudio}, &ticket)
-	assert.Equal(t, int64(audioin.MaxBytes), ticket.MaxBytes)
+	assert.Equal(t, int64(audiofile.MaxBytes), ticket.MaxBytes)
 
 	id, mime := r.uploaded("voice.wav", gentesttest.WAV)
-	assert.Equal(t, audioin.WAV, mime)
+	assert.Equal(t, audiofile.WAV, mime)
 	assert.True(t, strings.HasSuffix(id, ".wav"), id)
 	id, mime = r.uploaded("voice.mp3", []byte("ID3\x04\x00\x00\x00\x00\x00\x00 an mp3 tag"))
-	assert.Equal(t, audioin.MP3, mime)
+	assert.Equal(t, audiofile.MP3, mime)
 	assert.True(t, strings.HasSuffix(id, ".mp3"), id)
+	for ext, c := range map[string]struct {
+		data []byte
+		mime string
+	}{
+		".flac": {audiofiletest.FLAC(44100, 44100), audiofile.FLAC},
+		".ogg":  {audiofiletest.OGGVorbis(44100, 44100), audiofile.OGG},
+		".m4a":  {audiofiletest.M4A(0, 44100, 44100, true), audiofile.M4A},
+	} {
+		id, mime = r.uploaded("voice"+ext, c.data)
+		assert.Equal(t, c.mime, mime, ext)
+		assert.True(t, strings.HasSuffix(id, ext), id)
+	}
 	id, mime = r.uploaded("lying.png", gentesttest.WAV)
-	assert.Equal(t, audioin.WAV, mime, "the kind is read from the bytes, not from the name")
+	assert.Equal(t, audiofile.WAV, mime, "the kind is read from the bytes, not from the name")
 	assert.True(t, strings.HasSuffix(id, ".wav"), id)
 
-	oversized := make([]byte, audioin.MaxBytes+1)
+	oversized := make([]byte, audiofile.MaxBytes+1)
 	copy(oversized, gentesttest.WAV)
 	for name, file := range map[string][]byte{
 		"a picture named like a wav": gentesttest.PNG,
@@ -114,6 +127,7 @@ func TestUploadStagesWAVAndMP3ByTheirBytesAndRefusesAnythingElse(t *testing.T) {
 		"a WAV header that is cut":   []byte("RIFF\x00\x00\x00"),
 		"an empty file":              {},
 		"a WAV one byte over limit":  oversized,
+		"an mp4 video (isom)":        audiofiletest.MP4WithBrand("isom", 1000, 5000, "vide"),
 	} {
 		rec := r.upload("voice.wav", file)
 		assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, name+": "+rec.Body.String())
@@ -167,7 +181,7 @@ func TestRunAnS2VBatchHandsTheUploadedAudioToTheModelAndRecordsIt(t *testing.T) 
 	require.NotNil(t, calls[0].Video)
 	require.NotNil(t, calls[0].Video.Audio, "the audio reaches the model as its own input")
 	assert.Equal(t, gentesttest.WAV, calls[0].Video.Audio.Data)
-	assert.Equal(t, audioin.WAV, calls[0].Video.Audio.MimeType)
+	assert.Equal(t, audiofile.WAV, calls[0].Video.Audio.MimeType)
 	require.Len(t, calls[0].Video.References, 1, "the picture is the reference, the audio is not one of the pictures")
 	assert.Equal(t, gentesttest.PNG, calls[0].Video.References[0].Data)
 
@@ -182,7 +196,7 @@ func TestRunAnS2VBatchHandsTheUploadedAudioToTheModelAndRecordsIt(t *testing.T) 
 	for _, in := range got.Inputs {
 		roles[in.Role] = in.MimeType
 	}
-	assert.Equal(t, map[string]string{"reference": "image/png", "audio": audioin.WAV}, roles, "the audio is kept with the batch as an audio input")
+	assert.Equal(t, map[string]string{"reference": "image/png", "audio": audiofile.WAV}, roles, "the audio is kept with the batch as an audio input")
 }
 
 func TestListModelsSaysAnS2VModelNeedsAudio(t *testing.T) {

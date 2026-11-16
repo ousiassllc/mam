@@ -424,6 +424,8 @@ constraints:
   - do_not_add_characters
 ```
 
+**Shot の音声（Issue #1153）**: Shot には Project の音声アセット（`type=audio`）を 1 つ結び付けられる。Canonical Shot Spec の外の情報で、`shot.shot_spec` の `audio` キー（`{"audio": {"asset_id": "..."}}`）に持つ（[architecture/er.md](architecture/er.md) §4）。音声つきの Shot の動画は、音声を入力に取る動画モデル（Wan 2.2 S2V など）だけが、音声と Keyframe（か参照画像）から作り、動画の長さは音声の長さになる（[architecture/model-adapters.md](architecture/model-adapters.md) §3.1「音声つきの Shot」。上限は `gentest.max_audio_seconds`）。音声のない Shot は今までどおりで、音声を必須とするモデルへは回らない。結び付け・外しは Shot 画面・`PUT /api/v1/shots/:id/audio`・MCP `set_shot_audio`・チャット（DIRECTOR MODE）から同じ規則で行い、生成中・修復中の Shot と Prompt が LOCK の Shot では変えられない。
+
 ## 7.2 Model Adapter
 
 内部Shot Specはモデル非依存で保持する。
@@ -1267,7 +1269,7 @@ EXPORTED
 - **確認ポイントはスレッド内カード**: Confirmation Level で設定した確認ポイント（脚本/Rough Cut/Final）は、承認カードとして表示する（Escalation は承認カードではなく、§23.2 の別カードである）。ボタン（承認 / 修正を依頼）か、自然言語の返答で応答できる。返答が承認になるのは、前後の空白と句読点（。 . ! ！）を除き大文字小文字を区別せず、承認の語（「承認」「承認します」「承認です」「OK」「okay」「はい」「いいね」「いいです」「問題ない」「問題なし」「LGTM」「お願いします」）に全文が一致するときだけで、それ以外の返答は本文を添えた修正依頼になる（「いいけどもう少し明るく」も修正依頼）。応答があるまで Core State Machine は AWAITING_APPROVAL に留まる（§22。Notes の昇格提案カードを除く）
 - **発言の対象**: 指示の対象 Scene/Shot/Take は、カードへの返信（引用）で明示するか、直前の文脈から AI が解決する。解決できない場合は AI が聞き返す。§24 の Command Interpreter がこの解決を含めて構造化操作へ変換する
 - **MODE / Quality**: 入力欄の下に小さく置く。AUTO では AI が主導し、DIRECTOR では指示した箇所だけを直して待機する（DRAFT の間の発言は、メモの依頼を除き Brief への回答として扱う）。切替はいつでも可能で、状態は保持される
-- **添付**: 画像・動画をドラッグ&ドロップまたは［＋］で添付でき、Assets/References として Brief に取り込まれる
+- **添付**: 画像・動画をドラッグ&ドロップまたは［＋］で添付でき、Assets/References として Brief に取り込まれる。音声（WAV・MP3・FLAC・OGG・M4A）も添付でき、Project のアセット（`type=audio`）として残り、メッセージに再生できる形で表示される（Brief には入らない。単発生成の音声入力と、Shot に結び付ける音声〔§7.1〕に使う。Issue #1153）
 - **非同期**: 生成・Repair の進捗はスレッド内の進捗カードにリアルタイム表示される。Judge は Take ごとに自動で走るため進捗カードは出さず、実行中は Shot カードの JUDGING 表示（Shot 進捗 WebSocket）で示し、完了時に結果を発言として投稿する。入力は生成中も可能
 
 ## 23.2 スレッド内カード
@@ -1698,6 +1700,7 @@ Promptはそれらから生成される一時的な実行形式とする。
 - 使ったモデルの経路（API / ChatGPT サブスク / ローカル）と選んだ理由（割り当て、または条件に合うモデルの自動選択）・費用の扱い
 - Model routing（選択理由、M3）
 - References
+- 音声（音声つきの Shot で、動画を作った音声のアセット。Issue #1153）
 - Output
 - Judge result
 - Repair history

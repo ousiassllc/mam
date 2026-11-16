@@ -24,6 +24,9 @@ type Builder struct {
 	Config func() modeladapter.Config
 	// Routes is what the models of a generation would be if it started now, with their route and why (modelroute.Env.Report). nil: the plan does not name them.
 	Routes func() []modelroute.RouteReport
+	// Env is the choice of models as a generation would make it now (generation.Orchestrator.RouteEnv): the plan asks it for the model of a Shot with audio (audio.go). nil: the plan
+	// cannot name that model.
+	Env func() modelroute.Env
 	// Candidates reports whether the generation of the Shot goes through Prompt Candidate Generation (generation.Orchestrator.UsesCandidates).
 	Candidates func(ctx context.Context, shot domain.Shot) (bool, error)
 }
@@ -141,7 +144,7 @@ func (b Builder) video(ctx context.Context, cfg modeladapter.Config, policy doma
 	if err != nil {
 		return false, err
 	}
-	strategy, err := generation.DecideWithModel(cfg, policy.Quality, shot.Duration, repository.Budget{}, generation.FixedModel(locks))
+	strategy, err := b.strategy(cfg, policy, shot, generation.FixedModel(locks))
 	if err != nil { // no route for the policy: the price of this Shot cannot be told
 		line.VideoCost = Cost{Unknown: true}
 		return false, nil

@@ -9,8 +9,8 @@ import (
 
 	"github.com/gin-gonic/gin"
 
+	"github.com/ousiassllc/mam/backend/internal/audiofile"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
-	"github.com/ousiassllc/mam/backend/internal/service/gentest/audioin"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/advform"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gptform"
@@ -85,9 +85,9 @@ func (h Handlers) stage(fh *multipart.FileHeader) (string, error) {
 	return id, err
 }
 
-// stageAudio stores the audio file of the form (WAV or MP3: the service reads the kind from the bytes and refuses any other).
+// stageAudio stores the audio file of the form (WAV, MP3, FLAC, OGG or M4A: the service reads the kind from the bytes and refuses any other).
 func (h Handlers) stageAudio(fh *multipart.FileHeader) (string, error) {
-	data, err := refform.Read(fh, audioin.MaxBytes+1)
+	data, err := refform.Read(fh, audiofile.MaxBytes+1)
 	if err != nil {
 		return "", err
 	}

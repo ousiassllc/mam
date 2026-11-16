@@ -203,14 +203,19 @@ templ parameterFields(c Compose) {
 					}
 				}
 			</label>
-			<label class="flex flex-col gap-1 text-xs text-mute" for="gt-duration">
-				<span>長さ（秒）</span>
-				@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": "gt-duration", "name": FieldDuration}) {
-					for _, d := range c.Durations {
-						<option value={ d } selected?={ d == c.Duration }>{ d }</option>
+			if len(c.Durations) > 0 {
+				<label class="flex flex-col gap-1 text-xs text-mute" for="gt-duration">
+					<span>長さ（秒）</span>
+					@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": "gt-duration", "name": FieldDuration}) {
+						for _, d := range c.Durations {
+							<option value={ d } selected?={ d == c.Duration }>{ d }</option>
+						}
 					}
-				}
-			</label>
+				</label>
+			}
+			if c.LengthNote != "" {
+				<p class="max-w-64 pb-2 text-xs text-mute" data-testid="gt-length-note">{ c.LengthNote }</p>
+			}
 		}
 		if len(c.SpeedModes) > 0 {
 			<label class="flex flex-col gap-1 text-xs text-mute" for="gt-speed-mode">

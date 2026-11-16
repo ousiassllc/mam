@@ -7,9 +7,9 @@ import (
 	"context"
 	"io"
 
+	"github.com/ousiassllc/mam/backend/internal/audiofile"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
-	"github.com/ousiassllc/mam/backend/internal/service/gentest/audioin"
 )
 
 // Purpose is the name of the upload purpose (create_upload_ticket).
@@ -20,8 +20,8 @@ const Purpose = "gentest_audio"
 func Spec(svc func() (*gentest.Service, error), mapErr func(error) error) mcpkit.UploadSpec {
 	return mcpkit.UploadSpec{
 		Purpose:     Purpose,
-		Description: "音声から動画（S2V）の入力音声。WAV か MP3、50 MiB まで。応答の audio_id を estimate_generation_test / run_generation_test の references に {source: upload, id: audio_id, role: audio} として渡す / Input audio of a speech-to-video generation (WAV or MP3, up to 50 MiB); pass the returned audio_id as {source: upload, id, role: audio}.",
-		MaxBytes:    audioin.MaxBytes,
+		Description: "音声から動画（S2V）の入力音声。WAV・MP3・FLAC・OGG・M4A のどれか、50 MiB まで。応答の audio_id を estimate_generation_test / run_generation_test の references に {source: upload, id: audio_id, role: audio} として渡す / Input audio of a speech-to-video generation (WAV, MP3, FLAC, OGG or M4A, up to 50 MiB); pass the returned audio_id as {source: upload, id, role: audio}.",
+		MaxBytes:    audiofile.MaxBytes,
 		Handle: func(_ context.Context, in mcpkit.UploadInput) (any, error) {
 			g, err := svc()
 			if err != nil {
@@ -33,7 +33,7 @@ func Spec(svc func() (*gentest.Service, error), mapErr func(error) error) mcpkit
 			}
 			defer func() { _ = f.Close() }()
 			// One byte more than the limit, so that a larger file is refused instead of being cut to the limit and accepted.
-			data, err := io.ReadAll(io.LimitReader(f, audioin.MaxBytes+1))
+			data, err := io.ReadAll(io.LimitReader(f, audiofile.MaxBytes+1))
 			if err != nil {
 				return nil, err
 			}

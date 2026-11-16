@@ -45,7 +45,8 @@ type VideoCaps struct {
 	FirstFrame         bool      `json:"first_frame"`
 	LastFrame          bool      `json:"last_frame"`
 	NativeAudio        bool      `json:"native_audio"`
-	AudioInput         bool      `json:"audio_input" jsonschema:"音声ファイル（WAV か MP3。役割 audio）を受け取る。音声から動画を作るモデル（S2V）。true のモデルは音声が必須で、requires_inputs に audio が入る"`
+	AudioInput         bool      `json:"audio_input" jsonschema:"音声ファイル（WAV・MP3・FLAC・OGG・M4A。役割 audio）を受け取る。音声から動画を作るモデル（S2V）。true のモデルは音声が必須で、requires_inputs に audio が入る"`
+	LengthFromAudio    bool      `json:"length_from_audio" jsonschema:"クリップの長さは音声ファイルの長さで決まる（S2V。durations は空: 長さは選べず、リクエストの duration_seconds は使われない）。音声が gentest.max_audio_seconds を超えると断られる"`
 }
 
 // Info is a model the screen can choose, with what it can do and why it cannot be chosen now.
@@ -275,7 +276,10 @@ func (c Catalog) info(cfg modeladapter.Config, m domain.ModelName, media string)
 	if caps, ok := cfg.VideoCaps(m); ok {
 		mi.Video = &VideoCaps{
 			Durations: slices.Clone(caps.Durations), Resolutions: slices.Clone(caps.Resolutions), MaxReferenceImages: caps.MaxReferenceImages,
-			FirstFrame: caps.FirstFrame, LastFrame: caps.LastFrame, NativeAudio: caps.NativeAudio, AudioInput: caps.AudioInput,
+			FirstFrame: caps.FirstFrame, LastFrame: caps.LastFrame, NativeAudio: caps.NativeAudio, AudioInput: caps.AudioInput, LengthFromAudio: caps.AudioLength,
+		}
+		if caps.AudioLength {
+			mi.Video.Durations = []float64{} // the length is the sound's: there are no lengths to choose from (the form and the tools read length_from_audio)
 		}
 	}
 	mi.Inputs = inputsOf(mi)

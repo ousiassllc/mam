@@ -21,6 +21,6 @@ func AudioBadge(m modelcatalog.Info) (b modelcard.Badge, ok bool) {
 	}
 	return modelcard.Badge{
 		Tone: atoms.BadgeInfo, Label: "音声ファイルが必要（S2V）",
-		Attrs: templ.Attributes{"data-testid": "gt-model-audio", "title": "音声ファイル（WAV か MP3）を添えると、その音声から動画を作ります。音声がないと実行できません"},
+		Attrs: templ.Attributes{"data-testid": "gt-model-audio", "title": "音声ファイル（WAV・MP3・FLAC・OGG・M4A）を添えると、その音声と同じ長さの動画を作ります（長さは選べません。上限は models.json の gentest.max_audio_seconds、既定 60 秒）。音声がないと実行できません"},
 	}, true
 }

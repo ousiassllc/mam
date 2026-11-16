@@ -28,6 +28,8 @@
 | `set_project_lock` | Story / Music を AUTO / MANUAL / LOCK に | `project_id`, `parameter`（`story` / `music`）, `mode` | `locks` | いいえ |
 | `set_shot_lock` | Shot のパラメータ 1 つを AUTO / MANUAL / LOCK に。`video_model` は `value`（モデル名。LOCK で省略は最新 Take のモデル） | `shot_id`, `parameter`（`dialogue` / `character_identity` / `acting` / `camera` / `lighting` / `product_geometry` / `prompt` / `video_model` / `take_selection` / `editing`）, `mode`, `value` | `locks`（全 10 パラメータ） | いいえ |
 | `update_shot_spec` | 手で編集した Canonical Shot Spec を保存（英語。`duration` は Shot に合わせて上書き。LOCK 中の変更は `locked`、生成中は `conflict`、不正は `validation`） | `shot_id`, `shot_spec`（オブジェクト） | `shot`, `spec`, `versions[]` | いいえ |
+| `get_shot_audio` | Shot に結び付けた音声（Wan 2.2 S2V など、音声から動画を作るモデルの入力。Issue #1153）と、結び付けられる Project の音声アセット。`GET /api/v1/shots/:id/audio` と同じ | `shot_id` | `shot_id`, `project_id`, `audio`（結び付けた音声。無ければ `null`。`asset_id`, `mime_type`, `size_bytes`, `seconds`（長さ。読めなければ省略）, `usable`（いま生成に使えるか）, `problem`（`usable` が false の理由: アセットが無い・音声でない・読めない・`gentest.max_audio_seconds` を超える））, `choices[]`（Project の音声アセット。新しい順。`asset_id`, `mime_type`, `size_bytes`, `created_at`）, `locked`（Prompt が LOCK）, `busy`（生成中・修復中） | はい |
+| `set_shot_audio` | Shot に Project の音声アセットを結び付ける。`asset_id` を空か省略にすると外す。次の生成から、音声を受け取るモデルが Keyframe（か参照画像）とこの音声から動画を作り、長さは音声の長さになる（[model-adapters.md](../architecture/model-adapters.md) §3.1）。生成中・修正中は `conflict`、Prompt が LOCK なら `locked`、音声でないアセットは `validation`、他の Project のアセットや存在しない Shot は `not_found`。変更は手による Shot Spec の編集として分析に記録する。`PUT /api/v1/shots/:id/audio`・Shot 画面・チャットの `set_shot_audio` と同じ処理（`shotaudiosvc.Service`）。音声ファイルは Project のアセット（チャットの添付・`create_upload_ticket`）として入る | `shot_id`, `asset_id` | `get_shot_audio` と同じ | いいえ |
 | `send_director_command` | 自然言語の指示を Shot に実行（Command Interpreter。モデルを呼ぶ）。再生成が始まったら `job_id` | `shot_id`, `content` | `started`, `job_id`, `job_state`, `inspector`（Inspector と同じ） | いいえ |
 
 ## 生成・Continue・Judge・Repair
@@ -65,7 +67,7 @@
 | `use_partial_takes` | 複数の Take の区間をつないで新しい Take（Partial Take Use。2〜8 区間・各 0.3 秒以上。ffmpeg が無いと `unavailable`） | `shot_id`, `segments[]`（`take_id`, `start`, `end`）または `instruction`（"Take A の 0-2秒 + Take B の 2-4秒"） | `shot` | いいえ |
 | `get_take_video_url` | プレビュー動画の URL（種別 `take_video`。4K は 1080p プロキシ。アーカイブ済みは `not_found`） | `take_id` | `take_id`, `url`, `expires_at`, `file_name` | はい |
 | `get_take_thumbnail_url` | 先頭フレームの JPEG の URL（種別 `take_thumbnail`。ffmpeg が無いと `unavailable`） | `take_id` | 同上 | はい |
-| `get_take_trace` | Generation Traceability（元の Shot Spec・Prompt・World State 版・モデルとパラメータ・Routing・Reference・出力・Judge・Repair） | `take_id` | `project_id`, `take`, `model_parameters`, `routing`, `model_use`（使ったモデルの経路 `route_kind`・選んだ理由・費用の扱い。旧 Take は `null`）, `prompt_version`, `world_state_version`, `references[]`, `output`, `judgements[]`, `repairs[]`, `produced_by` | はい |
+| `get_take_trace` | Generation Traceability（元の Shot Spec・Prompt・World State 版・モデルとパラメータ・Routing・Reference・出力・Judge・Repair）。音声つきの Shot の Take は、作った音声の `audio_asset_id` も返す | `take_id` | `project_id`, `take`, `model_parameters`, `routing`, `model_use`（使ったモデルの経路 `route_kind`・選んだ理由・費用の扱い。旧 Take は `null`）, `prompt_version`, `world_state_version`, `audio_asset_id`（音声つきの Take だけ。Issue #1153）, `references[]`, `output`, `judgements[]`, `repairs[]`, `produced_by` | はい |
 
 `get_take_video_url` / `get_take_thumbnail_url` の URL は 15 分有効の GET（Range 可）で、動画は画面のプレイヤーと同じファイル（`TakeService.Video`）。
 
@@ -85,6 +87,10 @@
 | `PUT /projects/:id/locks` | `set_project_lock`（読み取りは `get_project_locks`） |
 | `PUT /shots/:id/locks` | `set_shot_lock` |
 | `PUT /shots/:id/shot-spec` | `update_shot_spec` |
+| `PUT /api/v1/shots/:id/audio` | `set_shot_audio` |
+| `GET /api/v1/shots/:id/audio` | `get_shot_audio` |
+| `GET /shots/:id/audio` | `get_shot_audio`（画面の領域。読み取り） |
+| `PUT /shots/:id/audio` | `set_shot_audio`（画面のフォーム） |
 | `POST /shots/:id/director-command` | `send_director_command` |
 | `POST /shots/:id/generate` | `generate_shot` |
 | `POST /shots/:id/generate/candidates` | `generate_shot_candidates` |
@@ -115,3 +121,4 @@
 | 1.1 | 2026-11-02 | `generate_shot` のジョブで、ローカルの ComfyUI が動いている間は `get_job` に `progress`（ステップ・%・残りの見積り）が付くことを書いた | Issue #966 |
 | 1.2 | 2026-11-08 | `generate_shot` の失敗に「使えるモデルがない `conflict`」を、`get_take_trace` の出力に `model_use` を足した | Issue #1113 |
 | 1.3 | 2026-11-08 | `get_take_trace` の `model_use` の経路のフィールド名を `route` から実際の `route_kind` に直した。`set_project_mode` の説明を、予算上限が数えるのは単価が分かる呼び出しだけで、不明な分は止まらず、確実に止めるのは DIRECTOR であることに改めた | Issue #1115: 仕様の `route` は実装の `route_kind` と違っていた。予算上限は単価が不明の呼び出しを数えないのに、止める手段として単独で勧めていた |
+| 1.4 | 2026-11-16 | `get_shot_audio`・`set_shot_audio` を足した（Shot に Project の音声アセットを結び付ける・外す・読む。音声つきの Shot は音声を入力に取るモデル〔Wan 2.2 S2V など〕へ回り、動画の長さは音声の長さになる） | Issue #1153 |

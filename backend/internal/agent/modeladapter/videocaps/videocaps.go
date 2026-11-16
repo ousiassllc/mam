@@ -5,6 +5,7 @@ package videocaps
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/apperr"
 	"github.com/ousiassllc/mam/backend/internal/domain"
@@ -25,6 +26,21 @@ type Capabilities struct {
 	NativeAudio bool
 	// AudioInput means the model is given a sound file (speech to video: Wan 2.2 S2V; VideoRequest.Audio).
 	AudioInput bool
+	// AudioLength means the clip is as long as the sound the request carries (Wan 2.2 S2V with Extend): Durations are only informative, SnapDuration leaves the length as it is, and
+	// the length is read from the sound (direct.Video), never taken from the request.
+	AudioLength bool
+}
+
+// SnapDuration returns the shortest supported length that holds the requested seconds, or the longest supported length when the request is longer than any
+// of them (the Editor trims later). A model whose clip is as long as its sound (AudioLength) has no lengths to snap to: the seconds stay as they are.
+func (c Capabilities) SnapDuration(seconds float64) float64 {
+	if c.AudioLength {
+		return seconds
+	}
+	if i := slices.IndexFunc(c.Durations, func(d float64) bool { return d >= seconds-1e-9 }); i >= 0 {
+		return c.Durations[i]
+	}
+	return c.Durations[len(c.Durations)-1]
 }
 
 // CheckInterpolation refuses (apperr input_unsupported, HTTP 422) a clip with both a first and a last frame (both) that is longer than

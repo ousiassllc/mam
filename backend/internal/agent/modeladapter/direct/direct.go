@@ -11,6 +11,7 @@ import (
 	"fmt"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/audiolength"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/chatgptid"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/gptimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
@@ -98,6 +99,10 @@ func Video(ctx context.Context, a *modeladapter.Adapter, target modeladapter.Vid
 	}
 	if err := checkInputs(caps, req); err != nil {
 		return modeladapter.VideoOutput{}, fmt.Errorf("%w: %s", err, target.Model)
+	}
+	req, err := audiolength.Apply(cfg, caps, req) // a model whose clip is as long as its sound: the length is the sound's (Issue #1153), and a sound that is too long or unreadable is refused
+	if err != nil {
+		return modeladapter.VideoOutput{}, err
 	}
 	req.DurationSeconds = caps.SnapDuration(req.DurationSeconds)
 	if e := videocaps.CheckInterpolation(target.Model, req.DurationSeconds, req.FirstFrame != nil && req.LastFrame != nil); e != nil {

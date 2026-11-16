@@ -66,6 +66,8 @@ flowchart TB
 
 左メニュー・ページの枠・タップで選ぶカードは [side-menu.md](side-menu.md)（#915）。
 
+Shot Inspector（`organisms/shotinspector`）の「音声」の領域（Issue #1153）は、サブパッケージ `organisms/shotinspector/audiopanel`（`Section`・`Placeholder`・`Data`）。Inspector は `Placeholder`（`hx-get="/shots/:id/audio" hx-trigger="load" hx-swap="outerHTML"`）を置き、`GET /shots/:id/audio` が `Section` を返す（音声は `shotaudiosvc.Service` から読むので、Inspector の読み込みの外に出し、書きかけの入力を消さない）。`Section` は、つないだ音声（種類・長さ・サイズと `<audio controls preload="none">`）、つないだ音声を使えない理由と絵（Keyframe か参照画像）が要る旨（どちらも `role="alert"`）、Project の音声アセットから選ぶ `select`（`label` 付き）と「つなぐ」「はずす」を持つ。つなげる音声が無いときはチャットへの添付（WAV・MP3・FLAC・OGG・M4A、50 MiB まで）を案内する。生成中・Repair 中と Prompt が LOCK の Shot はフォームを描かず理由を出す。Take の Trace パネルは、音声つきで作った Take にその音声のプレーヤーを出す。ハンドラは `web/handler/shotaudiohandler`、ルートは `router/shotaudioroutes`。
+
 色（用途ごとの許可する Tailwind のクラスと例外。`a11y/color_allowlist_test.go` が検査する。#867）は [color-rules.md](color-rules.md)。すべての部品がこれに従う（#865 のモデルのカード・#866 の「?」ヘルプを含む）。
 
 「?」ヘルプ（molecules の `help`（`molecules/help/`）と TypeScript の `help`。見出しの横のボタンで、説明のポップオーバーを開く。#866）の契約と、説明をヘルプへ移した画面の一覧は [shared-ui-parts.md](shared-ui-parts.md) §9・§10。

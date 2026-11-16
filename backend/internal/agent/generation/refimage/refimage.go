@@ -27,8 +27,10 @@ type Reader struct {
 	read      func(domain.Asset) ([]byte, error)
 	logger    *slog.Logger
 
-	mu   sync.Mutex
-	seen map[string]entry // by asset ID
+	mu     sync.Mutex
+	seen   map[string]entry  // by asset ID
+	audio  audioSource       // where the sound of a Shot with audio is read from (WithAudio)
+	sounds map[string]*Audio // the sounds read so far, by asset ID
 }
 
 // entry is what reading one image gave: ok is false when the image is not there to read.

@@ -1,6 +1,7 @@
 package workflows_test
 
 import (
+	"context"
 	"encoding/json"
 	"path/filepath"
 	"testing"
@@ -22,6 +23,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/shottest"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/workflows"
 	"github.com/ousiassllc/mam/backend/internal/repository/comfywf"
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
 	"github.com/ousiassllc/mam/backend/internal/service/localmodels"
 	workflowsvc "github.com/ousiassllc/mam/backend/internal/service/workflows"
 )
@@ -29,6 +31,7 @@ import (
 type rig struct {
 	*shottest.Fixture
 	comfy *comfyuitest.Fake
+	gt    *gentesttest.Rig // the generation test: where an audio file of a run is staged (Issue #1153)
 }
 
 // newRig serves the workflow tools over a fake ComfyUI registered as the bundled endpoint.
@@ -47,17 +50,23 @@ func newRig(t *testing.T, withService bool) *rig {
 		localcfg.PublishWorkflows(nil)
 		localbackends.Publish(modeladapter.DefaultConfig())
 	})
+	var gt *gentesttest.Rig
 	f := shottest.New(t, func(env *mcptest.Env, reg *mcpkit.Registrar) {
 		if withService {
+			gt = gentesttest.NewOn(t, env.DB)
+			env.Services.Gentest = gt.Svc
 			env.Services.Workflows = workflowsvc.New(workflowsvc.Deps{
 				Repo: comfywf.New(env.DB), Models: local, Adapter: adapter, Keys: keys, StagingDir: t.TempDir(), RunsDir: t.TempDir(),
+				LoadAsset: func(context.Context, string, string) ([]byte, string, error) {
+					return comfyuitest.PNG, "image/png", nil
+				}, // every asset is a picture
 			})
 		}
 		jobs.Register(reg, env.Services)
 		director.Register(reg, env.Services)
 		workflows.Register(reg, env.Services)
 	}, shottest.Options{Models: adapter})
-	return &rig{Fixture: f, comfy: comfy}
+	return &rig{Fixture: f, comfy: comfy, gt: gt}
 }
 
 // template is a built-in workflow as the JSON text and settings the tools take.

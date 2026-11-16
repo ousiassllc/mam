@@ -6,10 +6,10 @@ import "strconv"
 templ File() {
 	<div class="flex max-w-sm flex-col gap-1" data-testid="gt-audio">
 		<label class="flex flex-col gap-1 text-xs text-mute" for={ InputID }>
-			<span>音声ファイル（S2V・WAV か MP3）</span>
+			<span>音声ファイル（S2V・WAV・MP3・FLAC・OGG・M4A）</span>
 			<input id={ InputID } type="file" name={ Field } accept={ Accept } class="text-sm" aria-describedby="gt-audio-help" data-testid="gt-audio-file"/>
 		</label>
-		<p id="gt-audio-help" class="text-xs text-mute">音声から動画を作るモデル（S2V）だけが使います。音声の先頭から動画の長さ分を使います。WAV・MP3、{ strconv.Itoa(MaxMiB) } MiB まで。</p>
+		<p id="gt-audio-help" class="text-xs text-mute">音声から動画を作るモデル（S2V）だけが使います。音声の長さがそのまま動画の長さになります（長さの上限は設定で決まります）。WAV・MP3・FLAC・OGG・M4A、{ strconv.Itoa(MaxMiB) } MiB まで。</p>
 	</div>
 }
 

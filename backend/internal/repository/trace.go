@@ -68,7 +68,7 @@ func (r *TraceRepository) TakeTrace(ctx context.Context, takeID string) (domain.
 
 	var lineage domain.TakeLineage
 	_ = json.Unmarshal([]byte(params), &lineage) // parameters written before the lineage was recorded lack it
-	tr.WorldStateVersion, tr.References = lineage.WorldStateVersion, lineage.References
+	tr.WorldStateVersion, tr.References, tr.AudioAssetID = lineage.WorldStateVersion, lineage.References, lineage.AudioAssetID
 	if tr.References == nil {
 		tr.References = domain.Shot{ShotSpec: pv.SpecSnapshot}.References()
 	}

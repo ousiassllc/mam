@@ -150,19 +150,23 @@ func (o *Orchestrator) decide(ctx context.Context, ref repository.ShotRef, polic
 	if err != nil {
 		return Strategy{}, err
 	}
+	sound, picture, err := images.Voice(ctx, ref.Shot.ShotSpec, ref.Shot.References()) // #1153: a tie that cannot be used is refused here, and the models are chosen for it
+	if err != nil {
+		return Strategy{}, err
+	}
 	// A model that can be used now: the assignment's, else (a default assignment only) one that matches the Shot; none is ErrNoUsableModel.
 	env := o.routes()
-	pick, err := env.Video(policy.Quality, modelroute.VideoNeed{Seconds: ref.Shot.Duration, Keyframe: hasKeyframe(refs), Forced: forced})
+	pick, err := env.Video(policy.Quality, modelroute.VideoNeed{Seconds: ref.Shot.Duration, Keyframe: hasKeyframe(refs), Forced: forced, Audio: sound != nil, Reference: picture})
 	if err != nil {
 		return Strategy{}, err
 	}
 	cfg := env.Config
-	if pick.Substituted() { // the chosen model alone: Multi-model routing does not move the Shot to a dearer route again
+	if pick.Substituted() || sound != nil { // the chosen model alone: Multi-model routing does not move the Shot to a dearer route again; the models of a Shot with audio are the picked ones
 		cfg.Policies = maps.Clone(cfg.Policies)
 		cfg.Policies[policy.Quality] = pick.Route
 	}
-	in := &RoutingInput{References: refs}
-	if forced == "" && !pick.Substituted() && cfg.Routing.Enabled {
+	in := &RoutingInput{References: refs, Audio: sound}
+	if forced == "" && !pick.Substituted() && sound == nil && cfg.Routing.Enabled {
 		records, err := o.gens.ModelRecords(ctx, ref.ProjectID)
 		if err != nil {
 			return Strategy{}, err

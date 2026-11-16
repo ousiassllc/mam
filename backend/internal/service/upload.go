@@ -5,13 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/audiofile"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
+	"github.com/ousiassllc/mam/backend/internal/service/uploadsniff"
 )
 
 // Upload limits (spec/requirements/non-functional.md §5 入力検証).
@@ -22,14 +23,10 @@ const (
 	sniffBytes       = 512
 	assetFilePerm    = 0o600
 	assetDirPerm     = 0o700
-	ftypOffset       = 4
-	ftypBrandOffset  = 8
-	ftypBrandEnd     = 12
-	quickTimeBrand   = "qt  "
 	mimeQuickTime    = "video/quicktime"
 	mimeMP4          = "video/mp4"
 	mimeWebM         = "video/webm"
-	unsupportedTypes = "対応していないファイル形式です（画像: jpg/png/webp/gif、動画: mp4/mov/webm）"
+	unsupportedTypes = "対応していないファイル形式です（画像: jpg/png/webp/gif、動画: mp4/mov/webm、音声: wav/mp3/flac/ogg/m4a）"
 )
 
 // Upload is one file the user attached. Open is called at most once.
@@ -54,6 +51,12 @@ var extensions = map[string]fileKind{
 	".mp4":  {domain.AssetVideo, mimeMP4, MaxVideoBytes},
 	".mov":  {domain.AssetVideo, mimeQuickTime, MaxVideoBytes},
 	".webm": {domain.AssetVideo, mimeWebM, MaxVideoBytes},
+	// An audio file (Issue #1153): the audio input of a single-shot generation. Its kind is read from the bytes (audiofile.Sniff); it is never decoded here.
+	".wav":  {domain.AssetAudio, audiofile.WAV, audiofile.MaxBytes},
+	".mp3":  {domain.AssetAudio, audiofile.MP3, audiofile.MaxBytes},
+	".flac": {domain.AssetAudio, audiofile.FLAC, audiofile.MaxBytes},
+	".ogg":  {domain.AssetAudio, audiofile.OGG, audiofile.MaxBytes},
+	".m4a":  {domain.AssetAudio, audiofile.M4A, audiofile.MaxBytes},
 }
 
 // storedUpload is an Upload that passed validation and was written to disk.
@@ -113,7 +116,7 @@ func (s *core) storeUpload(projectID string, u Upload) (storedUpload, error) {
 		return storedUpload{}, fmt.Errorf("read upload %q: %w", name, err)
 	}
 	head = head[:n]
-	if !contentMatches(ext, kind, head) {
+	if !uploadsniff.Matches(ext, kind.assetType, kind.mime, head) {
 		return storedUpload{}, invalid("attachments", "%s: 拡張子とファイルの内容が一致しません", name)
 	}
 
@@ -158,24 +161,4 @@ func assetsOf(stored []storedUpload) []domain.Asset {
 		assets[i] = su.asset
 	}
 	return assets
-}
-
-// contentMatches checks the file signature against the extension, so a renamed
-// executable or document is rejected even though its name looks harmless.
-func contentMatches(ext string, kind fileKind, head []byte) bool {
-	if kind.assetType == domain.AssetImage {
-		detected := http.DetectContentType(head)
-		return detected == kind.mime
-	}
-	switch ext {
-	case ".webm":
-		return bytes.HasPrefix(head, []byte{0x1A, 0x45, 0xDF, 0xA3}) // EBML header
-	case ".mp4", ".mov":
-		if len(head) < ftypBrandEnd || string(head[ftypOffset:ftypBrandOffset]) != "ftyp" {
-			return false
-		}
-		quickTime := string(head[ftypBrandOffset:ftypBrandEnd]) == quickTimeBrand
-		return ext == ".mov" || !quickTime
-	}
-	return false
 }

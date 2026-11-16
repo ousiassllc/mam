@@ -10,6 +10,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/service/gentest/audiolen"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gterr"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
@@ -31,6 +32,8 @@ type ModelEstimate struct {
 	SubtotalUSD *float64 `json:"subtotal_usd,omitempty"`
 	Resolution  string   `json:"resolution,omitempty"`
 	Seconds     float64  `json:"seconds,omitempty"`
+	// LengthFromAudio says Seconds is the length of the audio file (a speech-to-video model: the clip is as long as the sound, Issue #1153), not the request's length.
+	LengthFromAudio bool `json:"length_from_audio,omitempty"`
 	// Line is the time a result of a local model needs (Issue #1002); the fields are left out for a model that is not local.
 	timing.Line
 }
@@ -96,9 +99,16 @@ func (s *Service) estimate(ctx context.Context, r Request) (Estimate, []modelPla
 		Request: r, TotalItems: len(models) * perModel, Breakdown: []ModelEstimate{}, UnknownModels: []string{}, Warnings: []Warning{},
 		MaxItems: cfg.Gentest.Items(), MaxCostUSD: cfg.Gentest.CostUSD(),
 	}
+	audio, err := audiolen.Seconds(cfg, models, rolesOf(r), func(i int) (string, error) { // the sound's length is a speech-to-video clip's length; refused when too long or unreadable (#1153)
+		src, err := s.ResolveInput(ctx, r.References[i])
+		return src.Path, err
+	})
+	if err != nil {
+		return Estimate{}, nil, err
+	}
 	plans := make([]modelPlan, 0, len(models))
 	for _, m := range models {
-		plans = append(plans, s.planModel(cfg, r, m))
+		plans = append(plans, s.planModel(cfg, r, m, audio))
 	}
 	if e := checkInputs(r, plans); e != nil { // before anything is priced: a request that cannot use its input images is stopped, not sent
 		return Estimate{}, nil, e
@@ -108,6 +118,7 @@ func (s *Service) estimate(ctx context.Context, r Request) (Estimate, []modelPla
 		line := ModelEstimate{Model: m.ID, Label: m.Label, Items: perModel, Basis: p.basis, UnitUSD: p.unit}
 		if r.Media == gentestrepo.MediaVideo {
 			line.Resolution, line.Seconds = p.resolution, p.seconds
+			line.LengthFromAudio = p.info.Video != nil && p.info.Video.LengthFromAudio
 		}
 		if p.unit != nil {
 			sub := round4(*p.unit * float64(perModel))

@@ -17,6 +17,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/comfyuitest"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localhttp"
+	"github.com/ousiassllc/mam/backend/internal/audiofile/audiofiletest"
 	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
 )
 
@@ -59,7 +60,12 @@ func TestTheSoundIsUploadedWithTheExtensionOfItsKindAndFedToLoadAudio(t *testing
 	for _, c := range []struct {
 		name, mime, ext string
 		data            []byte
-	}{{"wav", "audio/wav", ".wav", wav}, {"mp3", "audio/mpeg", ".mp3", mp3}} {
+	}{
+		{"wav", "audio/wav", ".wav", wav}, {"mp3", "audio/mpeg", ".mp3", mp3},
+		{"flac", "audio/flac", ".flac", audiofiletest.FLAC(44100, 44100)},
+		{"ogg", "audio/ogg", ".ogg", audiofiletest.OGGOpus(312, 48000)},
+		{"m4a", "audio/mp4", ".m4a", audiofiletest.M4A(0, 44100, 44100, true)},
+	} {
 		t.Run(c.name, func(t *testing.T) {
 			b, f := s2v(t)
 			res, err := b.GenerateVideo(ctx(t), "", request(&modeladapter.Input{Data: c.data, MimeType: c.mime}))

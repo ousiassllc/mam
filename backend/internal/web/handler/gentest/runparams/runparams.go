@@ -10,6 +10,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/record"
+	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/gtshare"
 	"github.com/ousiassllc/mam/backend/internal/web/handler/gentest/settingstext"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 )
@@ -34,7 +35,7 @@ func Of(st gentest.BatchStatus) []view.KV {
 		add("解像度", r.Resolution)
 	}
 	if r.DurationSeconds > 0 {
-		add("長さ", strconv.FormatFloat(r.DurationSeconds, 'f', -1, 64)+" 秒")
+		add("長さ", gtshare.LengthText(r.DurationSeconds, st.Estimate.Breakdown))
 	}
 	if r.Seed != nil {
 		add("シード", strconv.FormatInt(*r.Seed, 10))

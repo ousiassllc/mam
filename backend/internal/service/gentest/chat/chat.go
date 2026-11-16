@@ -101,7 +101,8 @@ type session struct {
 	id        string
 	turns     []gentestchat.Turn // the newest MaxTurns
 	proposals map[string]*Proposal
-	order     []string // the ids of proposals, oldest first
+	order     []string               // the ids of proposals, oldest first
+	files     map[string]*attachment // the sound and the picture the user attached, by kind (attach.go)
 	used      time.Time
 }
 

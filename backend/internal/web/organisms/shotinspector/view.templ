@@ -12,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/locktoggle"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/locktoggles"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/shotinspector/audiopanel"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -133,6 +134,7 @@ templ View(d Data) {
 		</section>
 		@SpecSection(d)
 		@ReferencePackSection(d)
+		@audiopanel.Placeholder(d.Shot.ID)
 		<section aria-label="演出指示" class="flex flex-col gap-2">
 			<h3 class="text-sm font-semibold">演出指示</h3>
 			<form hx-post={ paths.Shot(d.Shot.ID, "director-command") } hx-target="#shot-inspector" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]" class="flex flex-col gap-2">

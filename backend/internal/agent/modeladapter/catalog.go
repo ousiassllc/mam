@@ -20,13 +20,9 @@ func Capabilities(m domain.ModelName) (VideoCapabilities, bool) {
 	return publishedCaps(m)
 }
 
-// SnapDuration returns the shortest supported length that holds the requested seconds, or the
-// longest supported length when the request is longer than any of them (the Editor trims later).
+// SnapDuration returns the shortest supported length that holds the requested seconds (see videocaps.Capabilities.SnapDuration).
 func (c VideoCapabilities) SnapDuration(seconds float64) float64 {
-	if i := slices.IndexFunc(c.Durations, func(d float64) bool { return d >= seconds-1e-9 }); i >= 0 {
-		return c.Durations[i]
-	}
-	return c.Durations[len(c.Durations)-1]
+	return videocaps.Capabilities(c).SnapDuration(seconds)
 }
 
 // SupportsResolution reports whether the model can produce the resolution.

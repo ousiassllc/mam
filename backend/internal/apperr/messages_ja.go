@@ -35,7 +35,7 @@ var messagesJa = map[string]string{ //nolint:gosec // texts of errors (they ment
 	"request_rejected.remedy": "詳細に、相手の返した理由があります。プロンプトの長さや内容、解像度・秒数・入力画像などの設定を見直してください。",
 
 	"input_missing.cause":  "このモデルが必ず使う入力（{param}）が渡されていません。",
-	"input_missing.remedy": "{param} に使う画像を添えるか、添えた画像の役割を変えてから実行してください。画像から動画を作るモデルは、最初のフレーム（first_frame）の画像が要ります。音声から動画を作るモデル（S2V）は、音声ファイル（audio。WAV か MP3）が要ります。添えた画像が「参照」になっているときは、「最初のフレーム」に変えてください。",
+	"input_missing.remedy": "{param} に使う画像を添えるか、添えた画像の役割を変えてから実行してください。画像から動画を作るモデルは、最初のフレーム（first_frame）の画像が要ります。音声から動画を作るモデル（S2V）は、音声ファイル（audio。WAV・MP3・FLAC・OGG・M4A）が要ります。添えた画像が「参照」になっているときは、「最初のフレーム」に変えてください。",
 
 	"input_unused.cause":  "添えた入力画像は、選んだモデルでは使われません。",
 	"input_unused.remedy": "画像から作るなら、I2V（画像から動画）や参照画像に対応したモデルを選んでください。画像を使わずに作るなら、画像を外してから実行してください。",

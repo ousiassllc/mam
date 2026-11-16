@@ -14,6 +14,8 @@ var ErrNoUsableModel = errors.New("modelroute: no usable model")
 type NoUsableError struct {
 	// Media is "image" or "video"; Key is the image purpose or the Quality Policy.
 	Media, Key string
+	// Audio: the Shot has a sound file, so only a model that takes it fits (Issue #1153); the cause says what is missing.
+	Audio bool
 	// Assigned are the models of the assignment (or the Video Model the user fixed) and why none can be used.
 	Assigned []Problem
 	// Explicit: the assignment is the user's, so no model was chosen in its place; Pinned: the operator fixed the file.
@@ -39,7 +41,10 @@ func CauseOf(err error) string {
 
 // role is what the generation needed a model for.
 func (e *NoUsableError) role() string {
-	if e.Media == "video" {
+	switch {
+	case e.Media == "video" && e.Audio:
+		return "音声つきの動画（Quality Policy: " + e.Key + "）"
+	case e.Media == "video":
 		return "動画（Quality Policy: " + e.Key + "）"
 	}
 	return "画像（用途: " + e.Key + "）"
@@ -74,6 +79,9 @@ func (e *NoUsableError) Cause() string {
 		b.WriteString("今使えるモデルはありますが、条件に合いません（" + strings.Join(parts, "、") + "）。")
 	default:
 		b.WriteString("条件に合って今使えるモデルもありません。")
+	}
+	if e.Audio && len(e.Candidates) == 0 {
+		b.WriteString("この Shot には音声ファイルが付いているため、音声を入力に取る動画モデル（Wan 2.2 S2V 14B など。モデル管理で導入できます）と、その参照画像になる Keyframe か参照画像が要ります。導入するか、Shot の音声を外してください。")
 	}
 	return b.String()
 }

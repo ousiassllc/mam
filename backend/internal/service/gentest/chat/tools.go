@@ -37,18 +37,23 @@ type modelLine struct {
 	Resolutions []string           `json:"resolutions,omitempty"`
 	Durations   []float64          `json:"durations,omitempty"`
 	NativeAudio bool               `json:"native_audio,omitempty"`
-	Speed       string             `json:"speed,omitempty"`
-	Quality     string             `json:"quality,omitempty"`
-	VideoModes  []traits.VideoMode `json:"video_modes,omitempty"`
+	AudioInput  bool               `json:"audio_input,omitempty"`
+	// LengthFromAudio says the clip is as long as the audio file (a speech-to-video model): durations is then left out and the request's duration_seconds is not used.
+	LengthFromAudio bool `json:"length_from_audio,omitempty"`
+	// Requires are the inputs the model cannot run without (first_frame, last_frame, reference, audio): a speech-to-video model lists reference and audio.
+	Requires   []string           `json:"requires_inputs,omitempty"`
+	Speed      string             `json:"speed,omitempty"`
+	Quality    string             `json:"quality,omitempty"`
+	VideoModes []traits.VideoMode `json:"video_modes,omitempty"`
 }
 
 func lineOf(m modelcatalog.Info) modelLine {
 	l := modelLine{
 		ID: m.ID, Label: m.Label, Media: m.Media, Provider: m.Provider, Origin: m.Origin, Available: m.Available, Unavailable: m.UnavailableMessage,
-		Price: m.Price.Basis, PerImage: m.Price.PerImageUSD, PerSecond: m.Price.PerSecondUSD, Commercial: string(m.License.Commercial), Inputs: m.Inputs,
+		Price: m.Price.Basis, PerImage: m.Price.PerImageUSD, PerSecond: m.Price.PerSecondUSD, Commercial: string(m.License.Commercial), Inputs: m.Inputs, Requires: m.RequiresInputs,
 	}
 	if m.Video != nil {
-		l.Resolutions, l.Durations, l.NativeAudio = m.Video.Resolutions, m.Video.Durations, m.Video.NativeAudio
+		l.Resolutions, l.Durations, l.NativeAudio, l.AudioInput, l.LengthFromAudio = m.Video.Resolutions, m.Video.Durations, m.Video.NativeAudio, m.Video.AudioInput, m.Video.LengthFromAudio
 	}
 	if m.Catalog != nil {
 		l.Speed, l.Quality, l.VideoModes = string(m.Catalog.Traits.Speed), string(m.Catalog.Traits.Quality), m.Catalog.Traits.VideoModes
@@ -126,30 +131,32 @@ func requestOf(b gentestchat.Batch) gentest.Request {
 // estimate is estimate_generation_test for the LLM: gentest.Service.Estimate on the request. A request that cannot run, or whose estimate is over the cost
 // limit, is told to the LLM (it fixes the request and asks again). A priced batch that can run becomes a confirmation card, and the turn is over.
 func (s *Service) estimate(ctx context.Context, x *exchange, st gentestchat.Step, rep *Reply) (done bool, err error) {
-	est, err := s.d.Gentest.Estimate(ctx, requestOf(*st.Request))
+	req := requestOf(*st.Request)
+	u, ui, llm := s.inputs(x.se, *st.Request, &req)
+	if ui != "" {
+		s.discard(req.References)
+		return s.refusedWith(x, rep, ui, llm), nil
+	}
+	est, err := s.d.Gentest.Estimate(ctx, req)
 	if err != nil {
-		var (
-			invalid  *gterr.InvalidError
-			conflict *gterr.ConflictError
-		)
-		switch {
-		case errors.As(err, &invalid):
-			return s.refused(x, rep, invalid.Message), nil
-		case errors.As(err, &conflict):
-			return s.refused(x, rep, conflict.Message), nil
+		s.discard(req.References)
+		if why, hint, ok := refusalOf(err); ok {
+			return s.refusedWith(x, rep, why, strings.TrimSpace(why+" "+hint)), nil
 		}
 		return false, err
 	}
 	if est.OverLimit != "" {
+		s.discard(req.References)
 		return s.refused(x, rep, est.OverLimit), nil
 	}
-	p := &Proposal{ID: newID(), State: StatePending, Request: est.Request, Estimate: est}
+	p := &Proposal{ID: newID(), State: StatePending, Request: est.Request, Estimate: est, Audio: u.audio, Image: u.image}
 	se := x.se
 	se.mu.Lock()
 	for _, old := range se.proposals { // only the newest estimate can be confirmed
 		switch old.State {
 		case StatePending:
 			old.State = StateSuperseded
+			s.discard(old.Request.References)
 			rep.Changed = append(rep.Changed, *old)
 		case StateRunning: // its press may still fail: Confirm then closes it instead of putting it back
 			old.replaced = true
@@ -171,8 +178,13 @@ func (s *Service) estimate(ctx context.Context, x *exchange, st gentestchat.Step
 
 // refused tells the LLM why an estimate was refused (and shows the user a line), and the LLM goes on.
 func (s *Service) refused(x *exchange, rep *Reply, why string) bool {
-	x.add(gentestchat.RoleTool, "estimate refused: "+why)
-	rep.Messages = append(rep.Messages, Message{ID: newID(), Kind: KindStatus, Text: "この条件では見積りできませんでした: " + why})
+	return s.refusedWith(x, rep, why, why)
+}
+
+// refusedWith is refused with the words the LLM reads apart from the line the user reads (a hint for the LLM, or a text in another language).
+func (s *Service) refusedWith(x *exchange, rep *Reply, ui, llm string) bool {
+	x.add(gentestchat.RoleTool, "estimate refused: "+llm)
+	rep.Messages = append(rep.Messages, Message{ID: newID(), Kind: KindStatus, Text: "この条件では見積りできませんでした: " + ui})
 	return false
 }
 

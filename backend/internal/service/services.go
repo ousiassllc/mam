@@ -26,6 +26,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 	"github.com/ousiassllc/mam/backend/internal/service/modelnodes"
 	"github.com/ousiassllc/mam/backend/internal/service/ollamapull"
+	"github.com/ousiassllc/mam/backend/internal/service/shotaudiosvc"
 	"github.com/ousiassllc/mam/backend/internal/service/voicerefsvc"
 	"github.com/ousiassllc/mam/backend/internal/service/voicetrain"
 	"github.com/ousiassllc/mam/backend/internal/service/workflows"
@@ -96,6 +97,7 @@ type Services struct {
 	Gentest       *gentest.Service      // generation test: batches of generations outside any Project, history, import; the app sets it
 	Workflows     *workflows.Service    // ComfyUI workflows saved in mam (node screen, models, MCP); the app sets it
 	VoiceRef      *voicerefsvc.Service  // the reference voice of a Character (F-20, F-29) and the speaker -> voice lookup
+	ShotAudio     *shotaudiosvc.Service // the audio asset a Shot is made from (a speech-to-video model, #1153): set, clear and show it
 	VoiceTrain    *voicetrain.Service   // the fine-tuning of a Character's voice (#936): its clips, its trainings; the app sets it
 	LLMLocal      *llmlocal.Service     // the local OpenAI-compatible LLM server's address and key (#1008); the app sets it
 	LLMClient     *llm.Client           // the Reasoning LLM Adapter the Agents call; the app sets it (a saved LLM assignment is applied to it at once)

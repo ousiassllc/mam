@@ -202,7 +202,7 @@ func Missing(video bool, roles []string, m Model) *apperr.Error {
 		case need == RequiredReference:
 			cause = fmt.Sprintf("「%s」は参照画像が必要です。画像を添えてください。", m.Label)
 		case need == gentestrepo.RoleAudio:
-			cause = fmt.Sprintf("「%s」は音声ファイルが必要です。WAV か MP3 を添えて、役割を「音声」にしてください。", m.Label)
+			cause = fmt.Sprintf("「%s」は音声ファイルが必要です。WAV・MP3・FLAC・OGG・M4A のどれかを添えて、役割を「音声」にしてください。", m.Label)
 		case slices.Contains(roles, gentestrepo.RoleReference):
 			cause += fmt.Sprintf("添えた画像が「参照」になっています。「%s」に変えてください。", what)
 		default:

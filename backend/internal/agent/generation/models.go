@@ -8,3 +8,6 @@ func (o *Orchestrator) routes() modelroute.Env { return modelroute.ForAdapter(o.
 // RouteReports is, for every image purpose and Quality Policy, the model a generation would run on if it started now, with its route and why (modelroute.Env.Report): the
 // one list the settings screen and the MCP tools show, so the announcement of an automatic start can name the same models and routes (#1112). It reads state only.
 func (o *Orchestrator) RouteReports() []modelroute.RouteReport { return o.routes().Report() }
+
+// RouteEnv is the choice of models as a generation would make it now (genplan asks it for the model of a Shot with audio).
+func (o *Orchestrator) RouteEnv() modelroute.Env { return o.routes() }

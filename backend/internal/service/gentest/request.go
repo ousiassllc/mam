@@ -21,7 +21,7 @@ import (
 const (
 	// FromStaged: an image uploaded to the screen or by an MCP upload ticket (StageReference); ID is its staged id.
 	FromStaged = "upload"
-	// FromProjectAsset: an image asset of a Project (ProjectID and the asset's ID).
+	// FromProjectAsset: an image asset of a Project, or an audio asset for the role audio (ProjectID and the asset's ID).
 	FromProjectAsset = "project_asset"
 	// FromReferenceItem: an entry of a Project's Reference Library (ProjectID and the entry's ID).
 	FromReferenceItem = "reference_item"
@@ -273,14 +273,14 @@ func checkSource(ref RefInput) error {
 	if ref.ID == "" {
 		return gterr.Invalid("入力画像の ID がありません")
 	}
-	if ref.Role == RoleAudio && ref.Source != FromStaged && ref.Source != FromBatchInput {
-		return gterr.Invalid("音声ファイルの取得元は upload か batch_input です: %q", ref.Source)
+	if ref.Role == RoleAudio && ref.Source != FromStaged && ref.Source != FromBatchInput && ref.Source != FromProjectAsset {
+		return gterr.Invalid("音声ファイルの取得元は upload・batch_input・project_asset です: %q", ref.Source)
 	}
 	switch ref.Source {
 	case FromStaged, FromHistory, FromPoseLibrary, FromBatchInput:
 	case FromProjectAsset, FromReferenceItem:
 		if ref.ProjectID == "" {
-			return gterr.Invalid("プロジェクトの画像には project_id が要ります")
+			return gterr.Invalid("プロジェクトのファイルには project_id が要ります")
 		}
 	default:
 		return gterr.Invalid("入力画像の取得元が正しくありません: %q（upload / project_asset / reference_item / history / pose_library / batch_input）", ref.Source)

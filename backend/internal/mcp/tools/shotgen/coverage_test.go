@@ -12,6 +12,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit"
 	"github.com/ousiassllc/mam/backend/internal/mcp/mcpkit/mcptest"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/director"
+	"github.com/ousiassllc/mam/backend/internal/mcp/tools/shotaudio"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/shotgen"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/shotplan"
 	"github.com/ousiassllc/mam/backend/internal/mcp/tools/takes"
@@ -48,6 +49,7 @@ func TestSpecCoverage_EveryListedToolIsRegisteredAndEveryRegisteredToolIsListed(
 
 	env := mcptest.New(t, func(env *mcptest.Env, r *mcpkit.Registrar) {
 		shotplan.Register(r, env.Services)
+		shotaudio.Register(r, env.Services)
 		director.Register(r, env.Services)
 		shotgen.Register(r, env.Services)
 		takes.Register(r, env.Services)

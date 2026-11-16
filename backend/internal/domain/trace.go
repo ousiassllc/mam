@@ -2,12 +2,12 @@ package domain
 
 import "encoding/json"
 
-// TakeLineage is the part of take.model_parameters that records what the Take was generated from besides its Shot Spec (F-27, spec/spec.md §29.3): the
-// World State version the spec was planned against and the References the model received. Generation writes it beside the model parameters.
+// TakeLineage is the part of take.model_parameters that records what the Take was generated from besides its Shot Spec (F-27, spec/spec.md §29.3): the World State version the spec was planned against, the References the model received and the audio asset of a Shot with audio. Generation writes it beside the model parameters.
 type TakeLineage struct {
 	// WorldStateVersion is the number of the latest world_state_version when the Take was made; 0 when no Shot had completed yet (or the Take predates the record).
 	WorldStateVersion int         `json:"world_state_version"`
 	References        []Reference `json:"references,omitempty"`
+	AudioAssetID      string      `json:"audio_asset_id,omitempty"` // the sound the clip was made from (Issue #1153); empty for a Shot without audio
 }
 
 // TraceOutput is the file a Take produced.
@@ -18,9 +18,7 @@ type TraceOutput struct {
 	SizeBytes int64
 }
 
-// TakeTrace is everything that led to a Take (F-27): the Source Shot Spec and Prompt version, the
-// World State version, the Model and its parameters, the References, the Output, the Judge
-// results and the Repair history.
+// TakeTrace is everything that led to a Take (F-27): the Source Shot Spec and Prompt version, the World State version, the Model and its parameters, the References, the Output, the Judge results and the Repair history.
 type TakeTrace struct {
 	ProjectID string
 	Take      Take
@@ -35,6 +33,7 @@ type TakeTrace struct {
 	PromptVersion PromptVersion
 	// WorldStateVersion is 0 when unknown or when no World State version existed yet.
 	WorldStateVersion int
+	AudioAssetID      string // the audio asset the Take was made from (Issue #1153); "" without audio
 	// References are those the model received; for a Take that predates the record, the Reference Pack of its Shot Spec.
 	References []Reference
 	// Output is nil when the Take's file was archived.

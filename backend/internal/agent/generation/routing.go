@@ -3,8 +3,9 @@ package generation
 import (
 	"fmt"
 	"slices"
-	"strings"
 
+	"github.com/ousiassllc/mam/backend/internal/agent/generation/axisweight"
+	"github.com/ousiassllc/mam/backend/internal/agent/generation/refimage"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 )
@@ -16,39 +17,14 @@ type RoutingInput struct {
 	// Spec is the Shot Spec the Shot is generated from; nil when the Shot has none yet.
 	Spec       *domain.ShotSpec
 	References []domain.Reference
+	// Audio is the sound of a Shot with audio (Issue #1153; nil: none). The Shot's models were chosen for it (modelroute), so they are not weighed (DecideRouted), and the clip is as long as it.
+	Audio *refimage.Audio
 	// Records are the Judge records of the Project by video model.
 	Records map[domain.ModelName]domain.ModelRecord
 	// MinAcceptance is the Minimum acceptance score (0-100) of the Quality/Cost Policy.
 	MinAcceptance int
 	// Unavailable says why a model cannot be called now ("" when it can). nil means every model can.
 	Unavailable func(domain.ModelName) string
-}
-
-// axisWeights are the weights of the four score axes the nature of the Shot gives (§12.3): every axis
-// starts at 1 and the ones the Shot depends on gain 2. They sum to 1.
-func axisWeights(spec *domain.ShotSpec) domain.TakeScores {
-	w := domain.TakeScores{Product: 1, Acting: 1, Camera: 1, Continuity: 1}
-	if spec != nil {
-		if spec.Product != nil {
-			w.Product += 2
-		}
-		if spec.Character != nil || len(spec.Acting) > 0 {
-			w.Acting += 2
-		}
-		if mv := strings.TrimSpace(spec.Camera.Movement); mv != "" && !strings.EqualFold(mv, "static") {
-			w.Camera += 2
-		}
-		if spec.Continuity.StartFromPreviousFinalState || spec.Lighting.Inherit != "" {
-			w.Continuity += 2
-		}
-	}
-	sum := w.Product + w.Acting + w.Camera + w.Continuity
-	return domain.TakeScores{Product: w.Product / sum, Acting: w.Acting / sum, Camera: w.Camera / sum, Continuity: w.Continuity / sum}
-}
-
-// weightedScore is the mean of the axis scores weighted by w (0-100).
-func weightedScore(scores, w domain.TakeScores) float64 {
-	return scores.Product*w.Product + scores.Acting*w.Acting + scores.Camera*w.Camera + scores.Continuity*w.Continuity
 }
 
 // hasKeyframe reports whether the references hold a Keyframe: the first frame of the clip (decide passes only a Keyframe that is read, #902).
@@ -89,7 +65,7 @@ func fit(cfg modeladapter.Config, m domain.ModelName, seconds float64, refs []do
 // The decision d records why; the previous primary becomes the alternative on a switch.
 func route(cfg modeladapter.Config, policy domain.QualityPolicy, seconds float64, s Strategy, in RoutingInput, d *domain.RoutingDecision) Strategy {
 	rc := cfg.Routing
-	weights, axis := rc.Weights[policy], axisWeights(in.Spec)
+	weights, axis := rc.Weights[policy], axisweight.Of(in.Spec)
 
 	// Candidates: the primary (anchor) first, then the others of the policy, one per model.
 	targets := []modeladapter.VideoTarget{s.Primary}
@@ -114,7 +90,7 @@ func route(cfg modeladapter.Config, policy domain.QualityPolicy, seconds float64
 			Quality: rc.PriorQuality, Cost: 1, Fit: fit(cfg, t.Model, seconds, in.References),
 		}
 		if rec.Samples > 0 {
-			c.MeanScore, c.PassRate = weightedScore(rec.Scores, axis), rec.PassRate
+			c.MeanScore, c.PassRate = axisweight.Score(rec.Scores, axis), rec.PassRate
 		}
 		if rec.Samples >= rc.MinSamples {
 			c.Quality = 0.5*c.MeanScore/domain.MaxScore + 0.5*c.PassRate

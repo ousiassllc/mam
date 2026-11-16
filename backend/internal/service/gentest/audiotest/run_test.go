@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/apperr"
+	"github.com/ousiassllc/mam/backend/internal/audiofile/audiofiletest"
 	"github.com/ousiassllc/mam/backend/internal/repository/gentestrepo"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/gentesttest"
@@ -66,7 +67,12 @@ func TestAStagedAudioFileHasTheTypeOfItsBytesAndTheExtensionOfItsType(t *testing
 	for _, c := range []struct {
 		data      []byte
 		mime, ext string
-	}{{gentesttest.WAV, "audio/wav", ".wav"}, {mp3, "audio/mpeg", ".mp3"}} {
+	}{
+		{gentesttest.WAV, "audio/wav", ".wav"}, {mp3, "audio/mpeg", ".mp3"},
+		{audiofiletest.FLAC(44100, 44100), "audio/flac", ".flac"},
+		{audiofiletest.OGGVorbis(44100, 44100), "audio/ogg", ".ogg"},
+		{audiofiletest.M4A(0, 44100, 44100, true), "audio/mp4", ".m4a"},
+	} {
 		id, mime, err := r.Svc.StageAudio(c.data)
 		require.NoError(t, err)
 		assert.Equal(t, c.mime, mime)
@@ -79,7 +85,7 @@ func TestAStagedAudioFileHasTheTypeOfItsBytesAndTheExtensionOfItsType(t *testing
 		assert.Equal(t, c.data, got)
 	}
 	_, _, err := r.Svc.StageAudio(gentesttest.PNG)
-	assert.Contains(t, invalid(t, err), "WAV か MP3")
+	assert.Contains(t, invalid(t, err), "WAV・MP3・FLAC・OGG・M4A のどれか")
 }
 
 // The S2V model is given the sound as Audio (not as a reference) and the picture as its one reference; the batch keeps both as inputs.
@@ -88,7 +94,12 @@ func TestRunGivesTheSoundAndThePictureToTheSpeechToVideoModelAndKeepsBoth(t *tes
 		name      string
 		data      []byte
 		mime, ext string
-	}{{"wav", gentesttest.WAV, "audio/wav", ".wav"}, {"mp3", mp3, "audio/mpeg", ".mp3"}} {
+	}{
+		{"wav", gentesttest.WAV, "audio/wav", ".wav"}, {"mp3", mp3, "audio/mpeg", ".mp3"},
+		{"flac", audiofiletest.FLAC(44100, 44100), "audio/flac", ".flac"},
+		{"ogg", audiofiletest.OGGOpus(312, 48000), "audio/ogg", ".ogg"},
+		{"m4a", audiofiletest.M4A(0, 44100, 44100, true), "audio/mp4", ".m4a"},
+	} {
 		t.Run(c.name, func(t *testing.T) {
 			var crops atomic.Int32
 			r := gentesttest.New(t, gentesttest.WithInputModels(), gentesttest.WithFaceCrop(func(context.Context, []byte) ([]byte, bool, error) {

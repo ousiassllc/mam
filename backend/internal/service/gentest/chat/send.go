@@ -47,7 +47,7 @@ func (s *Service) answer(ctx context.Context, x *exchange, rep *Reply) error {
 	limits := gentestchat.Limits{MaxItems: items, MaxCostUSD: cost}
 	retried := false
 	for range MaxSteps {
-		st, err := s.d.Agent.Next(ctx, gentestchat.Input{Turns: x.shown(), Limits: limits})
+		st, err := s.d.Agent.Next(ctx, gentestchat.Input{Turns: x.shown(), Limits: limits, Attachments: x.se.attachments()})
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}

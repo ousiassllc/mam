@@ -117,11 +117,8 @@ type RecentPrompt struct {
 	Uses     int
 }
 
-// ProjectChoice is a Project whose images can be picked.
-type ProjectChoice struct {
-	ID   string
-	Name string
-}
+// ProjectChoice is a Project whose images (and audio files: audioinput.ProjectPicker) can be picked.
+type ProjectChoice = audioinput.Project
 
 // Ref is an input image: a row of the list of chosen inputs or of a picker.
 type Ref struct {
@@ -150,6 +147,7 @@ type Compose struct {
 	FaceOff                                      string
 	Count, Aspect, Resolution, Duration          string
 	Resolutions, Durations                       []string
+	LengthNote                                   string // the word about the length when a chosen model makes it as long as the sound (#1153); Durations is empty when all of them do
 	MaxPrompt, MaxCount, MaxItems, MaxReferences int
 	MaxCostUSD                                   string // "" when there is no cap
 	Recent                                       []RecentPrompt

@@ -10,6 +10,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
+	"github.com/ousiassllc/mam/backend/internal/router/shotaudioroutes"
 	"github.com/ousiassllc/mam/backend/internal/router/voiceroutes"
 	"github.com/ousiassllc/mam/backend/internal/service"
 	"github.com/ousiassllc/mam/backend/internal/web/handler"
@@ -49,6 +50,7 @@ func New(services *service.Services, opts Options) *gin.Engine {
 	registerAPI(engine, services)
 	settingsroutes.Register(engine, services, opts.Settings, logger)
 	voiceroutes.Register(engine, services)
+	shotaudioroutes.Register(engine, services)
 	return engine
 }
 

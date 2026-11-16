@@ -72,7 +72,8 @@ type modelPlan struct {
 	unit *float64
 }
 
-func (s *Service) planModel(cfg modeladapter.Config, r Request, info modelcatalog.Info) modelPlan {
+// planModel plans one model; audioSeconds is the length of the request's audio file (0: not known, or no audio), the length of the clip of a model that makes it as long as its sound.
+func (s *Service) planModel(cfg modeladapter.Config, r Request, info modelcatalog.Info, audioSeconds float64) modelPlan {
 	p := modelPlan{info: info}
 	warn := func(code, format string, args ...any) {
 		p.warnings = append(p.warnings, Warning{Model: info.ID, Code: code, Message: fmt.Sprintf(format, args...)})
@@ -80,7 +81,7 @@ func (s *Service) planModel(cfg modeladapter.Config, r Request, info modelcatalo
 	if r.Media == gentestrepo.MediaImage {
 		s.planImage(r, &p)
 	} else {
-		s.planVideo(cfg, r, &p, warn)
+		s.planVideo(cfg, r, &p, audioSeconds, warn)
 	}
 	planSpeedMode(r, &p, warn)
 	planSampling(r, &p, warn)
@@ -90,7 +91,7 @@ func (s *Service) planModel(cfg modeladapter.Config, r Request, info modelcatalo
 		warn(WarnExposedIgnored, "%s", exposedreq.Warning(info.Label, ignored))
 	}
 	planPromptWeight(r, &p, warn)
-	p.unit, p.basis = unitPrice(info, r.Media, p.resolution, p.seconds)
+	p.unit, p.basis = modelcatalog.UnitPrice(info, r.Media, p.resolution, p.seconds)
 	if r.Media == gentestrepo.MediaImage && p.basis == modelcatalog.BasisPriced {
 		// the price of an image can depend on its size (GPT Image 2): the catalog holds the dearest one
 		unit := cfg.ImageCostFor(domain.ModelName(info.ID), r.AspectRatio)
@@ -116,7 +117,7 @@ func hasNegative(r Request) bool {
 }
 
 // planVideo decides the resolution, the length and the inputs of a video model.
-func (s *Service) planVideo(cfg modeladapter.Config, r Request, p *modelPlan, warn func(code, format string, args ...any)) {
+func (s *Service) planVideo(cfg modeladapter.Config, r Request, p *modelPlan, audioSeconds float64, warn func(code, format string, args ...any)) {
 	caps, _ := cfg.VideoCaps(domain.ModelName(p.info.ID))
 	p.resolution = r.Resolution
 	if p.resolution == "" {
@@ -127,9 +128,13 @@ func (s *Service) planVideo(cfg modeladapter.Config, r Request, p *modelPlan, wa
 	} else if !caps.SupportsResolution(p.resolution) {
 		warn(WarnResolution, "%s は解像度 %s を作れません（%v）。このモデルの結果は失敗します", p.info.Label, p.resolution, caps.Resolutions)
 	}
-	p.seconds = caps.SnapDuration(r.DurationSeconds)
-	if p.seconds != r.DurationSeconds {
-		warn(WarnDurationSnapped, "%s の長さは %g 秒から %g 秒に丸められます", p.info.Label, r.DurationSeconds, p.seconds)
+	if caps.AudioLength {
+		p.seconds = audioSeconds // the clip is as long as the sound: no length to round, and none to warn about (Issue #1153)
+	} else {
+		p.seconds = caps.SnapDuration(r.DurationSeconds)
+		if p.seconds != r.DurationSeconds {
+			warn(WarnDurationSnapped, "%s の長さは %g 秒から %g 秒に丸められます", p.info.Label, r.DurationSeconds, p.seconds)
+		}
 	}
 	in := inputcheck.Video(caps, p.info.Label, rolesOf(r))
 	p.applyInputs(in)
@@ -147,25 +152,6 @@ func planSpeedMode(r Request, p *modelPlan, warn func(code, format string, args 
 	default:
 		warn(WarnSpeedUnsupported, "%s", p.info.SpeedModeUnsupported(r.SpeedMode))
 	}
-}
-
-// unitPrice is the price of one result of the model: its basis and, when the price is known, the USD.
-func unitPrice(info modelcatalog.Info, media, resolution string, seconds float64) (*float64, string) {
-	zero := 0.0
-	switch info.Price.Basis {
-	case modelcatalog.BasisFree:
-		return &zero, modelcatalog.BasisFree
-	case modelcatalog.BasisPriced:
-		if media == gentestrepo.MediaImage && info.Price.PerImageUSD != nil {
-			v := *info.Price.PerImageUSD
-			return &v, modelcatalog.BasisPriced
-		}
-		if per, ok := info.Price.PerSecondUSD[resolution]; ok && media == gentestrepo.MediaVideo {
-			v := per * seconds
-			return &v, modelcatalog.BasisPriced
-		}
-	}
-	return nil, modelcatalog.BasisUnknown
 }
 
 // resultParamsOf is what is recorded of the request for the result of one model.

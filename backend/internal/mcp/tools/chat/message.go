@@ -15,10 +15,11 @@ type Project struct {
 	ConfirmationLevel string `json:"confirmation_level" jsonschema:"full_auto, key_check or custom_check"`
 }
 
-// Attachment is a file a message carries. Download it with get_asset_download_url (project_id + asset_id).
+// Attachment is a file a message carries. Download it with get_asset_download_url (project_id + asset_id). An audio file (type audio) is what a
+// single-shot generation takes as its audio input with source=project_asset (asset_id as the id).
 type Attachment struct {
 	AssetID   string `json:"asset_id"`
-	Type      string `json:"type" jsonschema:"image or video"`
+	Type      string `json:"type" jsonschema:"image, video or audio"`
 	MimeType  string `json:"mime_type"`
 	SizeBytes int64  `json:"size_bytes"`
 }
