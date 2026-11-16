@@ -1,14 +1,8 @@
 package audio
 
-import (
-	"strconv"
-	"strings"
-)
+import "strconv"
 
 func itoa(n int) string { return strconv.Itoa(n) }
-
-// join writes names as a list of the screen: 「a」、「b」.
-func join(names []string) string { return "「" + strings.Join(names, "」、「") + "」" }
 
 // cloudChecked is whether the cloud radio is on: the saved provider is the cloud, or it is a local one that this PC cannot run (the
 // radio that cannot be chosen is not shown as the choice, and a save then switches to the cloud).

@@ -93,7 +93,9 @@ templ accountStatus(kind string, a Account) {
 				}
 			</p>
 			if a.NeedsRelogin {
-				<p class="text-warning" role="alert" data-testid="chatgpt-relogin">ログインの有効期限が切れました。もう一度ログインしてください。それまでこの経路は使われません。</p>
+				@settingsui.Banner(atoms.IconWarning, "alert", "chatgpt-relogin", "ログインの有効期限が切れました") {
+					<p class="text-ink">もう一度ログインしてください。それまでこの経路は使われません。</p>
+				}
 			}
 		}
 	</div>
@@ -117,9 +119,11 @@ templ loginFailed(l *Login) {
 // one) to the Codex card. The official login stays as it is: nothing is signed out.
 templ codexGuidance(d Data) {
 	if (d.Official.Login != nil && d.Official.Login.UseCodex) || (d.Official.SignedIn && d.Official.WorkspacePlan) {
-		<div class="flex flex-col gap-2 rounded-md border border-warning/60 px-3 py-2" data-testid="chatgpt-use-codex">
-			<p class="text-sm text-warning">組織のアカウントは Codex 経由のログインを使ってください。Business / Enterprise / Edu のワークスペースのアカウントは、OpenAI の仕様で、公式の方式ではプランを使えません。</p>
-			<a class="w-fit text-sm text-accent underline decoration-mute" href={ templ.SafeURL("#" + cardID(codexKind)) } data-testid="chatgpt-use-codex-button">Codex 経由のカードへ</a>
-		</div>
+		@settingsui.Banner(atoms.IconInfo, "status", "chatgpt-use-codex", "組織のアカウントは Codex 経由のログインを使ってください") {
+			<p class="text-ink">Business / Enterprise / Edu のワークスペースのアカウントは、OpenAI の仕様で、公式の方式ではプランを使えません。</p>
+			<div>
+				@atoms.ButtonLink(atoms.ToneNeutral, "Codex 経由のカードへ", templ.SafeURL("#"+cardID(codexKind)), templ.Attributes{"data-testid": "chatgpt-use-codex-button"})
+			</div>
+		}
 	}
 }

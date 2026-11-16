@@ -6,6 +6,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -55,15 +56,17 @@ templ targetFields(f Form, role, roleLabel string, t Target, m ModelField) {
 		@modelpick.Field(m.Field)
 		<p class="text-sm text-mute" data-testid={ "llm-" + m.Role + "-default" }>既定: { m.Default.Summary() }</p>
 		if m.Unusable != "" {
-			<p class="text-sm text-warning" data-testid={ "llm-" + m.Role + "-unusable" }>
+			@settingsui.Note(atoms.IconWarning, "status", "llm-"+m.Role+"-unusable") {
 				{ m.Provider } は今は使えません: { m.Unusable }（保存はできます）
 				if m.Route != "" {
 					<a class="underline" href={ templ.SafeURL(m.Route) } data-testid={ "llm-" + m.Role + "-route" }>設定を開く</a>
 				}
-			</p>
+			}
 		}
 		if m.Unlisted {
-			<p class="text-sm text-warning" data-testid={ "llm-" + m.Role + "-model-unlisted" }>「{ m.Selected }」は { m.Provider } の一覧にありません。使えないかもしれません（保存はできます）。</p>
+			@settingsui.Note(atoms.IconInfo, "status", "llm-"+m.Role+"-model-unlisted") {
+				「{ m.Selected }」は { m.Provider } の一覧にありません。使えないかもしれません（保存はできます）。
+			}
 		}
 		<label class="flex min-w-0 flex-col gap-1 text-xs text-mute" for={ fieldID(m.Role, "model-custom") }>
 			<span>一覧にないモデル名を使うときだけ入力（入れると上の選択より優先）</span>

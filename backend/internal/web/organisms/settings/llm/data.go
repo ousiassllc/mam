@@ -33,8 +33,13 @@ func (r Row) Customized() bool {
 	return r.Primary != r.DefaultPrimary || r.Fallback != r.DefaultFallback
 }
 
-// Warning is a saved route that names a provider that cannot be used now: the sentence, and the screen that fixes it (Route; "" when none helps).
-type Warning struct{ Message, Route string }
+// Warning is one provider that cannot be used now and is named by saved routes: the provider, why it cannot be used (Reason), the saved routes that name it
+// (Uses: "Writer（脚本）のプライマリ"...) and the screen that fixes it (Route; "" when none helps). The routes of one cause (the same provider, the same reason) are one Warning.
+type Warning struct {
+	Provider, Reason string
+	Uses             []string
+	Route            string
+}
 
 // Data is the category: Rows are the Agents that run; Unused are the Agents whose route no code reads yet, listed apart.
 // Pinned means the operator fixed the file by a start option: the assignment is

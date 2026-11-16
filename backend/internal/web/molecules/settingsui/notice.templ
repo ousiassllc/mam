@@ -1,0 +1,27 @@
+package settingsui
+
+import "github.com/ousiassllc/mam/backend/internal/web/atoms"
+
+// Banner is the one box of the settings screens for a cause that stops or changes something (an API key that is not registered, a sign-in that has expired, a file that
+// cannot be read): the sentence of the cause as the title, one line for each thing it touches, and the one button that fixes it, as the children. The state is told by
+// the small icon at the left, a thin line beside it and the words, all in the ink of the page: no colour of a state (color-rules.md). role is "status", or "alert" for
+// what must interrupt a screen reader.
+templ Banner(icon atoms.IconName, role, testID, title string) {
+	<section class="flex gap-3 rounded-md border border-border border-l-2 bg-surface p-3 text-sm" role={ role } data-testid={ testID }>
+		@atoms.Icon(icon, "mt-1 h-5 w-5 shrink-0 text-mute")
+		<div class="flex min-w-0 flex-1 flex-col gap-2">
+			<p class="font-semibold text-ink">{ title }</p>
+			{ children... }
+		</div>
+	</section>
+}
+
+// Note is one quiet note of a screen in the ink of the page with a small icon: what to know, not an alarm. For a few words use a Badge of BadgeMuted instead.
+templ Note(icon atoms.IconName, role, testID string) {
+	<div class="flex items-start gap-2 text-sm text-ink" role={ role } data-testid={ testID }>
+		@atoms.Icon(icon, "h-5 w-5 shrink-0 text-mute")
+		<p class="min-w-0 break-words">
+			{ children... }
+		</p>
+	</div>
+}

@@ -31,7 +31,7 @@ func TestSection_ShowsTheNoticeTheErrorAndTheProblemEachWithItsRole(t *testing.T
 
 	assert.Regexp(t, `<p[^>]*role="status"[^>]*data-testid="llm-notice">既定に戻しました。次の呼び出しからすぐ使われます（再起動は要りません）</p>`, html)
 	assert.Regexp(t, `<p[^>]*role="alert"[^>]*data-testid="llm-error">Director のモデル名を入力してください</p>`, html)
-	assert.Regexp(t, `<p[^>]*role="alert"[^>]*data-testid="llm-problem">[^<]*unknown field</p>`, html)
+	assert.Regexp(t, `(?s)role="alert" data-testid="llm-problem">.*保存済みの設定ファイルを読み込めません.*<p[^>]*data-testid="llm-problem-detail">unknown field</p>`, html)
 }
 
 func TestSection_SaysNothingWhenThereIsNothingToSay(t *testing.T) {
@@ -61,4 +61,37 @@ func TestSection_KeepsTheApplyNoticeVisibleAndPutsTheLongTextInTheHelp(t *testin
 	assert.NotContains(t, visible, "実行中の呼び出しは")
 	assert.Contains(t, html[panelAt:panelEnd], `data-testid="llm-chatgpt-note"`)
 	assert.Contains(t, html[panelAt:panelEnd], "実行中の呼び出しは")
+}
+
+// Several saved routes that name a provider that cannot be used are ONE banner with one line for each route and one button for each distinct screen that fixes
+// them (not one link for each line), in the ink of the page: no yellow.
+func TestSection_TheRoutesThatCannotBeUsedAreOneBannerWithOneButtonForEachScreen(t *testing.T) {
+	d := llm.Data{Warnings: []llm.Warning{
+		{Provider: "openai", Reason: "API キーが登録されていません", Uses: []string{"Director のプライマリ", "Writer の代替"}, Route: "/settings/api-keys"},
+		{Provider: "google", Reason: "API キーが登録されていません", Uses: []string{"Director の代替"}, Route: "/settings/api-keys"},
+		{Provider: "chatgpt-codex", Reason: "ログインしていません", Uses: []string{"Writer のプライマリ"}, Route: "/settings/credentials"},
+		{Provider: "x", Reason: "使えません", Uses: []string{"Writer の代替"}},
+	}}
+
+	html := renderSection(t, d)
+
+	assert.Equal(t, 1, strings.Count(html, `data-testid="llm-warnings"`), "one banner")
+	assert.Equal(t, 4, strings.Count(html, `data-testid="llm-warning"`), "one line for each cause")
+	assert.Contains(t, html, "Director のプライマリ、Writer の代替 が指しています", "the routes of a cause are told in its line")
+	assert.Equal(t, 2, strings.Count(html, `data-testid="llm-warning-link"`), "one button for each distinct screen")
+	assert.Equal(t, 1, strings.Count(html, `href="/settings/api-keys"`))
+	assert.Equal(t, 1, strings.Count(html, `href="/settings/credentials"`))
+	for _, yellow := range []string{"text-warning", "border-warning", "bg-warning"} {
+		assert.NotContains(t, html, yellow)
+	}
+}
+
+func TestSection_TheUnreadableFileIsOneAlertBannerWithoutYellow(t *testing.T) {
+	html := renderSection(t, llm.Data{Problem: "unknown field"})
+
+	assert.Equal(t, 1, strings.Count(html, `data-testid="llm-problem"`))
+	assert.Regexp(t, `role="alert" data-testid="llm-problem"`, html)
+	for _, yellow := range []string{"text-warning", "border-warning", "bg-warning"} {
+		assert.NotContains(t, html, yellow)
+	}
 }

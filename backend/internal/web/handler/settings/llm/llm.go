@@ -62,9 +62,24 @@ func warnings(v llmassign.View, models *llmmodels.Service) []view.Warning {
 			llmmodels.Target{Agent: e.Label, Role: "primary", Provider: e.Route.Primary.Provider, Model: e.Route.Primary.Model},
 			llmmodels.Target{Agent: e.Label, Role: "fallback", Provider: e.Route.Fallback.Provider, Model: e.Route.Fallback.Model})
 	}
+	return groupWarnings(models.Warnings(targets))
+}
+
+// roleWords name the slot of a route in a warning.
+var roleWords = map[string]string{"primary": "プライマリ", "fallback": "代替"}
+
+// groupWarnings puts the routes that have one cause (the same provider cannot be used for the same reason) into one view.Warning, in the order the causes first appear:
+// the screen says each cause once with the routes that name it, and not one sentence for each route.
+func groupWarnings(ws []llmmodels.Warning) []view.Warning {
 	var out []view.Warning
-	for _, w := range models.Warnings(targets) {
-		out = append(out, view.Warning{Message: w.Message, Route: w.Availability.Route})
+	for _, w := range ws {
+		use := w.Agent + "の" + roleWords[w.Role]
+		i := slices.IndexFunc(out, func(g view.Warning) bool { return g.Provider == w.Provider && g.Reason == w.Availability.Message })
+		if i < 0 {
+			out = append(out, view.Warning{Provider: w.Provider, Reason: w.Availability.Message, Route: w.Availability.Route})
+			i = len(out) - 1
+		}
+		out[i].Uses = append(out[i].Uses, use)
 	}
 	return out
 }

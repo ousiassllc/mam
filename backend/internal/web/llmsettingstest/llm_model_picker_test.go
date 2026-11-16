@@ -111,7 +111,7 @@ func TestLLMSettings_TheScreenWarnsOfASavedRouteThatCannotBeUsed(t *testing.T) {
 	body := s.page()
 
 	assert.Contains(t, body, `data-testid="llm-warnings"`)
-	assert.Contains(t, body, "使えません")
+	assert.Contains(t, body, "が指しています")
 	assert.Contains(t, body, `href="/settings/api-keys"`)
 }
 
@@ -122,7 +122,7 @@ func TestLLMSettings_ASavedModelTheListLacksIsWarnedAndStillSaves(t *testing.T) 
 
 	body := s.requestTo(http.MethodGet, paths.LLMAgentEdit("director"), nil).Body.String()
 	assert.Equal(t, "gpt-from-the-future", hiddenValue(t, body, "primary.model"))
-	assert.Regexp(t, `data-testid="llm-primary-model-unlisted"[^>]*>「gpt-from-the-future」は openai の一覧にありません。使えないかもしれません`, body)
+	assert.Regexp(t, `(?s)data-testid="llm-primary-model-unlisted".*「gpt-from-the-future」は openai の一覧にありません。使えないかもしれません`, body)
 	assert.Contains(t, body, `data-testid="llm-fallback-model-unlisted"`, "gemini-x too")
 }
 

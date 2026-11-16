@@ -33,7 +33,9 @@ templ Page(d Data, e Endpoint) {
 	<div id={ PageID } class="flex flex-col gap-6" data-testid="local-endpoint-page">
 		@atoms.BackLink(paths.LocalModels(), "← ローカル・代替モデルに戻る")
 		if d.Pinned {
-			<p class="text-sm text-warning" role="status" data-testid="local-models-pinned">{ d.PinnedNote }</p>
+			@settingsui.Note(atoms.IconInfo, "status", "local-models-pinned") {
+				{ d.PinnedNote }
+			}
 		}
 		<ul role="list" class="grid grid-cols-1 gap-4">
 			@endpointCard(d.Pinned, d.PinnedNote, e, cardPage, false)

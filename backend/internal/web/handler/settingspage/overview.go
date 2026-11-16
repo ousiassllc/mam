@@ -87,7 +87,7 @@ func (s Services) companionCard() molecules.ToolCard {
 	case "full":
 		tone = atoms.BadgeOK
 	case "attention":
-		tone = atoms.BadgeWarn
+		tone = atoms.BadgeMuted
 	}
 	return molecules.ToolCard{
 		ID: "companion", Href: templ.SafeURL(paths.ModelManagerCategory(paths.MMCompanion)), Icon: atoms.IconPackage, Title: "付随ソフト",
@@ -120,7 +120,7 @@ func llmStatus(d llmview.Data) []molecules.StatusLine {
 	}
 	switch {
 	case d.Problem != "":
-		return []molecules.StatusLine{line(atoms.BadgeWarn, "設定ファイルを読めません")}
+		return []molecules.StatusLine{line(atoms.BadgeMuted, "設定ファイルを読めません")}
 	case d.Pinned:
 		return []molecules.StatusLine{line(atoms.BadgeNeutral, "起動オプションで固定")}
 	case changed == 0:
@@ -133,7 +133,7 @@ func llmStatus(d llmview.Data) []molecules.StatusLine {
 func modelsStatus(d modelview.Data) []molecules.StatusLine {
 	switch {
 	case d.Problem != "":
-		return []molecules.StatusLine{line(atoms.BadgeWarn, "設定ファイルを読めません")}
+		return []molecules.StatusLine{line(atoms.BadgeMuted, "設定ファイルを読めません")}
 	case d.Pinned:
 		return []molecules.StatusLine{line(atoms.BadgeNeutral, "起動オプションで固定")}
 	case d.Customized:
@@ -146,7 +146,7 @@ func modelsStatus(d modelview.Data) []molecules.StatusLine {
 // without an endpoint).
 func localStatus(d localview.Data) ([]molecules.StatusLine, string) {
 	if d.Problem != "" {
-		return []molecules.StatusLine{line(atoms.BadgeWarn, "設定ファイルを読めません")}, ""
+		return []molecules.StatusLine{line(atoms.BadgeMuted, "設定ファイルを読めません")}, ""
 	}
 	if len(d.Endpoints) == 0 {
 		return []molecules.StatusLine{line(atoms.BadgeNeutral, "接続先なし")}, ""
@@ -161,7 +161,7 @@ func localStatus(d localview.Data) ([]molecules.StatusLine, string) {
 // audioStatus is who speaks and who redoes the mouths, and whether the fallback to the cloud is on.
 func audioStatus(d audioview.Data) []molecules.StatusLine {
 	if d.Problem != "" {
-		return []molecules.StatusLine{line(atoms.BadgeWarn, "%s", problemHead(d.Problem))}
+		return []molecules.StatusLine{line(atoms.BadgeMuted, "%s", problemHead(d.Problem))}
 	}
 	out := []molecules.StatusLine{
 		line(atoms.BadgeNeutral, "声: %s", providerName(d.Voice)),
@@ -196,7 +196,7 @@ func mcpStatus(d mcpview.Data) []molecules.StatusLine {
 	var out []molecules.StatusLine
 	switch {
 	case d.Problem != "" && d.Addr == "":
-		out = append(out, line(atoms.BadgeWarn, "待ち受けていません"))
+		out = append(out, line(atoms.BadgeMuted, "待ち受けていません"))
 	case d.Addr == "":
 		out = append(out, line(atoms.BadgeNeutral, "待ち受けていません"))
 	default:
@@ -225,7 +225,7 @@ func updateTone(t updateview.Tone) atoms.BadgeTone {
 	case updateview.ToneOK:
 		return atoms.BadgeOK
 	case updateview.ToneWarn:
-		return atoms.BadgeWarn
+		return atoms.BadgeMuted
 	case updateview.ToneError:
 		return atoms.BadgeError
 	}

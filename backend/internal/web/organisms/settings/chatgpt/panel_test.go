@@ -186,3 +186,26 @@ func TestPanel_TheCardsAreInTwoColumnsAndAnAccountThatIsLongBreaks(t *testing.T)
 	assert.Contains(t, html, `<ul id="chatgpt-cards" role="list" class="grid grid-cols-1 gap-4 xl:grid-cols-2"`)
 	assert.Contains(t, html, `class="break-all" data-testid="chatgpt-email"`)
 }
+
+// The warnings of the three cards are in the form of the other settings screens (a Banner with the ink of the page, a Note with an icon): no yellow is left
+// except the commercial / unofficial marks, which are badges of their own.
+func TestPanel_TheWarningsAreBannersAndNotesInTheInkOfThePageWithNoYellow(t *testing.T) {
+	d := view.Data{Risks: []string{"リスクその 1"}, ImageEnabled: true,
+		Official: view.Account{SignedIn: true, NeedsRelogin: true, WorkspacePlan: true, Email: "a@example.invalid"}}
+	d.Codex.Engine = view.CodexEngine{State: "ready", Supported: true, UpdateAvailable: true, Version: "1.0", PinnedVersion: "2.0"}
+	withoutMarks := func(html string) string { return strings.ReplaceAll(html, "bg-warning/20 text-warning", "") }
+
+	panel := render(t, view.Panel(d))
+	for _, id := range []string{"chatgpt-relogin", "chatgpt-use-codex", "chatgpt-codex-terms-line", "chatgpt-image-risk-line"} {
+		assert.Equal(t, 1, strings.Count(panel, `data-testid="`+id+`"`), id)
+	}
+	assert.Equal(t, 2, strings.Count(panel, "border-l-2"), "the expired login and the account the plan cannot serve are two causes: one banner each")
+
+	for _, kind := range []string{"image", "codex"} {
+		detail := render(t, view.DetailModal(view.DetailForm{Kind: kind, Data: d}))
+		assert.Contains(t, detail, "border-l-2", kind)
+		assert.Equal(t, map[string]int{"image": 0, "codex": 1}[kind], strings.Count(detail, `data-testid="chatgpt-codex-update"`), kind)
+		assert.NotContains(t, withoutMarks(detail), "warning", kind)
+	}
+	assert.NotContains(t, withoutMarks(panel), "warning")
+}

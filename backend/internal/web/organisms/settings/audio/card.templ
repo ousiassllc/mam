@@ -36,7 +36,7 @@ func cloudCardOf(p Provider) settingsui.Card {
 	if p.CloudKeySet {
 		c.Tone, c.State = atoms.BadgeOK, "API キー設定済み"
 	} else {
-		c.Tone, c.State = atoms.BadgeWarn, "API キー未設定"
+		c.Tone, c.State = atoms.BadgeMuted, "API キー未設定"
 	}
 	return c
 }
@@ -78,10 +78,14 @@ func localCardOf(p Provider) settingsui.Card {
 // localBrief is the one line a card says of a local provider that is chosen but cannot run here; the rest is in its detail.
 templ localBrief(p Provider) {
 	if p.Selected == p.value() && !p.Local.Supported {
-		<p class="break-words text-sm text-warning" role="status" data-testid={ "audio-saved-local-" + p.Field + localSuffix(p) }>保存済みの設定はローカルですが、この PC では動かせないため、今は使われません（保存するとクラウドに切り替わります）。</p>
+		@settingsui.Note(atoms.IconInfo, "status", "audio-saved-local-"+p.Field+localSuffix(p)) {
+			保存済みの設定はローカルですが、この PC では動かせないため、今は使われません（保存するとクラウドに切り替わります）。
+		}
 	}
 	if len(p.Local.Unclear) > 0 {
-		<p class="break-words text-sm text-warning" data-testid={ "audio-unclear-line-" + p.Field + localSuffix(p) }>商用利用が確認できていない（不可・不明）重み・依存ファイルが { itoa(len(p.Local.Unclear)) } 件あります（詳細を見てください）。</p>
+		@settingsui.Note(atoms.IconInfo, "note", "audio-unclear-line-"+p.Field+localSuffix(p)) {
+			商用利用が確認できていない（不可・不明）重み・依存ファイルが { itoa(len(p.Local.Unclear)) } 件あります（詳細を見てください）。
+		}
 	}
 }
 

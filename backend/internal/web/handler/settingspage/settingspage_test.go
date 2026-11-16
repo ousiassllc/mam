@@ -174,6 +174,7 @@ func TestOverview_HasACardForEachCategoryAndTheModelManagerLast(t *testing.T) {
 	assert.Contains(t, body, fmt.Sprintf("API キー 0 / %d 件", len(service.CredentialProviders)), "the state of the keys is drawn with the card")
 	assert.Contains(t, body, `hx-get="/tools/model-manager/status"`, "the model manager's state is read after the page is shown")
 	assert.Contains(t, body, "別の画面を開きます")
+	assert.Contains(t, body, `bg-accent-soft text-mute">API キー 0 /`, "no key is a quiet chip, not a yellow one")
 	assert.NotContains(t, body, `id="credential-panel"`)
 }
 

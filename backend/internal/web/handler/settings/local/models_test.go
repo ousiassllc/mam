@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"regexp"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -214,6 +215,10 @@ func TestPinned_TheSectionIsReadOnlyButKeysAndTestsWork(t *testing.T) {
 
 	assert.Contains(t, body, `data-testid="local-models-pinned"`)
 	assert.Contains(t, body, "--model-config")
+	for _, yellow := range []string{"text-warning", "border-warning", "bg-warning"} {
+		assert.NotContains(t, withoutTemplates(body), yellow)
+		assert.NotContains(t, withoutTemplates(models), yellow)
+	}
 	assert.Contains(t, body, `data-endpoint="box"`)
 	assert.Contains(t, models, `data-model-id="openai-compat:box/flux"`, "the pinned file's models are listed")
 	assert.Contains(t, models, "--model-config")
@@ -273,4 +278,9 @@ func referenceFields(names []string) []string {
 		}
 	}
 	return out
+}
+
+// withoutTemplates drops the <template> markup of the layout (the warning alert is one of them and is yellow on purpose) from a page.
+func withoutTemplates(page string) string {
+	return regexp.MustCompile(`(?s)<template.*?</template>`).ReplaceAllString(page, "")
 }

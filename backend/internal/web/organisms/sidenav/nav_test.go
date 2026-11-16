@@ -71,6 +71,16 @@ func TestNav_HasTheThemeButtonNamedForWhatItDoes(t *testing.T) {
 	assert.Contains(t, html, `aria-label="`+sidenav.LabelTheme+`"`)
 }
 
+// The text of the theme button is a part of its name (WCAG 2.5.3) and stays on one line in the open menu (224px), where the whole name broke into two (#1160).
+func TestNav_ThemeButtonTextIsPartOfItsNameAndDoesNotWrap(t *testing.T) {
+	html := render(t.Context(), t, sidenav.At(sidenav.Projects))
+
+	assert.Contains(t, sidenav.LabelTheme, sidenav.TextTheme)
+	assert.Contains(t, html, `whitespace-nowrap`)
+	assert.Contains(t, html, `>`+sidenav.TextTheme+`</span>`)
+	assert.NotContains(t, html, `>`+sidenav.LabelTheme+`</span>`)
+}
+
 func TestNav_ProjectViewsFollowTheScreensAndSeriesOnlyForAnEpisode(t *testing.T) {
 	p := domain.Project{ID: "p1", Name: "コーヒー店"}
 	html := render(t.Context(), t, sidenav.InProject(sidenav.Brief, p))

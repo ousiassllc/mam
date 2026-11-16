@@ -136,6 +136,7 @@ func TestEndpointNamedNew_IsListedWithoutAPageAndItsFormsStillOpen(t *testing.T)
 	body := s.page()
 	assert.Contains(t, body, `data-endpoint="new"`)
 	assert.Contains(t, body, `data-testid="local-endpoint-no-page"`, "the card says why its models cannot be opened")
+	assert.NotContains(t, withoutTemplates(body), "text-warning", "the note is in the ink of the page, no yellow")
 	assert.NotContains(t, body, `href="`+paths.LocalEndpoint("new")+`"`, "there is no link to a page that the form of the add button hides")
 	assert.Contains(t, body, `hx-delete="`+paths.LocalEndpoint("new")+`"`, "it can be deleted and made again under another name")
 

@@ -84,3 +84,51 @@ func TestModal_TheKeyFormIsNeverAGetThatPutsTheKeyInTheAddress(t *testing.T) {
 	assert.Contains(t, html, `type="password"`)
 	assert.NotContains(t, html, `value="`+"FAKE", "the key field is never filled")
 }
+
+func renderProviderChoice(t *testing.T, models []credentials.ProviderModel) string {
+	t.Helper()
+	return renderPanel(t, credentials.Data{
+		Provider:  &credentials.ProviderData{Choices: []credentials.ProviderChoice{{Value: "openrouter", Label: "OpenRouter", Checked: true}}, Models: models},
+		Providers: []credentials.ProviderView{{Provider: "openrouter", Label: "OpenRouter", Configured: false}},
+	})
+}
+
+// Several models that lack the same key are one cause: one banner above the list with one button that opens the modal of the key, and a quiet chip on each row.
+func TestPanel_ModelsThatLackTheSameKeyAreOneBannerWithOneButtonAndQuietChips(t *testing.T) {
+	html := renderProviderChoice(t, []credentials.ProviderModel{
+		{Label: "Kling 3.0", Supported: true, KeyLabel: "OpenRouter", KeyProvider: "openrouter"},
+		{Label: "Kling 4.0", Supported: true, KeyLabel: "OpenRouter", KeyProvider: "openrouter"},
+		{Label: "Veo", Supported: false, Why: "このプロバイダーでは扱っていません"},
+	})
+
+	assert.Equal(t, 1, strings.Count(html, `data-testid="api-provider-key-banner"`))
+	assert.Equal(t, 1, strings.Count(html, `hx-get="/settings/credentials/openrouter/edit"`)-strings.Count(html, `aria-label="設定: OpenRouter"`), "the banner adds one button besides the card's")
+	assert.Contains(t, html, "Kling 3.0、Kling 4.0 は、キーを入れると使えるようになります")
+	assert.Equal(t, 3, strings.Count(html, "OpenRouter の API キーが未設定"), "the title of the banner and the chip of each row")
+	assert.Contains(t, html, "bg-accent-soft text-mute")
+	assert.NotContains(t, html, "warning")
+}
+
+// One model that lacks the key says so in its own row: no banner for a single line.
+func TestPanel_OneModelThatLacksTheKeyHasNoBanner(t *testing.T) {
+	html := renderProviderChoice(t, []credentials.ProviderModel{
+		{Label: "Kling 3.0", Supported: true, KeyLabel: "OpenRouter", KeyProvider: "openrouter"},
+		{Label: "Kling 4.0", Supported: true, KeyLabel: "OpenRouter", KeyProvider: "openrouter", KeySet: true},
+	})
+
+	assert.NotContains(t, html, `data-testid="api-provider-key-banner"`)
+	assert.Contains(t, html, "OpenRouter の API キーが未設定")
+	assert.NotContains(t, html, "warning")
+}
+
+// An unreadable key store and an unreadable settings file are a Banner and a Note in the ink of the page; the card says it cannot tell in a quiet chip.
+func TestPanel_TheProblemsAreInTheInkOfThePageWithNoYellow(t *testing.T) {
+	html := renderPanel(t, credentials.Data{Unavailable: true,
+		Provider:  &credentials.ProviderData{Problem: "設定ファイルを読めません"},
+		Providers: []credentials.ProviderView{{Provider: "kling", Label: "Kling"}}})
+
+	assert.Contains(t, html, `data-testid="credential-unavailable"`)
+	assert.Contains(t, html, `data-testid="api-provider-problem"`)
+	assert.Contains(t, html, "border-l-2")
+	assert.NotContains(t, html, "warning")
+}

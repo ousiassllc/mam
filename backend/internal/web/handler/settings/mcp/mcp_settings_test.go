@@ -231,6 +231,7 @@ func TestMCPSettings_TheSectionSaysWhyItIsNotOnTheSavedAddress(t *testing.T) {
 	s.listener.addr, s.listener.problem = "", "保存済みの待ち受け先 100.101.102.103 を使えないため、127.0.0.1 で待ち受けています"
 
 	page := s.get()
-	assert.Regexp(t, `role="alert"[^>]*data-testid="mcp-problem">保存済みの待ち受け先 100\.101\.102\.103`, page)
+	assert.Regexp(t, `(?s)role="alert" data-testid="mcp-problem">.*保存済みの待ち受け先 100\.101\.102\.103`, page)
+	assert.NotContains(t, page, "text-warning", "the note is in the ink of the page, no yellow")
 	assert.Contains(t, page, "待ち受けていません")
 }

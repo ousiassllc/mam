@@ -1,6 +1,9 @@
 package llm
 
 import (
+	"slices"
+	"strings"
+
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/help"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
@@ -21,19 +24,28 @@ templ Section(d Data) {
 			<p class="text-sm text-ink" data-testid="llm-pinned">起動オプション（--llm-config / MAM_LLM_CONFIG）で固定されています。この画面では変更できません。</p>
 		}
 		if d.Problem != "" {
-			<p class="text-sm text-warning" role="alert" data-testid="llm-problem">保存済みの設定ファイルを読み込めません（表示は既定値です）: { d.Problem }</p>
+			@settingsui.Banner(atoms.IconWarning, "alert", "llm-problem", "保存済みの設定ファイルを読み込めません（表示は既定値です）") {
+				<p class="break-words text-ink" data-testid="llm-problem-detail">{ d.Problem }</p>
+			}
 		}
 		if len(d.Warnings) > 0 {
-			<ul class="flex flex-col gap-1 text-sm text-warning" data-testid="llm-warnings">
-				for _, w := range d.Warnings {
-					<li data-testid="llm-warning">
-						{ w.Message }
-						if w.Route != "" {
-							<a class="underline" href={ templ.SafeURL(w.Route) }>設定を開く</a>
+			@settingsui.Banner(atoms.IconKey, "status", "llm-warnings", "API キーやログインが足りないため、使えない割り当てがあります") {
+				<ul class="flex flex-col gap-1 text-ink">
+					for _, w := range d.Warnings {
+						<li class="break-words" data-testid="llm-warning">
+							<span class="font-semibold">{ w.Provider }</span>: { w.Reason }
+							<span class="text-mute">（{ strings.Join(w.Uses, "、") } が指しています）</span>
+						</li>
+					}
+				</ul>
+				if routes := warningRoutes(d.Warnings); len(routes) > 0 {
+					<div class="flex flex-wrap gap-2">
+						for _, r := range routes {
+							@atoms.ButtonLink(atoms.ToneNeutral, "設定を開く", templ.SafeURL(r), templ.Attributes{"data-testid": "llm-warning-link"})
 						}
-					</li>
+					</div>
 				}
-			</ul>
+			}
 		}
 		if d.Notice != "" {
 			<p class="text-sm text-success" role="status" data-testid="llm-notice">{ d.Notice }</p>
@@ -64,6 +76,17 @@ templ Section(d Data) {
 			</details>
 		}
 	</section>
+}
+
+// warningRoutes are the screens that fix the warnings, each once and in the order the warnings name them: one button for each screen, not one for each line.
+func warningRoutes(ws []Warning) []string {
+	var routes []string
+	for _, w := range ws {
+		if w.Route != "" && !slices.Contains(routes, w.Route) {
+			routes = append(routes, w.Route)
+		}
+	}
+	return routes
 }
 
 // helpSubject is what the "?" beside the restart notice explains.
