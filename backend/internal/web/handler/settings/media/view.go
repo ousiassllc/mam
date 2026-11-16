@@ -48,14 +48,14 @@ func Data(v modelsettings.View) media.Data {
 	if len(v.Gated) > 0 {
 		d.GatedNote = gatedNote(v.Gated)
 	}
-	if b, ok := keyBanner(v); ok {
-		d.KeyBanner = &b
-	}
 	for _, p := range modelsettings.ImagePurposes() {
 		d.Images = append(d.Images, imageRow(v, p, v.Images[p]))
 	}
 	for _, q := range domain.QualityPolicies() {
 		d.Policies = append(d.Policies, policyRow(v, q, v.Policies[q]))
+	}
+	if b, ok := keyBanner(v, len(d.Images)+len(d.Policies)); ok {
+		d.KeyBanner = &b
 	}
 	return d
 }

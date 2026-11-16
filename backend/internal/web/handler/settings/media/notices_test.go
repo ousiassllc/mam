@@ -25,8 +25,8 @@ func assigned(role, model string, available bool) modelroute.AssignedModel {
 	return modelroute.AssignedModel{Role: role, Model: model, Available: available}
 }
 
-// #1157: the models whose API key is missing are grouped by the key, so that one banner says which key lets how many places of the assignment be used.
-func TestKeyBanner_GroupsTheMissingKeysWithTheirModelsAndCounts(t *testing.T) {
+// #1157: the models whose API key is missing are grouped by the key, so that one banner says which key lets which models be used.
+func TestKeyBanner_GroupsTheMissingKeysWithTheirModels(t *testing.T) {
 	v := modelsettings.View{Unusable: []modelsettings.UnusableRoute{
 		unusable("image", "new_reference", "primary", "nano-banana", "google"),
 		unusable("image", "new_reference", "fallback", "nano-banana-lite", "google"),
@@ -38,10 +38,9 @@ func TestKeyBanner_GroupsTheMissingKeysWithTheirModelsAndCounts(t *testing.T) {
 		unusable("video", "quality", "primary", "seedance-2.0", "seedance"),
 	}}
 
-	b, ok := keyBanner(v)
+	b, ok := keyBanner(v, 7)
 
 	require.True(t, ok)
-	assert.Equal(t, 8, b.Total, "every place of the assignment that names a model without its key")
 	assert.Equal(t, "/settings/api-keys", b.Route)
 	require.Len(t, b.Shortages, 3)
 	assert.Equal(t, media.KeyShortage{Provider: "Seedance", Models: []string{"seedance-2.0"}, Count: 4}, b.Shortages[0], "the biggest shortage first; a model is named once however many places use it")
@@ -49,38 +48,67 @@ func TestKeyBanner_GroupsTheMissingKeysWithTheirModelsAndCounts(t *testing.T) {
 	assert.Equal(t, media.KeyShortage{Provider: "Kling", Models: []string{"kling-3.0"}, Count: 1}, b.Shortages[2])
 }
 
-func TestKeyBanner_IsAbsentWhenNoKeyIsMissing(t *testing.T) {
-	_, ok := keyBanner(modelsettings.View{})
+// #1157: the banner counts rows, not slots: T is the rows there are, N the rows with no model that runs, k the rows that run on their alternative.
+func TestKeyBanner_CountsRowsThatCannotRunAndRowsThatRunOnTheirAlternative(t *testing.T) {
+	v := modelsettings.View{Unusable: []modelsettings.UnusableRoute{
+		// both slots without a key: blocked, two places but one row
+		unusable("image", "new_reference", "primary", "nano-banana", "google"),
+		unusable("image", "new_reference", "fallback", "nano-banana-lite", "google"),
+		// the primary has no key and the alternative runs: covered
+		unusable("image", "edit_reference", "primary", "nano-banana", "google"),
+		unusable("video", "balanced", "primary", "seedance-2.0", "seedance"),
+		// only the alternative lacks its key: the primary runs, so the row is neither
+		unusable("video", "fast", "fallback", "seedance-2.0", "seedance"),
+		// no key on the primary and the alternative is not signed in: nothing runs
+		unusable("video", "quality", "primary", "runway-gen-4.5", "runway"),
+		{Media: "video", Key: "quality", Role: "fallback", Model: "gpt-image-2.6-flare", Vendor: "chatgpt-subscription",
+			Availability: modelfilter.Unusable(modelfilter.ReasonNotSignedIn, "ChatGPT にログインしていません", "/settings/api-keys")},
+	}}
+
+	b, ok := keyBanner(v, 7)
+
+	require.True(t, ok)
+	assert.Equal(t, 7, b.Rows, "T is what the caller says the tables have")
+	assert.Equal(t, 2, b.Blocked, "new_reference and quality")
+	assert.Equal(t, 2, b.Covered, "edit_reference and balanced; fast is not covered, its primary runs")
+}
+
+func TestKeyBanner_AllKeysMissingBlocksEveryRow(t *testing.T) {
+	var unusableAll []modelsettings.UnusableRoute
+	for _, k := range []string{"a", "b", "c"} {
+		unusableAll = append(unusableAll, unusable("image", k, "primary", "nano-banana", "google"), unusable("image", k, "fallback", "flux-2", "bfl"))
+	}
+
+	b, ok := keyBanner(modelsettings.View{Unusable: unusableAll}, 3)
+
+	require.True(t, ok)
+	assert.Equal(t, 3, b.Rows)
+	assert.Equal(t, 3, b.Blocked, "every row, however many places it has")
+	assert.Zero(t, b.Covered)
+}
+
+func TestKeyBanner_OnlyCoveredRowsStillOffersTheKeys(t *testing.T) {
+	b, ok := keyBanner(modelsettings.View{Unusable: []modelsettings.UnusableRoute{unusable("image", "new_reference", "primary", "nano-banana", "google")}}, 7)
+
+	require.True(t, ok)
+	assert.Zero(t, b.Blocked)
+	assert.Equal(t, 1, b.Covered)
+	require.Len(t, b.Shortages, 1)
+}
+
+func TestKeyBanner_IsAbsentWhenNoRowIsBlockedOrCovered(t *testing.T) {
+	_, ok := keyBanner(modelsettings.View{}, 7)
 	assert.False(t, ok, "the keys are all there: no banner")
+
+	_, ok = keyBanner(modelsettings.View{Unusable: []modelsettings.UnusableRoute{unusable("image", "new_reference", "fallback", "nano-banana-lite", "google")}}, 7)
+	assert.False(t, ok, "only an alternative lacks its key and the primary runs: the chip says so, the banner has nothing to add")
 
 	other := modelsettings.UnusableRoute{Media: "image", Key: "new_reference", Role: "primary", Model: "gpt-image-2.6-flare", Vendor: "chatgpt-subscription",
 		Availability: modelfilter.Unusable(modelfilter.ReasonNotSignedIn, "ChatGPT にログインしていません", "/settings/api-keys")}
 	local := modelsettings.UnusableRoute{Media: "image", Key: "preview", Role: "primary", Model: "comfyui:a/b", Vendor: "local",
 		Availability: modelfilter.Unusable(modelfilter.ReasonNoKey, "接続先を使えません", "/settings/local-models")}
-	_, ok = keyBanner(modelsettings.View{Unusable: []modelsettings.UnusableRoute{other, local}})
+	_, ok = keyBanner(modelsettings.View{Unusable: []modelsettings.UnusableRoute{other, local}}, 7)
 	assert.False(t, ok, "not signed in and a local model without a backend are not a missing API key")
-}
-
-// #1157: a primary whose alternative runs is told apart from a route that cannot run.
-func TestKeyBanner_CountsTheRoutesThatRunOnTheirAlternative(t *testing.T) {
-	v := modelsettings.View{
-		Unusable: []modelsettings.UnusableRoute{
-			unusable("image", "new_reference", "primary", "nano-banana", "google"),
-			unusable("image", "edit_reference", "primary", "nano-banana", "google"),
-			unusable("image", "edit_reference", "fallback", "nano-banana-lite", "google"),
-		},
-		Routes: []modelsettings.RouteReport{
-			{Media: "image", Key: "new_reference", Status: modelsettings.RouteAssignment, Assigned: []modelroute.AssignedModel{assigned("primary", "nano-banana", false), assigned("fallback", "flux-2", true)}},
-			{Media: "image", Key: "edit_reference", Status: modelsettings.RouteBlocked, Assigned: []modelroute.AssignedModel{assigned("primary", "nano-banana", false), assigned("fallback", "nano-banana-lite", false)}},
-		},
-	}
-
-	b, ok := keyBanner(v)
-
-	require.True(t, ok)
-	require.Len(t, b.Shortages, 1)
-	assert.Equal(t, 3, b.Shortages[0].Count)
-	assert.Equal(t, 1, b.Shortages[0].Covered, "only the primary of the route that runs on its alternative")
 }
 
 func TestRouteNote_SeparatesAnAlternativeThatRunsFromARouteThatCannot(t *testing.T) {

@@ -53,7 +53,8 @@ func TestSection_NoKeyIsOneBannerOneButtonAndAChipBesideEachModel(t *testing.T) 
 	html := section(t)
 
 	assert.Equal(t, 1, strings.Count(html, `data-testid="model-assignment-key-banner"`))
-	assert.Contains(t, html, "API キーが未登録のため、画像・動画モデル 14 件が使えません", "4 purposes and 3 policies, each with its primary and its alternative")
+	assert.Contains(t, html, "API キーが足りないため、用途・Quality Policy 7 件のうち 7 件で生成できません", "4 purposes and 3 policies: all 7 rows, every one with neither of its models usable")
+	assert.NotContains(t, html, "代替モデルで動いています", "no row runs on its alternative: the sentence about them is not said")
 	assert.Equal(t, 1, strings.Count(html, "API キーを設定"), "one button")
 	assert.Contains(t, html, `href="/settings/api-keys"`)
 	assert.NotContains(t, html, "設定を開く", "the link is not repeated for each line")
@@ -61,6 +62,7 @@ func TestSection_NoKeyIsOneBannerOneButtonAndAChipBesideEachModel(t *testing.T) 
 	assert.NotContains(t, html, "text-warning", "the section does not speak in the colour of a state")
 	assert.Equal(t, 6, strings.Count(html, `data-testid="model-assignment-key-shortage"`), "a line for each key the default assignment needs: Google, OpenAI, Black Forest Labs, Kling, Seedance and Runway")
 	assert.Contains(t, html, "のキーを入れると、")
+	assert.Contains(t, html, "が使えるようになります")
 	assert.Equal(t, 14, strings.Count(html, `data-testid="model-chip"`), "a chip beside every model of the two tables")
 	assert.Contains(t, html, `title="API キーが登録されていません（設定の「API キー」）"`, "the full reason is the tooltip of the chip")
 	assert.Contains(t, html, "キー未登録")
@@ -74,7 +76,8 @@ func TestSection_SomeKeysLeftNamesTheMissingOnesAndSeparatesWhatRunsOnTheAlterna
 	require.NotEmpty(t, banner)
 	assert.NotContains(t, banner, "OpenAI", "the key that is there is not asked for")
 	assert.Contains(t, banner, "Google")
-	assert.Contains(t, banner, "うち 1 件は代替で動いています", "the primary of edit_reference, whose alternative (OpenAI) runs")
+	assert.Contains(t, banner, "API キーが足りないため、用途・Quality Policy 7 件のうち 4 件で生成できません。1 件は代替モデルで動いています", "edit_reference runs on its alternative (OpenAI); preview, FAST, BALANCED and MAX QUALITY have no model with a key")
+	assert.NotRegexp(t, `\d 件が使えるようになります|代替で動いています`, banner, "a line of a key does not count places, and does not say what runs on an alternative")
 
 	edit := rowOf(t, html, `data-purpose="edit_reference"`)
 	assert.Contains(t, edit, `data-kind="fallback"`)
@@ -95,4 +98,32 @@ func TestSection_AllKeysRegisteredLeavesOnlyTheTables(t *testing.T) {
 	assert.NotContains(t, html, "model-assignment-row-note")
 	assert.Equal(t, len(modeladapter.ImagePurposes()), strings.Count(html, `data-testid="model-assignment-image"`))
 	assert.Equal(t, len(domain.QualityPolicies()), strings.Count(html, `data-testid="model-assignment-policy"`))
+}
+
+// #1157: when no row is blocked and some run on their alternative, the banner only says so (and still offers the key that is missing).
+func TestSection_OnlyRowsOnTheirAlternativeSaysSomeRunOnIt(t *testing.T) {
+	var registered []modeladapter.Vendor
+	for _, v := range modeladapter.Vendors() {
+		if v != modeladapter.VendorKling {
+			registered = append(registered, v)
+		}
+	}
+
+	html := section(t, registered...)
+
+	banner := regexp.MustCompile(`(?s)data-testid="model-assignment-key-banner-title">(.*?)</p>`).FindStringSubmatch(html)
+	require.NotNil(t, banner)
+	assert.Equal(t, "一部は代替モデルで動いています", banner[1], "FAST has Kling as its primary and Seedance, which runs, as its alternative")
+	assert.Contains(t, html, "Kling")
+	assert.Contains(t, html, "API キーを設定")
+}
+
+// #1157: the header of the number of Takes stays on one line and its column is as wide as its content.
+func TestSection_TakesHeaderDoesNotWrap(t *testing.T) {
+	html := section(t, modeladapter.Vendors()...)
+
+	th := regexp.MustCompile(`<th[^>]*>\s*テイク数\s*</th>`).FindString(html)
+	require.NotEmpty(t, th)
+	assert.Contains(t, th, "whitespace-nowrap")
+	assert.Contains(t, th, "w-px")
 }

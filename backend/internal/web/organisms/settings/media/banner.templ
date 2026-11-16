@@ -7,23 +7,26 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 )
 
-// bannerTitle says how many places of the saved assignment cannot be used for want of an API key.
+// bannerTitle says how many rows of the assignment cannot run for want of an API key and how many run on their alternative. With no row that cannot run it
+// only says that some run on their alternative.
 func bannerTitle(b KeyBanner) string {
-	return "API キーが未登録のため、画像・動画モデル " + strconv.Itoa(b.Total) + " 件が使えません"
+	if b.Blocked == 0 {
+		return "一部は代替モデルで動いています"
+	}
+	title := "API キーが足りないため、用途・Quality Policy " + strconv.Itoa(b.Rows) + " 件のうち " + strconv.Itoa(b.Blocked) + " 件で生成できません"
+	if b.Covered > 0 {
+		title += "。" + strconv.Itoa(b.Covered) + " 件は代替モデルで動いています"
+	}
+	return title
 }
 
-// shortageText says which key lets how many places be used, and which models they are.
+// shortageText says which models the key lets the assignment use.
 func shortageText(s KeyShortage) string {
-	return "のキーを入れると、" + strings.Join(s.Models, "、") + " の " + strconv.Itoa(s.Count) + " 件が使えるようになります"
+	return "のキーを入れると、" + strings.Join(s.Models, "、") + " が使えるようになります"
 }
 
-// coveredText says how many of the places are a primary whose route runs on its alternative anyway.
-func coveredText(s KeyShortage) string {
-	return "（うち " + strconv.Itoa(s.Covered) + " 件は代替で動いています）"
-}
-
-// keyBanner is the one banner for the models whose API key is not registered: the sentence of the cause, one line for each missing key (the provider, the
-// models it would let the assignment use, and how many places that is), and the one button to the screen that registers the keys. The state is told by the icon
+// keyBanner is the one banner for the models whose API key is not registered: the sentence of the cause, one line for each missing key (the provider and the
+// models it would let the assignment use), and the one button to the screen that registers the keys. The state is told by the icon
 // and the words, in the ink of the page: a thin line at the left, no colour of a state.
 templ keyBanner(b KeyBanner) {
 	<section class="flex gap-3 rounded-md border border-border border-l-2 bg-surface p-3 text-sm" role="status" data-testid="model-assignment-key-banner">
@@ -35,9 +38,6 @@ templ keyBanner(b KeyBanner) {
 					<li class="break-words" data-testid="model-assignment-key-shortage">
 						<span class="font-semibold">{ s.Provider }</span>
 						<span>{ shortageText(s) }</span>
-						if s.Covered > 0 {
-							<span class="text-mute">{ coveredText(s) }</span>
-						}
 					</li>
 				}
 			</ul>

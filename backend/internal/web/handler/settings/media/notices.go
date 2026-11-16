@@ -81,16 +81,30 @@ func providerLabel(id string) string {
 	return id
 }
 
-// keyBanner groups the saved routes whose model cannot be used for want of an API key by the key they need, the biggest shortage first: which provider's key,
-// which models it would let the assignment use, and how many places of the assignment that is. A place whose route runs on its alternative anyway (a primary
-// with a usable alternative) is counted too, and said to be covered. It is false when no key is missing.
-func keyBanner(v modelsettings.View) (media.KeyBanner, bool) {
-	var b media.KeyBanner
+// routeKey names one row of the two tables: an image purpose or a Quality Policy.
+type routeKey struct{ media, key string }
+
+// keyBanner counts the rows of the tables (rows: how many there are, image purposes and Quality Policies together) that the missing API keys touch, and groups the
+// missing keys by the key they need, the biggest shortage first (which provider's key, which models it would let the assignment use). A row is
+//   - blocked when neither its primary nor its alternative can be used and one of them lacks its API key: nothing of it runs until a key is put in;
+//   - covered when its primary lacks its API key and its alternative can be used: it runs on the alternative.
+//
+// A row whose primary runs is neither, whatever its alternative lacks. It is false when no row is blocked or covered.
+func keyBanner(v modelsettings.View, rows int) (media.KeyBanner, bool) {
+	b := media.KeyBanner{Rows: rows}
 	index := map[string]int{} // vendor -> position in b.Shortages
+	unusable := map[routeKey]map[string]bool{}
+	noKey := map[routeKey]map[string]bool{}
 	for _, u := range v.Unusable {
+		rk := routeKey{u.Media, u.Key}
+		if unusable[rk] == nil {
+			unusable[rk], noKey[rk] = map[string]bool{}, map[string]bool{}
+		}
+		unusable[rk][u.Role] = true
 		if !missingKey(u.Availability) {
 			continue
 		}
+		noKey[rk][u.Role] = true
 		i, ok := index[u.Vendor]
 		if !ok {
 			i = len(b.Shortages)
@@ -99,28 +113,22 @@ func keyBanner(v modelsettings.View) (media.KeyBanner, bool) {
 		}
 		s := &b.Shortages[i]
 		s.Count++
-		b.Total++
 		if m := string(u.Model); !slices.Contains(s.Models, m) {
 			s.Models = append(s.Models, m)
 		}
-		if u.Role == "primary" && coveredByFallback(v, u) {
-			s.Covered++
+	}
+	for rk, no := range noKey {
+		switch {
+		case unusable[rk][media.SlotPrimary] && unusable[rk][media.SlotFallback] && len(no) > 0:
+			b.Blocked++
+		case no[media.SlotPrimary] && !unusable[rk][media.SlotFallback]:
+			b.Covered++
 		}
 	}
-	if b.Total == 0 {
+	if b.Blocked == 0 && b.Covered == 0 {
 		return media.KeyBanner{}, false
 	}
 	slices.SortStableFunc(b.Shortages, func(x, y media.KeyShortage) int { return y.Count - x.Count })
 	b.Route = keysRoute
 	return b, true
-}
-
-// coveredByFallback reports whether the route of the unusable primary u runs on its alternative.
-func coveredByFallback(v modelsettings.View, u modelsettings.UnusableRoute) bool {
-	r, ok := reportOf(v, u.Media, u.Key)
-	if !ok || r.Status != modelsettings.RouteAssignment {
-		return false
-	}
-	_, covered := runsOnFallback(r)
-	return covered
 }

@@ -83,6 +83,9 @@ templ Status(d Data, oob bool) {
 // two tables whatever their other columns take.
 const editColumn = "whitespace-nowrap text-right"
 
+// takesColumn keeps the header of the number of Takes on one line and the column as wide as its content (w-px: the narrowest the header lets it be).
+const takesColumn = "w-px whitespace-nowrap"
+
 // modelCell keeps the name of a model from being broken into pieces by a row head that takes the width.
 const modelCell = "min-w-36"
 
@@ -95,7 +98,7 @@ func imageColumns(pinned bool) []settingsui.Column {
 }
 
 func policyColumns(pinned bool) []settingsui.Column {
-	cols := []settingsui.Column{{Header: "Quality Policy"}, {Header: "主モデル"}, {Header: "代替モデル"}, {Header: "テイク数"}}
+	cols := []settingsui.Column{{Header: "Quality Policy"}, {Header: "主モデル"}, {Header: "代替モデル"}, {Header: "テイク数", Class: takesColumn}}
 	if !pinned {
 		cols = append(cols, settingsui.Column{Header: "操作", SROnly: true, Class: editColumn})
 	}

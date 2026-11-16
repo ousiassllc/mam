@@ -18,20 +18,20 @@ const (
 // RowNote is what a row says about what a generation would do with it, when its saved models cannot all be used. The zero RowNote is no note.
 type RowNote struct{ Kind, Text string }
 
-// KeyShortage is one missing API key: the provider it belongs to, the models it would let the assignment use (the distinct ones, in the order of the screen),
-// how many places of the assignment name them (Count: a slot of a route, primary or alternative), and how many of those places are a primary that the route
-// does without because its alternative runs (Covered).
+// KeyShortage is one missing API key: the provider it belongs to, the models it would let the assignment use (the distinct ones, in the order of the screen), and
+// how many places of the assignment (a slot of a route, primary or alternative) name a model of it: the banner lists the biggest shortage first.
 type KeyShortage struct {
 	Provider string
 	Models   []string
 	Count    int
-	Covered  int
 }
 
-// KeyBanner is the one banner that says the saved assignment names models whose API key is not registered: Total is how many places cannot be used, Shortages
-// say which key lets how many of them be used (the biggest first), and Route is the screen that registers the keys.
+// KeyBanner is the one banner that says the saved assignment names models whose API key is not registered. It counts rows of the two tables: Rows is how many
+// there are (image purposes and Quality Policies together), Blocked how many cannot run at all (neither the primary nor the alternative can be used and an API key
+// is missing), Covered how many run on their alternative because the API key of the primary is missing. Shortages say which key lets which models be used (the
+// biggest first), and Route is the screen that registers the keys.
 type KeyBanner struct {
-	Total     int
-	Route     string
-	Shortages []KeyShortage
+	Rows, Blocked, Covered int
+	Route                  string
+	Shortages              []KeyShortage
 }
