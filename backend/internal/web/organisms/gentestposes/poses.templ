@@ -6,6 +6,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 )
 
 // OpenButton is the entry in the drop zone of the input images. It opens the dialog (inputs.ts) and loads its body.
@@ -48,12 +49,12 @@ templ ModelNotes(n Notes) {
 					}
 				</p>
 			case len(n.Models) == 0:
-				<p class="text-warning" role="status" data-testid="gt-pose-models-unsupported">
+				@settingsui.Note(atoms.IconInfo, "status", "gt-pose-models-unsupported") {
 					選んだモデルは「ポーズだけ」の参照を読めません（全体の参照として使います）。
 					if len(n.Capable) > 0 {
 						ポーズを読めるモデル: { joinNames(n.Capable) }
 					}
-				</p>
+				}
 			default:
 				for _, m := range n.Models {
 					<div class="flex flex-col gap-1" data-testid="gt-pose-model" data-commercial={ m.Answer.Answer() }>

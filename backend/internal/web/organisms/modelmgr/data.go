@@ -217,7 +217,7 @@ var phaseBadges = map[string]struct {
 	label string
 }{
 	"unsupported": {atoms.BadgeNeutral, "この PC では使えません"}, "readonly": {atoms.BadgeError, "導入先に書き込めません"},
-	"installing": {atoms.BadgeInfo, "導入中"}, "broken": {atoms.BadgeWarn, "ファイルが見つかりません"}, "missing": {atoms.BadgeNeutral, "未導入"},
+	"installing": {atoms.BadgeInfo, "導入中"}, "broken": {atoms.BadgeMuted, "ファイルが見つかりません"}, "missing": {atoms.BadgeNeutral, "未導入"},
 }
 
 // EngineBadge is the one badge that sums the card up (also the one of its modal): the phase, and once installed the state of the process.

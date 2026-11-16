@@ -2,6 +2,7 @@ package faceswapbox
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -23,11 +24,15 @@ templ Box(f Form) {
 				if f.Error != "" {
 					<p class="text-sm text-danger" role="alert" data-testid="gt-faceswap-error">{ f.Error }</p>
 				}
-				<ul class="flex list-disc flex-col gap-1 pl-5 text-xs text-warning" data-testid="gt-faceswap-notes">
-					for _, n := range f.Notes {
-						<li>{ n }</li>
+				if len(f.Notes) > 0 {
+					@settingsui.Banner(atoms.IconWarning, "note", "gt-faceswap-notes", "顔の入れ替えの前に知っておくこと") {
+						<ul class="flex list-disc flex-col gap-1 pl-5 text-ink">
+							for _, n := range f.Notes {
+								<li>{ n }</li>
+							}
+						</ul>
 					}
-				</ul>
+				}
 				if f.Problem != "" {
 					<p class="text-sm text-mute" data-testid="gt-faceswap-problem">
 						{ f.Problem }

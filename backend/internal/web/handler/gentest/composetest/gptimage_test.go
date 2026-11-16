@@ -98,6 +98,10 @@ func TestTheSubscriptionTwinSaysItCannotTakeTheSettings(t *testing.T) {
 	require.NotEmpty(t, card)
 	assert.Contains(t, html.UnescapeString(card), `data-gpt-refusal="`+gptimage.SubscriptionRefusal+`"`)
 	assert.Contains(t, card, "複雑さ・GIF・SVG・マークアップは使えません")
+	chip := regexp.MustCompile(`<span class="[^"]*"[^>]*data-testid="gt-model-gpt-refused"`).FindString(card)
+	require.NotEmpty(t, chip)
+	assert.Contains(t, chip, "bg-accent-soft text-mute", "a model that cannot take the settings is a quiet chip, not a yellow one (#1163)")
+	assert.NotContains(t, card, "text-warning")
 
 	tag, inner := section(t, body)
 	assert.NotContains(t, tag, "hidden", "the reason is shown next to the section")

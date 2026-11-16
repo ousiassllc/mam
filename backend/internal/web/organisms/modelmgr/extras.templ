@@ -3,6 +3,7 @@ package modelmgr
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -12,7 +13,7 @@ templ HFCard(h HFToken) {
 	<div id={ HFID } class="flex flex-col gap-3" data-testid="mm-hf">
 		@notice(h.Message, "mm-hf")
 		if h.Unavailable {
-			<p class="text-sm text-warning" data-testid="mm-hf-unavailable">キーの保管先を読めないため、トークンを扱えません。</p>
+			@settingsui.NoteText(atoms.IconInfo, "note", "mm-hf-unavailable", "キーの保管先を読めないため、トークンを扱えません。")
 		} else if h.Configured {
 			<p class="text-sm" data-testid="mm-hf-status">{ hfState(h) }</p>
 		} else {
@@ -142,7 +143,7 @@ func ExternalModelCardID(endpoint, name string) string {
 templ externalModelCard(endpoint string, m ExternalModel) {
 	{{ state := modelcard.Badge{Tone: atoms.BadgeOK, Label: "そろっています", Attrs: templ.Attributes{"data-testid": "mm-external-model-state"}} }}
 	if !m.Complete {
-		{{ state = modelcard.Badge{Tone: atoms.BadgeWarn, Label: "足りないファイルがあります", Attrs: templ.Attributes{"data-testid": "mm-external-model-state"}} }}
+		{{ state = modelcard.Badge{Tone: atoms.BadgeMuted, Label: "足りないファイルがあります", Attrs: templ.Attributes{"data-testid": "mm-external-model-state"}} }}
 	}
 	@modelcard.Item(modelcard.Card{
 		ID: ExternalModelCardID(endpoint, m.Name), Name: m.Name, Icon: atoms.IconNetwork, Meta: "外部の ComfyUI・" + endpoint, DetailURL: ExternalModelDetailURL(endpoint, m.Name),

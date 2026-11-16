@@ -2,6 +2,7 @@ package modelmgr
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -13,7 +14,7 @@ templ GPUBlock(g GPU) {
 		<div class="flex flex-col gap-1 text-sm">
 			<h3 class="text-sm font-semibold">GPU の検出結果</h3>
 			if g.DetectError != "" {
-				<p class="text-warning" data-testid="mm-gpu-error">GPU を調べられませんでした（{ g.DetectError }）。</p>
+				@settingsui.NoteText(atoms.IconInfo, "note", "mm-gpu-error", "GPU を調べられませんでした（"+g.DetectError+"）。")
 			}
 			if len(g.Adapters) == 0 {
 				<p class="text-ink" data-testid="mm-gpu-none">GPU は見つかりませんでした。</p>
@@ -33,7 +34,7 @@ templ GPUBlock(g GPU) {
 				</p>
 				<p class="text-sm text-mute">{ g.Reason }</p>
 			} else {
-				<p class="text-warning" data-testid="mm-gpu-guidance">{ g.Guidance }</p>
+				@settingsui.NoteText(atoms.IconInfo, "note", "mm-gpu-guidance", g.Guidance)
 				<p class="text-sm text-mute">
 					別の ComfyUI を使うなら、<a class="underline" href={ templ.SafeURL(paths.Settings()) }>設定</a>の「ローカル・代替モデル」にその URL を登録してください。
 				</p>

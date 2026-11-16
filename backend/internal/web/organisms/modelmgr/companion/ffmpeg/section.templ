@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -43,10 +44,12 @@ templ toolField(t Tool) {
 			"placeholder": "空: 自動で探す", "autocomplete": "off", "spellcheck": "false", "data-testid": "ffmpeg-path-" + t.Field,
 		})
 		if t.Problem != "" {
-			<p class="text-sm text-warning" role="status" data-testid={ "ffmpeg-state-" + t.Field }>
-				@atoms.Badge(atoms.BadgeWarn, "見つかりません")
-				<span class="ml-2">{ t.Problem }</span>
-			</p>
+			<div class="flex flex-wrap items-start gap-2" role="status" data-testid={ "ffmpeg-state-" + t.Field }>
+				@atoms.Badge(atoms.BadgeMuted, "見つかりません")
+				@settingsui.Note(atoms.IconInfo, "note", "ffmpeg-state-problem-"+t.Field) {
+					{ t.Problem }
+				}
+			</div>
 		} else {
 			<p class="text-sm text-mute" data-testid={ "ffmpeg-state-" + t.Field }>
 				@atoms.Badge(atoms.BadgeOK, "使えます")

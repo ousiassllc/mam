@@ -5,6 +5,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -57,7 +58,7 @@ templ HFResultView(r HFResult) {
 						<span class="flex flex-wrap items-center gap-2">
 							<code class="break-all">{ hit.Repo }</code>
 							if hit.Gated {
-								@atoms.Badge(atoms.BadgeWarn, "gated")
+								@atoms.Badge(atoms.BadgeMuted, "gated")
 							}
 							if hit.NFAA {
 								@atoms.Badge(atoms.BadgeError, "NFAA")
@@ -84,7 +85,7 @@ templ hfRepoView(r HFRepo) {
 			<a class="break-all underline" href={ templ.SafeURL(r.Page) } target="_blank" rel="noopener noreferrer"><code>{ r.ID }</code></a>
 			<span class="text-xs text-mute">コミット <code>{ shortHash(r.Commit) }</code> に固定</span>
 			if r.Gated {
-				@atoms.BadgeWith(atoms.BadgeWarn, "gated", templ.Attributes{"data-testid": "mm-hfi-gated"})
+				@atoms.BadgeWith(atoms.BadgeMuted, "gated", templ.Attributes{"data-testid": "mm-hfi-gated"})
 			}
 			if r.NFAA {
 				@atoms.BadgeWith(atoms.BadgeError, "NFAA（成人向け）", templ.Attributes{"data-testid": "mm-hfi-nfaa"})
@@ -97,11 +98,13 @@ templ hfRepoView(r HFRepo) {
 			<p class="text-sm text-warning" data-testid="mm-hfi-license-warning">{ r.LicenseWarn }</p>
 		}
 		if r.Gated && r.NoToken {
-			<p class="text-sm text-warning" data-testid="mm-hfi-gated-notice">gated のリポジトリです。下の「Hugging Face のトークン」を設定し、<a class="underline" href={ templ.SafeURL(r.Page) } target="_blank" rel="noopener noreferrer">リポジトリのページ</a>でアクセスを申請してください（mam からは申請できません）。</p>
+			@settingsui.Note(atoms.IconInfo, "note", "mm-hfi-gated-notice") {
+				gated のリポジトリです。下の「Hugging Face のトークン」を設定し、<a class="underline" href={ templ.SafeURL(r.Page) } target="_blank" rel="noopener noreferrer">リポジトリのページ</a>でアクセスを申請してください（mam からは申請できません）。
+			}
 		}
 		<p class="text-sm text-ink" data-testid="mm-hfi-terms">{ r.Terms }</p>
 		if r.Truncated {
-			<p class="text-sm text-warning">ファイルが多いため、一部だけ表示しています。</p>
+			@settingsui.NoteText(atoms.IconInfo, "note", "mm-hfi-truncated", "ファイルが多いため、一部だけ表示しています。")
 		}
 		if len(r.Groups) == 0 {
 			<p class="text-sm text-ink" data-testid="mm-hfi-nofiles">モデルのファイル（.safetensors・.gguf・.ckpt など）が見つかりません。</p>
@@ -143,7 +146,7 @@ templ hfFileRow(r HFRepo, f HFFile) {
 			<p class="break-all text-mute">SHA-256 <code>{ f.SHA256 }</code></p>
 		}
 		if !f.Installable {
-			<p class="text-warning" data-testid="mm-hfi-reason">{ f.Reason }</p>
+			<p class="text-ink" data-testid="mm-hfi-reason">{ f.Reason }</p>
 		} else if f.Job != "" {
 			<p class="text-ink">導入中です（下の「追加したモデル」に進み具合が出ます）</p>
 		} else {
@@ -213,7 +216,7 @@ func fitTone(fit string) atoms.BadgeTone {
 	case "fits":
 		return atoms.BadgeOK
 	case "tight":
-		return atoms.BadgeWarn
+		return atoms.BadgeMuted
 	case "over":
 		return atoms.BadgeError
 	}
@@ -225,7 +228,7 @@ func securityTone(s string) atoms.BadgeTone {
 	case "safe":
 		return atoms.BadgeOK
 	case "caution":
-		return atoms.BadgeWarn
+		return atoms.BadgeMuted
 	case "unsafe":
 		return atoms.BadgeError
 	}

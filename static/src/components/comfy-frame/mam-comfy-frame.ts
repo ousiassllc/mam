@@ -1,5 +1,6 @@
 import { LitElement, html, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { NOTICE_BANNER, noticeIcon } from '../notice/notice';
 
 /** How long the ComfyUI page may take to finish loading before the fallback is shown. */
 export const DEFAULT_TIMEOUT_MS = 20_000;
@@ -102,13 +103,10 @@ export class MamComfyFrame extends LitElement {
       <div class="flex flex-col gap-2">
         ${
           failed
-            ? html`<div
-              role="alert"
-              data-testid="comfy-frame-failure"
-              class="rounded-md border border-warning/60 p-3 text-sm text-warning"
-            >
-              ${this.failureMessage || 'ComfyUI の画面を表示できませんでした。'}
-            </div>`
+            ? html`<section role="alert" data-testid="comfy-frame-failure" class=${NOTICE_BANNER}>
+              ${noticeIcon('warning', 'mt-1')}
+              <p class="min-w-0 flex-1 font-semibold text-ink">${this.failureMessage || 'ComfyUI の画面を表示できませんでした。'}</p>
+            </section>`
             : nothing
         }
         ${

@@ -28,7 +28,7 @@ func hfModelBadges(m HFModel) []modelcard.Badge {
 		out = append(out, modelcard.Badge{Tone: atoms.BadgeOK, Label: "SDXL"})
 	}
 	if m.Gated {
-		out = append(out, modelcard.Badge{Tone: atoms.BadgeWarn, Label: "gated"})
+		out = append(out, modelcard.Badge{Tone: atoms.BadgeMuted, Label: "gated"})
 	}
 	if m.NFAA {
 		out = append(out, modelcard.Badge{Tone: atoms.BadgeError, Label: "NFAA"})
@@ -62,7 +62,7 @@ func hfModelCard(m HFModel) templ.Component {
 		ctx = templ.ClearChildren(ctx)
 		state := modelcard.Badge{Tone: atoms.BadgeOK, Label: "導入済み", Attrs: templ.Attributes{"data-testid": "mm-hfi-model-state"}}
 		if m.Missing {
-			state = modelcard.Badge{Tone: atoms.BadgeWarn, Label: "ファイルが見つかりません", Attrs: templ.Attributes{"data-testid": "mm-hfi-model-state"}}
+			state = modelcard.Badge{Tone: atoms.BadgeMuted, Label: "ファイルが見つかりません", Attrs: templ.Attributes{"data-testid": "mm-hfi-model-state"}}
 		}
 		templ_7745c5c3_Var2 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 			templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context

@@ -193,7 +193,7 @@ func inputFields(c Compose) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<p class=\"text-sm text-danger\" role=\"alert\" data-gt-error data-testid=\"gt-inputs-error\" hidden></p><p class=\"text-sm text-warning\" role=\"status\" data-gt-noref data-testid=\"gt-noref\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<p class=\"text-sm text-danger\" role=\"alert\" data-gt-error data-testid=\"gt-inputs-error\" hidden></p><p class=\"text-sm text-ink\" role=\"status\" data-gt-noref data-testid=\"gt-noref\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -210,7 +210,7 @@ func inputFields(c Compose) templ.Component {
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(c.NoRefNotice())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/inputs.templ`, Line: 80, Col: 136}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/inputs.templ`, Line: 80, Col: 132}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {

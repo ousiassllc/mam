@@ -2,6 +2,7 @@ package facefusion
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -26,7 +27,7 @@ templ Section(d Data) {
 							<span class="ml-2 text-xs text-mute" data-testid="facefusion-version">FaceFusion { d.Version }（{ d.License }）</span>
 						}
 					} else {
-						@atoms.Badge(atoms.BadgeWarn, "未設定")
+						@atoms.Badge(atoms.BadgeMuted, "未設定")
 					}
 				</p>
 				<button
@@ -42,7 +43,9 @@ templ Section(d Data) {
 				>もう一度探す</button>
 			</div>
 			if d.VersionNote != "" {
-				<p class="text-sm text-warning" role="note" data-testid="mm-facefusion-version-note">{ d.VersionNote }</p>
+				@settingsui.Note(atoms.IconInfo, "note", "mm-facefusion-version-note") {
+					{ d.VersionNote }
+				}
 			}
 			@installSteps(d)
 			<form class="flex flex-col gap-4" hx-put={ paths.CompanionFaceFusion() } hx-target={ "#" + PanelID } hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]" data-testid="facefusion-form">
@@ -97,10 +100,12 @@ templ partField(p Part) {
 			"placeholder": p.Placeholder, "autocomplete": "off", "spellcheck": "false", "data-testid": "facefusion-path-" + p.Field,
 		})
 		if p.Problem != "" {
-			<p class="text-sm text-warning" role="status" data-testid={ "facefusion-state-" + p.Field }>
-				@atoms.Badge(atoms.BadgeWarn, "見つかりません")
-				<span class="ml-2">{ p.Problem }</span>
-			</p>
+			<div class="flex flex-wrap items-start gap-2" role="status" data-testid={ "facefusion-state-" + p.Field }>
+				@atoms.Badge(atoms.BadgeMuted, "見つかりません")
+				@settingsui.Note(atoms.IconInfo, "note", "facefusion-state-problem-"+p.Field) {
+					{ p.Problem }
+				}
+			</div>
 		} else {
 			<p class="text-sm text-mute" data-testid={ "facefusion-state-" + p.Field }>
 				@atoms.Badge(atoms.BadgeOK, "見つかりました")

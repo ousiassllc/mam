@@ -178,14 +178,11 @@ func modelCardSelector(id string) string {
 	return `[data-model="` + strings.NewReplacer(`\`, `\\`, `"`, `\"`).Replace(id) + `"]`
 }
 
-// FitClass colours the judgement of the GPU against a model's VRAM guideline: below the minimum is a danger, "動くが制約あり" a warning,
-// and enough the plain text (color-rules.md §3.1).
+// FitClass colours the judgement of the GPU against a model's VRAM guideline: below the minimum is a danger; "動くが制約あり" and enough are the plain
+// text, the words say which (a state that is a fact of this PC is not a warning colour; color-rules.md §3.1).
 func FitClass(fit string) string {
-	switch fit {
-	case "short":
+	if fit == "short" {
 		return "text-danger"
-	case "limited":
-		return "text-warning"
 	}
 	return "text-ink"
 }

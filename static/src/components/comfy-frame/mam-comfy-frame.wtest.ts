@@ -56,6 +56,11 @@ describe('mam-comfy-frame', () => {
 
     expect(el.frameState).to.equal('failed');
     expect(el.querySelector('[data-testid="comfy-frame-failure"]')?.textContent).to.contain('だめでした');
+    const box = el.querySelector('[data-testid="comfy-frame-failure"]') as HTMLElement;
+    expect(box.getAttribute('role')).to.equal('alert');
+    expect(box.className, 'the failure is a banner in the ink of the page (#1163)').to.contain('border-l-2');
+    expect(box.innerHTML).not.to.contain('warning');
+    expect(box.querySelector('svg')?.getAttribute('class')).to.contain('text-mute');
   });
 
   it('starts again with a new src after it failed', async () => {

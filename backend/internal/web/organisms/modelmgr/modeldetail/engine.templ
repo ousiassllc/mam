@@ -3,6 +3,7 @@ package modeldetail
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -17,17 +18,18 @@ templ EngineDetail(e view.Engine) {
 		</div>
 		switch view.EnginePhase(e) {
 			case "unsupported":
-				<p class="rounded-md border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="note" data-testid="mm-engine-unsupported">
+				@settingsui.Note(atoms.IconInfo, "note", "mm-engine-unsupported") {
 					同梱の ComfyUI は Windows 版と Apple Silicon の Mac（macOS 14 以降）版のデスクトップアプリだけで使えます。この環境（ブラウザ版・サーバー版・Intel Mac など）では、別に動かしている ComfyUI の URL を
 					<a class="underline" href={ templ.SafeURL(paths.Settings()) }>設定</a>の「ローカル・代替モデル」に登録して使ってください（モデルの導入は、その ComfyUI の側で行います）。
-				</p>
+				}
 			case "readonly":
-				<div class="flex flex-col gap-1 rounded-lg border border-warning/60 bg-warning/10 p-3 text-sm text-warning" role="alert" data-testid="mm-engine-readonly">
-					<p>導入先のフォルダ（{ e.Dir }）に書き込めません。書き込めるようにするか、外部の ComfyUI の URL を設定してください。</p>
-					<p class="text-sm">{ e.WritableError }</p>
-				</div>
+				@settingsui.Banner(atoms.IconWarning, "alert", "mm-engine-readonly", "導入先のフォルダ（"+e.Dir+"）に書き込めません。書き込めるようにするか、外部の ComfyUI の URL を設定してください。") {
+					<p class="text-sm text-ink">{ e.WritableError }</p>
+				}
 			case "broken":
-				<p class="text-sm text-warning" role="alert" data-testid="mm-engine-broken">導入済みの記録がありますが、エンジンのファイルが見つかりません。もう一度導入してください。</p>
+				@settingsui.Note(atoms.IconInfo, "alert", "mm-engine-broken") {
+					導入済みの記録がありますが、エンジンのファイルが見つかりません。もう一度導入してください。
+				}
 		}
 		<dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-ink" data-testid="mm-engine-facts">
 			if view.EnginePhase(e) == "installed" {
@@ -45,7 +47,7 @@ templ EngineDetail(e view.Engine) {
 					<div class="col-span-2"><dt class="text-mute">待ち受け（この PC の中だけ）</dt><dd><code data-testid="mm-engine-url">{ e.URL }</code></dd></div>
 				}
 				if e.UpdateAvailable {
-					<div class="col-span-2 text-warning" data-testid="mm-engine-update-note"><dt>更新</dt><dd>固定版 { e.PinnedVersion } があります（導入済み: { e.Version }）</dd></div>
+					<div class="col-span-2" data-testid="mm-engine-update-note"><dt>更新</dt><dd>固定版 { e.PinnedVersion } があります（導入済み: { e.Version }）</dd></div>
 				}
 			}
 			if e.Supported && e.Writable {

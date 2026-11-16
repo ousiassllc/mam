@@ -4,6 +4,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelcard"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/refresh"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -64,7 +65,7 @@ func badge(m Model) (atoms.BadgeTone, string) {
 	case StateInstalled:
 		return atoms.BadgeOK, "取得済み"
 	case StateChanged:
-		return atoms.BadgeWarn, "上流で更新されています"
+		return atoms.BadgeMuted, "上流で更新されています"
 	case StateUnavailable:
 		return atoms.BadgeNeutral, "取得できません"
 	}
@@ -79,7 +80,7 @@ func card(m Model) modelcard.Card {
 		Attrs: templ.Attributes{"data-testid": "mm-ollama-model", "data-model": m.Name, "data-state": m.State, "data-commercial": m.Commercial.Answer()},
 	}
 	if m.NoSpace {
-		c.Badges = append(c.Badges, modelcard.Badge{Tone: atoms.BadgeWarn, Label: "導入先の空きが足りません", Attrs: templ.Attributes{"data-testid": "mm-ollama-nospace"}})
+		c.Badges = append(c.Badges, modelcard.Badge{Tone: atoms.BadgeMuted, Label: "導入先の空きが足りません", Attrs: templ.Attributes{"data-testid": "mm-ollama-nospace"}})
 	}
 	return c
 }
@@ -108,7 +109,9 @@ templ ModelCard(m Model) {
 				}
 			case StateInstalled, StateChanged:
 				if m.State == StateChanged {
-					<p class="text-sm text-warning" data-testid="mm-ollama-changed">取得元のタグが、記録したものと違う内容に書き換わっています。そのまま使えますが、内容は固定されていません。</p>
+					@settingsui.Note(atoms.IconInfo, "note", "mm-ollama-changed") {
+						取得元のタグが、記録したものと違う内容に書き換わっています。そのまま使えますが、内容は固定されていません。
+					}
 				}
 				@modelcard.Actions() {
 					@atoms.SmallButtonFor(atoms.ToneDanger, "削除", m.DisplayName, templ.Attributes{

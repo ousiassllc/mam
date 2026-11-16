@@ -3,6 +3,7 @@ package runtimecard
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -78,7 +79,7 @@ templ runtimeModel(r Runtime, m Model) {
 			<div><dt class="text-mute">言語</dt><dd>{ m.Languages }</dd></div>
 			<div class="col-span-2"><dt class="text-mute">VRAM の目安</dt><dd data-testid="mm-runtime-model-vram">{ m.VRAM }</dd></div>
 			if m.VRAMFit != "" {
-				<div class="col-span-2 text-warning"><dt>この PC の GPU</dt><dd>{ m.VRAMFit }</dd></div>
+				<div class="col-span-2"><dt>この PC の GPU</dt><dd>{ m.VRAMFit }</dd></div>
 			}
 			<div class="col-span-2">
 				<dt class="text-mute">ライセンス</dt>
@@ -93,24 +94,25 @@ templ runtimeModel(r Runtime, m Model) {
 			</div>
 		</dl>
 		if len(m.Cautions) > 0 {
-			<ul class="list-disc pl-5 text-xs text-warning" data-testid="mm-runtime-model-cautions">
-				for _, c := range m.Cautions {
-					<li class="break-words">{ c }</li>
-				}
-			</ul>
+			@settingsui.Banner(atoms.IconWarning, "note", "mm-runtime-model-cautions", "使うときの制限（モデルカードより）") {
+				<ul class="list-disc pl-5 text-xs text-ink">
+					for _, c := range m.Cautions {
+						<li class="break-words">{ c }</li>
+					}
+				</ul>
+			}
 		}
 		if m.Consent != nil {
-			<div class="flex flex-col gap-2 rounded-lg border border-warning/60 bg-warning/10 p-3 text-xs" data-testid="mm-runtime-model-consent">
-				<p class="text-ink">{ m.Consent.Text }</p>
+			@settingsui.Banner(atoms.IconWarning, "note", "mm-runtime-model-consent", m.Consent.Text) {
 				if m.Consent.Accepted {
-					<p class="text-ink">同意済みです（{ m.Consent.Version }）</p>
+					<p class="text-xs text-ink">同意済みです（{ m.Consent.Version }）</p>
 				} else {
 					<label class="flex items-start gap-2 text-sm">
 						@atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": FieldAcceptPrefix + m.ID, "value": m.Consent.Version, "data-testid": "mm-runtime-model-agree", "checked": m.Consent.Ticked})
 						<span>上の内容を確認し、同意します</span>
 					</label>
 				}
-			</div>
+			}
 		}
 	</li>
 }

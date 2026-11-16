@@ -2,6 +2,7 @@ package llmcard
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
@@ -39,7 +40,9 @@ templ UseSection(u Use) {
 				<p class="text-sm text-mute" data-testid="mm-llm-use-nomanaged">{ u.NoManaged }</p>
 			}
 			if u.Pinned {
-				<p class="text-sm text-warning" data-testid="mm-llm-use-pinned">起動オプション（--llm-config / MAM_LLM_CONFIG）で設定ファイルが固定されているため、使うサーバーはこの画面では変えられません。</p>
+				@settingsui.Note(atoms.IconInfo, "note", "mm-llm-use-pinned") {
+					起動オプション（--llm-config / MAM_LLM_CONFIG）で設定ファイルが固定されているため、使うサーバーはこの画面では変えられません。
+				}
 			}
 			<div class="flex flex-wrap items-center gap-2">
 				@atoms.Button(atoms.TonePrimary, "このサーバーを使う", templ.Attributes{"type": "submit", "disabled": u.Pinned, "data-testid": "mm-llm-use-save"})
@@ -55,7 +58,9 @@ templ useNotice(u Use) {
 		case u.Error != "":
 			<p class="text-sm text-danger" role="alert" data-testid="mm-llm-use-error">{ u.Error }</p>
 		case u.Problem != "":
-			<p class="text-sm text-warning" role="alert" data-testid="mm-llm-use-problem">保存済みの設定ファイルを読み込めません（表示は既定値です）: { u.Problem }</p>
+			@settingsui.Note(atoms.IconInfo, "alert", "mm-llm-use-problem") {
+				保存済みの設定ファイルを読み込めません（表示は既定値です）: { u.Problem }
+			}
 		case u.Notice != "":
 			<p class="text-sm text-success" role="status" data-testid="mm-llm-use-notice">{ u.Notice }</p>
 	}
@@ -81,7 +86,7 @@ templ UseState(s State, oob bool) {
 	>
 		{ s.Line }
 		if s.Problem != "" {
-			<span class="block whitespace-pre-wrap break-words text-warning" data-testid="mm-llm-use-state-problem">{ s.Problem }</span>
+			<span class="block whitespace-pre-wrap break-words text-ink" data-testid="mm-llm-use-state-problem">{ s.Problem }</span>
 		}
 	</p>
 }

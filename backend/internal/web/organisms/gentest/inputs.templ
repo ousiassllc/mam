@@ -77,7 +77,7 @@ templ inputFields(c Compose) {
 			</div>
 		}
 		<p class="text-sm text-danger" role="alert" data-gt-error data-testid="gt-inputs-error" hidden></p>
-		<p class="text-sm text-warning" role="status" data-gt-noref data-testid="gt-noref" hidden?={ c.NoRefNotice() == "" }>{ c.NoRefNotice() }</p>
+		<p class="text-sm text-ink" role="status" data-gt-noref data-testid="gt-noref" hidden?={ c.NoRefNotice() == "" }>{ c.NoRefNotice() }</p>
 		if c.FaceOff != "" {
 			@facelock.OffNotice(c.FaceOff)
 		}

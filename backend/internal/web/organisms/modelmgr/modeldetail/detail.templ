@@ -7,6 +7,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/modelmgr/mmcat"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -27,16 +28,20 @@ templ Detail(m view.Model) {
 				@atoms.Badge(atoms.BadgeWarn, "ライセンスの同意が必要")
 			}
 			if m.NeedsToken {
-				@atoms.Badge(atoms.BadgeWarn, "HF トークンが必要")
+				@atoms.Badge(atoms.BadgeMuted, "HF トークンが必要")
 			}
 			@atoms.Badge(tone, label)
 			@commercial.Badge(m.License.Answer)
 		</div>
 		if view.ShowsTokenGuide(m) {
-			<p class="text-sm text-warning" data-testid="mm-token-guide">{ m.TokenGuide } <a class="underline" href={ templ.SafeURL(paths.ModelManagerPart(mmcat.HFExternal) + "#" + view.HFID) } data-modal-close>トークンの区画へ</a></p>
+			@settingsui.Note(atoms.IconInfo, "note", "mm-token-guide") {
+				{ m.TokenGuide } <a class="underline" href={ templ.SafeURL(paths.ModelManagerPart(mmcat.HFExternal) + "#" + view.HFID) } data-modal-close>トークンの区画へ</a>
+			}
 		}
 		if m.NeedsNodes != "" && m.State != "installed" {
-			<p class="text-sm text-warning" data-testid="mm-nodes-note">{ m.NeedsNodes }</p>
+			@settingsui.Note(atoms.IconInfo, "note", "mm-nodes-note") {
+				{ m.NeedsNodes }
+			}
 		}
 		@commercial.Note(m.License.Answer)
 		if m.License.Regions != "" {
@@ -58,7 +63,9 @@ templ Detail(m view.Model) {
 			}
 		</dl>
 		if m.PlatformWarning != "" {
-			<p class="text-sm text-warning" role="note" data-testid="mm-platform-warning-text">{ m.PlatformWarning }</p>
+			@settingsui.Note(atoms.IconInfo, "note", "mm-platform-warning-text") {
+				{ m.PlatformWarning }
+			}
 		}
 		if m.VRAMFitText != "" {
 			<p class={ "text-xs " + view.FitClass(m.VRAMFit) } data-testid="mm-vram-fit-text" data-fit={ m.VRAMFit }>{ m.VRAMFitText }</p>
@@ -72,7 +79,9 @@ templ Detail(m view.Model) {
 			</p>
 		}
 		if m.PartialNote != "" {
-			<p class="text-sm text-warning" data-testid="mm-partial-note">{ m.PartialNote }</p>
+			@settingsui.Note(atoms.IconInfo, "note", "mm-partial-note") {
+				{ m.PartialNote }
+			}
 		}
 		<section class="flex flex-col gap-2" aria-labelledby="mm-files-title">
 			<h3 id="mm-files-title" class="text-sm font-semibold">ファイル（{ strconv.Itoa(len(m.Files)) }）</h3>
@@ -108,7 +117,7 @@ templ HFDetail(m view.HFModel) {
 		<div class={ "flex flex-wrap items-center gap-2", modal.StartClass } tabindex="-1" autofocus data-testid="mm-hfi-model-detail">
 			@atoms.Badge(atoms.BadgeInfo, m.Folder)
 			if m.Missing {
-				@atoms.Badge(atoms.BadgeWarn, "ファイルが見つかりません")
+				@atoms.Badge(atoms.BadgeMuted, "ファイルが見つかりません")
 			} else {
 				@atoms.Badge(atoms.BadgeOK, "導入済み")
 			}
@@ -127,7 +136,9 @@ templ HFDetail(m view.HFModel) {
 			}
 		</dl>
 		if m.Gated {
-			<p class="text-sm text-warning">gated のリポジトリです（取得にはトークンとアクセスの許可が要ります）。</p>
+			@settingsui.Note(atoms.IconInfo, "note", "mm-hfi-detail-gated") {
+				gated のリポジトリです（取得にはトークンとアクセスの許可が要ります）。
+			}
 		}
 		if m.NFAA {
 			<p class="text-sm text-warning">成人向け（NFAA）のリポジトリです。</p>
@@ -149,11 +160,13 @@ templ ExternalDetail(endpoint string, m view.ExternalModel) {
 			if m.Complete {
 				@atoms.Badge(atoms.BadgeOK, "そろっています")
 			} else {
-				@atoms.Badge(atoms.BadgeWarn, "足りないファイルがあります")
+				@atoms.Badge(atoms.BadgeMuted, "足りないファイルがあります")
 			}
 		</div>
 		if len(m.Missing) > 0 {
-			<p class="text-sm text-warning" data-testid="mm-external-missing">足りない: { joinNames(m.Missing) }</p>
+			@settingsui.Note(atoms.IconInfo, "note", "mm-external-missing") {
+				足りない: { joinNames(m.Missing) }
+			}
 		}
 		if len(m.Present) > 0 {
 			<section class="flex flex-col gap-1" aria-labelledby="mm-external-present-title">

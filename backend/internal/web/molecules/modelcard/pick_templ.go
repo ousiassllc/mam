@@ -173,7 +173,7 @@ func Summary(c Card) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if c.Note != "" {
-			var templ_7745c5c3_Var7 = []any{"break-words text-xs text-warning", templ.KV("opacity-60", c.Reason != nil)}
+			var templ_7745c5c3_Var7 = []any{"break-words text-xs text-ink", templ.KV("opacity-60", c.Reason != nil)}
 			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var7...)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -198,7 +198,7 @@ func Summary(c Card) templ.Component {
 			var templ_7745c5c3_Var9 string
 			templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(c.Note)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelcard/pick.templ`, Line: 47, Col: 127}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/modelcard/pick.templ`, Line: 47, Col: 123}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 			if templ_7745c5c3_Err != nil {

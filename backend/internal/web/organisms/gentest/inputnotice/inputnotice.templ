@@ -4,7 +4,9 @@ package inputnotice
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/apperr"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/errorbox"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -24,7 +26,7 @@ type Unused struct {
 
 // CheckBox is the notice of the input images of a video form: what the ticked models do with the images attached now, drawn by the server with the
 // same check as the estimate (Service.CheckInputs). A model that cannot run without a first frame, or that uses none of the images, shows the error
-// box (cause and fix); an image a model leaves out is an amber box that names the model. The browser asks for it again, through HTMX, when the models,
+// box (cause and fix); an image a model leaves out is a banner that names the model. The browser asks for it again, through HTMX, when the models,
 // the images or their roles change (inputs.ts sends gt-inputs-changed); it is swapped in as a whole, so that it keeps asking.
 templ CheckBox(c Check) {
 	<div
@@ -49,30 +51,29 @@ templ CheckBox(c Check) {
 	</div>
 }
 
-// Warnings is the box of the models that leave an input image out: amber, with a heading, so that it is not read as a footnote.
+// Warnings is the box of the models that leave an input image out: one banner (the sentence of the cause as its title, the models as the list), so that it is not read
+// as a footnote and carries no colour of a state.
 templ Warnings(list []string, testid string) {
-	<div class="flex flex-col gap-1 rounded-lg border border-warning/60 bg-warning/10 p-3 text-sm" role="status" data-testid={ testid }>
-		<p class="text-warning">使われない入力画像があります</p>
-		<ul class="list-disc pl-5 text-warning">
+	@settingsui.Banner(atoms.IconWarning, "status", testid, "使われない入力画像があります") {
+		<ul class="list-disc pl-5 text-ink">
 			for _, w := range list {
 				<li>{ w }</li>
 			}
 		</ul>
-		<p class="text-sm text-mute">このまま実行すると、使われなかった画像は結果に記録されます。</p>
-	</div>
+		<p class="text-ink">このまま実行すると、使われなかった画像は結果に記録されます。</p>
+	}
 }
 
 // UnusedBox is the images of the batch that the model of a result was not given, with why (the detail of a result).
 templ UnusedBox(list []Unused) {
-	<div class="flex flex-col gap-2 rounded-lg border border-warning/60 bg-warning/10 p-3 text-sm" role="status" data-testid="gt-unused">
-		<p class="text-warning">添えた画像のうち、このモデルに渡さなかった（使われなかった）ものがあります</p>
+	@settingsui.Banner(atoms.IconWarning, "status", "gt-unused", "添えた画像のうち、このモデルに渡さなかった（使われなかった）ものがあります") {
 		<ul class="flex flex-col gap-2">
 			for _, u := range list {
 				<li class="flex items-center gap-3" data-testid="gt-unused-item">
 					<img class="h-12 w-12 shrink-0 rounded-md object-cover" src={ u.URL } alt={ u.Role } loading="lazy"/>
-					<span><span class="mr-2 text-xs text-mute">{ u.Role }</span>{ u.Reason }</span>
+					<span class="text-ink"><span class="mr-2 text-xs text-mute">{ u.Role }</span>{ u.Reason }</span>
 				</li>
 			}
 		</ul>
-	</div>
+	}
 }

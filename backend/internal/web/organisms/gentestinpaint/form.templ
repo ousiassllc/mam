@@ -5,6 +5,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -86,11 +87,13 @@ templ Confirm(c Box) {
 		<h2 class="text-sm font-semibold">実行の確認</h2>
 		<p class="text-sm">全部で <strong>{ strconv.Itoa(c.Items) }</strong> 件。見積り合計は <strong>{ c.Total }</strong> です。結果は元の画像とは別のファイルになり、元の結果へのリンクが残ります。</p>
 		if len(c.Warnings) > 0 {
-			<ul class="list-disc pl-5 text-xs text-warning">
-				for _, w := range c.Warnings {
-					<li>{ w }</li>
-				}
-			</ul>
+			@settingsui.Banner(atoms.IconWarning, "note", "gt-inpaint-warnings", "実行の前に知っておくこと") {
+				<ul class="list-disc pl-5 text-ink">
+					for _, w := range c.Warnings {
+						<li>{ w }</li>
+					}
+				</ul>
+			}
 		}
 		if c.Over != "" {
 			<p class="text-sm text-danger" role="alert">{ c.Over }</p>

@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -29,7 +30,7 @@ templ DownloadPanel(d Download) {
 				case d.Install.Running:
 					@atoms.Badge(atoms.BadgeInfo, "ダウンロード中")
 				case d.Broken:
-					@atoms.Badge(atoms.BadgeWarn, "壊れています")
+					@atoms.Badge(atoms.BadgeMuted, "壊れています")
 				case d.Installed:
 					@atoms.Badge(atoms.BadgeOK, "入れてあります")
 				default:
@@ -66,10 +67,14 @@ templ DownloadPanel(d Download) {
 				</p>
 			}
 			if d.Installed && d.UpdateAvailable {
-				<p class="text-sm text-warning" data-testid="ffmpeg-download-update">この mam が確かめた版は { d.PinnedVersion } です。入れてある { d.Version } は、そのまま使えます。新しい版にするには、もう一度ダウンロードしてください。</p>
+				@settingsui.Note(atoms.IconInfo, "note", "ffmpeg-download-update") {
+					この mam が確かめた版は { d.PinnedVersion } です。入れてある { d.Version } は、そのまま使えます。新しい版にするには、もう一度ダウンロードしてください。
+				}
 			}
 			if d.Broken {
-				<p class="text-sm text-warning" data-testid="ffmpeg-download-broken">入れたファイルが無いか、変わっています。使われていません。もう一度ダウンロードしてください。</p>
+				@settingsui.Note(atoms.IconInfo, "note", "ffmpeg-download-broken") {
+					入れたファイルが無いか、変わっています。使われていません。もう一度ダウンロードしてください。
+				}
 			}
 			if d.Installed && !d.Broken && !d.UpdateAvailable {
 				<p class="text-sm text-mute">置き場所: <code class="break-all">{ d.Dir }</code>（設定したパスと、PATH などで見つかる ffmpeg が無いときだけ使われます）</p>

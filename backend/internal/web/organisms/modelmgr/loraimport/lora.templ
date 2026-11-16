@@ -8,6 +8,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 )
 
 // Section is the whole section: the panel and the list of what was added.
@@ -102,18 +103,19 @@ templ stagedForm(s Staged) {
 				<p class="text-xs text-mute">{ s.Network }</p>
 			}
 			if s.Renamed {
-				<p class="text-xs text-warning" data-testid="mm-lora-renamed">使えない文字を置き換えたため、{ s.SavedAs } の名前で保存します。</p>
+				@settingsui.NoteText(atoms.IconInfo, "note", "mm-lora-renamed", "使えない文字を置き換えたため、"+s.SavedAs+" の名前で保存します。")
 			}
 		</div>
 		if s.Conflict != nil {
-			<div class="flex flex-col gap-1 rounded-md border border-warning/60 bg-warning/10 p-3 text-sm text-ink" role="alert" data-testid="mm-lora-conflict" data-same?={ s.Conflict.Same }>
-				if s.Conflict.Same {
-					<p>同じ内容のファイルが、すでに <code class="break-all">{ s.Conflict.Name }</code> として loras フォルダにあります。追加は要りません（取り消してください）。</p>
-				} else {
-					<p><code class="break-all">{ s.Conflict.Name }</code> という名前のファイルがすでに loras フォルダにあります。上書きしません。</p>
+			if s.Conflict.Same {
+				@settingsui.Banner(atoms.IconWarning, "alert", "mm-lora-conflict", "同じ内容のファイルが、すでに "+s.Conflict.Name+" として loras フォルダにあります。") {
+					<p>追加は要りません（取り消してください）。</p>
+				}
+			} else {
+				@settingsui.Banner(atoms.IconWarning, "alert", "mm-lora-conflict", s.Conflict.Name+" という名前のファイルがすでに loras フォルダにあります。上書きしません。") {
 					<p>下の「保存するファイル名」を別の名前にして追加するか、取り消してください（別の名前の案を入れました）。</p>
 				}
-			</div>
+			}
 		}
 		<p id={ MsgID } class="text-sm text-danger" role="alert" data-testid="mm-lora-msg"></p>
 		<label class="flex flex-col gap-1 text-xs text-mute" for="mm-lora-name">
@@ -258,7 +260,7 @@ templ itemCard(it Item) {
 				if it.Present {
 					@atoms.BadgeWith(atoms.BadgeOK, "追加済み", templ.Attributes{"data-testid": "mm-lora-state"})
 				} else {
-					@atoms.BadgeWith(atoms.BadgeWarn, "ファイルが見つかりません", templ.Attributes{"data-testid": "mm-lora-state"})
+					@atoms.BadgeWith(atoms.BadgeMuted, "ファイルが見つかりません", templ.Attributes{"data-testid": "mm-lora-state"})
 				}
 				@commercial.Badge(it.License)
 			</span>

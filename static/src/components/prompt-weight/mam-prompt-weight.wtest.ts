@@ -199,6 +199,10 @@ describe('<mam-prompt-weight>: 強める + / 弱める − for the words selecte
     await weight.updateComplete;
     expect(box.value).to.equal('a cat');
     expect(weight.querySelector('[data-testid="gt-weight-note"]')!.textContent).to.contain('m0 では、ウェイト');
+    expect(
+      weight.querySelector('[data-testid="gt-weight-note"] p')!.className,
+      'the notes are in the ink of the page (#1163)',
+    ).to.equal('text-ink');
     expect(button(weight, 'up').getAttribute('aria-describedby')).to.equal('w-note');
   });
 

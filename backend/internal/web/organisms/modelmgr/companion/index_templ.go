@@ -201,7 +201,7 @@ func tone(state string) atoms.BadgeTone {
 	case StateInstalling:
 		return atoms.BadgeInfo
 	case StateAttention, "broken", "readonly", "unverified":
-		return atoms.BadgeWarn
+		return atoms.BadgeMuted
 	}
 	return atoms.BadgeNeutral
 }

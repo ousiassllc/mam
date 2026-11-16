@@ -4,6 +4,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/commercial"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/settingsui"
 )
 
 // TagNote says what a tag of the registry is: it can be moved, so what is fetched cannot be pinned.
@@ -18,9 +19,11 @@ templ ModelDetail(d Detail) {
 			@commercial.Badge(d.Commercial)
 		</div>
 		@commercial.Note(d.Commercial)
-		<p class="text-sm text-warning" role="note" data-testid="mm-ollama-tag-note">{ TagNote }</p>
+		@settingsui.Note(atoms.IconInfo, "note", "mm-ollama-tag-note") {
+			{ TagNote }
+		}
 		if d.Check != "" {
-			<p class={ "text-sm", templ.KV("text-warning", d.Changed), templ.KV("text-ink", !d.Changed) } data-testid="mm-ollama-check">{ d.Check }</p>
+			<p class="text-sm text-ink" data-testid="mm-ollama-check">{ d.Check }</p>
 		}
 		<dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-ink" data-testid="mm-ollama-facts">
 			<div class="col-span-2">
