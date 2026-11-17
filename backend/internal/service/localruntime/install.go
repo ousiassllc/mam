@@ -188,6 +188,7 @@ func (s *Service) runInstall(ctx context.Context, inst *instance, p installPaylo
 		if err != nil {
 			return err
 		}
+		inst.forgetFailure() // the files are new: the failure of the old ones (its error and the end of its log) is not theirs
 		from = pctDownload + pctExtract
 	} else if !inst.install.Status().Installed {
 		return ErrNotInstalled
@@ -206,6 +207,7 @@ func (s *Service) runInstall(ctx context.Context, inst *instance, p installPaylo
 	if err != nil {
 		return err
 	}
+	inst.forgetFailure() // a repair of the weights too: a start that failed on a damaged file is not the failure of the repaired one
 	set(track.Update{Percent: 100, Phase: "done", Message: "導入しました"})
 	return nil
 }

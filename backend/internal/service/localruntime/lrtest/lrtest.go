@@ -59,7 +59,7 @@ const (
 )
 
 // ServeIfAsked turns the test binary into the fake runtime server when MAM_FAKE_RUNTIME is set (it answers /openapi.json on FAKE_PORT;
-// "exit" makes it write to stderr and exit at once) and reports true; the TestMain of a package that starts a runtime returns then.
+// "exit" makes it write MAM_FAKE_SAYS (a DLL error when unset) to stderr and exit at once) and reports true; the TestMain of a package that starts a runtime returns then.
 //
 //	func TestMain(m *testing.M) {
 //		if lrtest.ServeIfAsked() { return }
@@ -70,7 +70,11 @@ func ServeIfAsked() bool {
 	case "":
 		return false
 	case "exit":
-		_, _ = os.Stderr.WriteString("ImportError: DLL load failed while importing torch\n")
+		says := os.Getenv("MAM_FAKE_SAYS")
+		if says == "" {
+			says = "ImportError: DLL load failed while importing torch"
+		}
+		_, _ = os.Stderr.WriteString(says + "\n")
 		os.Exit(3)
 	}
 	l, err := net.Listen("tcp", "127.0.0.1:"+os.Getenv("FAKE_PORT"))
@@ -153,6 +157,16 @@ func Platform(os, arch string) Option {
 	return func(_ *Rig, d *localruntime.Deps) { d.Platform = rtm.Platform{OS: os, Arch: arch} }
 }
 
+// Saying makes the start of every runtime fail: the process writes says(id) (called at each start, so a test can change what the next run says) to its log and
+// ends at once, like a runtime whose files are broken.
+func Saying(says func(id string) string) Option {
+	return func(r *Rig, d *localruntime.Deps) {
+		d.Command = func(id string, _ int) (proc.Spec, error) {
+			return proc.Spec{Command: os.Args[0], LogPath: store.ForRuntime(r.Root, id).LogPath(), Env: []string{"MAM_FAKE_RUNTIME=exit", "MAM_FAKE_SAYS=" + says(id)}}, nil
+		}
+	}
+}
+
 // GPUs sets the adapters the detection lists.
 func GPUs(a ...gpu.Adapter) Option {
 	return func(r *Rig, _ *localruntime.Deps) { r.GPU = gpu.Report{Adapters: a} }
@@ -207,8 +221,8 @@ func New(t *testing.T, queue localruntime.Queue, table *repository.JobRepository
 		GPU:       func(context.Context) gpu.Report { return r.GPU },
 		FreeBytes: func(string) (uint64, error) { return r.Free, nil },
 		Fetch:     fetch.Options{CheckURL: anyURL, Client: fetch.WithRedirectRules(&http.Client{}, anyURL, "")},
-		Command: func(_ string, port int) (proc.Spec, error) {
-			return proc.Spec{Command: os.Args[0], LogPath: r.Layout.LogPath(), Env: []string{"MAM_FAKE_RUNTIME=serve", "FAKE_PORT=" + strconv.Itoa(port)}}, nil
+		Command: func(id string, port int) (proc.Spec, error) {
+			return proc.Spec{Command: os.Args[0], LogPath: store.ForRuntime(r.Root, id).LogPath(), Env: []string{"MAM_FAKE_RUNTIME=serve", "FAKE_PORT=" + strconv.Itoa(port)}}, nil
 		},
 		PollEvery: 20 * time.Millisecond, StartTimeout: 20 * time.Second,
 	}
