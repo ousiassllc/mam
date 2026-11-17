@@ -1,6 +1,7 @@
 package mmtest
 
 import (
+	"fmt"
 	"net"
 	"net/http"
 	"os"
@@ -9,7 +10,18 @@ import (
 	"time"
 
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/proc"
+	"github.com/ousiassllc/mam/backend/internal/service/modelmanager"
 )
+
+// WithEngineSaying makes the engine fail to start: it writes says() (read at each start, so a test can change what the next run says) to its
+// standard error and ends with code 2, like a ComfyUI whose main.py is missing.
+func WithEngineSaying(says func() string) Option {
+	return func(d *modelmanager.Deps, _ *Rig) {
+		d.Command = func(int) (proc.Spec, error) {
+			return proc.Spec{Command: os.Args[0], Env: []string{"MAM_FAKE_COMFY_FAIL=" + says()}}, nil
+		}
+	}
+}
 
 // fakeEngine starts this test binary as the engine: Main (called by TestMain) listens on the port and answers /system_stats.
 func fakeEngine(port int) (proc.Spec, error) {
@@ -21,6 +33,10 @@ func fakeEngine(port int) (proc.Spec, error) {
 //
 //	func TestMain(m *testing.M) { mmtest.Main(m) }
 func Main(m *testing.M) {
+	if says := os.Getenv("MAM_FAKE_COMFY_FAIL"); says != "" {
+		fmt.Fprintln(os.Stderr, says)
+		os.Exit(2)
+	}
 	if os.Getenv("MAM_FAKE_COMFY") != "" {
 		l, err := net.Listen("tcp", "127.0.0.1:"+os.Getenv("FAKE_PORT"))
 		if err != nil {

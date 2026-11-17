@@ -144,11 +144,7 @@ func (m *Manager) Watch(fn func(Status)) (cancel func()) {
 // set stores s and tells the watchers. The caller holds no lock.
 func (m *Manager) set(s Status) {
 	m.mu.Lock()
-	m.status = s
-	fns := make([]func(Status), 0, len(m.watchers))
-	for _, fn := range m.watchers {
-		fns = append(fns, fn)
-	}
+	fns := m.storeLocked(s)
 	m.mu.Unlock()
 	for _, fn := range fns {
 		fn(s)
