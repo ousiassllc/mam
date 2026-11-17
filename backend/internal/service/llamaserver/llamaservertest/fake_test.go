@@ -34,6 +34,10 @@ func maybeServeFakeLlama() bool {
 	if filepath.Base(os.Args[0]) != programName {
 		return false
 	}
+	if says := os.Getenv("LLAMA_FAKE_SAYS"); says != "" { // a llama-server that cannot start: it says why on its standard error and ends
+		fmt.Fprintln(os.Stderr, says)
+		os.Exit(1)
+	}
 	opts := map[string]string{}
 	args := os.Args[1:]
 	for i := 0; i < len(args); i++ {

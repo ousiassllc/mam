@@ -158,6 +158,7 @@ type instance struct {
 	// token is the token of the server's current start ("" for a runtime without one); see tokenFor.
 	tokenMu sync.Mutex
 	token   string
+	log     logMark // where the log of the latest start begins (failure.go)
 	// tool is set while a script of mam's own holds the runtime (BeginTool).
 	tool atomic.Bool
 }
@@ -228,7 +229,7 @@ func (s *Service) newInstance(rt catalog.Runtime) (*instance, error) {
 			return spec, err
 		}
 	}
-	build = inst.withToken(build)
+	build = inst.markingLog(inst.withToken(build))
 	ready := s.Ready
 	if ready == nil {
 		ready = proc.HTTPReady(rt.Launch.ReadyPath)

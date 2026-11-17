@@ -2,9 +2,6 @@ package localruntime
 
 import (
 	"context"
-	"io"
-	"os"
-	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog"
@@ -44,7 +41,7 @@ type View struct {
 	Writable      bool   `json:"writable"`
 	WritableError string `json:"writable_error,omitempty"`
 	FreeBytes     uint64 `json:"free_bytes"`
-	// LogTail is the end of the runtime's log ("" for none), to see why a start failed or what it is doing.
+	// LogTail is the end of the runtime's log from its latest start ("" for none; what earlier runs wrote is not in it), to see why a start failed or what it is doing.
 	LogTail  string        `json:"log_tail,omitempty"`
 	Variants []VariantView `json:"variants"`
 	// InstallJob is the install that is queued or running ("" for none).
@@ -78,7 +75,7 @@ func (s *Service) view(ctx context.Context, inst *instance) View {
 	v := View{
 		ID: rt.ID, Name: rt.Name, Purpose: rt.Purpose, Description: rt.Description, SourceURL: rt.SourceURL, License: rt.License, VRAM: rt.VRAM,
 		Support: s.support(ctx, inst, false), Status: inst.install.Status(), Process: inst.proc.Status(), AutoStart: inst.state.Get().AutoStart,
-		Dir: inst.layout.Root, LogTail: tailOf(inst.layout.LogPath()), InstallJob: s.activeJob(TargetPrefix + rt.ID), Variants: []VariantView{},
+		Dir: inst.layout.Root, LogTail: inst.logTail(), InstallJob: s.activeJob(TargetPrefix + rt.ID), Variants: []VariantView{},
 	}
 	if v.Support.Supported {
 		if err := inst.layout.CheckWritable(); err != nil {
@@ -114,23 +111,4 @@ func (s *Service) activeJob(target string) string {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return s.active[target]
-}
-
-// logTailBytes is how much of the end of the log a View carries.
-const logTailBytes = 4096
-
-// tailOf is the last bytes of the file at path as text ("" when it cannot be read).
-func tailOf(path string) string {
-	f, err := os.Open(path) // #nosec G304 -- the runtime's own log path
-	if err != nil {
-		return ""
-	}
-	defer func() { _ = f.Close() }()
-	if st, err := f.Stat(); err == nil && st.Size() > logTailBytes {
-		if _, err := f.Seek(-logTailBytes, io.SeekEnd); err != nil {
-			return ""
-		}
-	}
-	b, _ := io.ReadAll(f)
-	return strings.TrimSpace(strings.ToValidUTF8(string(b), ""))
 }

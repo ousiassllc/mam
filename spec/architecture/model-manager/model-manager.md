@@ -85,7 +85,7 @@ ComfyUI **v0.42.1** のリリースアセット 4 種（`ComfyUI_windows_portabl
 | 起動 | 既定は**遅延**（そのエンジンのモデルを初めて呼ぶとき、`Prepare`）。設定 `AutoStart` で MAM の起動時に開始（`OnStartup`）。待つのは `/system_stats` が応答するまで（タイムアウトあり） |
 | ウィンドウ | Windows ではコンソールを出さない（`HideWindow`＋`CREATE_NO_WINDOW`、`internal/media/run_windows.go` と同じ方法） |
 | 終了 | MAM の終了で止める（`Close`）。MAM が異常終了しても子が残らないよう、Windows は Job Object（`KILL_ON_JOB_CLOSE`）、Linux はプロセスグループと `Pdeathsig`、**macOS は見張りプロセス（下の「macOS の異常終了」）**。`Stop`・`Close` は全 OS でプロセスグループへ SIGTERM（`StopTimeout` の 10 秒待って SIGKILL。Windows は Job Object の終了）を送る。Linux・macOS では、前回の mam が子を残したままなくなっていたら、**次の `Start` が子を片付ける**（下の「残った子の片付け」）。macOS の実機では未確認（§11） |
-| 状態 | `stopped` / `starting` / `running` / `failed`。起動の失敗・異常終了は `failed` とログの末尾（エラー文）で表し、`Watch` のイベントで通知する（画面・チャットへの出力は別作業）。エラー文のログの末尾は、その起動の出力だけ（ログファイルには前回までの出力が追記で残るが、末尾はファイルからではなく、その子の出力から取る）。**エンジンの導入（入れ直し・更新）が成功したら、前回の起動の失敗を消して `stopped` にし（`Manager.ClearFailure`。エラー文・ログの末尾も消え、`Watch` で通知する）、導入しただけでまだ起動していないエンジンを「停止中」と出す**。起動中・起動しているエンジンは触らない（導入は先に止める）。導入が失敗したときは前回の失敗を残す（エンジンは入れ替わっていない） |
+| 状態 | `stopped` / `starting` / `running` / `failed`。起動の失敗・異常終了は `failed` とログの末尾（エラー文）で表し、`Watch` のイベントで通知する（画面・チャットへの出力は別作業）。エラー文のログの末尾は、その起動の出力だけ（ログファイルには前回までの出力が追記で残るが、末尾はファイルからではなく、その子の出力から取る）。**エンジンの導入（入れ直し・更新）が成功したら、前回の起動の失敗を消して `stopped` にし（`Manager.ClearFailure`。エラー文・ログの末尾も消え、`Watch` で通知する）、導入しただけでまだ起動していないエンジンを「停止中」と出す**。起動中・起動しているエンジンは触らない（導入は先に止める）。導入が失敗したときは前回の失敗を残す（エンジンは入れ替わっていない）。ローカルランタイム（Ollama・llama.cpp など）も同じ考え方で、[local-runtime.md §5.2](local-runtime.md) に書く |
 
 #### macOS の異常終了（Issue #1017）と残った子の片付け
 
