@@ -256,6 +256,7 @@ func (s *Service) runEngineInstall(ctx context.Context, p installPayload, set fu
 	if err != nil {
 		return err
 	}
+	s.proc.ClearFailure() // the files are new: the failure of the old ones (its error and the end of its log) is not theirs
 	set(track.Update{Percent: 99, Phase: "register", Message: "接続先を登録しています"})
 	if err := s.ensureEndpoint(ctx); err != nil && !errors.Is(err, ErrPinned) {
 		return err
