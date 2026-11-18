@@ -1,4 +1,4 @@
-// Package licenses is what the settings screen "第三者のライセンス" lists: the licenses of the third-party software of MAM, as
+// Package licenses is what the settings screen "第三者のライセンス" lists: the licenses of the third-party software of Nefos Video, as
 // groups of entries (spec/components/settings-screen-licenses.md). Where the entries come from is a Source; the screen only
 // reads the Catalog, so an entry that is added later (the weights of a local runtime, ...) is data in a Source and no change of
 // the screen. The one Source today is THIRD_PARTY_NOTICES.md (ThirdPartyNotices).
