@@ -38,8 +38,8 @@ var (
 	weight   = regexp.MustCompile(`(?:^|[^\w-])(?:[a-z0-9\[\]-]+:)*font-(medium|bold|extrabold|black|light|thin)(?:[^\w-]|$)`)
 )
 
-// brandNameWeight is the one place that has a weight outside Regular (400) and SemiBold (600): the name Nefos Video beside the mark at the top
-// of the menu is Sora Light (300), the thinness of the words of the logo it replaced, so that it does not compete with the page heading below it (#1171).
+// brandNameWeight is the one place that has a weight outside Regular (400) and SemiBold (600): the product name in nav.templ is font-light
+// for the brand wordmark (Sora Light 300), the thinness of the words of the logo it replaced (#1171). No other exception is allowed.
 const brandNameWeight = "../organisms/sidenav/nav.templ|light"
 
 // A size that is not in the guide's scale, and a weight that is not Regular (400) or SemiBold (600), do not come back (T2, T3), but for brandNameWeight.

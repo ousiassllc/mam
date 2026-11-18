@@ -403,7 +403,7 @@ func menu(s State, folded bool) templ.Component {
 }
 
 // brand is the name of the product at the top of the menu: the mark of Nefos Video with its name as text beside it while the menu is open
-// (the mark has no tile: the file is 16 px square with the ring 10.5 px of it, so at 27 px the ring stands 18 px high, raised 1px to the middle of the capitals; the name is Sora Light, as the words of the old lockup were), the mark with its tile (the app icon) alone on a narrow window (the menu
+// (the mark has no tile: the file is 16 px square with the ring 10.5 px of it, so at 27 px the ring stands 18 px high and has about 4.6 px of empty file on each side, which with gap-1 (4 px) leaves about 8 px between the ring and the name; raised 1px to the middle of the capitals; the name is Sora Light, as the words of the old lockup were), the mark with its tile (the app icon) alone on a narrow window (the menu
 // is folded there, with no room beside the fold button; a folded menu on a wide window shows only that button, as before). Each comes in
 // a Light and a Dark file, as they are: static/src/css/brand.css shows the one of the theme. The name stays as text for a screen reader.
 func brand() templ.Component {
@@ -440,7 +440,7 @@ func brand() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</span> <span aria-hidden=\"true\" class=\"flex items-center gap-2 max-md:hidden group-data-[folded=true]:hidden\"><img src=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</span> <span aria-hidden=\"true\" class=\"flex items-center gap-1 max-md:hidden group-data-[folded=true]:hidden\"><img src=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -23,7 +23,7 @@ body
 ├ a "本文へ"            … 見えない。フォーカスが来たときだけ出る。#content へ飛ぶ（メニューを飛ばす）
 └ div.flex
    ├ nav#sidenav[aria-label="メニュー"][data-folded]   … sticky・画面の高さ・中だけスクロール
-   │   ├ Nefos Video のロゴ（開いている間はタイルなしのマーク（輪の高さ 18px。画像は 27px 四方）＋「Nefos Video」の文字（Sora Light・font-weight 300・16px）、たたんだとき・狭い画面ではタイルつきのマーク（アプリアイコン）だけ。ライト用とダーク用の 2 枚をテーマで出し分ける。#1171） ＋ たたむ/開くボタン（aria-expanded・aria-controls・名前が状態で変わる）
+   │   ├ Nefos Video のロゴ（開いている間はタイルなしのマーク（輪の高さ 18px。画像は 27px 四方。輪と文字の見た目の間は約 8px で、`gap-1` と画像の余白でそうなる）＋「Nefos Video」の文字（Sora Light・font-weight 300・16px）、たたんだとき・狭い画面ではタイルつきのマーク（アプリアイコン）だけ。ライト用とダーク用の 2 枚をテーマで出し分ける。#1171） ＋ たたむ/開くボタン（aria-expanded・aria-controls・名前が状態で変わる）
    │   ├ ul#sidenav-screens   … 主な画面
    │   ├ （Project の画面だけ）Project 名（見出し代わり）＋ ul#sidenav-views[aria-labelledby=sidenav-project]
    │   └ （モデルマネージャーの概要と分類ページだけ。#1101）見出し「モデルマネージャー」p#sidenav-mm ＋ ul#sidenav-mm-views[aria-labelledby=sidenav-mm]（「概要」と分類の項目。順・名前・アイコンは `mmcat.All()`。[model-manager-screen.md](model-manager-screen.md)「分類のサブページ（#1101）」）
