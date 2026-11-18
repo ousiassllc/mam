@@ -90,7 +90,7 @@ func readData(zr *zip.Reader) (domain.BundleData, error) {
 		return data, err
 	}
 	if manifest.Format != domain.BundleFormat {
-		return data, invalid("MAM のプロジェクトバンドルではありません")
+		return data, invalid("Nefos Video のプロジェクトバンドルではありません")
 	}
 	if manifest.Version != domain.BundleVersion {
 		return data, invalid("対応していないバンドルのバージョンです（%d）", manifest.Version)

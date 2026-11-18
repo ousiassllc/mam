@@ -242,7 +242,7 @@ func officialDetail(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<p class=\"text-sm text-mute\" data-testid=\"chatgpt-official-remote\">ブラウザは、mam が動いているこの PC で開きます。tailnet などの別のマシンから操作しているときは、先にこの PC でログインしてください（公式のログインにはデバイスコードの方式がありません）。</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<p class=\"text-sm text-mute\" data-testid=\"chatgpt-official-remote\">ブラウザは、Nefos Video が動いているこの PC で開きます。tailnet などの別のマシンから操作しているときは、先にこの PC でログインしてください（公式のログインにはデバイスコードの方式がありません）。</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

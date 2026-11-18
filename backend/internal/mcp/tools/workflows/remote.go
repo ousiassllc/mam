@@ -43,7 +43,7 @@ func (h handlers) listRemote(ctx context.Context, in EndpointInput) (ListRemoteO
 type ImportRemoteInput struct {
 	Endpoint          string `json:"endpoint,omitempty" jsonschema:"ComfyUI の接続先（省略: bundled-comfyui）"`
 	Path              string `json:"path,omitempty" jsonschema:"list_comfyui_workflows の path。省略すると最後の実行"`
-	Name              string `json:"name,omitempty" jsonschema:"mam での名前（省略: ファイル名）"`
+	Name              string `json:"name,omitempty" jsonschema:"Nefos Video での名前（省略: ファイル名）"`
 	Kind              string `json:"kind,omitempty" jsonschema:"image または video（省略: 保存ノードから判断）"`
 	ReplaceWorkflowID string `json:"replace_workflow_id,omitempty" jsonschema:"既存のワークフローを更新する（グラフと画面の形式を入れ替え、版が上がる）"`
 }

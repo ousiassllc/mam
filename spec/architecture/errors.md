@@ -1,6 +1,6 @@
 # 共通のエラー（原因・直し方・詳細）
 
-Issue #1010。mam で出る失敗を、画面でも MCP でも同じ形で「**なぜ失敗したか**（原因）」「**どうすればいいか**（直し方）」「**どの画面を開くか**（設定画面などへの導線）」「**機械が返した詳細**（元のメッセージ・ノード番号・ID）」の順に伝えるための共通の仕組み。後続の作業者（#1009: I2V の `first_frame` 422 と使われなかった入力の表示、#1011: UI）は、この文書の API を使う。
+Issue #1010。Nefos Video で出る失敗を、画面でも MCP でも同じ形で「**なぜ失敗したか**（原因）」「**どうすればいいか**（直し方）」「**どの画面を開くか**（設定画面などへの導線）」「**機械が返した詳細**（元のメッセージ・ノード番号・ID）」の順に伝えるための共通の仕組み。後続の作業者（#1009: I2V の `first_frame` 422 と使われなかった入力の表示、#1011: UI）は、この文書の API を使う。
 
 ## 1. 方針
 
@@ -134,7 +134,7 @@ templ Box(p Props)
 | `timeout` | `upstream` | 相手の応答が時間内に返りませんでした。 |  |
 | `topaz_credit_difference` | `upstream` | アップロードした動画を Topaz が調べ直したところ、必要なクレジットが見積りと大きく違っていたため、処理を止めました（全額返金されます）。 |  |
 | `topaz_job_failed` | `upstream` | Topaz が処理を完了できませんでした（相手側の失敗か、処理が取り消されました）。クレジットは返金されます。 |  |
-| `topaz_job_interrupted` | `upstream` | 処理の途中で mam が止まったか、ジョブが取り消されたため、Topaz の結果を待つのをやめました。Topaz はこの処理をすでに受け付けているため、Topaz 側では続いている可能性があり、クレジットが引かれることがあります（リクエスト ID: ）。 |  |
+| `topaz_job_interrupted` | `upstream` | 処理の途中で Nefos Video が止まったか、ジョブが取り消されたため、Topaz の結果を待つのをやめました。Topaz はこの処理をすでに受け付けているため、Topaz 側では続いている可能性があり、クレジットが引かれることがあります（リクエスト ID: ）。 |  |
 | `topaz_job_timeout` | `upstream` | Topaz の処理が時間切れになりました（アップロード待ち・順番待ち・処理時間のどれか）。クレジットは返金されます。 |  |
 | `topaz_maintenance` | `upstream` | Topaz のクラウド動画処理は、いまメンテナンス中で止まっています（HTTP 503）。 |  |
 | `topaz_source_invalid` | `upstream` | Topaz が元の動画を処理できませんでした。課金はされません。 |  |
@@ -242,7 +242,7 @@ repo に既存の i18n の仕組みは無かった（`grep -ri i18n backend stat
 - `swap_generation_face` などの顔の入れ替え: FaceFusion を使えないときは `unavailable` のツールエラー（`failure.code` が `facefusion_unavailable`）。
 - ツールエラー: `ToolError.Failure`。エラーの文は `<クラス>: <原因><直し方>`（従来どおり 1 行目）、**失敗には 2 行目に `failure` の JSON**（分からない失敗も `code: unknown`・`class: internal`。元のエラーの文は、パスやベンダーの応答が入りうるので、`detail` にも入れない。`ReportError` が `error_id` を付けて、原因をログに残す）。
 
-`failure` のキー: `code`（§4。エージェントはこれで分岐する）・`class`・`cause`（日本語の原因）・`remedy`（日本語の直し方）・`settings[]`（`label`・`path`。mam の画面のパス）・`detail`（元のメッセージ。英語のことがある）・`error_id`（unknown のとき。`get_app_logs` の `attrs` に `{"error_id": …}` を渡すと原因のログが見つかる）。
+`failure` のキー: `code`（§4。エージェントはこれで分岐する）・`class`・`cause`（日本語の原因）・`remedy`（日本語の直し方）・`settings[]`（`label`・`path`。Nefos Video の画面のパス）・`detail`（元のメッセージ。英語のことがある）・`error_id`（unknown のとき。`get_app_logs` の `attrs` に `{"error_id": …}` を渡すと原因のログが見つかる）。
 
 ## 9. 後続の作業者へ
 
@@ -286,3 +286,4 @@ repo に既存の i18n の仕組みは無かった（`grep -ri i18n backend stat
 | 1.16 | 2026-11-10 | `mcp/server` の `Manager` の理由で、`*net.OpError`・`*fs.PathError` は `errmap` の表でなくこの待ち受けの文で言うようにした（実際の listen の失敗が「接続先につながりません…ComfyUI」、`mcp.json` の権限の失敗が「書き込めません」と出ていたのを直した）。それ以外の失敗は `failreport.Line` のまま | PR #1135 の再レビュー（major） |
 | 1.17 | 2026-11-10 | `mcp/server` の理由に、`mcp.json` の中身の誤り（`bind.ErrMalformed`。JSON の誤り・`bind_address` が文字列でない）と、ネットワークインターフェースの一覧の失敗（`LocalAddrs`）の文を足した（それまでは「原因がわかりませんでした」と、「アドレスとポートを開けませんでした」だった）。`failreport` が元のエラーをログへ書くときは `failreport.Logged`（`logging.Redact`）で秘密を伏せるようにした（`Line`・`Media` の ERROR・WARN と、`mcp/server` の WARN） | PR #1135 の再レビューの minor（悠太さんの決定: 残りの minor も直す） |
 | 1.18 | 2026-11-12 | §2 の `failreport` の依存欄に `logging`（`Redact`）を足した（1.17 で `failreport.Logged` が `logging.Redact` を使うようにしたのに、欄が `apperr`・`apperr/errmap` のままだった） | Issue #1147（PR #1135 の最終レビューの minor） |
+| 1.19 | 2026-11-19 | 本文の製品名の表示を「MAM」から「Nefos Video」に改めた（過去の改訂履歴の文は当時のまま） | #1170: 製品名を MAM から Nefos Video に変更（表示名のみ。識別子・パス・実行ファイル名は変更しない） |

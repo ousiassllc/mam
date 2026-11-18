@@ -268,7 +268,7 @@ func userFacing(ctx context.Context, err error) error {
 	case errors.As(err, &ns):
 		return &userError{fmt.Sprintf("空き容量が足りません（必要 %s、空き %s、場所 %s）", fetch.HumanBytes(ns.Need), fetch.HumanBytes(ns.Free), ns.Path), err}
 	case errors.Is(err, fetch.ErrChecksum):
-		return &userError{"ダウンロードしたファイルの SHA-256 が、許可リストに固定した値と一致しません。ダウンロードを破棄しました（取得元の改ざんか転送の破損の可能性があります。GitHub のアーカイブの作り直しの場合は、mam の更新を待ってください）", err}
+		return &userError{"ダウンロードしたファイルの SHA-256 が、許可リストに固定した値と一致しません。ダウンロードを破棄しました（取得元の改ざんか転送の破損の可能性があります。GitHub のアーカイブの作り直しの場合は、Nefos Video の更新を待ってください）", err}
 	case errors.Is(err, fetch.ErrSize):
 		return &userError{"ダウンロードしたファイルの大きさが固定した値と違います。ダウンロードを破棄しました", err}
 	case errors.Is(err, nodes.ErrNotAPackage):

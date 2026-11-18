@@ -50,7 +50,7 @@ func TestScreens_LongExplanationsAreInTheHelpNotOnThePage(t *testing.T) {
 			[]string{"ローカルの画像・動画モデルを導入します。導入したモデルは、単発生成で試せます"},
 			[]string{"モデルマネージャー"}},
 		{"model manager: the engine", pages.ModelManagerCategoryPage("tok", mmcatOf(mmcat.ComfyUI), nil, modelmgr.Data{}),
-			[]string{"画像・動画のモデルを動かす ComfyUI を、mam が取得して起動・停止します"},
+			[]string{"画像・動画のモデルを動かす ComfyUI を、Nefos Video が取得して起動・停止します"},
 			[]string{"ComfyUI エンジン"}},
 		{"model manager: the models", pages.ModelManagerCategoryPage("tok", mmcatOf(mmcat.ImageVideo), nil, modelmgr.Data{}),
 			[]string{"ダウンロードは取得元から直接で、SHA-256 を確かめます"},

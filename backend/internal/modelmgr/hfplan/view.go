@@ -14,7 +14,7 @@ import (
 // The terms of an import. A change of the wording is a new TermsVersion: the confirmation of the old one no longer counts.
 const (
 	TermsVersion = "1"
-	Terms        = "取得するのはあなたの判断です。mam は、このファイルの中身・安全性・権利関係を確認していません。上のライセンスと取得元を自分で確かめたうえで導入してください。"
+	Terms        = "取得するのはあなたの判断です。Nefos Video は、このファイルの中身・安全性・権利関係を確認していません。上のライセンスと取得元を自分で確かめたうえで導入してください。"
 	// LicenseWarning is shown when the model card gives no usable license.
 	LicenseWarning = "ライセンスの記載がない（または other で名前も無い）リポジトリです。使えるか、商用利用してよいかを、リポジトリのページで確かめてください"
 )

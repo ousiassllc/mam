@@ -31,7 +31,7 @@
  ],
  "vram": {
   "min_gb": 12,
-  "source": "Chroma fp8 は 12〜16 GB の目安。Issue #841 付録（Notion の記載または mam の推定。mam の実機では未検証）",
+  "source": "Chroma fp8 は 12〜16 GB の目安。Issue #841 付録（Notion の記載または Nefos Video の推定。Nefos Video の実機では未検証）",
   "estimate": true
  },
  "license": {

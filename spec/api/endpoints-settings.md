@@ -145,7 +145,7 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 
 | 操作 | 成功の本文 | 失敗 |
 |------|-----------|------|
-| `PUT /settings/ffmpeg`（フォーム `ffmpeg`・`ffprobe`。空は指定なし） | **200**。分類の本文（`#ffmpeg-panel`。`hx-swap="outerHTML"`）に `role="status"` の結果（「保存しました。すぐに使われます（mam を再起動する必要はありません）」。両方空は「パスの指定を解除しました。…」）。`ffmpeg.json` に書く（両方空ならファイルを消す） | 絶対パスでない・実在しない・実行できないパスは **422**。書かずに、分類の本文に `role="alert"` の理由と入力値を返す（探し直さない）。ファイルを書けないは 500。CSRF は他の `PUT` と同じ |
+| `PUT /settings/ffmpeg`（フォーム `ffmpeg`・`ffprobe`。空は指定なし） | **200**。分類の本文（`#ffmpeg-panel`。`hx-swap="outerHTML"`）に `role="status"` の結果（「保存しました。すぐに使われます（Nefos Video を再起動する必要はありません）」。両方空は「パスの指定を解除しました。…」）。`ffmpeg.json` に書く（両方空ならファイルを消す） | 絶対パスでない・実在しない・実行できないパスは **422**。書かずに、分類の本文に `role="alert"` の理由と入力値を返す（探し直さない）。ファイルを書けないは 500。CSRF は他の `PUT` と同じ |
 
 ルートは `ffmpegsettings.Service` があるときだけ登録する（ない構成では 404）。方針は [../architecture/ffmpeg-lookup.md](../architecture/ffmpeg-lookup.md)。
 
@@ -160,11 +160,11 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | `POST /settings/ffmpeg/download/cancel` | **200**。取得を止めて（部分ファイルは残す。もう一度押すと続きから）、部品を返す。「中断しました」は失敗ではない | - |
 | `DELETE /settings/ffmpeg/download` | **200**。入れた ffmpeg と記録とダウンロードの残りを消し、部品を返す（「削除しました。ほかの場所の ffmpeg が見つかればそれを使い、無ければ…」） | 進行中は **409**。この環境に取得したものが無いは **409**。消せなければ **500** |
 
-取得の失敗は、部品の `role="alert"`（`data-testid=ffmpeg-download-install-error`）に出る: SHA-256・サイズの不一致（**ファイルは削除し、使わない**）、アーカイブの中身の不一致、実行できない、配布元が 404（mam を更新する）・そのほかの HTTP エラー、通信の失敗。取得に失敗しても、前に入れた版はそのまま残る。CSRF の対象（`POST`・`DELETE`）。
+取得の失敗は、部品の `role="alert"`（`data-testid=ffmpeg-download-install-error`）に出る: SHA-256・サイズの不一致（**ファイルは削除し、使わない**）、アーカイブの中身の不一致、実行できない、配布元が 404（Nefos Video を更新する）・そのほかの HTTP エラー、通信の失敗。取得に失敗しても、前に入れた版はそのまま残る。CSRF の対象（`POST`・`DELETE`）。
 
 ## 5.2.2 FaceFusion の保存（Issue #995。#1106 で `/model-manager/companion/facefusion` へ移る）
 
-> **#1106（状態: 実装済み）**: `PUT /settings/facefusion` は `PUT /model-manager/companion/facefusion` に**そのまま移る**（フォーム・状態コード・文言は変えない）。`GET /settings/facefusion` は 303 で `/model-manager/companion`（モデルマネージャーの `GET …/companion/facefusion` が探し直しの取り直しを兼ねる）。mam は FaceFusion を取得しない（[../architecture/gentest/face-swap.md](../architecture/gentest/face-swap.md) §1。変えない）。
+> **#1106（状態: 実装済み）**: `PUT /settings/facefusion` は `PUT /model-manager/companion/facefusion` に**そのまま移る**（フォーム・状態コード・文言は変えない）。`GET /settings/facefusion` は 303 で `/model-manager/companion`（モデルマネージャーの `GET …/companion/facefusion` が探し直しの取り直しを兼ねる）。Nefos Video は FaceFusion を取得しない（[../architecture/gentest/face-swap.md](../architecture/gentest/face-swap.md) §1。変えない）。
 
 | 操作 | 成功の本文 | 失敗 |
 |------|-----------|------|
@@ -231,3 +231,4 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | 1.22 | 2026-11-11 | §4 の接続テストの表に `openrouter`・`replicate`（実装の `credential/probe` にあるが書いていなかった）を足し、ボタンを出さない行に `fal` を足した | PR #1141 のレビュー指摘 |
 | 1.23 | 2026-11-11 | §3 の `PUT /settings/api-provider` の行を「今のルートに起きた変更」（パス・フォーム・状態コードは変えない）の表から、新しい節「新しいルート」へ移した（新規のルートで、見出しと食い違っていた）。1.20 の「§1」は誤りで、§3 が正しい。ブラウザは選びが落ち着いてから（`change` の 600ms 後）この PUT を送る（[settings-screen-categories.md](../components/settings-screen-categories.md) §1.0）。キーストアが読めないときのカードの並びも選択に追従する | PR #1141 のレビュー指摘 |
 | 1.24 | 2026-11-11 | §3 の `PUT /settings/api-provider` の行に、`models.json` が読めないときは 422 で断り、ファイルを書き換えず、区画は読めないときの表示（`api-provider-problem`）のままであること、判定の順（不正な値の 422 → 固定の 409 → 読めない 422）を足した（実装の `SaveVideoProvider` と `TestSaveProvider_AnUnreadableSettingsFileIsRefusedAndLeftAsItIs` に合わせた） | PR #1141 のレビュー指摘 |
+| 1.25 | 2026-11-19 | 本文の製品名の表示を「MAM」から「Nefos Video」に改めた（過去の改訂履歴の文は当時のまま） | #1170: 製品名を MAM から Nefos Video に変更（表示名のみ。識別子・パス・実行ファイル名は変更しない） |

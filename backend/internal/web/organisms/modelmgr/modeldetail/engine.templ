@@ -11,7 +11,7 @@ import (
 // the version, the address, the place it is installed in, and where it comes from and its license. The card says none of it.
 templ EngineDetail(e view.Engine) {
 	{{ tone, label := view.EngineBadge(e) }}
-	@modal.Frame(view.EngineName, "画像・動画のモデルを動かす ComfyUI を、mam が取得して起動・停止します。インストーラーには含まれず、ここから導入します。") {
+	@modal.Frame(view.EngineName, "画像・動画のモデルを動かす ComfyUI を、Nefos Video が取得して起動・停止します。インストーラーには含まれず、ここから導入します。") {
 		<div class={ "flex flex-wrap items-center gap-2", modal.StartClass } tabindex="-1" autofocus data-testid="mm-engine-detail" data-engine={ view.EnginePhase(e) }>
 			@atoms.Badge(tone, label)
 		</div>
@@ -56,7 +56,7 @@ templ EngineDetail(e view.Engine) {
 			}
 		</dl>
 		<p class="text-sm text-mute">
-			ComfyUI（GPL-3.0）は別のプログラムで、mam には含まれません。公式のリリース
+			ComfyUI（GPL-3.0）は別のプログラムで、Nefos Video には含まれません。公式のリリース
 			if e.PinnedVersion != "" {
 				（{ e.PinnedVersion }）
 			}

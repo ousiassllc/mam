@@ -102,7 +102,7 @@ func validateNode(c *Catalog, n Node) []error {
 	}
 	switch {
 	case n.Installable() && len(missing) > 0:
-		fail("needs %v, which the bundled Python environment does not have: set install_blocked (mam runs no pip)", missing)
+		fail("needs %v, which the bundled Python environment does not have: set install_blocked (Nefos Video runs no pip)", missing)
 	case !n.Installable() && strings.TrimSpace(n.InstallBlocked) == "":
 		fail("install_blocked must say why")
 	}

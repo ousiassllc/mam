@@ -204,7 +204,7 @@ func TestAModelThatIsInNoListIsAWarningNotARefusal(t *testing.T) {
 	f.lists["anthropic"] = llmmodels.List{Provider: "anthropic", Source: llmmodels.SourceDefault, Fallback: llmmodels.FallbackNoKey, Models: []llmmodels.Model{{ID: "claude-opus-4-5"}}}
 	card, err = ask(t, f, Args{Agent: "director", Provider: "anthropic", Model: "claude-opus-9"})
 	require.NoError(t, err)
-	assert.Contains(t, card.Text, "mam の既定候補にありません")
+	assert.Contains(t, card.Text, "Nefos Video の既定候補にありません")
 }
 
 func TestAWordThatIsNoModelNameIsRefusedWithTheCandidates(t *testing.T) {

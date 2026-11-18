@@ -1,8 +1,8 @@
 # サードパーティのライセンス表記
 
-MAM の Windows 版に含まれるサードパーティのソフトウェアと、そのライセンス文です。MAM 自身のライセンスは [AGPL-3.0](LICENSE) です。インストーラー（`mam-<version>-windows-amd64-setup.exe`）は、`LICENSE` とこのファイルをインストール先に置きます。
+Nefos Video の Windows 版に含まれるサードパーティのソフトウェアと、そのライセンス文です。Nefos Video 自身のライセンスは [AGPL-3.0](LICENSE) です。インストーラー（`mam-<version>-windows-amd64-setup.exe`）は、`LICENSE` とこのファイルをインストール先に置きます。
 
-このファイルは [`scripts/third-party-notices.sh`](scripts/third-party-notices.sh) が生成します。手で編集せず、`go.mod` や `static/package-lock.json` を変えたらスクリプトを実行し直してください。ライセンス文は各コンポーネントの `LICENSE` などのファイルをそのまま写しています。MAM の設定画面の「第三者のライセンス」には、このファイルをバイナリに埋め込んで、同じ内容を節ごとに表示します。
+このファイルは [`scripts/third-party-notices.sh`](scripts/third-party-notices.sh) が生成します。手で編集せず、`go.mod` や `static/package-lock.json` を変えたらスクリプトを実行し直してください。ライセンス文は各コンポーネントの `LICENSE` などのファイルをそのまま写しています。Nefos Video の設定画面の「第三者のライセンス」には、このファイルをバイナリに埋め込んで、同じ内容を節ごとに表示します。
 
 載せている範囲は次のとおりです。
 
@@ -13256,32 +13256,32 @@ THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND 
 
 ## 同梱していないが実行時に取得するもの
 
-Judge の顔同一性（Face Identity Similarity）に使うモデル、YuNet（MIT）と SFace（Apache-2.0）は OpenCV Zoo のもので、MAM には同梱しません。利用者が、モデルマネージャーの「顔チェック用モデル」のボタン（または `scripts/fetch-face-models.sh`）で実行時にダウンロードします。そのため配布物には入らず、ここにライセンス文は載せません。取得したモデルを再配布するときは、それぞれのライセンスに従ってください。ONNX Runtime の DLL（Windows 版）は同梱しており、上の節に載せています（macOS 版は同梱せず、利用者が用意した `libonnxruntime.dylib` を使います）。
+Judge の顔同一性（Face Identity Similarity）に使うモデル、YuNet（MIT）と SFace（Apache-2.0）は OpenCV Zoo のもので、Nefos Video には同梱しません。利用者が、モデルマネージャーの「顔チェック用モデル」のボタン（または `scripts/fetch-face-models.sh`）で実行時にダウンロードします。そのため配布物には入らず、ここにライセンス文は載せません。取得したモデルを再配布するときは、それぞれのライセンスに従ってください。ONNX Runtime の DLL（Windows 版）は同梱しており、上の節に載せています（macOS 版は同梱せず、利用者が用意した `libonnxruntime.dylib` を使います）。
 
 ## ComfyUI（利用者が取得する別プログラム）
 
-MAM のモデルマネージャーは、利用者の操作で ComfyUI のポータブル版（v0.42.1）を公式のリリースから取得し、MAM の実行ファイルと同じ場所の `comfyui` ディレクトリに展開して、別のプロセスとして起動します。macOS（Apple Silicon）には公式のポータブル版が無いので、固定したコミット（v0.42.1 のタグが指す `63be2f9b82ad0dac88a7ceaa28a9cf3154125a18`）のソースの zip と、python-build-standalone（Python Software Foundation License 系。astral-sh）の Python 3.13、PyPI の wheel（PyTorch・NumPy ほか 84 個）を、それぞれ SHA-256 を固定して公式の配布先から取得し、MAM のデータディレクトリの `comfyui` に展開します（`pip` は実行しません）。macOS でも、MAM はこれらのバイトを含めません。ComfyUI は GPL-3.0 のプログラムで、**MAM のインストーラー・ポータブル版・リリースには ComfyUI のバイトを一切含めません**。MAM は ComfyUI のコードをリンクせず、HTTP（`127.0.0.1`）で通信するだけです。
+Nefos Video のモデルマネージャーは、利用者の操作で ComfyUI のポータブル版（v0.42.1）を公式のリリースから取得し、Nefos Video の実行ファイルと同じ場所の `comfyui` ディレクトリに展開して、別のプロセスとして起動します。macOS（Apple Silicon）には公式のポータブル版が無いので、固定したコミット（v0.42.1 のタグが指す `63be2f9b82ad0dac88a7ceaa28a9cf3154125a18`）のソースの zip と、python-build-standalone（Python Software Foundation License 系。astral-sh）の Python 3.13、PyPI の wheel（PyTorch・NumPy ほか 84 個）を、それぞれ SHA-256 を固定して公式の配布先から取得し、Nefos Video のデータディレクトリの `comfyui` に展開します（`pip` は実行しません）。macOS でも、Nefos Video はこれらのバイトを含めません。ComfyUI は GPL-3.0 のプログラムで、**Nefos Video のインストーラー・ポータブル版・リリースには ComfyUI のバイトを一切含めません**。Nefos Video は ComfyUI のコードをリンクせず、HTTP（`127.0.0.1`）で通信するだけです。
 
-- ComfyUI のライセンス（GPL-3.0）と対応するソースコード: <https://github.com/Comfy-Org/ComfyUI/tree/v0.42.1>（取得するポータブル版は <https://github.com/Comfy-Org/ComfyUI/releases/tag/v0.42.1> のアセットで、SHA-256 を MAM のカタログに固定して検証します）。
-- **ノード画面（ComfyUI のフロントエンド、GPL-3.0）**: MAM の「ノード」画面（`/nodes`）は、取得した ComfyUI が配信する画面（`Comfy-Org/ComfyUI_frontend`、GPL-3.0。ポータブル版に pip パッケージ `comfyui-frontend-package` として入っている）を iframe で表示するだけです。**MAM はそのコードを一切含めず、改変も再配布もしません**（ブラウザは ComfyUI のサーバーから直接読み込みます）。ソース: <https://github.com/Comfy-Org/ComfyUI_frontend>。
+- ComfyUI のライセンス（GPL-3.0）と対応するソースコード: <https://github.com/Comfy-Org/ComfyUI/tree/v0.42.1>（取得するポータブル版は <https://github.com/Comfy-Org/ComfyUI/releases/tag/v0.42.1> のアセットで、SHA-256 を Nefos Video のカタログに固定して検証します）。
+- **ノード画面（ComfyUI のフロントエンド、GPL-3.0）**: Nefos Video の「ノード」画面（`/nodes`）は、取得した ComfyUI が配信する画面（`Comfy-Org/ComfyUI_frontend`、GPL-3.0。ポータブル版に pip パッケージ `comfyui-frontend-package` として入っている）を iframe で表示するだけです。**Nefos Video はそのコードを一切含めず、改変も再配布もしません**（ブラウザは ComfyUI のサーバーから直接読み込みます）。ソース: <https://github.com/Comfy-Org/ComfyUI_frontend>。
 - ポータブル版（macOS では取得した wheel・Python）に入っている Python・PyTorch・その他のパッケージのライセンスは、**一覧を調べていません（未確認）**。取得したものを再配布するときは、取得した `comfyui\engine` の中の各ライセンスを確認してください。
-- 利用者が導入できるモデルの重み（Stable Diffusion XL・FLUX.1・FLUX.2 klein・Qwen-Image・Wan 2.2・LTX-Video・Stable Diffusion 3.5・HunyuanVideo など）は、Hugging Face から利用者が取得します。MAM は再配布せず、各モデルのライセンス（商用利用の可否・地域の制限を含む）は導入の画面に表示します。条件の一部（FLUX.1 [dev] の非商用、HunyuanVideo の EU・英国・韓国での不可など）は、導入の前に同意を求めます。
+- 利用者が導入できるモデルの重み（Stable Diffusion XL・FLUX.1・FLUX.2 klein・Qwen-Image・Wan 2.2・LTX-Video・Stable Diffusion 3.5・HunyuanVideo など）は、Hugging Face から利用者が取得します。Nefos Video は再配布せず、各モデルのライセンス（商用利用の可否・地域の制限を含む）は導入の画面に表示します。条件の一部（FLUX.1 [dev] の非商用、HunyuanVideo の EU・英国・韓国での不可など）は、導入の前に同意を求めます。
 
 ## GPT-SoVITS（利用者が取得する別プログラム）
 
-MAM のローカルランタイム管理（Issue #918）は、利用者の操作で GPT-SoVITS（声のクローン・音声合成。公式の Windows 統合パッケージ `GPT-SoVITS-v2pro-20250604`、コードのタグ `20250606v2pro`）を公式の配布先（Hugging Face の `lj1995/GPT-SoVITS-windows-package`、コミット固定）から取得し、MAM の実行ファイルと同じ場所の `localai\gpt-sovits` ディレクトリに展開して、別のプロセス（公式の `api_v2.py` を MAM 自身の起動用スクリプト経由で読み込み、起動のたびに作る合言葉を付けた要求だけに答える形で、`127.0.0.1` だけで待ち受け）として起動します。GPT-SoVITS のコードは MIT ライセンスで、**MAM のインストーラー・ポータブル版・リリースには GPT-SoVITS のバイトを一切含めません**。MAM は GPT-SoVITS のコードをリンクせず、HTTP（`127.0.0.1`）で通信するだけです。対応するのは Windows（x64）と NVIDIA の GPU だけで、それ以外の環境では導入せず、理由を表示します。
+Nefos Video のローカルランタイム管理（Issue #918）は、利用者の操作で GPT-SoVITS（声のクローン・音声合成。公式の Windows 統合パッケージ `GPT-SoVITS-v2pro-20250604`、コードのタグ `20250606v2pro`）を公式の配布先（Hugging Face の `lj1995/GPT-SoVITS-windows-package`、コミット固定）から取得し、Nefos Video の実行ファイルと同じ場所の `localai\gpt-sovits` ディレクトリに展開して、別のプロセス（公式の `api_v2.py` を Nefos Video 自身の起動用スクリプト経由で読み込み、起動のたびに作る合言葉を付けた要求だけに答える形で、`127.0.0.1` だけで待ち受け）として起動します。GPT-SoVITS のコードは MIT ライセンスで、**Nefos Video のインストーラー・ポータブル版・リリースには GPT-SoVITS のバイトを一切含めません**。Nefos Video は GPT-SoVITS のコードをリンクせず、HTTP（`127.0.0.1`）で通信するだけです。対応するのは Windows（x64）と NVIDIA の GPU だけで、それ以外の環境では導入せず、理由を表示します。
 
-- GPT-SoVITS のライセンス（MIT）とソースコード: <https://github.com/RVC-Boss/GPT-SoVITS/tree/20250606v2pro>（ライセンス文は <https://github.com/RVC-Boss/GPT-SoVITS/blob/20250606v2pro/LICENSE>。取得するパッケージは <https://huggingface.co/lj1995/GPT-SoVITS-windows-package> のファイルで、SHA-256 と大きさを MAM のカタログに固定して検証します）。
+- GPT-SoVITS のライセンス（MIT）とソースコード: <https://github.com/RVC-Boss/GPT-SoVITS/tree/20250606v2pro>（ライセンス文は <https://github.com/RVC-Boss/GPT-SoVITS/blob/20250606v2pro/LICENSE>。取得するパッケージは <https://huggingface.co/lj1995/GPT-SoVITS-windows-package> のファイルで、SHA-256 と大きさを Nefos Video のカタログに固定して検証します）。
 - 統合パッケージには、GPT-SoVITS のコードのほかに、Python の実行環境・PyTorch・その他の多数のパッケージと、**学習済みモデルの重み**が入っています。**カタログに固定した重み・依存ファイルのライセンスは、下の「GPT-SoVITS と MuseTalk の重み・依存ファイル」の節の表に載せ、モデルマネージャーの画面にも表示します。パッケージに入っているそれ以外のもの（v3・v4 の重み、BigVGAN、v2Pro・sv のモデル、Python のパッケージ）は、ライセンスと商用利用の可否を調べていません（未確認）**。取得したものを再配布するときや商用に使うときは、取得した `localai\gpt-sovits\env` の中の各ライセンスと、重みの配布元（<https://huggingface.co/lj1995/GPT-SoVITS>）の記載を確認してください。
 
 ## MuseTalk 1.5（利用者が取得する別プログラム）
 
-MAM のローカルランタイム管理（Issue #921）は、利用者の操作で MuseTalk 1.5（既存の動画と音声から口元を合わせた動画を作る。コードは GitHub の `TMElyralab/MuseTalk` のコミット `0a89dec45a0192b824e3cf4daf96c239440c5ed8`）の実行環境を、MAM の実行ファイルと同じ場所の `localai\musetalk` ディレクトリに組み立て、別のプロセス（MAM が同梱する薄い HTTP ラッパー `mam_musetalk_server.py`、`127.0.0.1` だけで待ち受け）として起動します。MuseTalk のコードは MIT ライセンスで、README に「The code of MuseTalk is released under the MIT License. There is no limitation for both academic and commercial usage.」「The trained model are available for any purpose, even commercially.」とあります。**MAM のインストーラー・ポータブル版・リリースには MuseTalk・Python・下の Python パッケージ・PyTorch のバイトを一切含めません**。MuseTalk は Windows 向けの配布物を出していないため、MAM は公式の手順（Python 3.10・PyTorch 2.0.1 + CUDA 11.8・mmcv 2.0.1・mmdet 3.1.0・mmpose 1.1.0 ほか）と同じ版を、次の公式の配布先から固定の URL と SHA-256 で取得して組み立てます（`pip` も `setup.py` も実行しません）。対応するのは Windows の x64 と NVIDIA の GPU（RTX 40 シリーズまで）だけです。
+Nefos Video のローカルランタイム管理（Issue #921）は、利用者の操作で MuseTalk 1.5（既存の動画と音声から口元を合わせた動画を作る。コードは GitHub の `TMElyralab/MuseTalk` のコミット `0a89dec45a0192b824e3cf4daf96c239440c5ed8`）の実行環境を、Nefos Video の実行ファイルと同じ場所の `localai\musetalk` ディレクトリに組み立て、別のプロセス（Nefos Video が同梱する薄い HTTP ラッパー `mam_musetalk_server.py`、`127.0.0.1` だけで待ち受け）として起動します。MuseTalk のコードは MIT ライセンスで、README に「The code of MuseTalk is released under the MIT License. There is no limitation for both academic and commercial usage.」「The trained model are available for any purpose, even commercially.」とあります。**Nefos Video のインストーラー・ポータブル版・リリースには MuseTalk・Python・下の Python パッケージ・PyTorch のバイトを一切含めません**。MuseTalk は Windows 向けの配布物を出していないため、Nefos Video は公式の手順（Python 3.10・PyTorch 2.0.1 + CUDA 11.8・mmcv 2.0.1・mmdet 3.1.0・mmpose 1.1.0 ほか）と同じ版を、次の公式の配布先から固定の URL と SHA-256 で取得して組み立てます（`pip` も `setup.py` も実行しません）。対応するのは Windows の x64 と NVIDIA の GPU（RTX 40 シリーズまで）だけです。
 
-- MuseTalk のライセンス（MIT）とソースコード: <https://github.com/TMElyralab/MuseTalk/tree/0a89dec45a0192b824e3cf4daf96c239440c5ed8>（ライセンス文は <https://github.com/TMElyralab/MuseTalk/blob/0a89dec45a0192b824e3cf4daf96c239440c5ed8/LICENSE>）。MAM が同梱するラッパー（`backend/internal/modelmgr/catalog/data/overlays/mam_musetalk_server.py`）の口パクの生成の手順は、MuseTalk の `scripts/inference.py`（MIT、Copyright (c) 2024 Tencent Music Entertainment Group）に従っています。
+- MuseTalk のライセンス（MIT）とソースコード: <https://github.com/TMElyralab/MuseTalk/tree/0a89dec45a0192b824e3cf4daf96c239440c5ed8>（ライセンス文は <https://github.com/TMElyralab/MuseTalk/blob/0a89dec45a0192b824e3cf4daf96c239440c5ed8/LICENSE>）。Nefos Video が同梱するラッパー（`backend/internal/modelmgr/catalog/data/overlays/mam_musetalk_server.py`）の口パクの生成の手順は、MuseTalk の `scripts/inference.py`（MIT、Copyright (c) 2024 Tencent Music Entertainment Group）に従っています。
 - Python 3.10.11 の Windows 用の組み込み版（<https://www.python.org/ftp/python/3.10.11/python-3.10.11-embed-amd64.zip>。Python Software Foundation License。zip の中の `LICENSE.txt`）。
 - Python パッケージの wheel 82 個。PyTorch（`torch`・`torchvision`）は <https://download.pytorch.org/whl/cu118/>、mmcv は <https://download.openmmlab.com/mmcv/dist/cu118/torch2.0.0/>、その他は PyPI（`files.pythonhosted.org`）から取得します。ライセンスは各 wheel のメタデータの表記です（**原文との突き合わせはしていません（未確認）**）。各 wheel の中の `*.dist-info` に、それぞれのライセンス文が入っています。
-- **注意が要るもの**: `torch` の CUDA 版の wheel は NVIDIA の CUDA ランタイムと cuDNN の DLL を含み、NVIDIA のライセンスに従います（**条件は確認していません（未確認）**）。`opencv-python` の wheel は LGPL の FFmpeg の DLL、`soundfile` の wheel は LGPL の libsndfile、`soxr` は LGPL-2.1-or-later の libsoxr を含みます（MAM は再配布せず、利用者の PC に取得します）。`certifi`・`tqdm` は MPL-2.0 です。
+- **注意が要るもの**: `torch` の CUDA 版の wheel は NVIDIA の CUDA ランタイムと cuDNN の DLL を含み、NVIDIA のライセンスに従います（**条件は確認していません（未確認）**）。`opencv-python` の wheel は LGPL の FFmpeg の DLL、`soundfile` の wheel は LGPL の libsndfile、`soxr` は LGPL-2.1-or-later の libsoxr を含みます（Nefos Video は再配布せず、利用者の PC に取得します）。`certifi`・`tqdm` は MPL-2.0 です。
 
 | パッケージ | 版 | ライセンス（wheel のメタデータの表記） |
 |---|---|---|
@@ -13370,7 +13370,7 @@ MAM のローカルランタイム管理（Issue #921）は、利用者の操作
 
 ## Irodori-TTS（利用者が取得する別プログラム）
 
-MAM のローカルランタイム管理（Issue #1015）は、利用者の操作で Irodori-TTS（日本語専用の音声合成。Aratako 氏）の実行環境を、MAM の実行ファイルと同じ場所の `localai\irodori-tts` ディレクトリに組み立て、別のプロセス（MAM が同梱する起動用スクリプト `mam_irodori_server.py` が、公式の API サーバー Irodori-TTS-Server の FastAPI アプリの前に番人を置いて起動する。起動のたびに作る合言葉を付けた `POST /v1/audio/speech` だけに答え、`127.0.0.1` だけで待ち受け）として起動します。**公式は Windows 向けの配布物を出していないため、MAM が部品をカタログに固定して取得し、組み立てます**（MuseTalk と同じ作り）。MAM はこれらを同梱せず再配布しません。
+Nefos Video のローカルランタイム管理（Issue #1015）は、利用者の操作で Irodori-TTS（日本語専用の音声合成。Aratako 氏）の実行環境を、Nefos Video の実行ファイルと同じ場所の `localai\irodori-tts` ディレクトリに組み立て、別のプロセス（Nefos Video が同梱する起動用スクリプト `mam_irodori_server.py` が、公式の API サーバー Irodori-TTS-Server の FastAPI アプリの前に番人を置いて起動する。起動のたびに作る合言葉を付けた `POST /v1/audio/speech` だけに答え、`127.0.0.1` だけで待ち受け）として起動します。**公式は Windows 向けの配布物を出していないため、Nefos Video が部品をカタログに固定して取得し、組み立てます**（MuseTalk と同じ作り）。Nefos Video はこれらを同梱せず再配布しません。
 
 - Irodori-TTS-Server（API サーバー。MIT）: <https://github.com/Aratako/Irodori-TTS-Server/tree/61012c760f22f7b4a6c21c5c5f8f9e148120b6f9>（ライセンス文は同じコミットの `LICENSE`）。
 - Irodori-TTS（推論のコード。MIT）: <https://github.com/Aratako/Irodori-TTS/tree/89f9d8fbd4d51ea019867ee1197725ede1df13c5>。
@@ -13544,7 +13544,7 @@ MAM のローカルランタイム管理（Issue #1015）は、利用者の操�
 
 ### Irodori-TTS の重みと依存ファイル
 
-MAM のローカルランタイム管理は、Irodori-TTS のモデルの重み・音声コーデックの重み・SilentCipher の透かしの重みを、固定の URL（Hugging Face のコミット固定）と SHA-256 で検証します。**MAM は再配布せず**、利用者の操作で取得元から取得します。モデルは利用者がモデルマネージャーで選び（既定は v4.1-Small）、選んだモデルの重みだけを取得します。出典・ライセンス・商用利用の可否・使うときの制限は、モデルマネージャーの画面と MCP（`list_local_runtime_models`）にも表示します。
+Nefos Video のローカルランタイム管理は、Irodori-TTS のモデルの重み・音声コーデックの重み・SilentCipher の透かしの重みを、固定の URL（Hugging Face のコミット固定）と SHA-256 で検証します。**Nefos Video は再配布せず**、利用者の操作で取得元から取得します。モデルは利用者がモデルマネージャーで選び（既定は v4.1-Small）、選んだモデルの重みだけを取得します。出典・ライセンス・商用利用の可否・使うときの制限は、モデルマネージャーの画面と MCP（`list_local_runtime_models`）にも表示します。
 
 | 名前 | 出典 | ライセンス | 商用利用 |
 |---|---|---|---|
@@ -13555,13 +13555,13 @@ MAM のローカルランタイム管理は、Irodori-TTS のモデルの重み�
 
 - 取得先のコミットは、v4.1-Small `2b28324d…`、v4.1-Small-MF `ccc78f5d…`、v4-Large `2e0c5542…`、v4-Large-Quantized `bdef9592…`、Semantic-DACVAE `47376ee2…`、sony/silentcipher `a1c4d021…`。
 - 各ライセンスは、モデルカードの表記を読んで記録したもので、**原文との突き合わせや学習データのライセンスの確認はしていません（未確認）**。
-- **声のコピー（参照音声）の使い方の制限**: モデルカードは、本人の同意なしに実在の人（声優・有名人など）の声をコピーしたりなりすましに使ったりすること、人をだます合成音声・ディープフェイクに使うことを禁じています。MAM は画面・MCP でこの制限を伝えますが、守る責任は利用者にあります。
+- **声のコピー（参照音声）の使い方の制限**: モデルカードは、本人の同意なしに実在の人（声優・有名人など）の声をコピーしたりなりすましに使ったりすること、人をだます合成音声・ディープフェイクに使うことを禁じています。Nefos Video は画面・MCP でこの制限を伝えますが、守る責任は利用者にあります。
 
 ## llama.cpp とローカル LLM の重み（利用者が取得する別プログラム）
 
-MAM のローカルランタイム管理（Issue #1008）は、利用者の操作で llama.cpp の `llama-server`（ローカルの LLM サーバー。ggml-org/llama.cpp）と、LLM の重み（GGUF）を、MAM の実行ファイルと同じ場所の `localai\llama-cpp` ディレクトリに取得して展開します。**MAM のインストーラー・リリースには含まれません**（MAM は llama.cpp のバイトを配布しません）。`llama-server.exe` は MAM が決めた固定の引数だけで起動し、`127.0.0.1` だけで待ち受けます（利用者が引数を指定することはできません）。
+Nefos Video のローカルランタイム管理（Issue #1008）は、利用者の操作で llama.cpp の `llama-server`（ローカルの LLM サーバー。ggml-org/llama.cpp）と、LLM の重み（GGUF）を、Nefos Video の実行ファイルと同じ場所の `localai\llama-cpp` ディレクトリに取得して展開します。**Nefos Video のインストーラー・リリースには含まれません**（Nefos Video は llama.cpp のバイトを配布しません）。`llama-server.exe` は Nefos Video が決めた固定の引数だけで起動し、`127.0.0.1` だけで待ち受けます（利用者が引数を指定することはできません）。
 
-- llama.cpp のライセンス（MIT）とソースコード: <https://github.com/ggml-org/llama.cpp/tree/b11960>（ライセンス文は <https://github.com/ggml-org/llama.cpp/blob/b11960/LICENSE>）。取得するのは公式の GitHub リリース `b11960`（<https://github.com/ggml-org/llama.cpp/releases/tag/b11960>）の Windows x64 のビルド済みバイナリ `llama-b11960-bin-win-cuda-12.4-x64.zip`（RTX 50 シリーズは `…cuda-13.4-x64.zip`）と、CUDA ランタイムの DLL の `cudart-llama-bin-win-cuda-12.4-x64.zip`（同 `13.4`）で、SHA-256 を MAM のカタログに固定して検証します（4 つの SHA-256 は spec/architecture/model-manager/local-runtime.md §17.1）。ビルドには OpenMP のランタイムのライセンス（`LICENSE-LLVM-OpenMP`）が含まれます。
+- llama.cpp のライセンス（MIT）とソースコード: <https://github.com/ggml-org/llama.cpp/tree/b11960>（ライセンス文は <https://github.com/ggml-org/llama.cpp/blob/b11960/LICENSE>）。取得するのは公式の GitHub リリース `b11960`（<https://github.com/ggml-org/llama.cpp/releases/tag/b11960>）の Windows x64 のビルド済みバイナリ `llama-b11960-bin-win-cuda-12.4-x64.zip`（RTX 50 シリーズは `…cuda-13.4-x64.zip`）と、CUDA ランタイムの DLL の `cudart-llama-bin-win-cuda-12.4-x64.zip`（同 `13.4`）で、SHA-256 を Nefos Video のカタログに固定して検証します（4 つの SHA-256 は spec/architecture/model-manager/local-runtime.md §17.1）。ビルドには OpenMP のランタイムのライセンス（`LICENSE-LLVM-OpenMP`）が含まれます。
 - **注意が要るもの**: CUDA ランタイムの DLL（`cudart`・`cublas`・`cublasLt`）は NVIDIA のライセンス（CUDA Toolkit の使用許諾）に従います（**再配布の条件は確認していません（未確認）**）。
 - 取得したものを再配布するときは、取得した zip に入っているライセンス文を添えてください。
 
@@ -13583,15 +13583,15 @@ MAM のローカルランタイム管理（Issue #1008）は、利用者の操�
 
 ## Ollama と Ollama のモデル（利用者が取得する別プログラム）
 
-MAM のローカルランタイム管理（Issue #1105）は、利用者の操作で Ollama（ローカルの LLM サーバー。ollama/ollama）を、MAM の実行ファイルと同じ場所の `localai\ollama` ディレクトリに取得して展開し、そのモデルを Ollama 自身の `/api/pull` で `localai\ollama\models` に取得します。**MAM のインストーラー・リリースには含まれません**（MAM は Ollama のバイトも、モデルのバイトも配布しません）。`ollama.exe serve` は MAM が決めた固定の設定だけで起動し、`127.0.0.1` だけで待ち受けます（クラウド機能は `disable_ollama_cloud` で無効にしています）。
+Nefos Video のローカルランタイム管理（Issue #1105）は、利用者の操作で Ollama（ローカルの LLM サーバー。ollama/ollama）を、Nefos Video の実行ファイルと同じ場所の `localai\ollama` ディレクトリに取得して展開し、そのモデルを Ollama 自身の `/api/pull` で `localai\ollama\models` に取得します。**Nefos Video のインストーラー・リリースには含まれません**（Nefos Video は Ollama のバイトも、モデルのバイトも配布しません）。`ollama.exe serve` は Nefos Video が決めた固定の設定だけで起動し、`127.0.0.1` だけで待ち受けます（クラウド機能は `disable_ollama_cloud` で無効にしています）。
 
-- Ollama のライセンス（MIT）とソースコード: <https://github.com/ollama/ollama/tree/v0.40.15>（ライセンス文は <https://github.com/ollama/ollama/blob/v0.40.15/LICENSE>）。取得するのは公式の GitHub リリース `v0.40.15`（<https://github.com/ollama/ollama/releases/tag/v0.40.15>）の Windows x64 のビルド済みバイナリ `ollama-windows-amd64.zip`（1,614,941,966 バイト）で、SHA-256 `9ca74a7ab66ec86870b1eecac7df160df08dc4e3a291ab5d2d59bcf9310221c6` を MAM のカタログに固定して検証します（GitHub の API の digest と一致することを 2026-11-07 に確かめました）。zip には、ライセンス文のほかに、CUDA などの同梱ライブラリが入っています（**同梱ライブラリの再配布の条件は確認していません（未確認）**）。
+- Ollama のライセンス（MIT）とソースコード: <https://github.com/ollama/ollama/tree/v0.40.15>（ライセンス文は <https://github.com/ollama/ollama/blob/v0.40.15/LICENSE>）。取得するのは公式の GitHub リリース `v0.40.15`（<https://github.com/ollama/ollama/releases/tag/v0.40.15>）の Windows x64 のビルド済みバイナリ `ollama-windows-amd64.zip`（1,614,941,966 バイト）で、SHA-256 `9ca74a7ab66ec86870b1eecac7df160df08dc4e3a291ab5d2d59bcf9310221c6` を Nefos Video のカタログに固定して検証します（GitHub の API の digest と一致することを 2026-11-07 に確かめました）。zip には、ライセンス文のほかに、CUDA などの同梱ライブラリが入っています（**同梱ライブラリの再配布の条件は確認していません（未確認）**）。
 - 取得したものを再配布するときは、取得した zip に入っているライセンス文を添えてください。
 - **Ollama には認証がありません**。待ち受けは `127.0.0.1` だけですが、同じ PC で動く信用できないソフトも呼び出せます。
 
 ### Ollama のモデル
 
-取得できるのは次の 3 つだけです（Ollama のライブラリ <https://ollama.com/library> のタグ。**タグは書き換えられるため、取得する内容を固定できません**。MAM は取得のあとで、Ollama が書いたマニフェストの重みの層の SHA-256 を、2026-11-07 に読んだ記録と比べ、違えば「上流で更新されています」と知らせます）。ライセンスは、レジストリの license の層の本文と、元のモデルカードの表記で、**法的な保証ではありません**（商用で使う前にライセンス全文を確認してください）。
+取得できるのは次の 3 つだけです（Ollama のライブラリ <https://ollama.com/library> のタグ。**タグは書き換えられるため、取得する内容を固定できません**。Nefos Video は取得のあとで、Ollama が書いたマニフェストの重みの層の SHA-256 を、2026-11-07 に読んだ記録と比べ、違えば「上流で更新されています」と知らせます）。ライセンスは、レジストリの license の層の本文と、元のモデルカードの表記で、**法的な保証ではありません**（商用で使う前にライセンス全文を確認してください）。
 
 | 名前 | 出典 | 取得量（バイト） | ライセンス | 商用利用 |
 |---|---|---|---|---|
@@ -13600,7 +13600,7 @@ MAM のローカルランタイム管理（Issue #1105）は、利用者の操�
 | DeepSeek-R1 14B（`deepseek-r1:14b`） | <https://ollama.com/library/deepseek-r1:14b> | 8,988,112,209 | [MIT License（DeepSeek-R1-Distill-Qwen-14B）](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-14B) | 可 |
 ## GPT-SoVITS と MuseTalk の重み・依存ファイル（利用者が取得するもの）
 
-MAM のローカルランタイム管理（Issue #920）は、上の GPT-SoVITS の統合パッケージに入っている重みと依存ファイル、および MuseTalk 1.5 が使う重みと依存ファイルを、固定の URL（Hugging Face のコミット固定）と SHA-256 で検証します。**MAM はこれらを同梱せず再配布しません**。足りない・壊れたファイルだけを、利用者の操作で取得元から取得します。出典・ライセンス・商用利用の可否はモデルマネージャーの画面（「ローカル音声・口パク」）と MCP（`list_local_runtimes`）にも表示します。固定の一覧はソースの `backend/internal/modelmgr/catalog/data/assets/` にあり、意味は `spec/architecture/model-manager/local-runtime.md` の §12 です。**法的な助言ではありません**。再配布や商用利用の前に、配布元の条件を確認してください。
+Nefos Video のローカルランタイム管理（Issue #920）は、上の GPT-SoVITS の統合パッケージに入っている重みと依存ファイル、および MuseTalk 1.5 が使う重みと依存ファイルを、固定の URL（Hugging Face のコミット固定）と SHA-256 で検証します。**Nefos Video はこれらを同梱せず再配布しません**。足りない・壊れたファイルだけを、利用者の操作で取得元から取得します。出典・ライセンス・商用利用の可否はモデルマネージャーの画面（「ローカル音声・口パク」）と MCP（`list_local_runtimes`）にも表示します。固定の一覧はソースの `backend/internal/modelmgr/catalog/data/assets/` にあり、意味は `spec/architecture/model-manager/local-runtime.md` の §12 です。**法的な助言ではありません**。再配布や商用利用の前に、配布元の条件を確認してください。
 
 **商用利用がはっきりしないもの（`unclear`）は、GPT-SoVITS の g2pW のモデル、LatentSync の SyncNet、S3FD の顔検出の重み、face-parse-bisent の `79999_iter.pth`（CelebAMask-HQ で学習。データは非商用の研究目的と README に明記）、torchvision の `resnet18` です。** 画面では、これらを琥珀色の注記で目立つように表示します。
 
@@ -13644,30 +13644,30 @@ MAM のローカルランタイム管理（Issue #920）は、上の GPT-SoVITS 
 
 ## ffmpeg と ffprobe（利用者が取得する別プログラム）
 
-MAM のモデルマネージャーの「付随ソフト」と初回ガイドには、利用者がボタンを押したときだけ ffmpeg と ffprobe（バージョン 9.0.2。Windows 版（x64）と macOS 版（Apple Silicon）のみ）を配布元から取得し、データの置き場（Windows 版は MAM の実行ファイルと同じ場所の `ffmpeg` ディレクトリ、macOS 版はデータディレクトリの中）に展開するボタンがあります。ffmpeg は **GPL v3 以降**のビルドで、**MAM のインストーラー・ポータブル版・リリースには ffmpeg のバイトを一切含めません**。MAM は ffmpeg のコードをリンクせず、別のプロセスとして起動するだけです。ボタンを押さない限り、通信も取得もしません（自動の更新確認はありません）。
+Nefos Video のモデルマネージャーの「付随ソフト」と初回ガイドには、利用者がボタンを押したときだけ ffmpeg と ffprobe（バージョン 9.0.2。Windows 版（x64）と macOS 版（Apple Silicon）のみ）を配布元から取得し、データの置き場（Windows 版は Nefos Video の実行ファイルと同じ場所の `ffmpeg` ディレクトリ、macOS 版はデータディレクトリの中）に展開するボタンがあります。ffmpeg は **GPL v3 以降**のビルドで、**Nefos Video のインストーラー・ポータブル版・リリースには ffmpeg のバイトを一切含めません**。Nefos Video は ffmpeg のコードをリンクせず、別のプロセスとして起動するだけです。ボタンを押さない限り、通信も取得もしません（自動の更新確認はありません）。
 
-- ffmpeg のライセンス（GPL v3 以降）と対応するソースコード: Windows 版は <https://github.com/FFmpeg/FFmpeg/commit/946fcce07b>（取得するのは gyan.dev のビルド <https://www.gyan.dev/ffmpeg/builds/> のうち、<https://github.com/GyanD/codexffmpeg/releases/tag/9.0.2> のアセット `ffmpeg-9.0.2-essentials_build.zip`）、macOS 版は <https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz>（取得するのは Martin Riedl のビルドサーバー <https://ffmpeg.martin-riedl.de/> の release 9.0.2 の `ffmpeg.zip` と `ffprobe.zip`）。アーカイブと展開した 2 つの実行ファイルの SHA-256 とサイズを MAM のカタログに固定して検証し、一致しなければ使いません。
+- ffmpeg のライセンス（GPL v3 以降）と対応するソースコード: Windows 版は <https://github.com/FFmpeg/FFmpeg/commit/946fcce07b>（取得するのは gyan.dev のビルド <https://www.gyan.dev/ffmpeg/builds/> のうち、<https://github.com/GyanD/codexffmpeg/releases/tag/9.0.2> のアセット `ffmpeg-9.0.2-essentials_build.zip`）、macOS 版は <https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz>（取得するのは Martin Riedl のビルドサーバー <https://ffmpeg.martin-riedl.de/> の release 9.0.2 の `ffmpeg.zip` と `ffprobe.zip`）。アーカイブと展開した 2 つの実行ファイルの SHA-256 とサイズを Nefos Video のカタログに固定して検証し、一致しなければ使いません。
 - 取得したビルドは `libx264`・`libx265`・`libvpx`・`libopus` ほか多数の GPL・LGPL・BSD などのライブラリを静的に含みます。**その一覧とライセンス文は調べていません（未確認）**。取得したものを再配布するときは、配布元の README・LICENSE（アーカイブの中にあります）に従い、対応するソースを提供してください。
 
 ## Codex app-server（利用者が取得する別プログラム）
 
-MAM の「ChatGPT でログイン」の Codex 経由の方式（Business / Enterprise / Edu のワークスペースのアカウントでも使える、テキスト生成だけの方式）は、利用者の操作で OpenAI の Codex の app-server（バージョン 0.164.0。Windows 版と macOS 版（Apple Silicon）のみ）を公式のリリースから取得し、`codex` ディレクトリ（Windows 版は MAM の実行ファイルと同じ場所、macOS 版はデータディレクトリの中）に展開して、別のプロセスとして起動します。Codex は Apache-2.0 のプログラムで、**MAM のインストーラー・ポータブル版・リリースには Codex のバイトを一切含めません**。MAM は Codex のコードをリンクせず、標準入出力の JSON-RPC で通信するだけです。
+Nefos Video の「ChatGPT でログイン」の Codex 経由の方式（Business / Enterprise / Edu のワークスペースのアカウントでも使える、テキスト生成だけの方式）は、利用者の操作で OpenAI の Codex の app-server（バージョン 0.164.0。Windows 版と macOS 版（Apple Silicon）のみ）を公式のリリースから取得し、`codex` ディレクトリ（Windows 版は Nefos Video の実行ファイルと同じ場所、macOS 版はデータディレクトリの中）に展開して、別のプロセスとして起動します。Codex は Apache-2.0 のプログラムで、**Nefos Video のインストーラー・ポータブル版・リリースには Codex のバイトを一切含めません**。Nefos Video は Codex のコードをリンクせず、標準入出力の JSON-RPC で通信するだけです。
 
-- Codex のライセンス（Apache-2.0）と対応するソースコード: <https://github.com/openai/codex/tree/rust-v0.164.0>（取得するのは <https://github.com/openai/codex/releases/tag/rust-v0.164.0> のアセット `codex-app-server-x86_64-pc-windows-msvc.exe.zip`・`codex-app-server-aarch64-pc-windows-msvc.exe.zip`（Windows）または `codex-app-server-aarch64-apple-darwin.tar.gz`（macOS）で、SHA-256 とサイズを MAM のカタログに固定して検証します）。
-- Codex が保存するログイン情報は、MAM 専用の `CODEX_HOME`（データディレクトリの `codex-home`）と OS の資格情報ストアにあり、MAM は読みません。
+- Codex のライセンス（Apache-2.0）と対応するソースコード: <https://github.com/openai/codex/tree/rust-v0.164.0>（取得するのは <https://github.com/openai/codex/releases/tag/rust-v0.164.0> のアセット `codex-app-server-x86_64-pc-windows-msvc.exe.zip`・`codex-app-server-aarch64-pc-windows-msvc.exe.zip`（Windows）または `codex-app-server-aarch64-apple-darwin.tar.gz`（macOS）で、SHA-256 とサイズを Nefos Video のカタログに固定して検証します）。
+- Codex が保存するログイン情報は、Nefos Video 専用の `CODEX_HOME`（データディレクトリの `codex-home`）と OS の資格情報ストアにあり、Nefos Video は読みません。
 - 取得したものを再配布するときは、Apache-2.0 の LICENSE と NOTICE（上のソースにあります）を添えてください。取得した実行ファイルが静的に含む依存のライセンスは、**一覧を調べていません（未確認）**。
 
 ## Shisei のポーズ集（利用者が取得するもの）
 
-MAM の単発生成の「ポーズを選ぶ」（Issue #986）は、利用者が同意して「導入する」を押したときだけ、ポーズの参照画像（マネキンの線画と、ControlNet 用の深度・法線マップ〔Issue #1020〕。Qwen-Image 2.1 などの参照画像に「ポーズだけ」の役割で渡す）を GitHub の `wquguru/shisei` のリリース `v0.4.1` から取得し、MAM の実行ファイルと同じ場所の `localai\shisei-poses` ディレクトリに展開します。**MAM はこれらを同梱せず再配布しません**。取得する Zip 4 つ（線画 2・深度 1・法線 1）と分類表（`data/catalog.json`。コミット `26522a708c77088eda4631327b15d8d05f6281c0` に固定）は、SHA-256 と大きさを MAM のカタログ（`backend/internal/modelmgr/catalog/data/assets/shisei-poses.json`）に固定して検証します。取り出すのは、全年齢向けと分類されたポーズの線画（96 ポーズ・414 枚）だけです。成人向けのポーズ（`sexy`・`duo`）は取得しません。
+Nefos Video の単発生成の「ポーズを選ぶ」（Issue #986）は、利用者が同意して「導入する」を押したときだけ、ポーズの参照画像（マネキンの線画と、ControlNet 用の深度・法線マップ〔Issue #1020〕。Qwen-Image 2.1 などの参照画像に「ポーズだけ」の役割で渡す）を GitHub の `wquguru/shisei` のリリース `v0.4.1` から取得し、Nefos Video の実行ファイルと同じ場所の `localai\shisei-poses` ディレクトリに展開します。**Nefos Video はこれらを同梱せず再配布しません**。取得する Zip 4 つ（線画 2・深度 1・法線 1）と分類表（`data/catalog.json`。コミット `26522a708c77088eda4631327b15d8d05f6281c0` に固定）は、SHA-256 と大きさを Nefos Video のカタログ（`backend/internal/modelmgr/catalog/data/assets/shisei-poses.json`）に固定して検証します。取り出すのは、全年齢向けと分類されたポーズの線画（96 ポーズ・414 枚）だけです。成人向けのポーズ（`sexy`・`duo`）は取得しません。
 
 - Shisei のコードとドキュメントは Apache License 2.0、画像（Release の Zip を含む）と Shisei 自身のデータは CC0 1.0 Universal（パブリックドメインへの供与。帰属表示は不要）です。出典・ライセンス文: <https://github.com/wquguru/shisei/blob/26522a708c77088eda4631327b15d8d05f6281c0/NOTICE>、<https://github.com/wquguru/shisei/blob/26522a708c77088eda4631327b15d8d05f6281c0/LICENSE-images>。AI が作る画像の権利についての考え方は <https://github.com/wquguru/shisei/blob/26522a708c77088eda4631327b15d8d05f6281c0/docs/LICENSING.md> にあります。
-- **ポーズの選び方・番号・名前・分類は、ギア（@giaaibusi）の ai-pose-gallery（<https://ai-pose-gallery.pages.dev/>）に従っています。Shisei の NOTICE は、その部分を「credited, not licensed」（出典を示すが、ライセンスは与えない）と書いており、どちらのライセンスも及びません。** MAM は分類表をポーズ名の表示に使うため、画面ではこの分類表の商用利用の可否を「不明」としています。画像（CC0）の商用利用は可です。
+- **ポーズの選び方・番号・名前・分類は、ギア（@giaaibusi）の ai-pose-gallery（<https://ai-pose-gallery.pages.dev/>）に従っています。Shisei の NOTICE は、その部分を「credited, not licensed」（出典を示すが、ライセンスは与えない）と書いており、どちらのライセンスも及びません。** Nefos Video は分類表をポーズ名の表示に使うため、画面ではこの分類表の商用利用の可否を「不明」としています。画像（CC0）の商用利用は可です。
 - Shisei の画像は、マネキンまたは AI が作った成人の姿で、実在の人物を写したものではありません。
-- 深度・法線マップ（2026-10-31 に作成）は、Shisei が線画から Depth Anything V2 Small（Apache-2.0）と Marigold Normals v1-1（CreativeML OpenRAIL++-M）で作ったものです。docs/LICENSING.md の規則 3 のとおり、その使用制限はモデルの使い方に掛かり、出力の再配布には掛からず、出力は CC0 です。全年齢向けのポーズ集では、MAM は線画と同じ姿勢の分だけを取り出し、成人向けのシリーズ（`sexy`・`duo`）は取り出しません。
-- **成人向けのシリーズ（`sexy`・`duo`。Issue #1020）は別の資産セット（`localai\shisei-poses-adult`）で、モデル管理で年齢確認（「成人向けモデルを表示する」）をオンにした利用者が、ポーズ集の画面から改めて同意して導入したときだけ取得します**（`shisei-sexy-v0.4.1.zip`・`shisei-duo-v0.4.1.zip`、同じリリースの深度・法線の Zip から `sexy_`・`duo_` の分）。Shisei はこの 2 つを「suggestive（扇情的）」とし、README は「顔のない人形で、裸の細部はない」と書いています（画像は CC0 1.0）。年齢確認がオフの間、MAM はこれらの導入も、名前・画像の表示もしません。
+- 深度・法線マップ（2026-10-31 に作成）は、Shisei が線画から Depth Anything V2 Small（Apache-2.0）と Marigold Normals v1-1（CreativeML OpenRAIL++-M）で作ったものです。docs/LICENSING.md の規則 3 のとおり、その使用制限はモデルの使い方に掛かり、出力の再配布には掛からず、出力は CC0 です。全年齢向けのポーズ集では、Nefos Video は線画と同じ姿勢の分だけを取り出し、成人向けのシリーズ（`sexy`・`duo`）は取り出しません。
+- **成人向けのシリーズ（`sexy`・`duo`。Issue #1020）は別の資産セット（`localai\shisei-poses-adult`）で、モデル管理で年齢確認（「成人向けモデルを表示する」）をオンにした利用者が、ポーズ集の画面から改めて同意して導入したときだけ取得します**（`shisei-sexy-v0.4.1.zip`・`shisei-duo-v0.4.1.zip`、同じリリースの深度・法線の Zip から `sexy_`・`duo_` の分）。Shisei はこの 2 つを「suggestive（扇情的）」とし、README は「顔のない人形で、裸の細部はない」と書いています（画像は CC0 1.0）。年齢確認がオフの間、Nefos Video はこれらの導入も、名前・画像の表示もしません。
 - ポーズの参照画像で作った画像の権利と、選んだ生成モデルのライセンス（Qwen-Image 2.1 を含む Qwen RESEARCH LICENSE のモデルは非商用）は別です。画面では、選んだモデルの商用利用の可否をポーズの選択画面にも表示します。
 
 ## ComfyUI_VNCCS_Utils（PoseStudio。許可リストに載せているが、今は導入できない）
 
-MAM のカスタムノードの許可リスト（Issue #976・#985）には、AHEKOT の ComfyUI_VNCCS_Utils（コミット `334eee549fba5025b97c4e0a6123b2b68a46f0fc`、MIT License、Copyright (c) 2025 MiuProject）を載せています。**今は導入できません**（PoseStudio はブラウザの画面でポーズを取り込むのを待つ作りで、実行時に Hugging Face からポーズ集・モデルを自動で取得し、必要な Python パッケージの一部が同梱の環境にないためです）。導入できる状態になるまで、MAM がこのコードを取得・同梱・再配布することはありません。このリポジトリには取り込んだ別のコード（ComfyUI-Krea2Edit、Apache License 2.0）の LICENSE と NOTICE が入っており、実行時に取得されるポーズ集・モデルのライセンスは配布元ごとに違い、MAM は確かめていません（商用利用の可否は「不明」）。LoRA `MIUProject/VNCCS_PoseStudio_QI2.1`（Hugging Face）にはライセンスの記載がなく、MAM は取得・同梱しません。
+Nefos Video のカスタムノードの許可リスト（Issue #976・#985）には、AHEKOT の ComfyUI_VNCCS_Utils（コミット `334eee549fba5025b97c4e0a6123b2b68a46f0fc`、MIT License、Copyright (c) 2025 MiuProject）を載せています。**今は導入できません**（PoseStudio はブラウザの画面でポーズを取り込むのを待つ作りで、実行時に Hugging Face からポーズ集・モデルを自動で取得し、必要な Python パッケージの一部が同梱の環境にないためです）。導入できる状態になるまで、Nefos Video がこのコードを取得・同梱・再配布することはありません。このリポジトリには取り込んだ別のコード（ComfyUI-Krea2Edit、Apache License 2.0）の LICENSE と NOTICE が入っており、実行時に取得されるポーズ集・モデルのライセンスは配布元ごとに違い、Nefos Video は確かめていません（商用利用の可否は「不明」）。LoRA `MIUProject/VNCCS_PoseStudio_QI2.1`（Hugging Face）にはライセンスの記載がなく、Nefos Video は取得・同梱しません。

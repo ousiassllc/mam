@@ -187,7 +187,7 @@ templ importRemote(d Data) {
 					}
 				</label>
 				<label class="flex flex-col gap-1 text-xs text-mute" for="workflow-remote-name">
-					<span>mam での名前（空: ファイル名）</span>
+					<span>Nefos Video での名前（空: ファイル名）</span>
 					@atoms.Input(atoms.FieldMd, "w-56", templ.Attributes{"id": "workflow-remote-name", "name": FieldName, "type": "text", "maxlength": itoa(MaxNameLen)})
 				</label>
 				@kindSelect("workflow-remote-kind", "")

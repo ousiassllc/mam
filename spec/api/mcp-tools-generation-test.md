@@ -16,7 +16,7 @@
 - **モデルは指定どおりに呼ぶ**: プロンプトは補正せずそのまま送る（英訳が `true` のときは英訳だけを加える）。モデルが使えない（`list_generation_models` の `available` が false）・落ちたときも代替モデルへは切り替えない（その結果が `failed`）。ネガティブの欄が無いモデルへは「Avoid: …」としてプロンプトに書き足し、結果の `negative_mode`（none / field / folded）と `sent_prompt` に残す。
 - **シード**: `supports_seed` のモデル（FLUX.2・Runway Gen-4.5・シードの割り当てがあるローカルの ComfyUI モデル）にはサーバーが結果ごとに別のシードを作って送り、送った値を `seed` に残す。ほかのモデルは同じ入力の n 回の呼び出しで、`seed` なし・`seed_sent` が false。
 - **課金・台帳に入らない**: Take・コスト台帳・アセットは作らない。合計コストは `list_generation_results` の `spend` だけ（解析・CostSummary には出ない）。
-- **長い操作は `job_id` を返す**: `run_generation_test`。`get_job` は種別 `gentest` の Probe で結果の件数から進捗を返す（下の「ジョブ」）。再起動後も読める。ジョブは再開しない（mam が落ちたとき、終わっていない結果は `failed`・理由「中断」。終わった結果は残る）。
+- **長い操作は `job_id` を返す**: `run_generation_test`。`get_job` は種別 `gentest` の Probe で結果の件数から進捗を返す（下の「ジョブ」）。再起動後も読める。ジョブは再開しない（Nefos Video が落ちたとき、終わっていない結果は `failed`・理由「中断」。終わった結果は残る）。
 - **ファイルは URL で受け渡す**: 入力画像はアップロードの用途 `gentest_reference`、結果のファイルは `get_generation_result` の `file`（ダウンロードの種類 `gentest_file`。トークン付き・15 分。base64 は返さない）。複数の結果は `export_generation_results` が ZIP にまとめる（ダウンロードの種類 `gentest_export`。Issue #932）。
 - **拒否**: 入力の誤り（モデル・プロンプト・本数・縦横比・解像度・長さ・入力画像・使えないモデル・英訳に使う LLM が無い）は `validation`、英訳に LLM が失敗した（API キー未登録・サーキットブレーカー・タイムアウト・訳になっていない答え。呼び出しの取り消しは LLM の失敗ではないので含めない）ときは `upstream`、見積りの不一致・上限超え・終わっていないものの削除・終わったバッチの取り消しは `conflict`、無いものは `not_found`。取り込みのスロットが LOCK されていれば `locked`（画像は取り込み済みで、メッセージに `asset_id`・`reference_id` を含む）。
 
@@ -48,7 +48,7 @@
 | `enhance_generation_video` | 成功した動画の結果を大きくする（`op=upscale`）か、コマを増やして滑らかにする（`op=interpolate`）。アップスケールとコマ補間は**別々の処理**で、1 回に 1 つ（続けたいときは、できた結果をもう一度処理する。処理した結果をさらに処理してもよい）。結果は元とは別の結果（別のバッチ・別のファイル）として履歴に残り、`get_generation_result`・`get_generation_test`・`list_generation_results` の `video_enhance`（`source_result_id`・`source_model`・`op`・`provider`・`model`・`scale`・`target_short_side`・`multiplier`・`target_fps`・元と出力の大きさ・fps・コマ数、Topaz は `topaz`＝`request_id`・`estimated_credits`・`attribution`）に元と使った値が入る。ローカルは無料で、見積り・確認なしですぐ始まる（`model` を省くと `op` に合う最初のローカルのモデル。有料のモデルは自動では選ばない）。**Topaz（`model` が `topaz:...`）は `estimate_id` と、利用者が確認した `confirmed_credits`（見積りの `credits` と同じ値）が無いと実行しない**（`estimate_id` なし → `validation`、見積りの期限切れ・使用済み・未知 → `conflict`「見積りの有効期限が切れました。もう一度見積りを取ってください」、`confirmed_credits` が違う・見積りのときと条件が違う → `conflict`）。Topaz が受け付けたあとに失敗しても**自動では再送しない**（クレジットの二重消費を避ける）。進み具合は `get_job` / `get_generation_test`（`progress`）。そのほかの失敗は結果の `error` / `error_info`（キー無効・クレジット不足・混雑・ファイルの大きさなど、原因と直し方の日本語） | `result_id`, `op`, `model`, `scale`, `target_short_side`, `multiplier`, `target_fps`, `estimate_id`, `confirmed_credits` | `job_id`, `state`, `batch_id`, `result_id` | いいえ（ローカルの ComfyUI を動かす／有料クラウドにクレジットを使う） |
 
 結果（`results[]`）: `result_id`, `batch_id`, `position`, `media`, `model`, `model_label`, `api_model`, `prompt`, `sent_prompt`, `translated`, `translated_prompt`, `translated_negative_prompt`, `negative_prompt`, `negative_mode`, `aspect_ratio`, `resolution`, `duration_seconds`, `seed`, `seed_sent`, `status`（queued / running / succeeded / failed / cancelled）, `error`, `has_file`, `mime_type`, `size_bytes`, `cost_basis`, `estimated_cost_usd`, `actual_cost_usd`（ベンダーが返したときだけ）, `favorite`, `used_inputs`, `avoid_reference_pose`, `lora`（`name`, `strength`。使ったときだけ）, `created_at`, `finished_at`。
-| `get_facefusion_status` | 顔の入れ替え（FaceFusion。mam に同梱しない外部ツール）の状態（Issue #995。[../architecture/gentest/face-swap.md](../architecture/gentest/face-swap.md)）。`ready`（Python とフォルダが見つかった）・保存したパスと探した結果・FaceFusion の版と自己申告のライセンス・探した場所・選べるモデル（`swappers`・`detectors`・`enhancers`。それぞれ `class`: open / conditional / noncommercial / research / unknown とライセンス名）・既定・標準の注意 `notes`（ArcFace が非商用・成人向けの画像は断られる・本体は OpenRAIL-AS・モデルは FaceFusion が取得する）・出典の URL |
+| `get_facefusion_status` | 顔の入れ替え（FaceFusion。Nefos Video に同梱しない外部ツール）の状態（Issue #995。[../architecture/gentest/face-swap.md](../architecture/gentest/face-swap.md)）。`ready`（Python とフォルダが見つかった）・保存したパスと探した結果・FaceFusion の版と自己申告のライセンス・探した場所・選べるモデル（`swappers`・`detectors`・`enhancers`。それぞれ `class`: open / conditional / noncommercial / research / unknown とライセンス名）・既定・標準の注意 `notes`（ArcFace が非商用・成人向けの画像は断られる・本体は OpenRAIL-AS・モデルは FaceFusion が取得する）・出典の URL |
 | `swap_generation_face` | `target`（顔を入れ替えられる側の画像）の顔を `face`（顔の画像）の顔に入れ替える（Issue #995）。`{source, id}` で指す。任意の `swapper`・`detector`・`enhancer`（既定 ghost_2_256・yunet・gfpgan_1.4。`none` で復元しない）。結果は別の結果（`model: facefusion`）で、`face_swap`（元の結果・モデル・ライセンスの警告）と `face_similarity` が付く。見積り・確認なし。非商用・研究用・商用不明のモデルは `warnings` で知らせて実行する。FaceFusion が見つからないときは `unavailable`（`failure.code` が `facefusion_unavailable`）、未知のモデルは `validation`。`job_id`・`batch_id`・`result_id`・`warnings` |
 
 **動画モデルの種類 `video_modes`（Issue #1014）**: `list_generation_models` の入力に `video_modes[]`（`t2v`・`i2v`・`flf2v`・`vace`・`s2v`・`r2v` のどれか。モデルマネージャーのカタログに種類が書いてあるローカルの動画モデルだけが入る。クラウドの動画モデル・画像モデルは種類を持たないので、指定すると出ない。言葉が不正なら `validation`）を足した。モデルの `catalog.traits.video_modes[]` が種類（カタログのモデルだけ）。画面の動画モデルの選択（単発生成・設定・Shot）の「動画の種類」の欄と同じ条件で、意味は [model-filter.md](../architecture/model-manager/model-filter.md)。
@@ -57,7 +57,7 @@
 
 | 種類 | 名前 | 内容 |
 |------|------|------|
-| アップロードの用途 | `gentest_reference` | 入力画像（画像モデルの参照画像・動画モデルの最初／最後のフレーム・自由な参照）。`create_upload_ticket` で URL を取り、multipart で 1 回送る。上限 20 MiB、PNG・JPEG・WebP（中身を検査する）。結果 `{"reference_id","mime_type"}` の `reference_id` を `references[]` に `{source: "upload", id}` として渡す。使わないまま 24 時間たつと、mam の次の起動で消える |
+| アップロードの用途 | `gentest_reference` | 入力画像（画像モデルの参照画像・動画モデルの最初／最後のフレーム・自由な参照）。`create_upload_ticket` で URL を取り、multipart で 1 回送る。上限 20 MiB、PNG・JPEG・WebP（中身を検査する）。結果 `{"reference_id","mime_type"}` の `reference_id` を `references[]` に `{source: "upload", id}` として渡す。使わないまま 24 時間たつと、Nefos Video の次の起動で消える |
 | ダウンロードの種類 | `gentest_file` | 成功した結果のファイル（リソース ID は `result_id`）。`get_generation_result` が URL にする |
 | ダウンロードの種類 | `gentest_export` | 結果の ZIP（リソース ID は、URL を発行したときに選ばれた結果の id の並びと番号の開始位置。サーバーだけが作れる文字列で、URL には載らない）。`export_generation_results` が URL にする。ZIP はダウンロードのたびにファイルを 1 つずつディスクから流して作る（メモリに溜めない）。URL を発行したあとに削除された結果は抜け、全部消えていれば 404 |
 
@@ -65,7 +65,7 @@
 
 - **選ぶ処理は 1 つ**: 画面（`GET /generation-test/export`）と MCP は同じ `service/gentest/export`（`Selection` → `Exporter`）を呼ぶ。条件の意味は両方で同じ。
 - **認可**: URL は他のダウンロードと同じチケット（ランダム値・15 分・発行したトークンが失効すると 401。ローカル限定のリスナー）で、ツール自体は MCP のトークンが要る。チケットの URL は結果 id を含まず、チケットは発行時に選ばれた結果だけを返すので、チケットを持たない者は結果を落とせない。
-- **CSV**: UTF-8 BOM つき・RFC 4180（改行・カンマ・引用符を含む文も壊れない）。`=` `+` `-` `@`・タブ・復帰で始まるセル（モデル名・プロンプト・送った文）は先頭に `'` を足して表計算ソフトが数式として実行しないようにする（CSV インジェクション対策。履歴の原文は mam に残る）。
+- **CSV**: UTF-8 BOM つき・RFC 4180（改行・カンマ・引用符を含む文も壊れない）。`=` `+` `-` `@`・タブ・復帰で始まるセル（モデル名・プロンプト・送った文）は先頭に `'` を足して表計算ソフトが数式として実行しないようにする（CSV インジェクション対策。履歴の原文は Nefos Video に残る）。
 - **ファイル名**: モデル名などは英数字・`.`・`_`・`-` 以外を `-` にし、`..`・`/`・`\` を残さない（パストラバーサルの対策。最大 40 文字）。
 
 ## ローカルモデルの所要時間の見積り（Issue #1002）
@@ -85,7 +85,7 @@
 |---------------|---------------|----------|------------------|----------|
 | `gentest` | `run_generation_test`・`run_prompt_match` | なし | 終わった結果の数 / 全結果の数 | `batch_id`, `succeeded`, `failed`, `cancelled`, `next` |
 
-`progress`（`get_job` と `get_generation_test` の両方。Issue #966・#1002）: バッチが `running` の間、バッチのジョブ（`job_id`）が呼んでいるローカルの ComfyUI の呼び出しが報告した最新のステップ（`node`・`step` / `max_step`・`percent`・`elapsed_seconds`・`eta_seconds`。意味は [mcp-tools.md](mcp-tools.md)）。同時に複数の呼び出しが動くときは、最後に進んだもの 1 つ。クラウドのモデル・読み込み中・終わったバッチ・mam の再起動後は**フィールドごと省く**。`done` / `total` の件数は変わらない。
+`progress`（`get_job` と `get_generation_test` の両方。Issue #966・#1002）: バッチが `running` の間、バッチのジョブ（`job_id`）が呼んでいるローカルの ComfyUI の呼び出しが報告した最新のステップ（`node`・`step` / `max_step`・`percent`・`elapsed_seconds`・`eta_seconds`。意味は [mcp-tools.md](mcp-tools.md)）。同時に複数の呼び出しが動くときは、最後に進んだもの 1 つ。クラウドのモデル・読み込み中・終わったバッチ・Nefos Video の再起動後は**フィールドごと省く**。`done` / `total` の件数は変わらない。
 
 `state`: 結果に動いているものがあれば `running`（まだ何も始まっていなければ `queued`）、終わっていて 1 件でも成功なら `succeeded`、全部失敗なら `failed`（`error` はジョブの理由）、取り消された結果があれば `cancelled`。バッチが削除されると `cancelled`。モデルマネージャーの画面の試し生成は #1100 で廃止するので、種別 `gentest` のジョブは単発生成画面と MCP から始まったものだけになる（`get_job` の読み方は変わらない）。
 
@@ -105,7 +105,7 @@
 
 - **入力**（画像だけ）: `estimate_generation_test`・`run_generation_test` に `quality`（`fast` 速い／`standard` 標準／`high` きれい。省くと標準）と `intent`（`photo`・`anime`・`landscape`・`face`）を足した。**既存の引数は何も変わらない**（`quality`・`intent` を省いたリクエストは今までと同じに動く。`models` は `intent` を使うときだけ省ける）。
 - **`quality`**: モデルの `sampling.quality_presets`（`list_generation_models`）の steps・cfg で作る。`sampling` に `steps`・`cfg` を書いた項目はそちらが優先。標準は何も上書きしない（モデルの既定のまま）。プリセットの無いモデル（クラウド・蒸留・速さのモード）は警告 `quality_ignored` で標準の値で作る。範囲外の名前は `validation`。
-- **`intent`**: 導入済みで呼べて、商用フィルター・成人ゲート・この PC の OS／GPU の条件に合うモデルを、mam が選ぶ（`models` と同時には指定できない。`validation`）。「同じ顔で」（`face`）は `references`（顔の写真）が要り、役割 `reference` のものは `face` として使う。合うモデルが無いときは、理由（導入されていない・条件に合わない）つきの `validation`。見積りの `request.models` に、選ばれたモデルが入る。
+- **`intent`**: 導入済みで呼べて、商用フィルター・成人ゲート・この PC の OS／GPU の条件に合うモデルを、Nefos Video が選ぶ（`models` と同時には指定できない。`validation`）。「同じ顔で」（`face`）は `references`（顔の写真）が要り、役割 `reference` のものは `face` として使う。合うモデルが無いときは、理由（導入されていない・条件に合わない）つきの `validation`。見積りの `request.models` に、選ばれたモデルが入る。
 - **`list_generation_models`**: `intents[]`（`id`・`label`・`hint`・`needs_references`・いま選ばれる `model`・`model_label`・`note`・選べない `reason`）と、各モデルの `sampling.quality_presets`（`fast`・`high` の `steps`・`cfg`）を足した。
 - 画面の「かんたん」と同じ `gentest.Service.Recommend`・`intentapply.Apply`（[../architecture/gentest/gentest.md](../architecture/gentest/gentest.md) §3.6）を呼ぶ。テストは `mcp/tools/gentest/settingstest/quality_test.go`。
 - 結果の「もう1枚」「もう一度」「この顔で作る」（画面の再現）に当たる MCP の操作は、既存の `get_generation_result`（使った `sampling`・`seed`）と `run_generation_test`（`seed`・`sampling`）の組み合わせで足りる（レシピは #977 のステージ 2）。
@@ -122,7 +122,7 @@
 - 画面とは別に、動画専用の 3 つのツールを足した（画像の `list_generation_upscalers`・`upscale_generation_result` は変えない）。実装は `backend/internal/mcp/tools/gentestvideo`（`tools/gentest` が行数の上限なので別パッケージ）。サービスは `service/gentest/videoenhance`（`Enhancers`・`EstimateEnhance`・`Enhance`）で、[../architecture/gentest/gentest.md](../architecture/gentest/gentest.md) §3.9 に仕組みを書いている。
 - 流れは、`list_generation_video_enhancers`（モデルと `available`・`license`・`attribution`）→ `estimate_generation_video_enhance`（ローカルは無料・確認不要、Topaz は `credits` と `estimate_id`）→ 利用者の確認 → `enhance_generation_video`（Topaz は `estimate_id`・`confirmed_credits`）。進み具合・結果は既存の `get_job`・`get_generation_test`・`get_generation_result` で読む。
 - アップスケール（`op=upscale`）とコマ補間（`op=interpolate`）は別々の処理で、それぞれ別の結果を 1 つ作る。続けるときは、できた結果の `result_id` でもう一度呼ぶ（処理した結果をさらに処理してよい）。元は成功した**動画**の結果で、元の大きさ・fps・コマ数は生成のときの指定ではなく、ファイルを ffprobe で読んだ値を使う。ffmpeg / ffprobe が無いと処理できない（共通エラー `ffmpeg_missing`。設定の「ffmpeg」で入れるか指定する）。
-- **確認の関門**: Topaz は有料（クレジット）。`enhance_generation_video` は、`estimate_generation_video_enhance` が返した `estimate_id` と、利用者が確認した `confirmed_credits`（`credits` と同じ値）が無いと送らない。見積りはメモリに 30 分だけ持ち、1 回で使い切る（もう一度送るとクレジットがもう一度要るため）。mam を再起動すると見積りは消えるので取り直す。見積りの金額が取れなかったときは見積りが失敗し、実行できない。Topaz が受け付けたあとに失敗しても自動では再送しない。結果の `cost_basis` は `unknown`（クレジットは金額ではない）で、見積りのクレジットは `video_enhance.topaz.estimated_credits` に残る。
+- **確認の関門**: Topaz は有料（クレジット）。`enhance_generation_video` は、`estimate_generation_video_enhance` が返した `estimate_id` と、利用者が確認した `confirmed_credits`（`credits` と同じ値）が無いと送らない。見積りはメモリに 30 分だけ持ち、1 回で使い切る（もう一度送るとクレジットがもう一度要るため）。Nefos Video を再起動すると見積りは消えるので取り直す。見積りの金額が取れなかったときは見積りが失敗し、実行できない。Topaz が受け付けたあとに失敗しても自動では再送しない。結果の `cost_basis` は `unknown`（クレジットは金額ではない）で、見積りのクレジットは `video_enhance.topaz.estimated_credits` に残る。
 - **成人向けの結果を Topaz に送るとき**: 元の動画が成人向けのモデルの結果（または、その結果を処理したもの）でも Topaz に送れる。`estimate_generation_video_enhance` は `adult=true` と `adult_warning`（成人向けの内容が外部のクラウド〔Topaz Labs〕に送られる・Topaz の利用規約で禁止されている内容は送らない・処理した動画の扱いは Topaz の規約に従う）を返す。利用者に見せて確認が取れたときだけ `enhance_generation_video` に `adult_confirmed=true` を渡す。渡さないと `validation`（同じ警告つき）で送らない（見積りは使い切らないので、確認して同じ `estimate_id` で出し直せる）。成人向けでない結果・ローカルのモデルには `adult`・`adult_warning` は付かず、`adult_confirmed` も要らない。
 - **キーが無いとき**: Topaz のモデルは一覧に `available=false`・`unavailable=no_key`・#1013 の文言つきで出る。見積り・実行は `validation`。画面のモデル選択にも出さない。
 - **表示の義務**: Topaz の規約に合わせ、Topaz を出す・使う場所（一覧・見積り・結果の `video_enhance.topaz`）に `attribution`（`Powered by Topaz Labs`）が付く。クライアントは表示すること。出力の商用利用の可否は公式ドキュメントに無いので `license.commercial` は `unknown`（出典 <https://developer.topazlabs.com/getting-started/faqs>、確認日 2026-11-04）。
@@ -215,3 +215,4 @@
 | 1.34 | 2026-11-06 | `get_job` の種別 `gentest` の説明から、モデルマネージャーの試し生成を外した（区画の廃止。ツール・引数は変えない。状態は仕様のみ） | Issue #1100 |
 | 1.35 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |
 | 1.36 | 2026-11-14 | `list_generation_models` の入力に `video_modes[]`、モデルの `catalog.traits.video_modes[]` を足した（Issue #1014） | Issue #1014・#1011 |
+| 1.37 | 2026-11-19 | 本文の製品名の表示を「MAM」から「Nefos Video」に改めた（過去の改訂履歴の文は当時のまま） | #1170: 製品名を MAM から Nefos Video に変更（表示名のみ。識別子・パス・実行ファイル名は変更しない） |

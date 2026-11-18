@@ -29,7 +29,7 @@
  ],
  "vram": {
   "min_gb": 16,
-  "source": "flux1-dev（fp8）と同じ。Flux dev fp8 は 12〜16 GB の目安の上限側。Issue #841 付録（Notion の記載または mam の推定。mam の実機では未検証）",
+  "source": "flux1-dev（fp8）と同じ。Flux dev fp8 は 12〜16 GB の目安の上限側。Issue #841 付録（Notion の記載または Nefos Video の推定。Nefos Video の実機では未検証）",
   "estimate": true
  },
  "license": {
@@ -54,7 +54,7 @@
     "commercial": "unknown"
    }
   ],
-  "notice": "この mam のインストール先に取得するモデルのライセンスです。非商用の用途にだけ使ってください。"
+  "notice": "この Nefos Video のインストール先に取得するモデルのライセンスです。非商用の用途にだけ使ってください。"
  },
  "consent_required": true,
  "requires_hf_token": false,

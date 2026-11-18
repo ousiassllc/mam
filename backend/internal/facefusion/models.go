@@ -216,7 +216,7 @@ func (s Selection) Warnings() ([]string, error) {
 
 // AdultNote is shown wherever a swap is offered: FaceFusion declines nude and sexual pictures, and its NSFW check (the content analyser)
 // cannot be switched off (https://docs.facefusion.io/introduction/disclaimer), so it is not a tool for the results of mam's adult models.
-const AdultNote = "FaceFusion は、ヌード・成人向けの画像の処理を断ります（公式の方針で、NSFW の判定は無効にできません）。mam の成人向けモデルで作った画像の顔の入れ替えには使えません"
+const AdultNote = "FaceFusion は、ヌード・成人向けの画像の処理を断ります（公式の方針で、NSFW の判定は無効にできません）。Nefos Video の成人向けモデルで作った画像の顔の入れ替えには使えません"
 
 // LicenseNote is what FaceFusion itself is licensed under: OpenRAIL-AS since 2025-02 (it was MIT before), with use restrictions that bind
 // the user. mam has not read its clauses in full (the repository has no full text), so it only names it.
@@ -231,7 +231,7 @@ const RecommendedTag = "3.9.2"
 const ConfirmedSeries = "3."
 
 // VersionNote is what the screen says about a FaceFusion whose version does not start with ConfirmedSeries (it only says it: nothing is refused).
-const VersionNote = "mam が確かめたのは 3.x の選択肢（モデルの名前）です。この版では入れ替えが動かないことがあります"
+const VersionNote = "Nefos Video が確かめたのは 3.x の選択肢（モデルの名前）です。この版では入れ替えが動かないことがあります"
 
 // FirstRunNote says what FaceFusion does by itself the first time a model is used: it fetches the model files, not mam.
-const FirstRunNote = "初めて使うモデルは、FaceFusion 自身が配布元から取得します（mam は取得しません）。初回は時間がかかり、ディスクを使います"
+const FirstRunNote = "初めて使うモデルは、FaceFusion 自身が配布元から取得します（Nefos Video は取得しません）。初回は時間がかかり、ディスクを使います"

@@ -60,7 +60,7 @@
  ],
  "vram": {
   "min_gb": 16,
-  "source": "wan22-i2v-14b と同じ構成（fp8 の高・低ノイズ各約 14.3 GB を順に使う。LoRA は各 0.3 GB 増えるだけ）。Wan 14B fp8 の 16 GB は mam の推定（Issue #841 付録の目安）。mam の実機（16 GB）では未確認",
+  "source": "wan22-i2v-14b と同じ構成（fp8 の高・低ノイズ各約 14.3 GB を順に使う。LoRA は各 0.3 GB 増えるだけ）。Wan 14B fp8 の 16 GB は Nefos Video の推定（Issue #841 付録の目安）。Nefos Video の実機（16 GB）では未確認",
   "estimate": true
  },
  "license": {
@@ -91,7 +91,7 @@
     "commercial": "yes"
    }
   ],
-  "notice": "この mam のインストール先に取得するモデルです。LoRA のライセンスの本文が無いため、商用には使わないでください。成人向けの表現の公開は、地域の法令と配信先の規約に従ってください。"
+  "notice": "この Nefos Video のインストール先に取得するモデルです。LoRA のライセンスの本文が無いため、商用には使わないでください。成人向けの表現の公開は、地域の法令と配信先の規約に従ってください。"
  },
  "consent_required": true,
  "requires_hf_token": false,

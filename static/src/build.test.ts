@@ -19,7 +19,7 @@ it('a production build removes leftovers of earlier builds from the embedded dis
   const files = readdirSync(dist)
     .filter((n) => n !== '.gitkeep')
     .sort();
-  expect(files).toEqual(['app.css', 'app.js', 'fonts', 'fonts.css']);
+  expect(files).toEqual(['app.css', 'app.js', 'brand', 'fonts', 'fonts.css']);
 }, 60_000);
 
 // The fonts of the UI guide are shipped with the app (no network, no system font): every slice the stylesheet names is a file of dist/fonts.

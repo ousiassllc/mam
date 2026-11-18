@@ -38,7 +38,7 @@
  ],
  "vram": {
   "min_gb": 8,
-  "source": "Wan 公式（Wan-AI/Wan2.1-T2V-1.3B のモデルカード）は「T2V-1.3B は 8.19 GB の VRAM だけで動く」と書く（量子化などの最適化なしで、RTX 4090 で 5 秒の 480P が約 4 分）。テキストエンコーダーは fp8 版。mam の実機では未検証",
+  "source": "Wan 公式（Wan-AI/Wan2.1-T2V-1.3B のモデルカード）は「T2V-1.3B は 8.19 GB の VRAM だけで動く」と書く（量子化などの最適化なしで、RTX 4090 で 5 秒の 480P が約 4 分）。テキストエンコーダーは fp8 版。Nefos Video の実機では未検証",
   "estimate": true
  },
  "license": {

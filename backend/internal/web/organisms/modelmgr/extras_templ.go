@@ -503,7 +503,7 @@ func externalResult(r ExternalResult) templ.Component {
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "</details><p class=\"text-sm text-mute\">外部の ComfyUI へのモデルの導入は、その ComfyUI の側で行ってください（mam は読むだけです）。そろっているモデルは、接続先にワークフローを登録すると使えます。</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "</details><p class=\"text-sm text-mute\">外部の ComfyUI へのモデルの導入は、その ComfyUI の側で行ってください（Nefos Video は読むだけです）。そろっているモデルは、接続先にワークフローを登録すると使えます。</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -37,7 +37,7 @@
  ],
  "vram": {
   "min_gb": 16,
-  "source": "ComfyUI 公式ガイドは「ネイティブ offload で VRAM 8 GB でも収まる」、Wan 公式の参照実装は offload ありで 24 GB 以上と書く。mam は 16 GB（拡散モデル fp16 の約 10 GB が載る）を目安にした。mam の実機（16 GB）では未確認",
+  "source": "ComfyUI 公式ガイドは「ネイティブ offload で VRAM 8 GB でも収まる」、Wan 公式の参照実装は offload ありで 24 GB 以上と書く。Nefos Video は 16 GB（拡散モデル fp16 の約 10 GB が載る）を目安にした。Nefos Video の実機（16 GB）では未確認",
   "estimate": true
  },
  "license": {

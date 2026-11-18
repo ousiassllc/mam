@@ -62,7 +62,7 @@ type Process struct {
 	PID        int    `json:"pid"`
 	Name       string `json:"name"`
 	GPUIndex   *int   `json:"gpu_index,omitempty"`
-	Owner      string `json:"owner" jsonschema:"mam（mam 自身）・mam_engine（mam が起動した ComfyUI）・other"`
+	Owner      string `json:"owner" jsonschema:"Nefos Video（Nefos Video 自身）・mam_engine（Nefos Video が起動した ComfyUI）・other"`
 	UsedBytes  *int64 `json:"used_bytes,omitempty"`
 	UsedReason string `json:"used_bytes_unavailable,omitempty"`
 }

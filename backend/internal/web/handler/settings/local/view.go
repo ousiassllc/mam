@@ -59,7 +59,7 @@ func problemOf(err error) string {
 	if errors.As(err, &invalid) {
 		return invalid.Message
 	}
-	return "ローカル・代替モデルの設定を読み込めません。mam のログを確認してください"
+	return "ローカル・代替モデルの設定を読み込めません。Nefos Video のログを確認してください"
 }
 
 func kindLabel(k service.Kind) string {

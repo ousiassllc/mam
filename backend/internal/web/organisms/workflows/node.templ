@@ -54,13 +54,13 @@ templ Node(d NodeData) {
 			<p class="text-sm text-success" role="status" data-testid="nodes-opened">ComfyUI に「{ d.Opened }」を置きました。画面左の「ワークフロー」（w キー）から開いてください。</p>
 		}
 		if d.State == NodeReady || d.State == NodeRejected {
-			<p class="text-sm text-mute">ノードを組んで保存し、一度実行したら、「ワークフロー」画面の「ComfyUI から取り込む」で mam に保存します。</p>
+			<p class="text-sm text-mute">ノードを組んで保存し、一度実行したら、「ワークフロー」画面の「ComfyUI から取り込む」で Nefos Video に保存します。</p>
 		}
 		if d.State == NodeReady {
 			<mam-comfy-frame
 				src={ d.FrameURL }
 				open-url={ d.OpenURL }
-				failure-message="ComfyUI の画面を読み込めませんでした。ComfyUI が起動しているか、接続先のアドレスを確かめてください。外部の ComfyUI が別のサイトの中での表示を拒否している場合は、ComfyUI の起動オプションに --enable-cors-header（mam のオリジン）を付けるか、「ブラウザで開く」を使ってください。"
+				failure-message="ComfyUI の画面を読み込めませんでした。ComfyUI が起動しているか、接続先のアドレスを確かめてください。外部の ComfyUI が別のサイトの中での表示を拒否している場合は、ComfyUI の起動オプションに --enable-cors-header（Nefos Video のオリジン）を付けるか、「ブラウザで開く」を使ってください。"
 				data-testid="nodes-frame"
 			></mam-comfy-frame>
 		} else {

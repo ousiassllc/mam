@@ -132,7 +132,7 @@ func (st Status) Problem() string {
 	case !st.Use.Managed():
 		return ""
 	case st.Unavailable:
-		return "このアプリには、mam が管理する " + st.Use.Name() + " がありません。「別のサーバー」を選んでください"
+		return "このアプリには、Nefos Video が管理する " + st.Use.Name() + " がありません。「別のサーバー」を選んでください"
 	}
 	switch st.Info.State {
 	case ManagedUnsupported:

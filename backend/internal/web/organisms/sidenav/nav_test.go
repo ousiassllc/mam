@@ -2,6 +2,7 @@ package sidenav_test
 
 import (
 	"context"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
@@ -44,6 +45,20 @@ func TestNav_LabelsStayInTheTextOfTheLinksWhenFolded(t *testing.T) {
 		}
 		assert.Regexp(t, `<svg[^>]*aria-hidden="true"`, html, "the icons are decoration")
 	}
+}
+
+// The top of the menu is the logo of Nefos Video: the lockup while the menu is open and the mark when it is folded, each in a Light and a Dark
+// file (brand.css shows the one of the theme), and the name as text for a screen reader.
+func TestNav_ShowsTheLogoInBothThemesAndNamesTheProduct(t *testing.T) {
+	html := render(t.Context(), t, sidenav.At(sidenav.Projects))
+
+	for _, file := range []string{"lockup-light.svg", "lockup-dark.svg", "icon-32-light.png", "icon-32-dark.png"} {
+		assert.Contains(t, html, `src="/static/brand/`+file+`"`)
+		assert.FileExists(t, filepath.Join("..", "..", "..", "..", "..", "static", "brand", file))
+	}
+	assert.Equal(t, 2, strings.Count(html, `class="brand-light `))
+	assert.Equal(t, 2, strings.Count(html, `class="brand-dark `))
+	assert.Contains(t, html, `<span class="sr-only">Nefos Video</span>`)
 }
 
 func TestNav_FoldStateIsDrawnFromTheRequestAndNamesTheButtonForIt(t *testing.T) {

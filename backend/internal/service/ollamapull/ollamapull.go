@@ -113,7 +113,7 @@ func (s *Service) find(name string) (ollamamodels.Model, error) {
 	}
 	m, ok := ollamamodels.Find(s.Models, name)
 	if !ok {
-		return ollamamodels.Model{}, &InvalidError{Message: "そのモデルは、mam が取得できるモデルの一覧にありません"}
+		return ollamamodels.Model{}, &InvalidError{Message: "そのモデルは、Nefos Video が取得できるモデルの一覧にありません"}
 	}
 	return m, nil
 }

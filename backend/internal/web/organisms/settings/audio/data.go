@@ -17,7 +17,7 @@ const (
 )
 
 // Description is what the category says under its title.
-const Description = "声（セリフ・ナレーション）と口パクを、クラウド（ElevenLabs・Sync Labs）で作るか、この PC のローカルモデル（GPT-SoVITS・Irodori-TTS・MuseTalk 1.5）で作るかを選びます。何も選ばないときはクラウドです。ローカルは Windows + NVIDIA の GPU だけで動かせます（mam が自動で導入・起動します）。保存した内容は、次の音声作成から使われます。"
+const Description = "声（セリフ・ナレーション）と口パクを、クラウド（ElevenLabs・Sync Labs）で作るか、この PC のローカルモデル（GPT-SoVITS・Irodori-TTS・MuseTalk 1.5）で作るかを選びます。何も選ばないときはクラウドです。ローカルは Windows + NVIDIA の GPU だけで動かせます（Nefos Video が自動で導入・起動します）。保存した内容は、次の音声作成から使われます。"
 
 // Local is the local provider of a card: where it stands and why it cannot be used.
 type Local struct {

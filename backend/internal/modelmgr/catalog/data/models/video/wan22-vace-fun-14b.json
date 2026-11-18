@@ -16,7 +16,7 @@
    "r2v"
   ]
  },
- "description": "【中ティア・非検閲ではない標準モデル】Wan 2.2 の VACE Fun（Alibaba PAI の alibaba-pai/Wan2.2-VACE-Fun-A14B。Wan2.2-T2V-A14B に VACE 方式で制御と参照の重みを足したもの。Wan 公式の VACE ではなく PAI の公開で、Comfy-Org が fp8 にして配っている）。mam では、テキストだけから作る T2V と、参照画像 1 枚（人物・物・背景）を登場させる R2V の 2 つで使う（VACE 本来の制御動画・マスクによる編集や延長は、mam の動画の入力にないので使わない）。高ノイズ用と低ノイズ用の 2 つの拡散モデル（fp8、各約 17.3 GB）を順に使う。テキストエンコーダー（他の Wan と共有）と Wan 2.1 の VAE を含め、合計約 41.7 GB。480p・720p・16fps・音声なし。得意: Wan 2.2 14B の動きの質に加えて、参照画像の人物や物を動画に出せること（小ティアの wan21-vace-1-3b より高品質）。注意: ComfyUI の公式のテンプレートは無く、ワークフローはモデルの作者（PAI の VideoX-Fun）の公式の値（shift 12・cfg 6・境界 0.875）を標準ノードに写したもので、mam の実機では未検証。Wan 2.2 の T2V（wan22-t2v-14b）より約 6 GB 大きく、20 ステップ・cfg 6 で遅い。参照画像は先頭フレームではなく見た目として使われる（先頭フレームから作るのは wan22-i2v-14b）。ライセンス: Apache-2.0 で商用を含めて自由に使える（著作権表示とライセンス文を保つ）。",
+ "description": "【中ティア・非検閲ではない標準モデル】Wan 2.2 の VACE Fun（Alibaba PAI の alibaba-pai/Wan2.2-VACE-Fun-A14B。Wan2.2-T2V-A14B に VACE 方式で制御と参照の重みを足したもの。Wan 公式の VACE ではなく PAI の公開で、Comfy-Org が fp8 にして配っている）。Nefos Video では、テキストだけから作る T2V と、参照画像 1 枚（人物・物・背景）を登場させる R2V の 2 つで使う（VACE 本来の制御動画・マスクによる編集や延長は、Nefos Video の動画の入力にないので使わない）。高ノイズ用と低ノイズ用の 2 つの拡散モデル（fp8、各約 17.3 GB）を順に使う。テキストエンコーダー（他の Wan と共有）と Wan 2.1 の VAE を含め、合計約 41.7 GB。480p・720p・16fps・音声なし。得意: Wan 2.2 14B の動きの質に加えて、参照画像の人物や物を動画に出せること（小ティアの wan21-vace-1-3b より高品質）。注意: ComfyUI の公式のテンプレートは無く、ワークフローはモデルの作者（PAI の VideoX-Fun）の公式の値（shift 12・cfg 6・境界 0.875）を標準ノードに写したもので、Nefos Video の実機では未検証。Wan 2.2 の T2V（wan22-t2v-14b）より約 6 GB 大きく、20 ステップ・cfg 6 で遅い。参照画像は先頭フレームではなく見た目として使われる（先頭フレームから作るのは wan22-i2v-14b）。ライセンス: Apache-2.0 で商用を含めて自由に使える（著作権表示とライセンス文を保つ）。",
  "files": [
   {
    "name": "wan2.2_fun_vace_high_noise_14B_fp8_scaled.safetensors",
@@ -51,7 +51,7 @@
   "min_gb": 16,
   "recommended_gb": 24,
   "limits": "16 GB では拡散モデル 1 つ（約 17.3 GB）が VRAM に収まらず、ComfyUI が重みを通常のメモリへ出し入れするので、さらに遅くなる。解像度も 480p に絞るのが現実的。",
-  "source": "PAI（alibaba-pai/Wan2.2-VACE-Fun-A14B のカード・VideoX-Fun の README）にも ComfyUI の文書にも、この VACE Fun の VRAM の記述は無い（PAI のサンプルの既定は sequential_cpu_offload）。mam は、同じ Wan 2.2 14B fp8 の wan22-t2v-14b（拡散モデル 1 つ約 14.3 GB・16 GB を目安）より、VACE の 8 ブロック分、拡散モデル 1 つが約 3 GB 大きい（17.3 GB。safetensors のヘッダーで vace_blocks 8 つを確認）ことから、最低 16 GB（offload 前提）・推奨 24 GB とした（推定）。mam の実機では未検証",
+  "source": "PAI（alibaba-pai/Wan2.2-VACE-Fun-A14B のカード・VideoX-Fun の README）にも ComfyUI の文書にも、この VACE Fun の VRAM の記述は無い（PAI のサンプルの既定は sequential_cpu_offload）。Nefos Video は、同じ Wan 2.2 14B fp8 の wan22-t2v-14b（拡散モデル 1 つ約 14.3 GB・16 GB を目安）より、VACE の 8 ブロック分、拡散モデル 1 つが約 3 GB 大きい（17.3 GB。safetensors のヘッダーで vace_blocks 8 つを確認）ことから、最低 16 GB（offload 前提）・推奨 24 GB とした（推定）。Nefos Video の実機では未検証",
   "estimate": true
  },
  "license": {

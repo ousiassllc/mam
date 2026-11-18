@@ -20,7 +20,7 @@
   "min_gb": 16,
   "recommended_gb": 24,
   "limits": "fp8 の 1 ファイルが約 28.4 GB（拡散モデル・テキストエンコーダー・VAE の込み）で、16 GB の GPU には同時に収まらないため、ComfyUI のオフロード（重みを一時的にメインメモリへ退避）が前提で、生成は遅くなります。メインメモリも多く使います（32 GB 以上を推奨）。参照画像は枚数が多いほど遅く、メモリも増えます。",
-  "source": "mam の見積もり（実機未検証）。標準の Qwen-Image-Edit 2511（拡散モデル 20.5 GB ＋ テキストエンコーダー 9.4 GB）と同じ規模なので同じ下限にした。作者のカードに VRAM の目安は無い。mam の実機（RTX 4070 Ti SUPER 16 GB）では時間もピーク VRAM も測っていない",
+  "source": "Nefos Video の見積もり（実機未検証）。標準の Qwen-Image-Edit 2511（拡散モデル 20.5 GB ＋ テキストエンコーダー 9.4 GB）と同じ規模なので同じ下限にした。作者のカードに VRAM の目安は無い。Nefos Video の実機（RTX 4070 Ti SUPER 16 GB）では時間もピーク VRAM も測っていない",
   "estimate": true
  },
  "license": {

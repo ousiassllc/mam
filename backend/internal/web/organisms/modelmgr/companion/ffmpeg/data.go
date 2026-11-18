@@ -39,7 +39,7 @@ type Data struct {
 }
 
 // Description is what the section says behind its "?" button.
-const Description = "動画のプレビュー・サムネイル・部分採用・品質判定（Judge）は、ffmpeg と ffprobe を使います。ここでパスを指定するとそれを使い、空のときは、mam を起動した環境の PATH と、Mac では Homebrew の場所（/opt/homebrew/bin と /usr/local/bin）から探し、そのどこにも無ければ、mam でダウンロードして入れたものを使います（Windows と Apple Silicon の Mac で、下のボタンから入れられます）。保存したパスと、ダウンロードして入れたものは、保存・ダウンロードのすぐあとから使われます（mam を再起動する必要はありません）。"
+const Description = "動画のプレビュー・サムネイル・部分採用・品質判定（Judge）は、ffmpeg と ffprobe を使います。ここでパスを指定するとそれを使い、空のときは、Nefos Video を起動した環境の PATH と、Mac では Homebrew の場所（/opt/homebrew/bin と /usr/local/bin）から探し、そのどこにも無ければ、Nefos Video でダウンロードして入れたものを使います（Windows と Apple Silicon の Mac で、下のボタンから入れられます）。保存したパスと、ダウンロードして入れたものは、保存・ダウンロードのすぐあとから使われます（Nefos Video を再起動する必要はありません）。"
 
 // DownloadID is the id of the panel of the download, which every action of it replaces.
 const DownloadID = "ffmpeg-download"

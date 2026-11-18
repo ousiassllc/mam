@@ -40,12 +40,12 @@ func WithChoices() lrtest.Option {
 		set.Choices = []choice.Choice{
 			{
 				ID: SmallChoice, Name: "Small", Description: "小さいモデル", Default: true, Kind: "tts", Languages: []string{"ja"}, License: "mit",
-				Cautions: []string{"本人の同意なく声をコピーしない"}, VRAMMinGB: 6, VRAMRecommendedGB: 8, VRAMLimits: "長い文で足りなくなることがある", VRAMNote: "mam の推定", VRAMEstimate: true,
+				Cautions: []string{"本人の同意なく声をコピーしない"}, VRAMMinGB: 6, VRAMRecommendedGB: 8, VRAMLimits: "長い文で足りなくなることがある", VRAMNote: "Nefos Video の推定", VRAMEstimate: true,
 			},
 			{
 				ID: LargeChoice, Name: "Large", Description: "大きいモデル", Kind: "tts", Languages: []string{"ja"}, License: LargeLicense,
 				Consent:  &choice.Consent{Version: LargeConsentVersion, Text: "利用規約に同意します"},
-				Cautions: []string{"禁止用途ポリシーに従う"}, VRAMMinGB: 10, VRAMNote: "mam の推定", VRAMEstimate: true,
+				Cautions: []string{"禁止用途ポリシーに従う"}, VRAMMinGB: 10, VRAMNote: "Nefos Video の推定", VRAMEstimate: true,
 				Env: []string{"IRODORI_MODEL_PRECISION=bf16"},
 			},
 		}

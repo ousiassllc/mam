@@ -133,7 +133,7 @@ func tooLong(s string, limit int) bool { return utf8.RuneCountInString(s) > limi
 func (m ReviewManifest) Validate() error {
 	switch {
 	case m.Format != ReviewPackageFormat:
-		return invalidReview("MAM のレビューパッケージではありません")
+		return invalidReview("Nefos Video のレビューパッケージではありません")
 	case m.Version != ReviewVersion:
 		return invalidReview("対応していないパッケージのバージョンです（%d）", m.Version)
 	case !bundlepath.ValidShape(m.ReviewID):
@@ -194,7 +194,7 @@ type ReviewResponse struct {
 func (r ReviewResponse) Validate() error {
 	switch {
 	case r.Format != ReviewResponseFormat:
-		return invalidReview("MAM のレビュー応答ではありません")
+		return invalidReview("Nefos Video のレビュー応答ではありません")
 	case r.Version != ReviewVersion:
 		return invalidReview("対応していない応答のバージョンです（%d）", r.Version)
 	case !bundlepath.ValidID(r.ResponseID) || !bundlepath.ValidShape(r.ReviewID): // response_id is a row id a bundle import checks with ValidID

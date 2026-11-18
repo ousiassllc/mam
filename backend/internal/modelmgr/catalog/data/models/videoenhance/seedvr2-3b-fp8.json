@@ -5,7 +5,7 @@
  "tier": "standard",
  "content_rating": "general",
  "traits": {"uncensored": false},
- "description": "できあがった動画を大きくするモデル（ByteDance-Seed の SeedVR2 3B。1 ステップの拡散で、時間方向の一貫性がある）。単発生成の動画の結果から「大きくする」で使う（2 倍、480p を 720p / 1080p へ）。拡散モデルは fp8（約 3.4 GB）と共有 VAE（約 0.5 GB）で合計約 3.9 GB。VAE はタイルで処理し、時間方向は ComfyUI の SeedVR2TemporalChunk（auto）で空き VRAM に合わせて分けるので、16GB の GPU を見込んだ作り。プロンプトを渡す動画モデルではない。注意: 16GB で 5 秒・480p・81 コマが収まることは見込みで、mam の実機では未確認。",
+ "description": "できあがった動画を大きくするモデル（ByteDance-Seed の SeedVR2 3B。1 ステップの拡散で、時間方向の一貫性がある）。単発生成の動画の結果から「大きくする」で使う（2 倍、480p を 720p / 1080p へ）。拡散モデルは fp8（約 3.4 GB）と共有 VAE（約 0.5 GB）で合計約 3.9 GB。VAE はタイルで処理し、時間方向は ComfyUI の SeedVR2TemporalChunk（auto）で空き VRAM に合わせて分けるので、16GB の GPU を見込んだ作り。プロンプトを渡す動画モデルではない。注意: 16GB で 5 秒・480p・81 コマが収まることは見込みで、Nefos Video の実機では未確認。",
  "files": [
   {
    "name": "seedvr2_3b_fp8_e4m3fn.safetensors",
@@ -26,7 +26,7 @@
   "min_gb": 12,
   "recommended_gb": 16,
   "limits": "12GB では解像度と長さを小さくする（出力は 1 コマ 1080p まで、長い動画は分けて処理する）。16GB 未満の GPU で動くかは確かめていない",
-  "source": "出典: Issue #1031 の調査（公式ノード README・第三者測定）・mam 実機は未確認。公式ノードの README は 12〜16GB に fp8 とタイルを勧める。約 6.5GB という数字は別の実装（numz の ComfyUI-SeedVR2_VideoUpscaler。BlockSwap を使い、batch 5・480p から 1080p）の第三者の報告で、mam が使う ComfyUI 本体のノードの組み合わせでの測定ではない（本体のノードでの使用量は未測定）。mam はこの数字を使わず、余裕を見て 12GB を下限の見積もりにした（min_gb は見積もりのまま）",
+  "source": "出典: Issue #1031 の調査（公式ノード README・第三者測定）・Nefos Video 実機は未確認。公式ノードの README は 12〜16GB に fp8 とタイルを勧める。約 6.5GB という数字は別の実装（numz の ComfyUI-SeedVR2_VideoUpscaler。BlockSwap を使い、batch 5・480p から 1080p）の第三者の報告で、Nefos Video が使う ComfyUI 本体のノードの組み合わせでの測定ではない（本体のノードでの使用量は未測定）。Nefos Video はこの数字を使わず、余裕を見て 12GB を下限の見積もりにした（min_gb は見積もりのまま）",
   "estimate": true
  },
  "license": {

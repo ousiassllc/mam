@@ -161,11 +161,11 @@ func TestMacStep_IsForMacOSAndPointsToComfyDesktopWithoutBundlingComfyUI(t *test
 
 	body := r.page(paths.OnboardingMac)
 
-	assert.Equal(t, "はじめに: Mac の準備（Codex・ComfyUI） | mam", titleRe.FindStringSubmatch(body)[1])
+	assert.Equal(t, "はじめに: Mac の準備（Codex・ComfyUI） | Nefos Video", titleRe.FindStringSubmatch(body)[1])
 	assert.Contains(t, body, "ステップ 7 / 7")
 	assert.Contains(t, body, "ComfyUI は外部のものを使います")
 	assert.Contains(t, body, "Comfy Desktop")
-	assert.Contains(t, body, "mam は ComfyUI を同梱しません")
+	assert.Contains(t, body, "Nefos Video は ComfyUI を同梱しません")
 	assert.Contains(t, body, `href="https://docs.comfy.org/installation/desktop/macos"`)
 	assert.Contains(t, body, "macOS 13 以降")
 	assert.Contains(t, body, `href="`+paths.LocalModels()+`"`, "the address goes into the local models settings")

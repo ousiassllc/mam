@@ -800,7 +800,7 @@ func importRemote(d Data) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "</label> <label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"workflow-remote-name\"><span>mam での名前（空: ファイル名）</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 66, "</label> <label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"workflow-remote-name\"><span>Nefos Video での名前（空: ファイル名）</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

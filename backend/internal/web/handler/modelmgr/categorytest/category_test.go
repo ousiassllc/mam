@@ -75,7 +75,7 @@ func TestEveryCategoryIsAPageWithItsOwnSectionsOnly(t *testing.T) {
 			}
 			assert.Regexp(t, `<a href="/model-manager" class="[^"]*" data-testid="mm-back">`, page, "the way back to the overview")
 			assert.Equal(t, 1, strings.Count(page, `<dialog id="mam-modal"`), "one modal host in the page")
-			assert.Contains(t, page, "<title>"+c.Name+" - モデルマネージャー | mam</title>")
+			assert.Contains(t, page, "<title>"+c.Name+" - モデルマネージャー | Nefos Video</title>")
 			assert.Regexp(t, `(?s)<h1[^>]*>`+regexp.QuoteMeta(c.Name)+`</h1>`, page)
 		})
 	}

@@ -46,7 +46,7 @@ else
   echo "missing: HKCU uninstall key (the installer is not per-user?)" >&2
   exit 1
 fi
-for f in "$(cygpath -u "$APPDATA")/Microsoft/Windows/Start Menu/Programs/MAM.lnk" "$(cygpath -u "$USERPROFILE")/Desktop/MAM.lnk"; do
+for f in "$(cygpath -u "$APPDATA")/Microsoft/Windows/Start Menu/Programs/Nefos Video.lnk" "$(cygpath -u "$USERPROFILE")/Desktop/Nefos Video.lnk"; do
   if [[ -f "$f" ]]; then echo "ok: $f"; else echo "note: no shortcut at $f (the desktop may be redirected)"; fi
 done
 

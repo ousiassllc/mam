@@ -153,9 +153,9 @@ tmp_out="$(mktemp "${TMPDIR:-/tmp}/mam-notices-out-XXXXXX")"
   cat <<'EOF'
 # サードパーティのライセンス表記
 
-MAM の Windows 版に含まれるサードパーティのソフトウェアと、そのライセンス文です。MAM 自身のライセンスは [AGPL-3.0](LICENSE) です。インストーラー（`mam-<version>-windows-amd64-setup.exe`）は、`LICENSE` とこのファイルをインストール先に置きます。
+Nefos Video の Windows 版に含まれるサードパーティのソフトウェアと、そのライセンス文です。Nefos Video 自身のライセンスは [AGPL-3.0](LICENSE) です。インストーラー（`mam-<version>-windows-amd64-setup.exe`）は、`LICENSE` とこのファイルをインストール先に置きます。
 
-このファイルは [`scripts/third-party-notices.sh`](scripts/third-party-notices.sh) が生成します。手で編集せず、`go.mod` や `static/package-lock.json` を変えたらスクリプトを実行し直してください。ライセンス文は各コンポーネントの `LICENSE` などのファイルをそのまま写しています。MAM の設定画面の「第三者のライセンス」には、このファイルをバイナリに埋め込んで、同じ内容を節ごとに表示します。
+このファイルは [`scripts/third-party-notices.sh`](scripts/third-party-notices.sh) が生成します。手で編集せず、`go.mod` や `static/package-lock.json` を変えたらスクリプトを実行し直してください。ライセンス文は各コンポーネントの `LICENSE` などのファイルをそのまま写しています。Nefos Video の設定画面の「第三者のライセンス」には、このファイルをバイナリに埋め込んで、同じ内容を節ごとに表示します。
 
 載せている範囲は次のとおりです。
 
@@ -201,35 +201,35 @@ EOF
 
 ## 同梱していないが実行時に取得するもの
 
-Judge の顔同一性（Face Identity Similarity）に使うモデル、YuNet（MIT）と SFace（Apache-2.0）は OpenCV Zoo のもので、MAM には同梱しません。利用者が、モデルマネージャーの「顔チェック用モデル」のボタン（または `scripts/fetch-face-models.sh`）で実行時にダウンロードします。そのため配布物には入らず、ここにライセンス文は載せません。取得したモデルを再配布するときは、それぞれのライセンスに従ってください。ONNX Runtime の DLL（Windows 版）は同梱しており、上の節に載せています（macOS 版は同梱せず、利用者が用意した `libonnxruntime.dylib` を使います）。
+Judge の顔同一性（Face Identity Similarity）に使うモデル、YuNet（MIT）と SFace（Apache-2.0）は OpenCV Zoo のもので、Nefos Video には同梱しません。利用者が、モデルマネージャーの「顔チェック用モデル」のボタン（または `scripts/fetch-face-models.sh`）で実行時にダウンロードします。そのため配布物には入らず、ここにライセンス文は載せません。取得したモデルを再配布するときは、それぞれのライセンスに従ってください。ONNX Runtime の DLL（Windows 版）は同梱しており、上の節に載せています（macOS 版は同梱せず、利用者が用意した `libonnxruntime.dylib` を使います）。
 
 ## ComfyUI（利用者が取得する別プログラム）
 
-MAM のモデルマネージャーは、利用者の操作で ComfyUI のポータブル版（v0.42.1）を公式のリリースから取得し、MAM の実行ファイルと同じ場所の `comfyui` ディレクトリに展開して、別のプロセスとして起動します。macOS（Apple Silicon）には公式のポータブル版が無いので、固定したコミット（v0.42.1 のタグが指す `63be2f9b82ad0dac88a7ceaa28a9cf3154125a18`）のソースの zip と、python-build-standalone（Python Software Foundation License 系。astral-sh）の Python 3.13、PyPI の wheel（PyTorch・NumPy ほか 84 個）を、それぞれ SHA-256 を固定して公式の配布先から取得し、MAM のデータディレクトリの `comfyui` に展開します（`pip` は実行しません）。macOS でも、MAM はこれらのバイトを含めません。ComfyUI は GPL-3.0 のプログラムで、**MAM のインストーラー・ポータブル版・リリースには ComfyUI のバイトを一切含めません**。MAM は ComfyUI のコードをリンクせず、HTTP（`127.0.0.1`）で通信するだけです。
+Nefos Video のモデルマネージャーは、利用者の操作で ComfyUI のポータブル版（v0.42.1）を公式のリリースから取得し、Nefos Video の実行ファイルと同じ場所の `comfyui` ディレクトリに展開して、別のプロセスとして起動します。macOS（Apple Silicon）には公式のポータブル版が無いので、固定したコミット（v0.42.1 のタグが指す `63be2f9b82ad0dac88a7ceaa28a9cf3154125a18`）のソースの zip と、python-build-standalone（Python Software Foundation License 系。astral-sh）の Python 3.13、PyPI の wheel（PyTorch・NumPy ほか 84 個）を、それぞれ SHA-256 を固定して公式の配布先から取得し、Nefos Video のデータディレクトリの `comfyui` に展開します（`pip` は実行しません）。macOS でも、Nefos Video はこれらのバイトを含めません。ComfyUI は GPL-3.0 のプログラムで、**Nefos Video のインストーラー・ポータブル版・リリースには ComfyUI のバイトを一切含めません**。Nefos Video は ComfyUI のコードをリンクせず、HTTP（`127.0.0.1`）で通信するだけです。
 
-- ComfyUI のライセンス（GPL-3.0）と対応するソースコード: <https://github.com/Comfy-Org/ComfyUI/tree/v0.42.1>（取得するポータブル版は <https://github.com/Comfy-Org/ComfyUI/releases/tag/v0.42.1> のアセットで、SHA-256 を MAM のカタログに固定して検証します）。
-- **ノード画面（ComfyUI のフロントエンド、GPL-3.0）**: MAM の「ノード」画面（`/nodes`）は、取得した ComfyUI が配信する画面（`Comfy-Org/ComfyUI_frontend`、GPL-3.0。ポータブル版に pip パッケージ `comfyui-frontend-package` として入っている）を iframe で表示するだけです。**MAM はそのコードを一切含めず、改変も再配布もしません**（ブラウザは ComfyUI のサーバーから直接読み込みます）。ソース: <https://github.com/Comfy-Org/ComfyUI_frontend>。
+- ComfyUI のライセンス（GPL-3.0）と対応するソースコード: <https://github.com/Comfy-Org/ComfyUI/tree/v0.42.1>（取得するポータブル版は <https://github.com/Comfy-Org/ComfyUI/releases/tag/v0.42.1> のアセットで、SHA-256 を Nefos Video のカタログに固定して検証します）。
+- **ノード画面（ComfyUI のフロントエンド、GPL-3.0）**: Nefos Video の「ノード」画面（`/nodes`）は、取得した ComfyUI が配信する画面（`Comfy-Org/ComfyUI_frontend`、GPL-3.0。ポータブル版に pip パッケージ `comfyui-frontend-package` として入っている）を iframe で表示するだけです。**Nefos Video はそのコードを一切含めず、改変も再配布もしません**（ブラウザは ComfyUI のサーバーから直接読み込みます）。ソース: <https://github.com/Comfy-Org/ComfyUI_frontend>。
 - ポータブル版（macOS では取得した wheel・Python）に入っている Python・PyTorch・その他のパッケージのライセンスは、**一覧を調べていません（未確認）**。取得したものを再配布するときは、取得した `comfyui\engine` の中の各ライセンスを確認してください。
-- 利用者が導入できるモデルの重み（Stable Diffusion XL・FLUX.1・FLUX.2 klein・Qwen-Image・Wan 2.2・LTX-Video・Stable Diffusion 3.5・HunyuanVideo など）は、Hugging Face から利用者が取得します。MAM は再配布せず、各モデルのライセンス（商用利用の可否・地域の制限を含む）は導入の画面に表示します。条件の一部（FLUX.1 [dev] の非商用、HunyuanVideo の EU・英国・韓国での不可など）は、導入の前に同意を求めます。
+- 利用者が導入できるモデルの重み（Stable Diffusion XL・FLUX.1・FLUX.2 klein・Qwen-Image・Wan 2.2・LTX-Video・Stable Diffusion 3.5・HunyuanVideo など）は、Hugging Face から利用者が取得します。Nefos Video は再配布せず、各モデルのライセンス（商用利用の可否・地域の制限を含む）は導入の画面に表示します。条件の一部（FLUX.1 [dev] の非商用、HunyuanVideo の EU・英国・韓国での不可など）は、導入の前に同意を求めます。
 
 ## GPT-SoVITS（利用者が取得する別プログラム）
 
-MAM のローカルランタイム管理（Issue #918）は、利用者の操作で GPT-SoVITS（声のクローン・音声合成。公式の Windows 統合パッケージ `GPT-SoVITS-v2pro-20250604`、コードのタグ `20250606v2pro`）を公式の配布先（Hugging Face の `lj1995/GPT-SoVITS-windows-package`、コミット固定）から取得し、MAM の実行ファイルと同じ場所の `localai\gpt-sovits` ディレクトリに展開して、別のプロセス（公式の `api_v2.py` を MAM 自身の起動用スクリプト経由で読み込み、起動のたびに作る合言葉を付けた要求だけに答える形で、`127.0.0.1` だけで待ち受け）として起動します。GPT-SoVITS のコードは MIT ライセンスで、**MAM のインストーラー・ポータブル版・リリースには GPT-SoVITS のバイトを一切含めません**。MAM は GPT-SoVITS のコードをリンクせず、HTTP（`127.0.0.1`）で通信するだけです。対応するのは Windows（x64）と NVIDIA の GPU だけで、それ以外の環境では導入せず、理由を表示します。
+Nefos Video のローカルランタイム管理（Issue #918）は、利用者の操作で GPT-SoVITS（声のクローン・音声合成。公式の Windows 統合パッケージ `GPT-SoVITS-v2pro-20250604`、コードのタグ `20250606v2pro`）を公式の配布先（Hugging Face の `lj1995/GPT-SoVITS-windows-package`、コミット固定）から取得し、Nefos Video の実行ファイルと同じ場所の `localai\gpt-sovits` ディレクトリに展開して、別のプロセス（公式の `api_v2.py` を Nefos Video 自身の起動用スクリプト経由で読み込み、起動のたびに作る合言葉を付けた要求だけに答える形で、`127.0.0.1` だけで待ち受け）として起動します。GPT-SoVITS のコードは MIT ライセンスで、**Nefos Video のインストーラー・ポータブル版・リリースには GPT-SoVITS のバイトを一切含めません**。Nefos Video は GPT-SoVITS のコードをリンクせず、HTTP（`127.0.0.1`）で通信するだけです。対応するのは Windows（x64）と NVIDIA の GPU だけで、それ以外の環境では導入せず、理由を表示します。
 
-- GPT-SoVITS のライセンス（MIT）とソースコード: <https://github.com/RVC-Boss/GPT-SoVITS/tree/20250606v2pro>（ライセンス文は <https://github.com/RVC-Boss/GPT-SoVITS/blob/20250606v2pro/LICENSE>。取得するパッケージは <https://huggingface.co/lj1995/GPT-SoVITS-windows-package> のファイルで、SHA-256 と大きさを MAM のカタログに固定して検証します）。
+- GPT-SoVITS のライセンス（MIT）とソースコード: <https://github.com/RVC-Boss/GPT-SoVITS/tree/20250606v2pro>（ライセンス文は <https://github.com/RVC-Boss/GPT-SoVITS/blob/20250606v2pro/LICENSE>。取得するパッケージは <https://huggingface.co/lj1995/GPT-SoVITS-windows-package> のファイルで、SHA-256 と大きさを Nefos Video のカタログに固定して検証します）。
 - 統合パッケージには、GPT-SoVITS のコードのほかに、Python の実行環境・PyTorch・その他の多数のパッケージと、**学習済みモデルの重み**が入っています。**カタログに固定した重み・依存ファイルのライセンスは、下の「GPT-SoVITS と MuseTalk の重み・依存ファイル」の節の表に載せ、モデルマネージャーの画面にも表示します。パッケージに入っているそれ以外のもの（v3・v4 の重み、BigVGAN、v2Pro・sv のモデル、Python のパッケージ）は、ライセンスと商用利用の可否を調べていません（未確認）**。取得したものを再配布するときや商用に使うときは、取得した `localai\gpt-sovits\env` の中の各ライセンスと、重みの配布元（<https://huggingface.co/lj1995/GPT-SoVITS>）の記載を確認してください。
 
 EOF
-  # The MuseTalk section is a file of its own: it lists the Python packages of the environment mam assembles (a long table).
+  # The MuseTalk section is a file of its own: it lists the Python packages of the environment Nefos Video assembles (a long table).
   cat scripts/third-party-notices-musetalk.md
-  # The Irodori-TTS section is a file of its own too (the Python packages of the environment mam assembles, and its weights).
+  # The Irodori-TTS section is a file of its own too (the Python packages of the environment Nefos Video assembles, and its weights).
   cat scripts/third-party-notices-irodori.md
   # The llama.cpp section (the local LLM runtime and its GGUF weights) is a file of its own too.
   cat scripts/third-party-notices-llamacpp.md
   cat <<'EOF'
 ## GPT-SoVITS と MuseTalk の重み・依存ファイル（利用者が取得するもの）
 
-MAM のローカルランタイム管理（Issue #920）は、上の GPT-SoVITS の統合パッケージに入っている重みと依存ファイル、および MuseTalk 1.5 が使う重みと依存ファイルを、固定の URL（Hugging Face のコミット固定）と SHA-256 で検証します。**MAM はこれらを同梱せず再配布しません**。足りない・壊れたファイルだけを、利用者の操作で取得元から取得します。出典・ライセンス・商用利用の可否はモデルマネージャーの画面（「ローカル音声・口パク」）と MCP（`list_local_runtimes`）にも表示します。固定の一覧はソースの `backend/internal/modelmgr/catalog/data/assets/` にあり、意味は `spec/architecture/model-manager/local-runtime.md` の §12 です。**法的な助言ではありません**。再配布や商用利用の前に、配布元の条件を確認してください。
+Nefos Video のローカルランタイム管理（Issue #920）は、上の GPT-SoVITS の統合パッケージに入っている重みと依存ファイル、および MuseTalk 1.5 が使う重みと依存ファイルを、固定の URL（Hugging Face のコミット固定）と SHA-256 で検証します。**Nefos Video はこれらを同梱せず再配布しません**。足りない・壊れたファイルだけを、利用者の操作で取得元から取得します。出典・ライセンス・商用利用の可否はモデルマネージャーの画面（「ローカル音声・口パク」）と MCP（`list_local_runtimes`）にも表示します。固定の一覧はソースの `backend/internal/modelmgr/catalog/data/assets/` にあり、意味は `spec/architecture/model-manager/local-runtime.md` の §12 です。**法的な助言ではありません**。再配布や商用利用の前に、配布元の条件を確認してください。
 
 **商用利用がはっきりしないもの（`unclear`）は、GPT-SoVITS の g2pW のモデル、LatentSync の SyncNet、S3FD の顔検出の重み、face-parse-bisent の `79999_iter.pth`（CelebAMask-HQ で学習。データは非商用の研究目的と README に明記）、torchvision の `resnet18` です。** 画面では、これらを琥珀色の注記で目立つように表示します。
 
@@ -273,17 +273,17 @@ MAM のローカルランタイム管理（Issue #920）は、上の GPT-SoVITS 
 
 ## ffmpeg と ffprobe（利用者が取得する別プログラム）
 
-MAM のモデルマネージャーの「付随ソフト」と初回ガイドには、利用者がボタンを押したときだけ ffmpeg と ffprobe（バージョン 9.0.2。Windows 版（x64）と macOS 版（Apple Silicon）のみ）を配布元から取得し、データの置き場（Windows 版は MAM の実行ファイルと同じ場所の `ffmpeg` ディレクトリ、macOS 版はデータディレクトリの中）に展開するボタンがあります。ffmpeg は **GPL v3 以降**のビルドで、**MAM のインストーラー・ポータブル版・リリースには ffmpeg のバイトを一切含めません**。MAM は ffmpeg のコードをリンクせず、別のプロセスとして起動するだけです。ボタンを押さない限り、通信も取得もしません（自動の更新確認はありません）。
+Nefos Video のモデルマネージャーの「付随ソフト」と初回ガイドには、利用者がボタンを押したときだけ ffmpeg と ffprobe（バージョン 9.0.2。Windows 版（x64）と macOS 版（Apple Silicon）のみ）を配布元から取得し、データの置き場（Windows 版は Nefos Video の実行ファイルと同じ場所の `ffmpeg` ディレクトリ、macOS 版はデータディレクトリの中）に展開するボタンがあります。ffmpeg は **GPL v3 以降**のビルドで、**Nefos Video のインストーラー・ポータブル版・リリースには ffmpeg のバイトを一切含めません**。Nefos Video は ffmpeg のコードをリンクせず、別のプロセスとして起動するだけです。ボタンを押さない限り、通信も取得もしません（自動の更新確認はありません）。
 
-- ffmpeg のライセンス（GPL v3 以降）と対応するソースコード: Windows 版は <https://github.com/FFmpeg/FFmpeg/commit/946fcce07b>（取得するのは gyan.dev のビルド <https://www.gyan.dev/ffmpeg/builds/> のうち、<https://github.com/GyanD/codexffmpeg/releases/tag/9.0.2> のアセット `ffmpeg-9.0.2-essentials_build.zip`）、macOS 版は <https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz>（取得するのは Martin Riedl のビルドサーバー <https://ffmpeg.martin-riedl.de/> の release 9.0.2 の `ffmpeg.zip` と `ffprobe.zip`）。アーカイブと展開した 2 つの実行ファイルの SHA-256 とサイズを MAM のカタログに固定して検証し、一致しなければ使いません。
+- ffmpeg のライセンス（GPL v3 以降）と対応するソースコード: Windows 版は <https://github.com/FFmpeg/FFmpeg/commit/946fcce07b>（取得するのは gyan.dev のビルド <https://www.gyan.dev/ffmpeg/builds/> のうち、<https://github.com/GyanD/codexffmpeg/releases/tag/9.0.2> のアセット `ffmpeg-9.0.2-essentials_build.zip`）、macOS 版は <https://ffmpeg.org/releases/ffmpeg-9.0.2.tar.xz>（取得するのは Martin Riedl のビルドサーバー <https://ffmpeg.martin-riedl.de/> の release 9.0.2 の `ffmpeg.zip` と `ffprobe.zip`）。アーカイブと展開した 2 つの実行ファイルの SHA-256 とサイズを Nefos Video のカタログに固定して検証し、一致しなければ使いません。
 - 取得したビルドは `libx264`・`libx265`・`libvpx`・`libopus` ほか多数の GPL・LGPL・BSD などのライブラリを静的に含みます。**その一覧とライセンス文は調べていません（未確認）**。取得したものを再配布するときは、配布元の README・LICENSE（アーカイブの中にあります）に従い、対応するソースを提供してください。
 
 ## Codex app-server（利用者が取得する別プログラム）
 
-MAM の「ChatGPT でログイン」の Codex 経由の方式（Business / Enterprise / Edu のワークスペースのアカウントでも使える、テキスト生成だけの方式）は、利用者の操作で OpenAI の Codex の app-server（バージョン 0.164.0。Windows 版と macOS 版（Apple Silicon）のみ）を公式のリリースから取得し、`codex` ディレクトリ（Windows 版は MAM の実行ファイルと同じ場所、macOS 版はデータディレクトリの中）に展開して、別のプロセスとして起動します。Codex は Apache-2.0 のプログラムで、**MAM のインストーラー・ポータブル版・リリースには Codex のバイトを一切含めません**。MAM は Codex のコードをリンクせず、標準入出力の JSON-RPC で通信するだけです。
+Nefos Video の「ChatGPT でログイン」の Codex 経由の方式（Business / Enterprise / Edu のワークスペースのアカウントでも使える、テキスト生成だけの方式）は、利用者の操作で OpenAI の Codex の app-server（バージョン 0.164.0。Windows 版と macOS 版（Apple Silicon）のみ）を公式のリリースから取得し、`codex` ディレクトリ（Windows 版は Nefos Video の実行ファイルと同じ場所、macOS 版はデータディレクトリの中）に展開して、別のプロセスとして起動します。Codex は Apache-2.0 のプログラムで、**Nefos Video のインストーラー・ポータブル版・リリースには Codex のバイトを一切含めません**。Nefos Video は Codex のコードをリンクせず、標準入出力の JSON-RPC で通信するだけです。
 
-- Codex のライセンス（Apache-2.0）と対応するソースコード: <https://github.com/openai/codex/tree/rust-v0.164.0>（取得するのは <https://github.com/openai/codex/releases/tag/rust-v0.164.0> のアセット `codex-app-server-x86_64-pc-windows-msvc.exe.zip`・`codex-app-server-aarch64-pc-windows-msvc.exe.zip`（Windows）または `codex-app-server-aarch64-apple-darwin.tar.gz`（macOS）で、SHA-256 とサイズを MAM のカタログに固定して検証します）。
-- Codex が保存するログイン情報は、MAM 専用の `CODEX_HOME`（データディレクトリの `codex-home`）と OS の資格情報ストアにあり、MAM は読みません。
+- Codex のライセンス（Apache-2.0）と対応するソースコード: <https://github.com/openai/codex/tree/rust-v0.164.0>（取得するのは <https://github.com/openai/codex/releases/tag/rust-v0.164.0> のアセット `codex-app-server-x86_64-pc-windows-msvc.exe.zip`・`codex-app-server-aarch64-pc-windows-msvc.exe.zip`（Windows）または `codex-app-server-aarch64-apple-darwin.tar.gz`（macOS）で、SHA-256 とサイズを Nefos Video のカタログに固定して検証します）。
+- Codex が保存するログイン情報は、Nefos Video 専用の `CODEX_HOME`（データディレクトリの `codex-home`）と OS の資格情報ストアにあり、Nefos Video は読みません。
 - 取得したものを再配布するときは、Apache-2.0 の LICENSE と NOTICE（上のソースにあります）を添えてください。取得した実行ファイルが静的に含む依存のライセンスは、**一覧を調べていません（未確認）**。
 EOF
   # The pose library section is a file of its own (written by hand), like the MuseTalk one.

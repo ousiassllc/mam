@@ -92,7 +92,7 @@ func (h Handlers) data(ctx context.Context) view.Data {
 	d := view.Data{Endpoints: h.Svc.Endpoints()}
 	list, err := h.Svc.List(ctx)
 	if err != nil {
-		d.Problem = "ワークフローを読み込めません。mam のログを確認してください"
+		d.Problem = "ワークフローを読み込めません。Nefos Video のログを確認してください"
 		return d
 	}
 	for _, w := range list {
@@ -135,7 +135,7 @@ func classify(c *gin.Context, err error) (int, string) {
 		return http.StatusUnprocessableEntity, invalid.Message
 	}
 	_ = c.Error(err)
-	return http.StatusInternalServerError, "処理できませんでした。mam のログと ComfyUI の状態を確認してください"
+	return http.StatusInternalServerError, "処理できませんでした。Nefos Video のログと ComfyUI の状態を確認してください"
 }
 
 func render(c *gin.Context, status int, component templ.Component) {

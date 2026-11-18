@@ -86,7 +86,7 @@ func TestAGatedCatalogModelChecksTheTokenAndTheAccessBeforeAnyJob(t *testing.T) 
 	told = append(told, msg)
 	assert.Contains(t, msg, "ライセンスに同意してアクセスを申請")
 	assert.Contains(t, msg, r.HF.URL+"/"+mmtest.GatedRepo, "the page of the model")
-	assert.Contains(t, msg, "mam からは申請できません")
+	assert.Contains(t, msg, "Nefos Video からは申請できません")
 	noJob(t, r)
 	for _, q := range r.HF.Requests() {
 		assert.Equal(t, "GET", q.Method, "only reads: %s", q.Path)

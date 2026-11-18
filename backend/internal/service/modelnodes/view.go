@@ -17,8 +17,8 @@ const NoticeVersion = "2026-11-03"
 // SecurityNotice is what the user accepts before a node is installed, besides its license. A custom node is a program that runs inside
 // ComfyUI with the rights of the user: it can read and write the user's files and use the network. mam only installs nodes it reviewed and
 // pinned (the commit and the SHA-256), and only those are loaded.
-const SecurityNotice = "追加ノードは、ComfyUI の中でそのまま実行されるプログラム（Python のコード）です。mam を動かしているあなたのアカウントの権限で、ファイルの読み書きやネットワーク通信ができます。" +
-	"mam は、許可リストに載せたノードだけを、確認したコミットのままの内容で導入し（SHA-256 を検証）、それ以外のフォルダは読み込みません。ただし、確認は mam の開発時に 1 度行ったもので、コードの安全を保証するものではありません。"
+const SecurityNotice = "追加ノードは、ComfyUI の中でそのまま実行されるプログラム（Python のコード）です。Nefos Video を動かしているあなたのアカウントの権限で、ファイルの読み書きやネットワーク通信ができます。" +
+	"Nefos Video は、許可リストに載せたノードだけを、確認したコミットのままの内容で導入し（SHA-256 を検証）、それ以外のフォルダは読み込みません。ただし、確認は Nefos Video の開発時に 1 度行ったもので、コードの安全を保証するものではありません。"
 
 // ModelRef is a model of the catalog that needs a node.
 type ModelRef struct {

@@ -102,7 +102,7 @@ func refuse(c *gin.Context, err error) (int, string) {
 		return http.StatusConflict, conflict.Message
 	}
 	_ = c.Error(err)
-	return http.StatusInternalServerError, "処理できませんでした。mam のログを確認してください"
+	return http.StatusInternalServerError, "処理できませんでした。Nefos Video のログを確認してください"
 }
 
 // Section answers GET /model-manager/face-models with the section read again.

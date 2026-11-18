@@ -21,7 +21,7 @@ type LocalProvider struct {
 	Reason        string `json:"reason,omitempty" jsonschema:"usable が false のとき、画面と実行の失敗が言うのと同じ文（直し方とクラウドに切り替える方法つき）"`
 	SupportReason string `json:"support_reason,omitempty" jsonschema:"state が unsupported のとき、動かせない理由と代わりに使うクラウドのプロバイダー（macOS はここに理由が出る）"`
 	ProcessError  string `json:"process_error,omitempty" jsonschema:"state が failed のとき、サーバーが起動しなかった理由（ログの末尾）"`
-	VRAMMinGB     int    `json:"vram_min_gb,omitempty" jsonschema:"必要なビデオメモリ（GB）。vram_estimate が true のときは mam の推定で、実機では未確認"`
+	VRAMMinGB     int    `json:"vram_min_gb,omitempty" jsonschema:"必要なビデオメモリ（GB）。vram_estimate が true のときは Nefos Video の推定で、実機では未確認"`
 	VRAMEstimate  bool   `json:"vram_estimate,omitempty"`
 	SourceURL     string `json:"source_url,omitempty" jsonschema:"プログラムの入手元"`
 	License       string `json:"license,omitempty" jsonschema:"プログラムのライセンス"`

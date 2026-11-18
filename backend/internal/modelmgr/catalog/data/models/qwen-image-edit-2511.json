@@ -5,7 +5,7 @@
  "tier": "standard",
  "content_rating": "general",
  "traits": {"params_b": 20, "params_label": "20B", "uncensored": false, "speed": "standard"},
- "description": "公式の Qwen-Image-Edit-2511（Apache-2.0・商用可）。参照画像（最大 3 枚）を使った編集ができる: 同じ人物の顔のまま別のシーンにする、画風だけを写す、1 枚の画像を指示どおり直す。参照なしならテキストから画像も作れる。拡散モデル（fp8mixed、約 20.5 GB）・テキストエンコーダー・VAE の 3 ファイルに、速さのモード用の Lightning LoRA 2 つ（4 ステップと 8 ステップ。各約 0.85 GB）を足して、合計約 31.9 GB（テキストエンコーダーと VAE は qwen-image と同じファイルなので、導入済みなら拡散モデルと LoRA の約 22.2 GB だけ取得する）。速さのモード（単発生成・MCP の speed_mode）は standard（既定。20 ステップ）・lightning-8・lightning-4（lightx2v/Qwen-Image-Edit-2511-Lightning の蒸留 LoRA。cfg 1 で 8・4 ステップ）から選べ、Lightning は速い代わりに standard と画質が変わりうる（mam の実機では画質・時間とも未測定）。公式のモデルで、成人向けの画像を想定した調整はない。成人向けの画像を編集したときの崩れ方（服が足される・体が崩れるなど）は mam の実機では未確認。成人向けの生成は noctq-v4-qwen-image21（非商用）を使う。16 GB の GPU では重みがメモリに収まらないため ComfyUI のオフロードが前提で、遅くなる（実測は未確認。vram の項を参照）。",
+ "description": "公式の Qwen-Image-Edit-2511（Apache-2.0・商用可）。参照画像（最大 3 枚）を使った編集ができる: 同じ人物の顔のまま別のシーンにする、画風だけを写す、1 枚の画像を指示どおり直す。参照なしならテキストから画像も作れる。拡散モデル（fp8mixed、約 20.5 GB）・テキストエンコーダー・VAE の 3 ファイルに、速さのモード用の Lightning LoRA 2 つ（4 ステップと 8 ステップ。各約 0.85 GB）を足して、合計約 31.9 GB（テキストエンコーダーと VAE は qwen-image と同じファイルなので、導入済みなら拡散モデルと LoRA の約 22.2 GB だけ取得する）。速さのモード（単発生成・MCP の speed_mode）は standard（既定。20 ステップ）・lightning-8・lightning-4（lightx2v/Qwen-Image-Edit-2511-Lightning の蒸留 LoRA。cfg 1 で 8・4 ステップ）から選べ、Lightning は速い代わりに standard と画質が変わりうる（Nefos Video の実機では画質・時間とも未測定）。公式のモデルで、成人向けの画像を想定した調整はない。成人向けの画像を編集したときの崩れ方（服が足される・体が崩れるなど）は Nefos Video の実機では未確認。成人向けの生成は noctq-v4-qwen-image21（非商用）を使う。16 GB の GPU では重みがメモリに収まらないため ComfyUI のオフロードが前提で、遅くなる（実測は未確認。vram の項を参照）。",
  "files": [
   {
    "name": "qwen_image_edit_2511_fp8mixed.safetensors",
@@ -49,7 +49,7 @@
   "min_gb": 16,
   "recommended_gb": 24,
   "limits": "fp8mixed の拡散モデル（約 20.5 GB）とテキストエンコーダー（約 9.4 GB）は 16 GB に同時に収まらないため、ComfyUI のオフロード（重みを一時的にメインメモリへ退避）が前提で、生成は遅くなります。メインメモリも多く使います（32 GB 以上を推奨）。参照画像は枚数が多いほど遅く、メモリも増えます（1 枚あたり約 1 メガピクセルで読み込まれます）。",
-  "source": "mam の見積もり（実機未検証）。mam の Hugging Face のファイル一覧の判定は、この拡散モデルを必要約 24 GB と見積もり、16 GB の GPU を「足りない（over）」とする。16 GB を下限にしたのは、ComfyUI のオフロードで動く見込みという推定で、mam の実機（RTX 4070 Ti SUPER 16 GB）では時間もピーク VRAM も測っていない",
+  "source": "Nefos Video の見積もり（実機未検証）。Nefos Video の Hugging Face のファイル一覧の判定は、この拡散モデルを必要約 24 GB と見積もり、16 GB の GPU を「足りない（over）」とする。16 GB を下限にしたのは、ComfyUI のオフロードで動く見込みという推定で、Nefos Video の実機（RTX 4070 Ti SUPER 16 GB）では時間もピーク VRAM も測っていない",
   "estimate": true
  },
  "license": {
@@ -57,7 +57,7 @@
   "version": "2.0",
   "name": "Apache License 2.0",
   "url": "https://huggingface.co/Qwen/Qwen-Image-Edit-2511/blob/main/README.md",
-  "summary": "Qwen-Image-Edit-2511 は Apache 2.0（Qwen のモデルカードの license: apache-2.0 と「Qwen-Image is licensed under Apache 2.0.」の記載。mam が取得する Comfy-Org の再配布のカードも apache-2.0。gated ではない。速さのモード用の LoRA lightx2v/Qwen-Image-Edit-2511-Lightning のカードも license: apache-2.0・gated ではない。2026-11-03 に確認）。商用を含めて自由に使える。著作権表示とライセンス文を保つ。生成物の権利は主張されない。同じ Qwen-Image 系でも noctq-v4-qwen-image21（Qwen 2.1・Qwen Research License）は非商用で、このモデルとは別のライセンス。",
+  "summary": "Qwen-Image-Edit-2511 は Apache 2.0（Qwen のモデルカードの license: apache-2.0 と「Qwen-Image is licensed under Apache 2.0.」の記載。Nefos Video が取得する Comfy-Org の再配布のカードも apache-2.0。gated ではない。速さのモード用の LoRA lightx2v/Qwen-Image-Edit-2511-Lightning のカードも license: apache-2.0・gated ではない。2026-11-03 に確認）。商用を含めて自由に使える。著作権表示とライセンス文を保つ。生成物の権利は主張されない。同じ Qwen-Image 系でも noctq-v4-qwen-image21（Qwen 2.1・Qwen Research License）は非商用で、このモデルとは別のライセンス。",
   "commercial": "yes",
   "checked_at": "2026-11-03"
  },

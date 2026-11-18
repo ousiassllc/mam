@@ -35,7 +35,7 @@ func SectionData(ctx context.Context, svc *mcpsettings.Service) view.Data {
 	v, err := svc.View(ctx)
 	d := dataOf(v)
 	if err != nil {
-		d.Error = "トークンの一覧を読み込めませんでした。mam のログを確認してください"
+		d.Error = "トークンの一覧を読み込めませんでした。Nefos Video のログを確認してください"
 	}
 	return d
 }
@@ -95,7 +95,7 @@ func (h Handlers) Bind(c *gin.Context) {
 		_ = c.Error(err)
 		settingshttp.Render(c, http.StatusInternalServerError, view.BindModal(view.BindForm{
 			Address: addr, Candidates: d.Candidates,
-			Error: "待ち受け先を切り替えられませんでした（元の待ち受け先のままです）。ポートの空きと mam のログを確認してください",
+			Error: "待ち受け先を切り替えられませんでした（元の待ち受け先のままです）。ポートの空きと Nefos Video のログを確認してください",
 		}))
 	}
 }
@@ -121,7 +121,7 @@ func (h Handlers) Issue(c *gin.Context) {
 	default:
 		_ = c.Error(err)
 		settingshttp.Render(c, http.StatusInternalServerError, view.IssueModal(view.IssueForm{
-			Name: name, MaxNameLen: mcptoken.MaxNameRunes, Error: "トークンを発行できませんでした。mam のログを確認してください",
+			Name: name, MaxNameLen: mcptoken.MaxNameRunes, Error: "トークンを発行できませんでした。Nefos Video のログを確認してください",
 		}))
 	}
 }
@@ -137,7 +137,7 @@ func (h Handlers) Revoke(c *gin.Context) {
 		return
 	case err != nil:
 		_ = c.Error(err)
-		settingshttp.Toast(c, http.StatusInternalServerError, "トークンを失効できませんでした。mam のログを確認してください")
+		settingshttp.Toast(c, http.StatusInternalServerError, "トークンを失効できませんでした。Nefos Video のログを確認してください")
 		return
 	}
 	d := SectionData(c.Request.Context(), h.Svc)

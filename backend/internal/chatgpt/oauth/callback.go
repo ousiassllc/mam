@@ -109,7 +109,7 @@ func (c *Callback) handle(w http.ResponseWriter, r *http.Request) {
 	}
 	q := r.URL.Query()
 	if q.Get("state") != c.state {
-		page(w, http.StatusBadRequest, "ログインに失敗しました", "この要求は、mam が開始したログインのものではありません。mam の画面からやり直してください。")
+		page(w, http.StatusBadRequest, "ログインに失敗しました", "この要求は、Nefos Video が開始したログインのものではありません。Nefos Video の画面からやり直してください。")
 		return
 	}
 	var out callbackOutcome
@@ -126,14 +126,14 @@ func (c *Callback) handle(w http.ResponseWriter, r *http.Request) {
 	delivered := false
 	c.once.Do(func() { c.result <- out; delivered = true })
 	if !delivered {
-		page(w, http.StatusConflict, "このログインは終了しています", "mam の画面を確認してください。")
+		page(w, http.StatusConflict, "このログインは終了しています", "Nefos Video の画面を確認してください。")
 		return
 	}
 	if out.err != nil {
-		page(w, http.StatusOK, "ログインを完了できませんでした", "mam の画面に戻って、表示を確認してください。")
+		page(w, http.StatusOK, "ログインを完了できませんでした", "Nefos Video の画面に戻って、表示を確認してください。")
 		return
 	}
-	page(w, http.StatusOK, "ログインしました", "このタブは閉じて、mam の画面に戻ってください。")
+	page(w, http.StatusOK, "ログインしました", "このタブは閉じて、Nefos Video の画面に戻ってください。")
 }
 
 func page(w http.ResponseWriter, status int, title, body string) {

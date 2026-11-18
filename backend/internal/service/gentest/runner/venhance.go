@@ -82,7 +82,7 @@ func (br *batchRun) enhanceVideo(ctx context.Context, r gentestrepo.Result, p re
 // is whole. The progress of the provider is shown as the progress of the job.
 func (br *batchRun) enhanceInCloud(ctx context.Context, ve *record.VideoEnhance, srcPath, dest string) (int64, error) {
 	if br.s.Cloud == nil {
-		return 0, refusal(apperr.CodeUnavailable, "この mam ではクラウドの動画処理（Topaz）が使えません。ローカルのモデル（SeedVR2・RIFE）で実行してください。", nil)
+		return 0, refusal(apperr.CodeUnavailable, "この Nefos Video ではクラウドの動画処理（Topaz）が使えません。ローカルのモデル（SeedVR2・RIFE）で実行してください。", nil)
 	}
 	if ve.Topaz == nil || ve.Topaz.RequestID == "" {
 		return 0, refusal(apperr.CodeInvalidInput, "見積りの情報がこの結果に残っていないため、Topaz には送れません。もう一度、見積りを取ってから実行してください。", nil)

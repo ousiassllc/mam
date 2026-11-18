@@ -23,7 +23,7 @@ func registerCodex(r *mcpkit.Registrar, h handlers) {
 		"Codex 経由のログインに使う Codex app-server（OpenAI 公式。Apache-2.0）を、公式の GitHub リリースから codex ディレクトリ（Windows 版は mam.exe と同じ場所、macOS 版はデータディレクトリの中）にダウンロードする（約 75〜90 MB。SHA-256 とサイズを確かめる。Windows 版と macOS 版（Apple Silicon）のみ）。job_id を返すので get_job で進捗を見る。中断しても続きから再開する / Download the pinned Codex app-server (Windows and macOS Apple Silicon only) and poll it with get_job.",
 		h.installEngine, mcpkit.OpenWorld())
 	mcpkit.Write(r, "start_chatgpt_codex_login",
-		"Codex 経由で ChatGPT にログインする（テキスト生成のみ。Business / Enterprise / Edu のワークスペースのアカウントも使える。LLM の割り当てのプロバイダー chatgpt-codex）。method=browser は mam が動いている PC の既定ブラウザを開き、device はユーザーコードと URL を返す（ワークスペースでデバイスコードの許可が必要）。ローカル・オープンソースの利用のみで、商用・ホスティングでは使えない。完了は get_chatgpt_login_status / Start the Codex login (text generation only; workspace accounts work). Local, open-source use only.",
+		"Codex 経由で ChatGPT にログインする（テキスト生成のみ。Business / Enterprise / Edu のワークスペースのアカウントも使える。LLM の割り当てのプロバイダー chatgpt-codex）。method=browser は Nefos Video が動いている PC の既定ブラウザを開き、device はユーザーコードと URL を返す（ワークスペースでデバイスコードの許可が必要）。ローカル・オープンソースの利用のみで、商用・ホスティングでは使えない。完了は get_chatgpt_login_status / Start the Codex login (text generation only; workspace accounts work). Local, open-source use only.",
 		h.startCodexLogin, mcpkit.OpenWorld())
 }
 
@@ -94,7 +94,7 @@ func mapInstallError(err error) error {
 	case errors.Is(err, codex.ErrUnsupported):
 		return &service.ConflictError{Message: "この環境ではダウンロードできません（Windows 版と macOS 版（Apple Silicon）のみ）。自分で入れた codex のパスを設定画面で指定してください"}
 	case errors.Is(err, exeinstall.ErrNotWritable):
-		return &service.ConflictError{Message: "Codex の保存先（Windows 版は mam の実行ファイルと同じ場所、macOS 版はデータディレクトリの codex ディレクトリ）に書き込めません"}
+		return &service.ConflictError{Message: "Codex の保存先（Windows 版は Nefos Video の実行ファイルと同じ場所、macOS 版はデータディレクトリの codex ディレクトリ）に書き込めません"}
 	case errors.As(err, &noSpace):
 		return &service.ConflictError{Message: "ディスクの空きが足りません"}
 	}
@@ -149,13 +149,13 @@ func (h handlers) startCodexLogin(ctx context.Context, in CodexLoginInput) (Logi
 		return LoginOutput{}, err
 	}
 	out := codexLoginOutput(l)
-	out.Note = "ブラウザは mam が動いている PC で開きます。デバイスコードは利用者が自分で始めたときだけ入力してもらいます。ワークスペースのアカウントは、管理者が Codex の利用（Codex Local、デバイスコードのログイン）を許可している必要があります。ログイン後は LLM の割り当てでプロバイダーを chatgpt-codex にすると使えます（自動では切り替わりません）。"
+	out.Note = "ブラウザは Nefos Video が動いている PC で開きます。デバイスコードは利用者が自分で始めたときだけ入力してもらいます。ワークスペースのアカウントは、管理者が Codex の利用（Codex Local、デバイスコードのログイン）を許可している必要があります。ログイン後は LLM の割り当てでプロバイダーを chatgpt-codex にすると使えます（自動では切り替わりません）。"
 	return out, nil
 }
 
 // CodexLoginInput is the method of a Codex login.
 type CodexLoginInput struct {
-	Method string `json:"method,omitempty" jsonschema:"browser（既定。mam が動いている PC のブラウザ）または device（デバイスコード）"`
+	Method string `json:"method,omitempty" jsonschema:"browser（既定。Nefos Video が動いている PC のブラウザ）または device（デバイスコード）"`
 }
 
 func codexLoginOutput(l codex.Login) LoginOutput {
@@ -185,7 +185,7 @@ func (h handlers) logoutCodex(ctx context.Context, removeFiles bool) (LogoutOutp
 	case res.CredentialsMayRemain:
 		out.Message = "ファイルを削除しました。ただしエンジンが無かったため、OS の資格情報ストアに Codex の資格情報が残っている可能性があります。Windows の「資格情報マネージャー」で Codex を探して削除するよう利用者に伝えてください"
 	case res.Removed:
-		out.Message = "ログアウトし、取得した Codex 本体と mam 専用の CODEX_HOME を削除しました"
+		out.Message = "ログアウトし、取得した Codex 本体と Nefos Video 専用の CODEX_HOME を削除しました"
 	case res.LoggedOut:
 		out.Message = "ログアウトしました。Codex が保存した資格情報を消しました"
 	default:

@@ -30,7 +30,7 @@ func TestEnding(t *testing.T) {
 	assert.Equal(t, failbox.Item{Title: "failed", Reason: "no space", View: &v}, f)
 
 	_, f = jobview.Ending(domain.JobFailed, "", nil, "done", "failed")
-	assert.Equal(t, "原因は mam のログを確認してください", f.Reason, "a job with no reason points at the log")
+	assert.Equal(t, "原因は Nefos Video のログを確認してください", f.Reason, "a job with no reason points at the log")
 }
 
 // A success adds its notice (joined with the others by "。"); a failure with the common error is a box under its title, one without (a job of

@@ -2,7 +2,7 @@
  "id": "txt2video-hunyuan-video-lora",
  "label": "HunyuanVideo + NSFW LoRA: テキストから動画",
  "media": "video",
- "description": "HunyuanVideo（hunyuan_video_t2v_720p_bf16.safetensors。13B 級）に LoraLoaderModelOnly で成人向けの LoRA（BigStationW の nsfw-e7。hunyuan_video_nsfw_e7.safetensors、強さ 1、トリガー nsfwsks）を重ねて、テキストから動画を作る標準ノードだけのワークフロー。ComfyUI 公式の HunyuanVideo T2V の例（comfyanonymous/ComfyUI_examples の hunyuan_video_text_to_video.json）と同じ組み立て: DualCLIPLoader（clip_l と llava_llama3_fp8_scaled、type hunyuan_video）・ModelSamplingSD3 の shift 7・FluxGuidance 6（mam の cfg はこの値）・BasicGuider・BasicScheduler 20 ステップ（simple）・euler・EmptyHunyuanLatentVideo・VAEDecodeTiled。拡散モデルの weight_dtype は、公式の注記「メモリが足りないなら fp8 を選ぶ」に従い fp8_e4m3fn（bf16 のファイルをその場で fp8 にして VRAM 16 GB に収める）。848×480・24fps・フレーム数は 4n+1 で、短尺（数秒）が前提。ネガティブプロンプトは使わない。GPU では未実行（構造のテストのみ）。",
+ "description": "HunyuanVideo（hunyuan_video_t2v_720p_bf16.safetensors。13B 級）に LoraLoaderModelOnly で成人向けの LoRA（BigStationW の nsfw-e7。hunyuan_video_nsfw_e7.safetensors、強さ 1、トリガー nsfwsks）を重ねて、テキストから動画を作る標準ノードだけのワークフロー。ComfyUI 公式の HunyuanVideo T2V の例（comfyanonymous/ComfyUI_examples の hunyuan_video_text_to_video.json）と同じ組み立て: DualCLIPLoader（clip_l と llava_llama3_fp8_scaled、type hunyuan_video）・ModelSamplingSD3 の shift 7・FluxGuidance 6（Nefos Video の cfg はこの値）・BasicGuider・BasicScheduler 20 ステップ（simple）・euler・EmptyHunyuanLatentVideo・VAEDecodeTiled。拡散モデルの weight_dtype は、公式の注記「メモリが足りないなら fp8 を選ぶ」に従い fp8_e4m3fn（bf16 のファイルをその場で fp8 にして VRAM 16 GB に収める）。848×480・24fps・フレーム数は 4n+1 で、短尺（数秒）が前提。ネガティブプロンプトは使わない。GPU では未実行（構造のテストのみ）。",
  "model": {
   "media": "video",
   "video": {"durations": [2, 3], "resolutions": ["480p"]},

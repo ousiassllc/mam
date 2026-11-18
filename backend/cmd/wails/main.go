@@ -21,7 +21,7 @@ import (
 )
 
 const (
-	appName = "MAM"
+	appName = "Nefos Video"
 	// uniqueID identifies the single running instance (Wails SingleInstance).
 	uniqueID = "com.ousiassllc.mam"
 	// waitingPage is shown until the server is ready: only the background colour of the app layout

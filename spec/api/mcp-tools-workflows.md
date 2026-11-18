@@ -35,7 +35,7 @@
 
 ### ジョブ（`run_workflow`）
 
-`get_job` の `kind` は `run_workflow`。成功すると `result` に `model_id`・`media`・`download_url`（トークン付き）・`expires_at`・`file_name`・`mime_type`。失敗は `error` に ComfyUI の理由。`done` / `total` は割合（0〜100）。mam の再起動で止まった実行は `failed`。
+`get_job` の `kind` は `run_workflow`。成功すると `result` に `model_id`・`media`・`download_url`（トークン付き）・`expires_at`・`file_name`・`mime_type`。失敗は `error` に ComfyUI の理由。`done` / `total` は割合（0〜100）。Nefos Video の再起動で止まった実行は `failed`。
 
 ### 既存のツールが識別子を受ける
 
@@ -50,3 +50,4 @@
 | 1.2 | 2026-11-04 | `settings` に `exposed_inputs`（画面に出す値）を足した（保存・取得・更新。省くと今のまま） | Issue #977（ステージ 2） |
 | 1.3 | 2026-11-06 | `assignments[]` に `offset`（`frames` だけ。フレーム数に足す整数。−64〜64）を足した（`update_workflow_assignment`・`get_workflow`） | Issue #1076 |
 | 1.4 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |
+| 1.5 | 2026-11-19 | 本文の製品名の表示を「MAM」から「Nefos Video」に改めた（過去の改訂履歴の文は当時のまま） | #1170: 製品名を MAM から Nefos Video に変更（表示名のみ。識別子・パス・実行ファイル名は変更しない） |

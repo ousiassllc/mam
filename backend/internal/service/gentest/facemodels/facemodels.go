@@ -116,7 +116,7 @@ func (s *Service) Remove() error {
 		err = remove()
 	}
 	if err != nil {
-		return gterr.Invalid("顔チェック用モデルのファイルを削除できませんでした（使用中の可能性があります。mam を再起動してからやり直してください）: %v", err)
+		return gterr.Invalid("顔チェック用モデルのファイルを削除できませんでした（使用中の可能性があります。Nefos Video を再起動してからやり直してください）: %v", err)
 	}
 	return nil
 }

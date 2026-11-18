@@ -19,7 +19,7 @@ import (
 )
 
 // readFailure is what the list says when the jobs could not be read; the cause goes to the log, not to the page.
-const readFailure = "ジョブを読み込めませんでした。更新を押して、もう一度お試しください。直らないときは mam のログを確認してください。"
+const readFailure = "ジョブを読み込めませんでした。更新を押して、もう一度お試しください。直らないときは Nefos Video のログを確認してください。"
 
 // Handlers answer the routes of the screen.
 type Handlers struct {

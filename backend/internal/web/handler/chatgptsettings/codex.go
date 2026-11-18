@@ -112,12 +112,12 @@ func CodexInstall(svc *chatgpt.Service) gin.HandlerFunc {
 		case errors.Is(err, codex.ErrUnsupported):
 			status, d.Error = http.StatusConflict, "この環境ではダウンロードできません（ダウンロードできるのは Windows 版と macOS 版（Apple Silicon）だけです）。自分で入れた codex のパスを指定してください"
 		case errors.Is(err, exeinstall.ErrNotWritable):
-			status, d.Error = http.StatusConflict, fmt.Sprintf("Codex の保存先（%s）に書き込めません。書き込み権限を確認してください（Windows 版は mam の実行ファイルの置き場所、macOS 版はデータディレクトリの中です）", svc.Codex().Status().Dir)
+			status, d.Error = http.StatusConflict, fmt.Sprintf("Codex の保存先（%s）に書き込めません。書き込み権限を確認してください（Windows 版は Nefos Video の実行ファイルの置き場所、macOS 版はデータディレクトリの中です）", svc.Codex().Status().Dir)
 		case errors.As(err, &noSpace):
 			status, d.Error = http.StatusInsufficientStorage, fmt.Sprintf("ディスクの空きが足りません（必要 約 %d MB、空き %d MB）", noSpace.Need>>20, noSpace.Free>>20)
 		default:
 			_ = c.Error(err)
-			status, d.Error = http.StatusInternalServerError, "ダウンロードを始められませんでした。mam のログを確認してください"
+			status, d.Error = http.StatusInternalServerError, "ダウンロードを始められませんでした。Nefos Video のログを確認してください"
 		}
 		render(c, status, view.Panel(d))
 	}
@@ -152,7 +152,7 @@ func SetCodexPath(c *gin.Context, svc *chatgpt.Service, path string) CodexPathRe
 	case err == nil && path == "":
 		return CodexPathResult{http.StatusOK, "パスの指定を解除しました"}
 	case err == nil:
-		return CodexPathResult{http.StatusOK, "パスを設定しました。mam は実行して確かめません。ログインやモデルの取得で使われます"}
+		return CodexPathResult{http.StatusOK, "パスを設定しました。Nefos Video は実行して確かめません。ログインやモデルの取得で使われます"}
 	case errors.Is(err, codex.ErrInvalidPath):
 		return CodexPathResult{http.StatusUnprocessableEntity, "パスを設定できませんでした。実在するファイルの絶対パスを指定してください"}
 	}
@@ -194,7 +194,7 @@ func startCodexLogin(c *gin.Context, svc *chatgpt.Service) {
 		status, message = http.StatusBadGateway, ls.Message
 	default:
 		_ = c.Error(err)
-		status, message = http.StatusInternalServerError, "Codex を起動できませんでした。エンジンのエラーと mam のログを確認してください"
+		status, message = http.StatusInternalServerError, "Codex を起動できませんでした。エンジンのエラーと Nefos Video のログを確認してください"
 	}
 	loginAnswer(c, codexSection(svc), kindCodex, status, message)
 }
@@ -215,11 +215,11 @@ func logoutCodex(c *gin.Context, svc *chatgpt.Service) {
 	switch {
 	case err != nil:
 		_ = c.Error(err)
-		status, d.Error = http.StatusInternalServerError, "ログアウトを完了できませんでした（保存したトークンは消えていません）。エンジンのエラーと mam のログを確認してください"
+		status, d.Error = http.StatusInternalServerError, "ログアウトを完了できませんでした（保存したトークンは消えていません）。エンジンのエラーと Nefos Video のログを確認してください"
 	case res.CredentialsMayRemain:
 		d.Notice = "ファイルを削除しました。ただし、エンジンが無かったため、OS の資格情報ストアに Codex の資格情報が残っている可能性があります。Windows の「資格情報マネージャー」で「Codex」を探して削除してください"
 	case res.Removed:
-		d.Notice = "ログアウトして、取得した Codex 本体と mam 専用の CODEX_HOME を削除しました"
+		d.Notice = "ログアウトして、取得した Codex 本体と Nefos Video 専用の CODEX_HOME を削除しました"
 	default:
 		d.Notice = "ログアウトしました"
 	}

@@ -11,7 +11,7 @@
   "speed": "fast",
   "video_modes": ["i2v"]
  },
- "description": "【中（〜14B）・I2V・音声なし】wan22-i2v-14b（ベースは共有）に、LightX2V の 4 ステップ蒸留に非検閲の学習を重ねた LoRA（高ノイズ用・低ノイズ用、各 1.2 GB。rzgar 作）を重ねる構成（成人向け）。得意: 4 ステップ・cfg 1 で速く作れ、先頭フレーム 1 枚から成人向けの動きを作る。注意: この LoRA は高速化の部分を含むため、強さを下げるとブレて動きが崩れる（作者の注意）ので、強さは 1 のまま使う。ライセンスはカードの Apache-2.0 の宣言だけで、商用は不明。ベースを導入済みなら、取得するのは LoRA の 2.5 GB だけ。16fps。macOS（Apple Silicon）では、ComfyUI の MPS が fp8 の重みを扱えない既知の問題があるため動かない可能性が高く、Windows（NVIDIA）のみ対応（mam の実機では未確認）。",
+ "description": "【中（〜14B）・I2V・音声なし】wan22-i2v-14b（ベースは共有）に、LightX2V の 4 ステップ蒸留に非検閲の学習を重ねた LoRA（高ノイズ用・低ノイズ用、各 1.2 GB。rzgar 作）を重ねる構成（成人向け）。得意: 4 ステップ・cfg 1 で速く作れ、先頭フレーム 1 枚から成人向けの動きを作る。注意: この LoRA は高速化の部分を含むため、強さを下げるとブレて動きが崩れる（作者の注意）ので、強さは 1 のまま使う。ライセンスはカードの Apache-2.0 の宣言だけで、商用は不明。ベースを導入済みなら、取得するのは LoRA の 2.5 GB だけ。16fps。macOS（Apple Silicon）では、ComfyUI の MPS が fp8 の重みを扱えない既知の問題があるため動かない可能性が高く、Windows（NVIDIA）のみ対応（Nefos Video の実機では未確認）。",
  "files": [
   {
    "name": "wan2.2_i2v_high_noise_14B_fp8_scaled.safetensors",
@@ -60,7 +60,7 @@
  ],
  "vram": {
   "min_gb": 16,
-  "source": "wan22-i2v-14b と同じ（fp8 の 14B ＋ LoRA）。Issue #930 の調査。mam の実機では未検証",
+  "source": "wan22-i2v-14b と同じ（fp8 の 14B ＋ LoRA）。Issue #930 の調査。Nefos Video の実機では未検証",
   "estimate": true
  },
  "license": {
@@ -85,7 +85,7 @@
     "commercial": "unknown"
    }
   ],
-  "notice": "この mam のインストール先に取得するモデルです。この LoRA のライセンスはモデルカードの宣言（Apache-2.0）だけで、LICENSE の本文と学習データの出所を確認できていません。商用には使わないでください。成人向けの表現の公開は、地域の法令と配信先の規約に従ってください。"
+  "notice": "この Nefos Video のインストール先に取得するモデルです。この LoRA のライセンスはモデルカードの宣言（Apache-2.0）だけで、LICENSE の本文と学習データの出所を確認できていません。商用には使わないでください。成人向けの表現の公開は、地域の法令と配信先の規約に従ってください。"
  },
  "consent_required": true,
  "requires_hf_token": false,

@@ -211,10 +211,10 @@ func StartLogin(svc *chatgpt.Service) gin.HandlerFunc {
 		case errors.Is(err, chatgpt.ErrImageDisabled):
 			status, message = http.StatusConflict, "画像生成（非公式）がオフです。先にオンにしてください"
 		case errors.Is(err, chatgpt.ErrNoDeviceLogin):
-			status, message = http.StatusUnprocessableEntity, "公式のログインにはデバイスコードの方式がありません。mam が動いているこの PC のブラウザでログインしてください"
+			status, message = http.StatusUnprocessableEntity, "公式のログインにはデバイスコードの方式がありません。Nefos Video が動いているこの PC のブラウザでログインしてください"
 		default:
 			_ = c.Error(err)
-			status, message = http.StatusInternalServerError, "ログインを始められませんでした。ポート 1455 / 1457 が他のアプリに使われていないか、mam のログを確認してください"
+			status, message = http.StatusInternalServerError, "ログインを始められませんでした。ポート 1455 / 1457 が他のアプリに使われていないか、Nefos Video のログを確認してください"
 		}
 		loginAnswer(c, SectionData(svc), kind, status, message)
 	}
@@ -268,9 +268,9 @@ func Logout(svc *chatgpt.Service) gin.HandlerFunc {
 		switch {
 		case err != nil:
 			_ = c.Error(err)
-			status, d.Error = http.StatusInternalServerError, "ログアウトを完了できませんでした。OS のキーストアと mam のログを確認してください"
+			status, d.Error = http.StatusInternalServerError, "ログアウトを完了できませんでした。OS のキーストアと Nefos Video のログを確認してください"
 		case res.WasSignedIn && !res.RevokeConfirmed:
-			d.Notice = "ログアウトしました。ただし、OpenAI 側での失効を確認できませんでした。念のため ChatGPT の設定（Settings）で mam の接続を解除してください"
+			d.Notice = "ログアウトしました。ただし、OpenAI 側での失効を確認できませんでした。念のため ChatGPT の設定（Settings）で Nefos Video の接続を解除してください"
 		default:
 			d.Notice = "ログアウトしました"
 		}

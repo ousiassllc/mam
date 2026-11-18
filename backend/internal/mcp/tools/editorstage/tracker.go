@@ -111,7 +111,7 @@ func (t *tracker) probe(running string) mcpkit.Probe {
 	return func(_ context.Context, job mcpkit.JobInfo) (mcpkit.Progress, error) {
 		o := t.outcome(job.ID)
 		if o == nil {
-			return mcpkit.Progress{State: mcpkit.JobFailed, Error: "この job の記録が見つかりません（mam を再起動した可能性があります）。編集画面の状態を get_editor_view で確認してください"}, nil
+			return mcpkit.Progress{State: mcpkit.JobFailed, Error: "この job の記録が見つかりません（Nefos Video を再起動した可能性があります）。編集画面の状態を get_editor_view で確認してください"}, nil
 		}
 		select {
 		case <-o.done:

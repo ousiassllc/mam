@@ -67,7 +67,7 @@ func refuse(c *gin.Context, err error) (int, string) {
 		return http.StatusNotFound, msg
 	}
 	_ = c.Error(err)
-	return http.StatusInternalServerError, "処理できませんでした。mam のログを確認してください"
+	return http.StatusInternalServerError, "処理できませんでした。Nefos Video のログを確認してください"
 }
 
 func render(c *gin.Context, status int, component templ.Component) {

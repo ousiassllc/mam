@@ -116,7 +116,7 @@ func Section(c Card) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, " をこの PC に取得します（コミットを固定し、SHA-256 と大きさを確かめます。mam には同梱しません）。導入したあと mam を再起動する必要はありません。 ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, " をこの PC に取得します（コミットを固定し、SHA-256 と大きさを確かめます。Nefos Video には同梱しません）。導入したあと Nefos Video を再起動する必要はありません。 ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

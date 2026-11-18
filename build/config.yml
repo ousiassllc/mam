@@ -8,7 +8,7 @@ version: '3'
 
 info:
   companyName: "ousiassllc"
-  productName: "MAM"
+  productName: "Nefos Video"
   productIdentifier: "com.ousiassllc.mam"
   description: "Multi-agent AI video production studio"
   copyright: "(c) 2026, ousiassllc"

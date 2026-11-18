@@ -124,7 +124,7 @@ func noToken(repo, page string) error {
 }
 
 func noAccess(repo, page string) error {
-	return refusal("このトークンでは %s を取得できません。Hugging Face のページ（%s）でアクセスを申請し、承認されてからやり直してください（mam からは申請できません）", repo, page)
+	return refusal("このトークンでは %s を取得できません。Hugging Face のページ（%s）でアクセスを申請し、承認されてからやり直してください（Nefos Video からは申請できません）", repo, page)
 }
 
 // decideFolder sets the folder: the user's, else the repository path's, else the guess from the header (a failure to read

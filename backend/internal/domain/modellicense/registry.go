@@ -23,7 +23,7 @@ func SetResolver(r Resolver) {
 
 // NotChecked is the notice of a model nobody checked: a model the user defined on an endpoint, a saved workflow, a model whose
 // card says nothing.
-const NotChecked = "このモデルのライセンスを mam は確認できていません。商用で使う前に、モデルの配布元でライセンスを確かめてください。"
+const NotChecked = "このモデルのライセンスを Nefos Video は確認できていません。商用で使う前に、モデルの配布元でライセンスを確かめてください。"
 
 // Of is the license of the model with the identifier the generation test uses: a built-in cloud model from data/cloud.json, a model
 // of the model manager from the resolver, and Unknown (with NotChecked) for any other.

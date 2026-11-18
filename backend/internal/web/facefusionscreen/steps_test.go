@@ -37,7 +37,7 @@ func TestSteps_AreOpenWhileFaceFusionIsNotFoundAndHoldTheFiveStepsOfTheOfficialG
 	assert.True(t, isOpen(steps), "open from the start while there is no FaceFusion")
 	assert.Equal(t, 5, strings.Count(steps, "<li"), "five numbered steps")
 	assert.Equal(t, 1, strings.Count(steps, "<ol"), "an ordered list")
-	assert.Contains(t, steps, "mam は FaceFusion を取得しません")
+	assert.Contains(t, steps, "Nefos Video は FaceFusion を取得しません")
 	for _, cmd := range []string{
 		"conda init --all", "conda create --name facefusion python=3.12 pip=25.0", "conda activate facefusion",
 		"git clone https://github.com/facefusion/facefusion", "cd facefusion", "git checkout 3.9.2",
@@ -110,7 +110,7 @@ func TestVersionNote_IsSaidOnlyForAVersionThatIsNotThreeDotX(t *testing.T) {
 	body := s.get(paths.CompanionFaceFusion())
 
 	assert.Contains(t, body, `data-testid="mm-facefusion-version-note"`)
-	assert.Contains(t, body, "mam が確かめたのは 3.x の選択肢（モデルの名前）です。この版では入れ替えが動かないことがあります")
+	assert.Contains(t, body, "Nefos Video が確かめたのは 3.x の選択肢（モデルの名前）です。この版では入れ替えが動かないことがあります")
 	assert.Contains(t, body, "FaceFusion 4.0.0", "it is still found and usable")
 	assert.Contains(t, body, "使えます")
 }

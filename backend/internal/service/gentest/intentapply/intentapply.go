@@ -18,7 +18,7 @@ import (
 // models read it as the face to keep. r is returned changed, not modified.
 func Apply(ctx context.Context, g *gentest.Service, r gentest.Request, id string) (gentest.Request, intent.Recommendation, error) {
 	if len(r.Models) > 0 {
-		return r, intent.Recommendation{}, gterr.Invalid("models と intent は同時に指定できません（intent はモデルを mam が選ぶ指定です）")
+		return r, intent.Recommendation{}, gterr.Invalid("models と intent は同時に指定できません（intent はモデルを Nefos Video が選ぶ指定です）")
 	}
 	if r.Media != "" && r.Media != gentest.MediaImage {
 		return r, intent.Recommendation{}, gterr.Invalid("intent は画像だけで指定できます")

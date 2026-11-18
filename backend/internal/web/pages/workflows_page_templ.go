@@ -61,7 +61,7 @@ func WorkflowsPage(csrfToken string, d workflows.Data) templ.Component {
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = pagehead.Header("ワークフロー", "", "ComfyUI のワークフローを mam に保存し、画像の用途・Quality Policy・Shot の Video Model で選べるようにします。作成と編集はノード画面で行います。").Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = pagehead.Header("ワークフロー", "", "ComfyUI のワークフローを Nefos Video に保存し、画像の用途・Quality Policy・Shot の Video Model で選べるようにします。作成と編集はノード画面で行います。").Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

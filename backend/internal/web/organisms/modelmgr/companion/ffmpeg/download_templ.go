@@ -77,7 +77,7 @@ func DownloadPanel(d Download) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "><p class=\"text-sm\"><span class=\"\">mam でダウンロードして入れる</span> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "><p class=\"text-sm\"><span class=\"\">Nefos Video でダウンロードして入れる</span> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -277,7 +277,7 @@ func DownloadPanel(d Download) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if d.Install.Succeeded {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<p class=\"text-sm text-success\" role=\"status\" data-testid=\"ffmpeg-download-done\">ffmpeg と ffprobe を入れました。<strong>すぐに使えます</strong>（mam を再起動する必要はありません）。</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<p class=\"text-sm text-success\" role=\"status\" data-testid=\"ffmpeg-download-done\">ffmpeg と ffprobe を入れました。<strong>すぐに使えます</strong>（Nefos Video を再起動する必要はありません）。</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -287,14 +287,14 @@ func DownloadPanel(d Download) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if d.Installed && d.UpdateAvailable {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<p class=\"text-sm text-warning\" data-testid=\"ffmpeg-download-update\">この mam が確かめた版は ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<p class=\"text-sm text-warning\" data-testid=\"ffmpeg-download-update\">この Nefos Video が確かめた版は ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(d.PinnedVersion)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/companion/ffmpeg/download.templ`, Line: 69, Col: 123}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/companion/ffmpeg/download.templ`, Line: 69, Col: 131}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
@@ -307,7 +307,7 @@ func DownloadPanel(d Download) templ.Component {
 				var templ_7745c5c3_Var14 string
 				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(d.Version)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/companion/ffmpeg/download.templ`, Line: 69, Col: 162}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/companion/ffmpeg/download.templ`, Line: 69, Col: 170}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 				if templ_7745c5c3_Err != nil {
@@ -434,7 +434,7 @@ func DownloadPanel(d Download) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, " MB。 ダウンロードしたファイルは、mam に固定してある SHA-256 と一致したときだけ使います（一致しなければ削除します）。 ライセンスは <a class=\"underline\" href=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, " MB。 ダウンロードしたファイルは、Nefos Video に固定してある SHA-256 と一致したときだけ使います（一致しなければ削除します）。 ライセンスは <a class=\"underline\" href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

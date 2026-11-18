@@ -87,5 +87,5 @@ func (h *handler) Request(method string, params json.RawMessage) (any, *rpc.Erro
 	if answer, ok := protocol.Refusal(method); ok {
 		return answer, nil
 	}
-	return nil, &rpc.Error{Code: rpc.CodeMethodNotFound, Message: "mam does not support " + method}
+	return nil, &rpc.Error{Code: rpc.CodeMethodNotFound, Message: "Nefos Video does not support " + method}
 }

@@ -4,7 +4,7 @@
 package licenses
 
 // Description is what the category says behind its "?" button.
-const Description = "MAM が使っているサードパーティのソフトウェアと、そのライセンス文です。項目を開くと全文が読めます。\nMAM 自身のライセンスは AGPL-3.0 です。同じ内容は、インストール先の THIRD_PARTY_NOTICES.md にもあります。\nローカルの音声・口パク（GPT-SoVITS・MuseTalk）は MAM に同梱せず、利用者が取得するものです。その出典とライセンスは「同梱の補足・利用者が取得するもの」にあります。"
+const Description = "Nefos Video が使っているサードパーティのソフトウェアと、そのライセンス文です。項目を開くと全文が読めます。\nMAM 自身のライセンスは AGPL-3.0 です。同じ内容は、インストール先の THIRD_PARTY_NOTICES.md にもあります。\nローカルの音声・口パク（GPT-SoVITS・MuseTalk）は MAM に同梱せず、利用者が取得するものです。その出典とライセンスは「同梱の補足・利用者が取得するもの」にあります。"
 
 // Data is the category: the groups in order.
 type Data struct {

@@ -3,10 +3,13 @@ package sidenav
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/navstate"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 	"github.com/ousiassllc/mam/backend/internal/web/themestate"
 )
 
 const (
+	// ProductName is the name of the product, what the menu says of itself to a screen reader.
+	ProductName = "Nefos Video"
 	// ID is the id of the menu (the fold button controls it).
 	ID = "sidenav"
 	// LabelFold and LabelOpen name the fold button in each state; static/src/components/sidenav swaps them.
@@ -61,7 +64,7 @@ templ menu(s State, folded bool) {
 		class="group sticky top-0 flex h-screen w-14 shrink-0 flex-col gap-4 border-r border-border bg-bone px-2 py-4 md:data-[folded=false]:w-56"
 	>
 		<div class="flex items-center justify-between gap-2 px-1 group-data-[folded=true]:justify-center max-md:justify-center">
-			<span class="truncate text-base text-ink max-md:sr-only group-data-[folded=true]:sr-only">mam</span>
+			@brand()
 			<button
 				type="button"
 				data-sidenav-toggle
@@ -110,6 +113,24 @@ templ menu(s State, folded bool) {
 			<span class="max-md:sr-only group-data-[folded=true]:sr-only">{ LabelTheme }</span>
 		</button>
 	</nav>
+}
+
+// brand is the name of the product at the top of the menu: the lockup of Nefos Video (the mark and the words) while the menu is open, the
+// mark alone on a narrow window (the menu is folded there, with no room beside the fold button; a folded menu on a wide window shows only
+// that button, as before). Both come in a Light and a Dark file, as they are: static/src/css/brand.css shows the
+// one of the theme. The name stays as text for a screen reader.
+templ brand() {
+	<span class="flex min-w-0 items-center" data-testid="sidenav-brand">
+		<span class="sr-only">{ ProductName }</span>
+		<span aria-hidden="true" class="max-md:hidden group-data-[folded=true]:hidden">
+			<img src={ paths.StaticBrand + "lockup-light.svg" } alt="" width="2000" height="560" class="brand-light h-11 w-auto"/>
+			<img src={ paths.StaticBrand + "lockup-dark.svg" } alt="" width="2000" height="560" class="brand-dark h-11 w-auto"/>
+		</span>
+		<span aria-hidden="true" class="hidden max-md:block">
+			<img src={ paths.StaticBrand + "icon-32-light.png" } alt="" width="32" height="32" class="brand-light h-8 w-8"/>
+			<img src={ paths.StaticBrand + "icon-32-dark.png" } alt="" width="32" height="32" class="brand-dark h-8 w-8"/>
+		</span>
+	</span>
 }
 
 // mmList is the second level of the model manager: the overview and the categories.

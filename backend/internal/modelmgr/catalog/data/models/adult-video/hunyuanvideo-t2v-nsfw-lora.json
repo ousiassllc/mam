@@ -57,7 +57,7 @@
   "min_gb": 16,
   "recommended_gb": 24,
   "limits": "拡散モデルの bf16（約 25.6 GB）をその場で fp8 にして載せ、ComfyUI のオフロード（重みを一時的にメインメモリへ退避）が前提で、生成は遅くなります。解像度は 480p・長さは数秒までにしてください。メインメモリも多く使います。",
-  "source": "ComfyUI 公式の HunyuanVideo の例は「メモリが足りないなら fp8 の weight_dtype を選ぶ」と書く。Issue #1012 の調査メモは 16 GB でオフロード前提なら可というコミュニティの記述を挙げる。Tencent の元の実装の推奨はこれより遥かに大きい。mam の実機（16 GB）では未確認の推定",
+  "source": "ComfyUI 公式の HunyuanVideo の例は「メモリが足りないなら fp8 の weight_dtype を選ぶ」と書く。Issue #1012 の調査メモは 16 GB でオフロード前提なら可というコミュニティの記述を挙げる。Tencent の元の実装の推奨はこれより遥かに大きい。Nefos Video の実機（16 GB）では未確認の推定",
   "estimate": true
  },
  "license": {

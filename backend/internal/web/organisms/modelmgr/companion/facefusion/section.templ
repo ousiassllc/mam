@@ -117,7 +117,7 @@ templ installSteps(d Data) {
 		<summary class="cursor-pointer text-sm font-semibold text-ink">FaceFusion の入れ方</summary>
 		<div class="mt-2 flex flex-col gap-3 text-sm">
 			<p class="text-mute">
-				mam は FaceFusion を取得しません（OpenRAIL-AS。条文は利用者が読みます）。公式の手順を、ここに写しています。Windows・Linux・macOS のアクセラレーターの準備は、
+				Nefos Video は FaceFusion を取得しません（OpenRAIL-AS。条文は利用者が読みます）。公式の手順を、ここに写しています。Windows・Linux・macOS のアクセラレーターの準備は、
 				<a class="underline" href="https://docs.facefusion.io/installation" target="_blank" rel="noopener noreferrer">公式のページ</a>の手順に従ってください。
 			</p>
 			<ol class="flex list-decimal flex-col gap-3 pl-5">
@@ -131,7 +131,7 @@ templ installSteps(d Data) {
 					@command("conda activate facefusion")
 				</li>
 				<li class="flex flex-col gap-1">
-					<span>FaceFusion を取得して、mam が確かめた版（{ d.Tag }）にします。</span>
+					<span>FaceFusion を取得して、Nefos Video が確かめた版（{ d.Tag }）にします。</span>
 					@command("git clone https://github.com/facefusion/facefusion")
 					@command("cd facefusion")
 					@command("git checkout " + d.Tag)

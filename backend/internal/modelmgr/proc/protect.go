@@ -17,7 +17,7 @@ import (
 // guardAndNote protects the started child: the guard process, and the pid file when the Spec names one. Neither failing stops the child.
 func (r *run) guardAndNote(pidFile string, logger *slog.Logger) {
 	if err := startGuard(r.cmd.Process.Pid); err != nil {
-		logger.Warn("guard process not started: a child outlives a mam that is killed", "err", err)
+		logger.Warn("guard process not started: a child outlives a Nefos Video that is killed", "err", err)
 	}
 	if pidFile != "" && writeRecord(pidFile, r.cmd.Process.Pid, probeProcess, logger) {
 		pid := r.cmd.Process.Pid

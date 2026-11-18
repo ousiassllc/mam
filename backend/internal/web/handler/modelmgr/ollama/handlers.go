@@ -66,7 +66,7 @@ func refuse(c *gin.Context, err error) (status int, msg string) {
 		return http.StatusBadGateway, worded.UserMessage()
 	}
 	_ = c.Error(err)
-	return http.StatusInternalServerError, "処理できませんでした。mam のログを確認してください"
+	return http.StatusInternalServerError, "処理できませんでした。Nefos Video のログを確認してください"
 }
 
 // answer draws the section (with the line "使うサーバー" out of band) and edits it first. jobs are the pulls it reports on.

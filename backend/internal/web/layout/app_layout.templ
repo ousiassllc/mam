@@ -43,10 +43,15 @@ templ AppLayoutAt(title, csrfToken, canonical string, nav sidenav.State) {
 			<meta charset="utf-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
 			<meta name="csrf-token" content={ csrfToken }/>
-			<title>{ title } | mam</title>
+			<title>{ title } | Nefos Video</title>
 			if canonical != "" {
 				<link rel="canonical" href={ canonical }/>
 			}
+			<link rel="icon" href={ paths.StaticBrand + "favicon.ico" } sizes="16x16 32x32 48x48"/>
+			<link rel="icon" type="image/png" sizes="32x32" href={ paths.StaticBrand + "icon-32-light.png" }/>
+			<link rel="icon" type="image/png" sizes="16x16" href={ paths.StaticBrand + "icon-16-light.png" }/>
+			<link rel="apple-touch-icon" href={ paths.StaticBrand + "icon-192.png" }/>
+			<link rel="manifest" href={ paths.StaticBrand + "manifest.webmanifest" }/>
 			<link rel="stylesheet" href={ paths.StaticFontsCSS }/>
 			<link rel="stylesheet" href={ paths.StaticCSS }/>
 			<script type="module" src={ paths.StaticApp }></script>

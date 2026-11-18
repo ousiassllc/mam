@@ -44,7 +44,7 @@ templ Panel(d Data) {
 			}
 		</div>
 		<p class="text-sm text-mute">この PC の GPT-SoVITS で、手持ちの音声からこの登場人物の声を学習します（参照音声だけで作るゼロショットより、声が近くなります）。学習した声は、この登場人物の声の合成に使われます（Series の正本で学習すると、以後に作る Episode に引き継がれます）。</p>
-		<p class="text-sm text-warning" role="note" data-testid="voice-train-consent-notice">声の持ち主本人の同意を得た音声だけで学習してください。同意なしに実在の人（声優・有名人など）の声をコピーしたり、なりすましや人をだます合成音声に使ったりしてはいけません。mam は同意を確かめません。</p>
+		<p class="text-sm text-warning" role="note" data-testid="voice-train-consent-notice">声の持ち主本人の同意を得た音声だけで学習してください。同意なしに実在の人（声優・有名人など）の声をコピーしたり、なりすましや人をだます合成音声に使ったりしてはいけません。Nefos Video は同意を確かめません。</p>
 		if !d.HasReference {
 			<p class="text-sm text-ink" data-testid="voice-train-need-reference">学習は、参照音声を設定した登場人物だけでできます。先に上の「参照音声」を設定してください。</p>
 		}
@@ -52,7 +52,7 @@ templ Panel(d Data) {
 			<div class="flex flex-col gap-1" data-testid="voice-train-progress">
 				<progress class="h-2 w-full" max="100" value={ d.percent() } aria-label={ d.Name + " の学習の進み具合" }></progress>
 				<p class="break-words text-sm text-ink">{ d.percent() }%<span class="text-mute">· { d.Text }</span></p>
-				<p class="text-sm text-mute">学習は mam を再起動すると途中から再開せず、やり直しになります。中止すると途中までの結果は残りません。</p>
+				<p class="text-sm text-mute">学習は Nefos Video を再起動すると途中から再開せず、やり直しになります。中止すると途中までの結果は残りません。</p>
 			</div>
 			@atoms.Button(atoms.ToneDanger, "学習を中止", templ.Attributes{
 				"type": "button", "hx-post": d.URL + "/cancel", "hx-target": "#" + d.DOMID, "hx-swap": "outerHTML",
@@ -122,7 +122,7 @@ templ Panel(d Data) {
 				hx-swap="outerHTML"
 				hx-sync="this:drop"
 				hx-disabled-elt="find button"
-				hx-confirm="学習には数十分かかり、その間 GPU を使います（同梱の ComfyUI の生成と同時には動かせません）。mam を再起動すると学習はやり直しになります。声の持ち主本人の同意を得た音声ですか？ 始めますか？"
+				hx-confirm="学習には数十分かかり、その間 GPU を使います（同梱の ComfyUI の生成と同時には動かせません）。Nefos Video を再起動すると学習はやり直しになります。声の持ち主本人の同意を得た音声ですか？ 始めますか？"
 			>
 				<label class="flex flex-col gap-1 text-xs text-mute" for={ d.DOMID + "-s2" }>
 					SoVITS のエポック数（1〜{ itoa(d.Max.SoVITS) }）

@@ -23,7 +23,7 @@ body
 ├ a "本文へ"            … 見えない。フォーカスが来たときだけ出る。#content へ飛ぶ（メニューを飛ばす）
 └ div.flex
    ├ nav#sidenav[aria-label="メニュー"][data-folded]   … sticky・画面の高さ・中だけスクロール
-   │   ├ "mam" ＋ たたむ/開くボタン（aria-expanded・aria-controls・名前が状態で変わる）
+   │   ├ Nefos Video のロゴ（開いている間は文字入りのロックアップ、たたんだとき・狭い画面ではマークだけ。ライト用とダーク用の 2 枚をテーマで出し分ける。素材はそのまま。#1171） ＋ たたむ/開くボタン（aria-expanded・aria-controls・名前が状態で変わる）
    │   ├ ul#sidenav-screens   … 主な画面
    │   ├ （Project の画面だけ）Project 名（見出し代わり）＋ ul#sidenav-views[aria-labelledby=sidenav-project]
    │   └ （モデルマネージャーの概要と分類ページだけ。#1101）見出し「モデルマネージャー」p#sidenav-mm ＋ ul#sidenav-mm-views[aria-labelledby=sidenav-mm]（「概要」と分類の項目。順・名前・アイコンは `mmcat.All()`。[model-manager-screen.md](model-manager-screen.md)「分類のサブページ（#1101）」）
@@ -66,7 +66,7 @@ body
 | 画面 | やったこと |
 |------|-----------|
 | 全画面 | 左メニュー・同じ余白・同じ h1・戻るリンクをメニューへ |
-| プロジェクト（`/`） | h1 `mam` ＋副題。ツールのカードは外した（#978。左メニューと行き先が同じ。状態の扱いは [home-screen.md](home-screen.md) §3） |
+| プロジェクト（`/`） | h1 `Nefos Video` ＋副題。ツールのカードは外した（#978。左メニューと行き先が同じ。状態の扱いは [home-screen.md](home-screen.md) §3） |
 | 単発生成 | 説明は「?」。ページ間のリンク（生成する・チャットで作る・画像から似せる・一部だけ描き直す・履歴・プロンプト履歴の 6 つ）はタブの形（現在がわかる） |
 | モデルマネージャー | メニュー・余白・見出しだけ。**モデルを並べる部分は変えていない**（#954 が扱う）。#908（導入ボタンの後のスクロール）にも触れていない |
 | ジョブ | 裏で動く作業の一覧（#980。[jobs-screen.md](jobs-screen.md)）。メニューの項目はモデルマネージャーの次 |
@@ -98,3 +98,4 @@ body
 | 1.3 | 2026-11-07 | モデルマネージャーの 2 階層目（`ul#sidenav-mm-views`。概要と `mmcat.All()` の分類）を実装した（`sidenav.InModelManager`）。画面の項目は、概要では `aria-current="page"`、分類ページでは `aria-current="true"`。各リストに `data-testid`（`sidenav-screens`・`sidenav-views`・`sidenav-mm-views`）を付けた | Issue #1101 |
 | 1.4 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |
 | 1.5 | 2026-11-11 | §5 の単発生成の行の「4 つのページのリンク」を、タブ 6 つ（チャットで作るを足した）に直した（実装の `generationNav` に合わせた） | PR #1141 のレビュー指摘 |
+| 1.6 | 2026-11-19 | 本文の製品名の表示を「MAM」から「Nefos Video」に改めた（過去の改訂履歴の文は当時のまま） | #1170: 製品名を MAM から Nefos Video に変更（表示名のみ。識別子・パス・実行ファイル名は変更しない）。#1171: ヘッダーを Nefos Video のロゴ（`lockup-{light,dark}.svg`、折りたたみ時は `icon-32-{light,dark}.png`）に差し替え |

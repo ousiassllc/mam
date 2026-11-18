@@ -4,7 +4,7 @@
  "purpose": "lip_sync",
  "version": "1.5-0a89dec4",
  "source_url": "https://github.com/TMElyralab/MuseTalk/tree/0a89dec45a0192b824e3cf4daf96c239440c5ed8",
- "description": "既存の動画（または 1 枚の顔写真）と音声から、口元を音声に合わせた動画を作る MuseTalk 1.5 の実行環境。公式は Windows 向けの配布物を出していないため、公式の手順（Python 3.10・PyTorch 2.0.1 + CUDA 11.8・mmcv 2.0.1 ほか）と同じ版を、python.org・PyPI・PyTorch・OpenMMLab の公式の配布先から固定の URL と SHA-256 で取得して、mam が組み立てます。MuseTalk のコードは GitHub のコミット固定のアーカイブです。重み（約 6 GB）は別に取得します。Windows に Microsoft Visual C++ 再頒布可能パッケージ（x64）が入っている必要があります（PyTorch が使います）。",
+ "description": "既存の動画（または 1 枚の顔写真）と音声から、口元を音声に合わせた動画を作る MuseTalk 1.5 の実行環境。公式は Windows 向けの配布物を出していないため、公式の手順（Python 3.10・PyTorch 2.0.1 + CUDA 11.8・mmcv 2.0.1 ほか）と同じ版を、python.org・PyPI・PyTorch・OpenMMLab の公式の配布先から固定の URL と SHA-256 で取得して、Nefos Video が組み立てます。MuseTalk のコードは GitHub のコミット固定のアーカイブです。重み（約 6 GB）は別に取得します。Windows に Microsoft Visual C++ 再頒布可能パッケージ（x64）が入っている必要があります（PyTorch が使います）。",
  "build": {
   "site_packages": "python/Lib/site-packages",
   "files": [
@@ -54,18 +54,18 @@
  },
  "vram": {
   "min_gb": 4,
-  "source": "公式の README（Gradio Demo の節）に、Windows の NVIDIA GeForce RTX 3050 Ti Laptop（ビデオメモリ 4 GB）で、fp16 で 8 秒の動画を約 5 分で生成できたとある。mam は同じ fp16 で起動する。mam 自身の実機では未確認。",
+  "source": "公式の README（Gradio Demo の節）に、Windows の NVIDIA GeForce RTX 3050 Ti Laptop（ビデオメモリ 4 GB）で、fp16 で 8 秒の動画を約 5 分で生成できたとある。Nefos Video は同じ fp16 で起動する。Nefos Video 自身の実機では未確認。",
   "estimate": false
  },
  "support": {
   "os": "windows",
   "arch": "amd64",
   "os_reasons": {
-   "darwin": "macOS では MuseTalk 1.5 を自動導入できません。公式の PyTorch 版は macOS（Apple Silicon）の GPU に対応しておらず（公式の手順は CUDA 前提で、使う mmcv 2.0.1 の Apple Silicon 向けの事前ビルドもありません）、第三者の MLX 版（mlx-community/MuseTalk-1.5-q4。MIT）は重みと UNet・VAE・Whisper の実装だけで、顔の検出・貼り戻しを含む起動できるサーバーが無いため、mam の自動導入の対象にしていません。mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。",
-   "linux": "Linux では MuseTalk 1.5 の自動導入に対応していません。mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。",
-   "default": "この OS では MuseTalk 1.5 の自動導入に対応していません。mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。"
+   "darwin": "macOS では MuseTalk 1.5 を自動導入できません。公式の PyTorch 版は macOS（Apple Silicon）の GPU に対応しておらず（公式の手順は CUDA 前提で、使う mmcv 2.0.1 の Apple Silicon 向けの事前ビルドもありません）、第三者の MLX 版（mlx-community/MuseTalk-1.5-q4。MIT）は重みと UNet・VAE・Whisper の実装だけで、顔の検出・貼り戻しを含む起動できるサーバーが無いため、Nefos Video の自動導入の対象にしていません。Nefos Video が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。",
+   "linux": "Linux では MuseTalk 1.5 の自動導入に対応していません。Nefos Video が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。",
+   "default": "この OS では MuseTalk 1.5 の自動導入に対応していません。Nefos Video が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。"
   },
-  "arch_reason": "この CPU（64 ビットの x86 以外）では MuseTalk 1.5 の自動導入に対応していません。mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。",
+  "arch_reason": "この CPU（64 ビットの x86 以外）では MuseTalk 1.5 の自動導入に対応していません。Nefos Video が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。",
   "no_gpu_reason": "GPU を取得できなかったため、MuseTalk 1.5 を導入できません。自動導入には NVIDIA の GPU が必要です。",
   "not_nvidia_reason": "NVIDIA の GPU が見つからないため、MuseTalk 1.5 を導入できません。自動導入は NVIDIA の GPU（CUDA）だけに対応していて、AMD・Intel の GPU では使えません。",
   "low_vram_reason": "{gpu} のビデオメモリは {vram_gb} GB で、MuseTalk 1.5 に必要な {min_vram_gb} GB に足りないため導入できません。",
@@ -78,7 +78,7 @@
   "version": "0a89dec4",
   "name": "MIT License",
   "url": "https://github.com/TMElyralab/MuseTalk/blob/0a89dec45a0192b824e3cf4daf96c239440c5ed8/LICENSE",
-  "summary": "MuseTalk は mam とは別のプログラムで、コードは MIT ライセンスで公開されている（README: 「The code of MuseTalk is released under the MIT License. There is no limitation for both academic and commercial usage.」）。mam は MuseTalk のバイトを配布せず、利用者の PC に GitHub のコミット固定のアーカイブから取得する。実行環境の Python（python.org）と約 80 の Python パッケージ（PyPI・PyTorch・OpenMMLab）も、それぞれの配布先から取得し、それぞれのライセンスに従う（THIRD_PARTY_NOTICES.md に一覧）。",
+  "summary": "MuseTalk は Nefos Video とは別のプログラムで、コードは MIT ライセンスで公開されている（README: 「The code of MuseTalk is released under the MIT License. There is no limitation for both academic and commercial usage.」）。Nefos Video は MuseTalk のバイトを配布せず、利用者の PC に GitHub のコミット固定のアーカイブから取得する。実行環境の Python（python.org）と約 80 の Python パッケージ（PyPI・PyTorch・OpenMMLab）も、それぞれの配布先から取得し、それぞれのライセンスに従う（THIRD_PARTY_NOTICES.md に一覧）。",
   "commercial": "conditional",
   "checked_at": "2026-11-01",
   "commercial_condition": "MuseTalk のコードと学習済みモデルは、README に商用を含むどんな目的にも使えるとある。実行に必要な他のモデル（SyncNet・S3FD・face-parse-bisent・ResNet-18）には、商用利用がはっきりしないものがあり、重みの一覧に注記する。Python パッケージのライセンスは確認中のものがある（THIRD_PARTY_NOTICES.md）。",

@@ -175,7 +175,7 @@ func Section(d Data) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "（この順。最後の ffmpeg フォルダは、mam でダウンロードして入れたものです）</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "（この順。最後の ffmpeg フォルダは、Nefos Video でダウンロードして入れたものです）</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

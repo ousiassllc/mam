@@ -14,7 +14,7 @@ func showError(text string) {
 	}
 	body, err := windows.UTF16PtrFromString(text)
 	if err != nil {
-		body, _ = windows.UTF16PtrFromString("mam failed to start")
+		body, _ = windows.UTF16PtrFromString("Nefos Video failed to start")
 	}
 	_, _ = windows.MessageBox(0, body, title, windows.MB_OK|windows.MB_ICONERROR|windows.MB_SETFOREGROUND)
 }

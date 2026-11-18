@@ -95,8 +95,8 @@ func gridReasonPopup() reason.Popup {
 	}
 	return reason.Popup{
 		Title: "「ノードが要るモデル」を導入できない理由と対処", Lead: "このモデルを使うには、追加ノードが要ります。",
-		Items:  []reason.Item{{Name: "追加ノード「ComfyUI-GGUF」", Text: "今の mam では導入できません。" + long}},
-		Remedy: "このモデルが必要とする追加ノードは、今の mam では導入できません。mam は Python の依存を自動で入れません。導入できるようになるまで、このモデルは導入できません。",
+		Items:  []reason.Item{{Name: "追加ノード「ComfyUI-GGUF」", Text: "今の Nefos Video では導入できません。" + long}},
+		Remedy: "このモデルが必要とする追加ノードは、今の Nefos Video では導入できません。Nefos Video は Python の依存を自動で入れません。導入できるようになるまで、このモデルは導入できません。",
 		Link:   &reason.Link{Href: "/model-manager/custom-nodes#mm-nodes", Label: "追加ノードの画面へ"},
 	}
 }

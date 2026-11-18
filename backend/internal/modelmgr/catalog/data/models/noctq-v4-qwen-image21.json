@@ -31,7 +31,7 @@
  ],
  "vram": {
   "min_gb": 16,
-  "source": "Qwen-Image-2.1 int8 は 16〜24 GB の目安。Issue #841 付録（Notion の記載または mam の推定。mam の実機では未検証）",
+  "source": "Qwen-Image-2.1 int8 は 16〜24 GB の目安。Issue #841 付録（Notion の記載または Nefos Video の推定。Nefos Video の実機では未検証）",
   "estimate": true
  },
  "license": {
@@ -62,7 +62,7 @@
     "commercial": "no"
    }
   ],
-  "notice": "この mam のインストール先に取得するモデルのライセンスです。研究・評価などの非商用の用途にだけ使ってください。"
+  "notice": "この Nefos Video のインストール先に取得するモデルのライセンスです。研究・評価などの非商用の用途にだけ使ってください。"
  },
  "consent_required": true,
  "requires_hf_token": false,

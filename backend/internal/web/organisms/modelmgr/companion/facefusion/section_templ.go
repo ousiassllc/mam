@@ -684,7 +684,7 @@ func installSteps(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "><summary class=\"cursor-pointer text-sm font-semibold text-ink\">FaceFusion の入れ方</summary><div class=\"mt-2 flex flex-col gap-3 text-sm\"><p class=\"text-mute\">mam は FaceFusion を取得しません（OpenRAIL-AS。条文は利用者が読みます）。公式の手順を、ここに写しています。Windows・Linux・macOS のアクセラレーターの準備は、 <a class=\"underline\" href=\"https://docs.facefusion.io/installation\" target=\"_blank\" rel=\"noopener noreferrer\">公式のページ</a>の手順に従ってください。</p><ol class=\"flex list-decimal flex-col gap-3 pl-5\"><li class=\"flex flex-col gap-1\"><span>conda を入れて、端末で使えるようにします。</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 63, "><summary class=\"cursor-pointer text-sm font-semibold text-ink\">FaceFusion の入れ方</summary><div class=\"mt-2 flex flex-col gap-3 text-sm\"><p class=\"text-mute\">Nefos Video は FaceFusion を取得しません（OpenRAIL-AS。条文は利用者が読みます）。公式の手順を、ここに写しています。Windows・Linux・macOS のアクセラレーターの準備は、 <a class=\"underline\" href=\"https://docs.facefusion.io/installation\" target=\"_blank\" rel=\"noopener noreferrer\">公式のページ</a>の手順に従ってください。</p><ol class=\"flex list-decimal flex-col gap-3 pl-5\"><li class=\"flex flex-col gap-1\"><span>conda を入れて、端末で使えるようにします。</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -704,14 +704,14 @@ func installSteps(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "</li><li class=\"flex flex-col gap-1\"><span>FaceFusion を取得して、mam が確かめた版（")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 65, "</li><li class=\"flex flex-col gap-1\"><span>FaceFusion を取得して、Nefos Video が確かめた版（")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var34 string
 		templ_7745c5c3_Var34, templ_7745c5c3_Err = templ.JoinStringErrs(d.Tag)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/companion/facefusion/section.templ`, Line: 134, Col: 72}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/companion/facefusion/section.templ`, Line: 134, Col: 80}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var34))
 		if templ_7745c5c3_Err != nil {

@@ -19,7 +19,7 @@ var hfUseRestricted = map[string]bool{
 // hfDeclared is the condition of a license that the card only declares. The license tag is what the uploader of the repository wrote: mam does not read
 // the license text, and cannot tell whether the files are a derivative of a model whose license is stricter (a fine-tune, a LoRA, a merge). The catalog of
 // mam makes the same choice (model-license.md §3): a declaration alone is not 商用OK.
-const hfDeclared = "モデルカードの license タグは配布者の自己申告で、mam は本文を確かめていません。申告どおりで、元のモデル（ベース・LoRA など）のライセンスにも反しない場合に限ります"
+const hfDeclared = "モデルカードの license タグは配布者の自己申告で、Nefos Video は本文を確かめていません。申告どおりで、元のモデル（ベース・LoRA など）のライセンスにも反しない場合に限ります"
 
 // hfUseRestriction is added to the condition of a license of hfUseRestricted.
 const hfUseRestriction = "。使用制限（有害な用途の禁止など）にも従ってください"

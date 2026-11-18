@@ -1,8 +1,8 @@
 ## llama.cpp とローカル LLM の重み（利用者が取得する別プログラム）
 
-MAM のローカルランタイム管理（Issue #1008）は、利用者の操作で llama.cpp の `llama-server`（ローカルの LLM サーバー。ggml-org/llama.cpp）と、LLM の重み（GGUF）を、MAM の実行ファイルと同じ場所の `localai\llama-cpp` ディレクトリに取得して展開します。**MAM のインストーラー・リリースには含まれません**（MAM は llama.cpp のバイトを配布しません）。`llama-server.exe` は MAM が決めた固定の引数だけで起動し、`127.0.0.1` だけで待ち受けます（利用者が引数を指定することはできません）。
+Nefos Video のローカルランタイム管理（Issue #1008）は、利用者の操作で llama.cpp の `llama-server`（ローカルの LLM サーバー。ggml-org/llama.cpp）と、LLM の重み（GGUF）を、Nefos Video の実行ファイルと同じ場所の `localai\llama-cpp` ディレクトリに取得して展開します。**Nefos Video のインストーラー・リリースには含まれません**（Nefos Video は llama.cpp のバイトを配布しません）。`llama-server.exe` は Nefos Video が決めた固定の引数だけで起動し、`127.0.0.1` だけで待ち受けます（利用者が引数を指定することはできません）。
 
-- llama.cpp のライセンス（MIT）とソースコード: <https://github.com/ggml-org/llama.cpp/tree/b11960>（ライセンス文は <https://github.com/ggml-org/llama.cpp/blob/b11960/LICENSE>）。取得するのは公式の GitHub リリース `b11960`（<https://github.com/ggml-org/llama.cpp/releases/tag/b11960>）の Windows x64 のビルド済みバイナリ `llama-b11960-bin-win-cuda-12.4-x64.zip`（RTX 50 シリーズは `…cuda-13.4-x64.zip`）と、CUDA ランタイムの DLL の `cudart-llama-bin-win-cuda-12.4-x64.zip`（同 `13.4`）で、SHA-256 を MAM のカタログに固定して検証します（4 つの SHA-256 は spec/architecture/model-manager/local-runtime.md §17.1）。ビルドには OpenMP のランタイムのライセンス（`LICENSE-LLVM-OpenMP`）が含まれます。
+- llama.cpp のライセンス（MIT）とソースコード: <https://github.com/ggml-org/llama.cpp/tree/b11960>（ライセンス文は <https://github.com/ggml-org/llama.cpp/blob/b11960/LICENSE>）。取得するのは公式の GitHub リリース `b11960`（<https://github.com/ggml-org/llama.cpp/releases/tag/b11960>）の Windows x64 のビルド済みバイナリ `llama-b11960-bin-win-cuda-12.4-x64.zip`（RTX 50 シリーズは `…cuda-13.4-x64.zip`）と、CUDA ランタイムの DLL の `cudart-llama-bin-win-cuda-12.4-x64.zip`（同 `13.4`）で、SHA-256 を Nefos Video のカタログに固定して検証します（4 つの SHA-256 は spec/architecture/model-manager/local-runtime.md §17.1）。ビルドには OpenMP のランタイムのライセンス（`LICENSE-LLVM-OpenMP`）が含まれます。
 - **注意が要るもの**: CUDA ランタイムの DLL（`cudart`・`cublas`・`cublasLt`）は NVIDIA のライセンス（CUDA Toolkit の使用許諾）に従います（**再配布の条件は確認していません（未確認）**）。
 - 取得したものを再配布するときは、取得した zip に入っているライセンス文を添えてください。
 
@@ -24,15 +24,15 @@ MAM のローカルランタイム管理（Issue #1008）は、利用者の操�
 
 ## Ollama と Ollama のモデル（利用者が取得する別プログラム）
 
-MAM のローカルランタイム管理（Issue #1105）は、利用者の操作で Ollama（ローカルの LLM サーバー。ollama/ollama）を、MAM の実行ファイルと同じ場所の `localai\ollama` ディレクトリに取得して展開し、そのモデルを Ollama 自身の `/api/pull` で `localai\ollama\models` に取得します。**MAM のインストーラー・リリースには含まれません**（MAM は Ollama のバイトも、モデルのバイトも配布しません）。`ollama.exe serve` は MAM が決めた固定の設定だけで起動し、`127.0.0.1` だけで待ち受けます（クラウド機能は `disable_ollama_cloud` で無効にしています）。
+Nefos Video のローカルランタイム管理（Issue #1105）は、利用者の操作で Ollama（ローカルの LLM サーバー。ollama/ollama）を、Nefos Video の実行ファイルと同じ場所の `localai\ollama` ディレクトリに取得して展開し、そのモデルを Ollama 自身の `/api/pull` で `localai\ollama\models` に取得します。**Nefos Video のインストーラー・リリースには含まれません**（Nefos Video は Ollama のバイトも、モデルのバイトも配布しません）。`ollama.exe serve` は Nefos Video が決めた固定の設定だけで起動し、`127.0.0.1` だけで待ち受けます（クラウド機能は `disable_ollama_cloud` で無効にしています）。
 
-- Ollama のライセンス（MIT）とソースコード: <https://github.com/ollama/ollama/tree/v0.40.15>（ライセンス文は <https://github.com/ollama/ollama/blob/v0.40.15/LICENSE>）。取得するのは公式の GitHub リリース `v0.40.15`（<https://github.com/ollama/ollama/releases/tag/v0.40.15>）の Windows x64 のビルド済みバイナリ `ollama-windows-amd64.zip`（1,614,941,966 バイト）で、SHA-256 `9ca74a7ab66ec86870b1eecac7df160df08dc4e3a291ab5d2d59bcf9310221c6` を MAM のカタログに固定して検証します（GitHub の API の digest と一致することを 2026-11-07 に確かめました）。zip には、ライセンス文のほかに、CUDA などの同梱ライブラリが入っています（**同梱ライブラリの再配布の条件は確認していません（未確認）**）。
+- Ollama のライセンス（MIT）とソースコード: <https://github.com/ollama/ollama/tree/v0.40.15>（ライセンス文は <https://github.com/ollama/ollama/blob/v0.40.15/LICENSE>）。取得するのは公式の GitHub リリース `v0.40.15`（<https://github.com/ollama/ollama/releases/tag/v0.40.15>）の Windows x64 のビルド済みバイナリ `ollama-windows-amd64.zip`（1,614,941,966 バイト）で、SHA-256 `9ca74a7ab66ec86870b1eecac7df160df08dc4e3a291ab5d2d59bcf9310221c6` を Nefos Video のカタログに固定して検証します（GitHub の API の digest と一致することを 2026-11-07 に確かめました）。zip には、ライセンス文のほかに、CUDA などの同梱ライブラリが入っています（**同梱ライブラリの再配布の条件は確認していません（未確認）**）。
 - 取得したものを再配布するときは、取得した zip に入っているライセンス文を添えてください。
 - **Ollama には認証がありません**。待ち受けは `127.0.0.1` だけですが、同じ PC で動く信用できないソフトも呼び出せます。
 
 ### Ollama のモデル
 
-取得できるのは次の 3 つだけです（Ollama のライブラリ <https://ollama.com/library> のタグ。**タグは書き換えられるため、取得する内容を固定できません**。MAM は取得のあとで、Ollama が書いたマニフェストの重みの層の SHA-256 を、2026-11-07 に読んだ記録と比べ、違えば「上流で更新されています」と知らせます）。ライセンスは、レジストリの license の層の本文と、元のモデルカードの表記で、**法的な保証ではありません**（商用で使う前にライセンス全文を確認してください）。
+取得できるのは次の 3 つだけです（Ollama のライブラリ <https://ollama.com/library> のタグ。**タグは書き換えられるため、取得する内容を固定できません**。Nefos Video は取得のあとで、Ollama が書いたマニフェストの重みの層の SHA-256 を、2026-11-07 に読んだ記録と比べ、違えば「上流で更新されています」と知らせます）。ライセンスは、レジストリの license の層の本文と、元のモデルカードの表記で、**法的な保証ではありません**（商用で使う前にライセンス全文を確認してください）。
 
 | 名前 | 出典 | 取得量（バイト） | ライセンス | 商用利用 |
 |---|---|---|---|---|

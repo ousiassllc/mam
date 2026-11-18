@@ -274,7 +274,7 @@ func others(items []Other) templ.Component {
 			templ_7745c5c3_Var14 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<div class=\"flex flex-col gap-1\" data-testid=\"mm-ollama-others\"><h3 class=\"text-sm font-semibold text-ink\">そのほかのモデル</h3><p class=\"text-xs text-mute\">この Ollama に、ほかの手段で入れたモデルです。mam はここから消したり、取得したりしません。</p><ul role=\"list\" class=\"flex flex-col gap-1 text-sm text-ink\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<div class=\"flex flex-col gap-1\" data-testid=\"mm-ollama-others\"><h3 class=\"text-sm font-semibold text-ink\">そのほかのモデル</h3><p class=\"text-xs text-mute\">この Ollama に、ほかの手段で入れたモデルです。Nefos Video はここから消したり、取得したりしません。</p><ul role=\"list\" class=\"flex flex-col gap-1 text-sm text-ink\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

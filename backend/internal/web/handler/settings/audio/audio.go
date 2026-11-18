@@ -83,7 +83,7 @@ func localOf(l *audiosettings.Local) *view.Local {
 	switch {
 	case l.VRAMMinGB == 0:
 	case l.VRAMEstimate:
-		out.VRAM = fmt.Sprintf("必要なビデオメモリ: %d GB 以上（mam の推定です。実機では確かめていません）", l.VRAMMinGB)
+		out.VRAM = fmt.Sprintf("必要なビデオメモリ: %d GB 以上（Nefos Video の推定です。実機では確かめていません）", l.VRAMMinGB)
 	default:
 		out.VRAM = fmt.Sprintf("必要なビデオメモリ: %d GB 以上", l.VRAMMinGB)
 	}

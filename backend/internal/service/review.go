@@ -209,7 +209,7 @@ func (s *ReviewService) ImportResponse(ctx context.Context, projectID string, sr
 	}
 	var resp domain.ReviewResponse
 	if err := decodeStrict(bytes.NewReader(raw), &resp); err != nil {
-		return ReviewsView{}, invalid("response", "MAM のレビュー応答（JSON）として読み取れません")
+		return ReviewsView{}, invalid("response", "Nefos Video のレビュー応答（JSON）として読み取れません")
 	}
 	if err := resp.Validate(); err != nil {
 		return ReviewsView{}, reviewInvalid("response", err)

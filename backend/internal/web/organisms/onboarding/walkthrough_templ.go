@@ -30,7 +30,7 @@ func FlowBody() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<p class=\"text-sm text-ink\">mam は、作りたい動画を伝えると、AI が制作チームとして最後まで進める映像制作スタジオです。1 つのプロンプトから動画を 1 本出すだけのツールではありません。</p><ol role=\"list\" class=\"flex flex-col gap-3\" data-testid=\"onboarding-flow\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<p class=\"text-sm text-ink\">Nefos Video は、作りたい動画を伝えると、AI が制作チームとして最後まで進める映像制作スタジオです。1 つのプロンプトから動画を 1 本出すだけのツールではありません。</p><ol role=\"list\" class=\"flex flex-col gap-3\" data-testid=\"onboarding-flow\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

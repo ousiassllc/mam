@@ -1,6 +1,6 @@
 # モデルの商用利用の可否（Issue #928）
 
-商用で使ってよいかは、モデルを選ぶときの大事な判断材料。mam は **すべてのモデル選択・生成結果にその答えを出し、どこでも絞り込める**ようにする。この文書はデータ（§1〜§3）・表示（§4）・フィルターと設定（§5）・MCP（§6）・後続のモデル追加の手順（§7）を決める。
+商用で使ってよいかは、モデルを選ぶときの大事な判断材料。Nefos Video は **すべてのモデル選択・生成結果にその答えを出し、どこでも絞り込める**ようにする。この文書はデータ（§1〜§3）・表示（§4）・フィルターと設定（§5）・MCP（§6）・後続のモデル追加の手順（§7）を決める。
 
 関連: [model-manager/model-manager.md](model-manager/model-manager.md) §4（カタログの JSON）・§6（同意）、[gentest/gentest.md](gentest/gentest.md)、[../components/color-rules.md](../components/color-rules.md)（色）、[../components/shared-ui-parts.md](../components/shared-ui-parts.md)。
 
@@ -13,7 +13,7 @@
 | `yes` | 商用OK | ライセンス（規約）が商用利用を認めている。著作権表示などの義務だけがある |
 | `conditional` | 条件つき | 条件を満たす間だけ商用で使える（年商の上限・契約のプランなど）。`condition` に短く書く |
 | `no` | 商用NG | 非商用・研究用のライセンス。商用には別の契約が要る |
-| `unknown` | 不明 | ライセンスが答えを言わない、または mam が一次情報で確かめられていない。**「商用NG」ではない**が、確認できるまで商用には使わない前提で扱う。必ず `notice` が付く |
+| `unknown` | 不明 | ライセンスが答えを言わない、または Nefos Video が一次情報で確かめられていない。**「商用NG」ではない**が、確認できるまで商用には使わない前提で扱う。必ず `notice` が付く |
 
 - 厳しさの順は **商用OK < 条件つき < 不明 < 商用NG**。複数の部品でできたモデルの答えは `modellicense.Strictest` で決める（§3）。
 - 1 モデルに付く情報（`modellicense.Info`）: `commercial`・`license_name`・`condition`・`source_url`（ライセンス原文）・`checked_at`（原文を読んだ日。YYYY-MM-DD）・`notice`（注意）。`Info.Check()` が、答えが 4 つのどれか・名前・https の出典・日付があり、`conditional` は条件、`yes` 以外は注意を持つことを確かめる。
@@ -25,7 +25,7 @@
 | ローカルのカタログのモデル | `backend/internal/modelmgr/catalog/data/models/<id>.json` の `license` | カタログ ID → 導入で作るワークフロー名（`comfyui:bundled-comfyui/<name>`） |
 | クラウド・サブスクの組み込みモデル | `backend/internal/domain/modellicense/data/cloud.json`（ID をキーにした 1 つの表） | 単発生成のモデル ID（`kling-3.0`、`gpt-image-2:chatgpt-subscription`） |
 | Hugging Face から足したファイル | 導入のときにモデルカードの `license` タグを記録（`state.json`）。`modellicense.FromHF` が読む。**タグは配布者の自己申告なので、タグだけでは商用OKにしない**: 商用を許すタグ（`apache-2.0`・`mit`・`cc-by-4.0` など）は「条件つき」（条件: 申告どおりで、ベース・LoRA など元のモデルのライセンスにも反しない。OpenRAIL 系はさらに使用制限）、非商用・研究用は商用NG、それ以外・タグなしは不明（#969）。カードの `license_link` は **https の URL だけ**を原文のリンク（`SourceURL`）にし、相対パス・http・`javascript:`・`file:` などは空にする（href に入るため。カタログの `Info.Validate` と同じ規則） | 作ったモデルの ID |
-| 利用者が登録した外部エンドポイントのモデル・保存したワークフロー | **持たない** | `unknown`（注意: 「mam は確認できていません」） |
+| 利用者が登録した外部エンドポイントのモデル・保存したワークフロー | **持たない** | `unknown`（注意: 「Nefos Video は確認できていません」） |
 
 ローカルのカタログの `license`（`catalog.License`）は、同意に使う `id`・`version`・`name`・`url`・`summary`・`notice`・`excluded_regions` に加えて次を持つ。
 
@@ -50,7 +50,7 @@
 - **2026-11-02**: 下の表の、次に挙げる 2026-11-03 の分を除くローカルのモデル（`sdxl-base`・`flux1-*`・`wan22-*`・`ltx-*`・`chroma1-hd`・`sd35-medium`・`hunyuanvideo15-480p`・`noctq-v4-qwen-image21` など）と、クラウドのモデル（`cloud.json`）。
 - **2026-11-03**: `qwen-image-edit-2511`・`sdxl-controlnet-canny`・`sdxl-ipadapter-plus`・`upscale-*` の 3 つ、成人向けのモデル 14 件（#984。`realvisxl-v50` から `qwen-image-21-uncensored-int8` まで）、非検閲の動画 7 件（#1012。`nsfw-wan21-1b3-t2v`・`nsfw-anime-wan22-5b`・`wan22-ti2v-5b-cowgirl-lora`・`wan22-i2v-r1-v2-uncensored`・`wan22-rapid-mega-nsfw-t2v`・`wan22-t2v-14b-mystic-xxx-lora`・`hunyuanvideo-t2v-nsfw-lora`。上の `wan22-*` の 2026-11-02 の分には含まない）。
 - **2026-11-04**（#1028）: 非検閲の動画の 15 件すべて（上の 13 件に `nsfw-wan21-14b-t2v`・`wan22-t2v-14b-palingenesis` を足した分）を一次の情報（カードの `license:`・LICENSE 本文・ベースモデルのカード）で見直した。答えが変わったのは `nsfw-anime-wan22-5b`（不明 → 商用OK。注意つき。LICENSE の本文がある）だけ。それ以外は不明のまま（カードの宣言だけで本文が無いもの、混ぜた・焼き込んだ LoRA、ライセンスの記載が無い LoRA）。
-- **2026-11-04**（#1031。モデルごとの JSON の `checked_at` も 2026-11-04）: 動画のアップスケールとコマ補間の 3 件 `seedvr2-3b-fp8`・`rife-v4.25`・`rife-v4.26`。配布元のモデルカード・LICENSE・README を読んだ（SeedVR2 は `ByteDance-Seed/SeedVR2-3B` と再配布の `Comfy-Org/SeedVR2` のカード、RIFE は `hzwer/Practical-RIFE` の LICENSE と README と再配布の `Comfy-Org/Frame-Interpolation` のカード）。Issue #1031 の調査で商用NGとされた Upscale-A-Video・GIMM-VFI・4x-UltraSharp は、カタログに載せない（mam はこの 3 件の原文を読み直していない）。
+- **2026-11-04**（#1031。モデルごとの JSON の `checked_at` も 2026-11-04）: 動画のアップスケールとコマ補間の 3 件 `seedvr2-3b-fp8`・`rife-v4.25`・`rife-v4.26`。配布元のモデルカード・LICENSE・README を読んだ（SeedVR2 は `ByteDance-Seed/SeedVR2-3B` と再配布の `Comfy-Org/SeedVR2` のカード、RIFE は `hzwer/Practical-RIFE` の LICENSE と README と再配布の `Comfy-Org/Frame-Interpolation` のカード）。Issue #1031 の調査で商用NGとされた Upscale-A-Video・GIMM-VFI・4x-UltraSharp は、カタログに載せない（Nefos Video はこの 3 件の原文を読み直していない）。
 - **2026-11-14**（#1014。モデルごとの JSON の `checked_at` も 2026-11-14）: 標準の動画 3 件。`skyreels-v2-i2v-1-3b-540p`（不明。カードは `license: other`＝`skywork-license`、HF の LICENSE は 0 バイト）・`wan22-vace-fun-14b`（商用OK。Apache-2.0）・`ltxv-13b-0.9.8-distilled`（条件つき。LTXV Open Weights License 0.X の第 2 条）。配布元のカードと LICENSE 本文を読んだ。
 
 | モデル | 答え | 根拠（一次情報） |
@@ -103,7 +103,7 @@
 | クラウド: `gpt-image-2.6-flare`・`gpt-image-2.6-sunburst` とそのサブスク経由（`…:chatgpt-subscription`） | 商用OK | OpenAI の利用規約（<https://openai.com/policies/terms-of-use/>、2026-01-01 版。「you … own the Output. We hereby assign to you all our right, title, and interest, if any, in and to Output」）。モデルごとの別の規約は見つからない（2026-11-06 に確認）。サブスク経由は `gpt-image-2:chatgpt-subscription` と同じ注意（非公式の経路）。#1096 |
 | クラウド: `luma-ray-3.2` | 条件つき | 規約 §4: 商用利用を認めるサブスクリプションに限る |
 | クラウド: `kling-3.0`・`kling-4.0`（Kling API 有料サービス規約 §6.3・§6.4: 生成物は利用者のもので、商用利用は制限されない）、`minimax-h3`・`minimax-h3-max`（MiniMax 規約: 入力と生成物の所有権は利用者に残り、商用を制限する文は無い）、`seedance-2.0`・`seedance-2.5`（BytePlus AI Services 規約 §2.1: 法が許す範囲で利用者が Output を所有）、`wan-3.0`（Alibaba Cloud 国際サイトの製品規約 4.48 Model Studio: Output の知的財産権を主張せず、規約に従う限り使える） | 商用OK | 2026-11-06 に原文を読んだ（#969。出典 URL は `cloud.json`）。入力に無許諾の素材を使う責任は利用者にある（`notice`） |
-| クラウド: `gpt-image-2:chatgpt-subscription` | **不明** | ChatGPT の規約は Output を利用者のものとするが、mam が使う経路（Codex のエンドポイント）は非公式で、OpenAI が認めた使い方か確認できない。規約違反と判断されるとアカウントが制限される恐れがあるので商用OKにしない。商用なら OpenAI API の `gpt-image-2` を使う（#969。2026-11-06） |
+| クラウド: `gpt-image-2:chatgpt-subscription` | **不明** | ChatGPT の規約は Output を利用者のものとするが、Nefos Video が使う経路（Codex のエンドポイント）は非公式で、OpenAI が認めた使い方か確認できない。規約違反と判断されるとアカウントが制限される恐れがあるので商用OKにしない。商用なら OpenAI API の `gpt-image-2` を使う（#969。2026-11-06） |
 
 ## 4. 表示（モデルを選ぶ・モデルが出てくるすべての画面）
 
@@ -154,7 +154,7 @@
 
 ## 8. 範囲外・未確認
 
-- 「商用OK」は mam が一次情報を読んだ日の判断で、法的な助言ではない。バッジの `checked_at` と原文へのリンクで確かめられる。
+- 「商用OK」は Nefos Video が一次情報を読んだ日の判断で、法的な助言ではない。バッジの `checked_at` と原文へのリンクで確かめられる。
 - クラウドの規約は契約・プラン・地域で変わりうる。規約が変わったら `cloud.json` を更新する（`checked_at` が読んだ日）。
 - キャラクター作成（シリーズのキャラ）の画面は、現時点でモデルを選ぶ入力を持たない（モデルの割り当ては設定の画像・動画モデルのモーダルとショットの固定で行う）。選ぶ入力が足されたら、同じ `commercial.Filter` と `OptionLabel` を使う（§4）。
 
@@ -187,3 +187,4 @@
 | 1.22 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |
 | 1.23 | 2026-11-14 | §3 の表に動画 3 件（`skyreels-v2-i2v-1-3b-540p`・`wan22-vace-fun-14b`・`ltxv-13b-0.9.8-distilled`）の答えを足した | Issue #1014 |
 | 1.24 | 2026-11-15 | §3 のクラウドの行: `gemini-omni-flash` の規約を 2026-11-15 に読み直した（結論は変わらない） | Issue #1154 |
+| 1.25 | 2026-11-19 | 本文の製品名の表示を「MAM」から「Nefos Video」に改めた（過去の改訂履歴の文は当時のまま） | #1170: 製品名を MAM から Nefos Video に変更（表示名のみ。識別子・パス・実行ファイル名は変更しない） |

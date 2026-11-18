@@ -190,7 +190,7 @@ func RuntimeDetail(r Runtime) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, " は mam とは別のプログラムで、mam には含まれません。公式の配布先から実行時に取得し、SHA-256 を確かめてから使います。 ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, " は Nefos Video とは別のプログラムで、Nefos Video には含まれません。公式の配布先から実行時に取得し、SHA-256 を確かめてから使います。 ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

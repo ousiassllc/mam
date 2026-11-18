@@ -5,7 +5,7 @@
 # spec/environment/setup.md "リリース".
 #
 # Usage: scripts/package-macos.sh <version>      <version> is X.Y.Z (the tag v<version> without the v)
-# Output: bin/mam-<version>-darwin-arm64.dmg      MAM.app next to an Applications link, volume name MAM
+# Output: bin/mam-<version>-darwin-arm64.dmg      MAM.app next to an Applications link, volume name Nefos Video
 # The binary embeds backend/internal/version.Version = "v<version>" (the auto update compares it with the latest release) and
 # version.ReleasePublicKey = $RELEASE_SIGNING_PUBLIC_KEY (base64 of the raw 32-byte ed25519 public key that verifies
 # checksums.txt.sig; optional: empty = not embedded, the app then skips the signature check with a warning), exactly like
@@ -97,6 +97,6 @@ dmg_root="$stage/dmg"
 mkdir "$dmg_root"
 ditto "$app" "$dmg_root/MAM.app"
 ln -s /Applications "$dmg_root/Applications"
-hdiutil create -volname MAM -srcfolder "$dmg_root" -fs HFS+ -format UDZO -ov "$dmg"
+hdiutil create -volname "Nefos Video" -srcfolder "$dmg_root" -fs HFS+ -format UDZO -ov "$dmg"
 [[ -f "$dmg" ]] || { echo "dmg was not created: $dmg" >&2; exit 1; }
 echo "built $dmg"

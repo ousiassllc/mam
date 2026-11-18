@@ -131,10 +131,10 @@ func TestHF_ARepositoryThatCannotBeInstalledIsRefusedBeforeAnyCard(t *testing.T)
 		"a file mam cannot install": {func(h *hub) {
 			h.repo.Files[0].Installable, h.repo.Files[0].Reason = false, "pickle 形式は導入できません"
 		}, install.HFArgs{Repo: "owner/style"}, "pickle 形式は導入できません"},
-		"a folder mam cannot decide": {func(h *hub) { h.repo.Files[0].Folder = "" }, install.HFArgs{Repo: "owner/style"}, "フォルダを決められませんでした"},
-		"no room":                    {func(h *hub) { h.env.FreeBytes = uint64(gb) }, install.HFArgs{Repo: "owner/style"}, "空き容量が足りません"},
-		"an install running":         {func(h *hub) { h.repo.Files[0].InstallJob = "job-2" }, install.HFArgs{Repo: "owner/style"}, "すでに導入中"},
-		"the adult gate":             {func(h *hub) { h.err = modelmanager.ErrAdultNotConfirmed }, install.HFArgs{Repo: "owner/style"}, "年齢の確認"},
+		"a folder Nefos Video cannot decide": {func(h *hub) { h.repo.Files[0].Folder = "" }, install.HFArgs{Repo: "owner/style"}, "フォルダを決められませんでした"},
+		"no room":                            {func(h *hub) { h.env.FreeBytes = uint64(gb) }, install.HFArgs{Repo: "owner/style"}, "空き容量が足りません"},
+		"an install running":                 {func(h *hub) { h.repo.Files[0].InstallJob = "job-2" }, install.HFArgs{Repo: "owner/style"}, "すでに導入中"},
+		"the adult gate":                     {func(h *hub) { h.err = modelmanager.ErrAdultNotConfirmed }, install.HFArgs{Repo: "owner/style"}, "年齢の確認"},
 	}
 	for name, c := range cases {
 		t.Run(name, func(t *testing.T) {

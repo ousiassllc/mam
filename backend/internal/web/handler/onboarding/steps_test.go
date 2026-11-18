@@ -23,7 +23,7 @@ import (
 func TestSteps_EveryStepIsAWholePageWithItsTitleAndProgress(t *testing.T) {
 	r := newRig(t)
 	want := []struct{ slug, title string }{
-		{paths.OnboardingFlow, "mam でできること"},
+		{paths.OnboardingFlow, "Nefos Video でできること"},
 		{paths.OnboardingModes, "2 つの進め方"},
 		{paths.OnboardingPrepare, "使い始める前に"},
 		{paths.OnboardingCredentials, "API キーまたは ChatGPT ログイン"},
@@ -34,7 +34,7 @@ func TestSteps_EveryStepIsAWholePageWithItsTitleAndProgress(t *testing.T) {
 		t.Run(tc.slug, func(t *testing.T) {
 			body := r.page(tc.slug)
 
-			assert.Equal(t, "はじめに: "+tc.title+" | mam", titleRe.FindStringSubmatch(body)[1])
+			assert.Equal(t, "はじめに: "+tc.title+" | Nefos Video", titleRe.FindStringSubmatch(body)[1])
 			assert.Equal(t, tc.title, h2Re.FindStringSubmatch(body)[1])
 			assert.Equal(t, 1, strings.Count(body, "<h1 "))
 			assert.Equal(t, 1, strings.Count(body, `aria-current="step"`))

@@ -97,7 +97,7 @@ templ hfRepoView(r HFRepo) {
 			<p class="text-sm text-warning" data-testid="mm-hfi-license-warning">{ r.LicenseWarn }</p>
 		}
 		if r.Gated && r.NoToken {
-			<p class="text-sm text-warning" data-testid="mm-hfi-gated-notice">gated のリポジトリです。下の「Hugging Face のトークン」を設定し、<a class="underline" href={ templ.SafeURL(r.Page) } target="_blank" rel="noopener noreferrer">リポジトリのページ</a>でアクセスを申請してください（mam からは申請できません）。</p>
+			<p class="text-sm text-warning" data-testid="mm-hfi-gated-notice">gated のリポジトリです。下の「Hugging Face のトークン」を設定し、<a class="underline" href={ templ.SafeURL(r.Page) } target="_blank" rel="noopener noreferrer">リポジトリのページ</a>でアクセスを申請してください（Nefos Video からは申請できません）。</p>
 		}
 		<p class="text-sm text-ink" data-testid="mm-hfi-terms">{ r.Terms }</p>
 		if r.Truncated {

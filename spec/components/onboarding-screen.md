@@ -4,7 +4,7 @@
 
 > **状態: 実装済み**（Issue #863）。ルートと応答は [../api/endpoints-onboarding.md](../api/endpoints-onboarding.md)。設定の保存先・モーダル・一覧の部品は [settings-screen.md](settings-screen.md)・[shared-ui-parts.md](shared-ui-parts.md) をそのまま使い、新しく持つのは「初回かどうかのフラグ」と、ガイドの枠・紹介の文面・ffmpeg の確認・Mac の案内だけである。
 
-起動直後にプロジェクト一覧が出るだけでは、何を設定すれば使えるのかが初めての人に分かりにくい。API キーも ChatGPT のログインも ffmpeg も無くても mam は起動するが、機能は使えなかったり縮退したりする。**初回だけ**、ウォークスルー（mam で何ができるか）→ 初期セットアップ（順番に入れる）→ プロジェクト一覧の順に案内する。
+起動直後にプロジェクト一覧が出るだけでは、何を設定すれば使えるのかが初めての人に分かりにくい。API キーも ChatGPT のログインも ffmpeg も無くても Nefos Video は起動するが、機能は使えなかったり縮退したりする。**初回だけ**、ウォークスルー（Nefos Video で何ができるか）→ 初期セットアップ（順番に入れる）→ プロジェクト一覧の順に案内する。
 
 ## 1. 決定事項
 
@@ -36,7 +36,7 @@ Issue #863 の本文で決まっていること（オーナー指示を含む）
 
 | 順 | slug | 見出し（`h2`） | 中身 |
 |----|------|---------------|------|
-| 1 | `flow` | mam でできること | 作りたい動画を伝えると、AI が制作チームとして **企画 → 脚本・絵コンテ → 撮影（キーフレームと動画の生成）→ 品質判定（Judge）と撮り直し → 編集・音声 → 最終 QC** までを進める。1 つのプロンプトから動画を出すだけのツールではない |
+| 1 | `flow` | Nefos Video でできること | 作りたい動画を伝えると、AI が制作チームとして **企画 → 脚本・絵コンテ → 撮影（キーフレームと動画の生成）→ 品質判定（Judge）と撮り直し → 編集・音声 → 最終 QC** までを進める。1 つのプロンプトから動画を出すだけのツールではない |
 | 2 | `modes` | 2 つの進め方 | **AUTO MODE**: 作りたい動画を指定すると、AI が完成まで自律的に進める。**DIRECTOR MODE**: 自分が監督になり、自然言語で演出を指示する（「もう少し寄って」など）。同じプロジェクトでいつでも切り替えられる（AUTO で初稿 → 気になる Scene だけ DIRECTOR → AUTO へ戻す） |
 | 3 | `prepare` | 使い始める前に | この後のセットアップで入れるものの一覧: ① API キーか ChatGPT ログイン（どちらか 1 つ。無いと生成が動かない）② モデルの割り当て（任意。`models` のステップがある構成だけ）③ ffmpeg（無くても起動する。Judge・Take のプレビュー・部分採用が縮退する）、Mac のみ ④ Codex と ComfyUI。どれも「あとで」で飛ばせて、設定画面から入れられる |
 
@@ -58,9 +58,9 @@ Issue #863 の本文で決まっていること（オーナー指示を含む）
 
 ### 4.3 `ffmpeg` — ffmpeg の確認
 
-- `ffmpeg` と `ffprobe` を、指定したパス（設定の `/settings/ffmpeg`。**#1106 で、モデルマネージャーの `/model-manager/companion#mm-ffmpeg` に変わった**。状態: 実装済み）があればそれで、無ければ `PATH`・macOS の Homebrew の場所（`/opt/homebrew/bin`・`/usr/local/bin`）・mam がダウンロードして入れたもの（#900）の順に探す（mam が実際に使う探し方と同じ。[../architecture/ffmpeg-lookup.md](../architecture/ffmpeg-lookup.md)）。実行はしない。
-- **見つかった**: 「見つかりました」（緑）と「ffmpeg と ffprobe を使えます」、それぞれのパス。入れ方の案内は出さない。mam は ffmpeg を探し直して使うので、再起動の案内は出さない（Issue #1047）。
-- **見つからない**: どちらが無いかを書き（警告）、無いと何が縮退するかを 1 文（Judge・Take のプレビュー・部分採用）、そして **OS ごとの入れ方**を出す。OS は mam が動いている OS（`runtime.GOOS`）。
+- `ffmpeg` と `ffprobe` を、指定したパス（設定の `/settings/ffmpeg`。**#1106 で、モデルマネージャーの `/model-manager/companion#mm-ffmpeg` に変わった**。状態: 実装済み）があればそれで、無ければ `PATH`・macOS の Homebrew の場所（`/opt/homebrew/bin`・`/usr/local/bin`）・Nefos Video がダウンロードして入れたもの（#900）の順に探す（Nefos Video が実際に使う探し方と同じ。[../architecture/ffmpeg-lookup.md](../architecture/ffmpeg-lookup.md)）。実行はしない。
+- **見つかった**: 「見つかりました」（緑）と「ffmpeg と ffprobe を使えます」、それぞれのパス。入れ方の案内は出さない。Nefos Video は ffmpeg を探し直して使うので、再起動の案内は出さない（Issue #1047）。
+- **見つからない**: どちらが無いかを書き（警告）、無いと何が縮退するかを 1 文（Judge・Take のプレビュー・部分採用）、そして **OS ごとの入れ方**を出す。OS は Nefos Video が動いている OS（`runtime.GOOS`）。
 
 | OS | 案内 |
 |----|------|
@@ -68,9 +68,9 @@ Issue #863 の本文で決まっていること（オーナー指示を含む）
 | macOS | Homebrew で `brew install ffmpeg` を実行する（`ffprobe` も入る）。Homebrew の `/opt/homebrew/bin`・`/usr/local/bin` は自動で探すと書き、ほかの場所に入れたときは設定画面の「ffmpeg」でパスを指定する、と書く（#856） |
 | ほか（Linux） | お使いのパッケージマネージャーで ffmpeg（ffprobe を含む）を入れる、と書く |
 
-- **ダウンロードのボタン（Issue #900）**: Windows x64 と macOS（Apple Silicon）では、「見つからない」の枠の中、OS ごとの案内の**上**に、設定画面の「ffmpeg」と同じ部品（`DownloadPanel`。ボタン「ffmpeg をダウンロードして入れる」・進み具合・中断・削除。ビルド名・配布元・ライセンス・SHA-256 で確かめること・大きさ・置き場所・「ボタンを押したときだけ通信します」を、ボタンの前に表示）を置く。ルートは設定画面のもの（`POST /settings/ffmpeg/download` ほか。[../api/endpoints-settings.md](../api/endpoints-settings.md) §5.2）。その下に「自分で入れるときは、次のとおりです。」と従来の案内（上の表）を残す。ダウンロードできない環境（Linux・Windows arm64・macOS の Intel）とダウンロードのサービスが無い構成は、従来の案内だけ。見つかっているときは出さない。入れ終わると部品が「すぐに使えます（mam を再起動する必要はありません）」を出す（入れ終わったすぐあとに mam が ffmpeg を探し直すため）。方針は [../architecture/ffmpeg-download.md](../architecture/ffmpeg-download.md)。
+- **ダウンロードのボタン（Issue #900）**: Windows x64 と macOS（Apple Silicon）では、「見つからない」の枠の中、OS ごとの案内の**上**に、設定画面の「ffmpeg」と同じ部品（`DownloadPanel`。ボタン「ffmpeg をダウンロードして入れる」・進み具合・中断・削除。ビルド名・配布元・ライセンス・SHA-256 で確かめること・大きさ・置き場所・「ボタンを押したときだけ通信します」を、ボタンの前に表示）を置く。ルートは設定画面のもの（`POST /settings/ffmpeg/download` ほか。[../api/endpoints-settings.md](../api/endpoints-settings.md) §5.2）。その下に「自分で入れるときは、次のとおりです。」と従来の案内（上の表）を残す。ダウンロードできない環境（Linux・Windows arm64・macOS の Intel）とダウンロードのサービスが無い構成は、従来の案内だけ。見つかっているときは出さない。入れ終わると部品が「すぐに使えます（Nefos Video を再起動する必要はありません）」を出す（入れ終わったすぐあとに Nefos Video が ffmpeg を探し直すため）。方針は [../architecture/ffmpeg-download.md](../architecture/ffmpeg-download.md)。
 - **#1106 の追記（状態: 実装済み）**: 上のダウンロードのボタンの部品（`DownloadPanel`）は、設定ではなくモデルマネージャーの `#mm-ffmpeg` に置かれる同じ部品で、ルートは `POST /model-manager/companion/ffmpeg/download` ほか（[../api/endpoints-model-manager.md](../api/endpoints-model-manager.md) §1）に変わる。初回ガイドの見た目・文言・「自分で入れるときは」の案内は変えない。
-- どの OS でも「入れたあとは、下の「もう一度確認する」を押してください。mam を再起動する必要はありません。」と書き、「もう一度確認する」のリンク（同じ URL の GET）を置く。
+- どの OS でも「入れたあとは、下の「もう一度確認する」を押してください。Nefos Video を再起動する必要はありません。」と書き、「もう一度確認する」のリンク（同じ URL の GET）を置く。
 - コマンドは `<code>` で、コピーしやすい 1 行にする。
 
 ### 4.4 `mac` — Mac の準備（Codex・ComfyUI）。macOS のときだけ
@@ -78,10 +78,10 @@ Issue #863 の本文で決まっていること（オーナー指示を含む）
 macOS 以外ではこのステップはない（ナビにも出ず、URL は 404）。
 
 - **Codex のパス**（ChatGPT のサービスがあるときだけ）: Codex を自分で入れた人が、その実行ファイルの絶対パスを入れる欄（`name="path"`、現在の値を描く）。「ターミナルで `which codex` を実行すると分かります」と書く。保存は設定画面と同じ `chatgpt.Service.Codex().SetCustomPath`（`PUT /onboarding/codex-path`。応答はこの欄の下の結果の 1 文だけ）。空で保存すると指定を解除する。実在するファイルの絶対パスでなければ 422、保存できなければ 500（設定画面と同じ判定・文言。`chatgptsettings.SetCodexPath`）。Codex を使わないなら飛ばしてよい。
-- **ComfyUI は外部のものを使う**: mam は ComfyUI を同梱しない。公式の **Comfy Desktop**（macOS 13 以降・Apple Silicon。`.dmg` から入れるだけで Python と MPS の設定まで自動）を入れ、その接続先 URL を mam の設定「ローカル・代替モデル」（`/settings/local-models`）に入れる。手順の番号つきの案内:
+- **ComfyUI は外部のものを使う**: Nefos Video は ComfyUI を同梱しない。公式の **Comfy Desktop**（macOS 13 以降・Apple Silicon。`.dmg` から入れるだけで Python と MPS の設定まで自動）を入れ、その接続先 URL を Nefos Video の設定「ローカル・代替モデル」（`/settings/local-models`）に入れる。手順の番号つきの案内:
   1. 公式の手順（https://docs.comfy.org/installation/desktop/macos）で Comfy Desktop を入れて起動する。
   2. Comfy Desktop の接続先 URL を確かめる（たいてい `http://127.0.0.1:8000`）。
-  3. mam の「設定 → ローカル・代替モデル」で接続先を追加し、種類は ComfyUI、URL に 2 の値を入れる。
+  3. Nefos Video の「設定 → ローカル・代替モデル」で接続先を追加し、種類は ComfyUI、URL に 2 の値を入れる。
 - 3 へのリンク（`/settings/local-models`）は、ガイドを閉じたあとでも設定画面から開けると添える。
 
 ## 5. 画面の枠とボタン
@@ -145,3 +145,4 @@ macOS 以外ではこのステップはない（ナビにも出ず、URL は 404
 | 1.5 | 2026-11-06 | §4.3 の ffmpeg の案内から、再起動の求め（「見つかった」の添え書き・「入れたあと」の文・ダウンロードの完了の文）をなくした（入れたあとは「もう一度確認する」で足りる。ダウンロードの完了・パスの保存のすぐあとから mam が使う） | Issue #1047 |
 | 1.6 | 2026-11-06 | §4.3 の ffmpeg のダウンロードの部品とパスの設定の行き先を、設定画面からモデルマネージャーの `companion` へ改めた（初回ガイドの見た目は変えない。状態は仕様のみ） | Issue #1106 |
 | 1.7 | 2026-11-07 | §4.3 のダウンロードの部品とパスの設定の行き先（`/model-manager/companion/ffmpeg/download`・`#mm-ffmpeg`）を実装した（#1106）。初回ガイドの見た目は変えていない。状態は「実装済み」 | Issue #1106 |
+| 1.8 | 2026-11-19 | 本文の製品名の表示を「MAM」から「Nefos Video」に改めた（過去の改訂履歴の文は当時のまま） | #1170: 製品名を MAM から Nefos Video に変更（表示名のみ。識別子・パス・実行ファイル名は変更しない） |

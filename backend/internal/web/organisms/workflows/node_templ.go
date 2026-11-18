@@ -191,7 +191,7 @@ func Node(d NodeData) templ.Component {
 			}
 		}
 		if d.State == NodeReady || d.State == NodeRejected {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<p class=\"text-sm text-mute\">ノードを組んで保存し、一度実行したら、「ワークフロー」画面の「ComfyUI から取り込む」で mam に保存します。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<p class=\"text-sm text-mute\">ノードを組んで保存し、一度実行したら、「ワークフロー」画面の「ComfyUI から取り込む」で Nefos Video に保存します。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -223,7 +223,7 @@ func Node(d NodeData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\" failure-message=\"ComfyUI の画面を読み込めませんでした。ComfyUI が起動しているか、接続先のアドレスを確かめてください。外部の ComfyUI が別のサイトの中での表示を拒否している場合は、ComfyUI の起動オプションに --enable-cors-header（mam のオリジン）を付けるか、「ブラウザで開く」を使ってください。\" data-testid=\"nodes-frame\"></mam-comfy-frame>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\" failure-message=\"ComfyUI の画面を読み込めませんでした。ComfyUI が起動しているか、接続先のアドレスを確かめてください。外部の ComfyUI が別のサイトの中での表示を拒否している場合は、ComfyUI の起動オプションに --enable-cors-header（Nefos Video のオリジン）を付けるか、「ブラウザで開く」を使ってください。\" data-testid=\"nodes-frame\"></mam-comfy-frame>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
