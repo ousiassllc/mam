@@ -115,16 +115,17 @@ templ menu(s State, folded bool) {
 	</nav>
 }
 
-// brand is the name of the product at the top of the menu: the lockup of Nefos Video (the mark and the words) while the menu is open, the
-// mark alone on a narrow window (the menu is folded there, with no room beside the fold button; a folded menu on a wide window shows only
-// that button, as before). Both come in a Light and a Dark file, as they are: static/src/css/brand.css shows the
-// one of the theme. The name stays as text for a screen reader.
+// brand is the name of the product at the top of the menu: the mark of Nefos Video with its name as text beside it while the menu is open
+// (the mark has no tile: the ring stands as high as the letters, raised 1px to the middle of their capitals), the mark with its tile (the app icon) alone on a narrow window (the menu
+// is folded there, with no room beside the fold button; a folded menu on a wide window shows only that button, as before). Each comes in
+// a Light and a Dark file, as they are: static/src/css/brand.css shows the one of the theme. The name stays as text for a screen reader.
 templ brand() {
 	<span class="flex min-w-0 items-center" data-testid="sidenav-brand">
 		<span class="sr-only">{ ProductName }</span>
-		<span aria-hidden="true" class="max-md:hidden group-data-[folded=true]:hidden">
-			<img src={ paths.StaticBrand + "lockup-light.svg" } alt="" width="2000" height="560" class="brand-light h-11 w-auto"/>
-			<img src={ paths.StaticBrand + "lockup-dark.svg" } alt="" width="2000" height="560" class="brand-dark h-11 w-auto"/>
+		<span aria-hidden="true" class="flex items-center gap-2 max-md:hidden group-data-[folded=true]:hidden">
+			<img src={ paths.StaticBrand + "mark-light.svg" } alt="" width="18" height="18" class="brand-light h-[18px] w-[18px] shrink-0 -translate-y-px"/>
+			<img src={ paths.StaticBrand + "mark-dark.svg" } alt="" width="18" height="18" class="brand-dark h-[18px] w-[18px] shrink-0 -translate-y-px"/>
+			<span class="truncate text-base font-semibold leading-none text-ink">{ ProductName }</span>
 		</span>
 		<span aria-hidden="true" class="hidden max-md:block">
 			<img src={ paths.StaticBrand + "icon-32-light.png" } alt="" width="32" height="32" class="brand-light h-8 w-8"/>

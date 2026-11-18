@@ -47,12 +47,12 @@ func TestNav_LabelsStayInTheTextOfTheLinksWhenFolded(t *testing.T) {
 	}
 }
 
-// The top of the menu is the logo of Nefos Video: the lockup while the menu is open and the mark when it is folded, each in a Light and a Dark
+// The top of the menu is the logo of Nefos Video: the mark with the name as text while the menu is open and the mark when it is folded, each in a Light and a Dark
 // file (brand.css shows the one of the theme), and the name as text for a screen reader.
 func TestNav_ShowsTheLogoInBothThemesAndNamesTheProduct(t *testing.T) {
 	html := render(t.Context(), t, sidenav.At(sidenav.Projects))
 
-	for _, file := range []string{"lockup-light.svg", "lockup-dark.svg", "icon-32-light.png", "icon-32-dark.png"} {
+	for _, file := range []string{"mark-light.svg", "mark-dark.svg", "icon-32-light.png", "icon-32-dark.png"} {
 		assert.Contains(t, html, `src="/static/brand/`+file+`"`)
 		assert.FileExists(t, filepath.Join("..", "..", "..", "..", "..", "static", "brand", file))
 	}
