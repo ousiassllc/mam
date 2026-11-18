@@ -403,7 +403,7 @@ func menu(s State, folded bool) templ.Component {
 }
 
 // brand is the name of the product at the top of the menu: the mark of Nefos Video with its name as text beside it while the menu is open
-// (the mark has no tile: the ring stands as high as the letters, raised 1px to the middle of their capitals), the mark with its tile (the app icon) alone on a narrow window (the menu
+// (the mark has no tile: the file is 16 px square with the ring 10.5 px of it, so at 27 px the ring stands 18 px high, raised 1px to the middle of the capitals; the name is Sora Light, as the words of the old lockup were), the mark with its tile (the app icon) alone on a narrow window (the menu
 // is folded there, with no room beside the fold button; a folded menu on a wide window shows only that button, as before). Each comes in
 // a Light and a Dark file, as they are: static/src/css/brand.css shows the one of the theme. The name stays as text for a screen reader.
 func brand() templ.Component {
@@ -453,7 +453,7 @@ func brand() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "\" alt=\"\" width=\"18\" height=\"18\" class=\"brand-light h-[18px] w-[18px] shrink-0 -translate-y-px\"> <img src=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "\" alt=\"\" width=\"27\" height=\"27\" class=\"brand-light h-[27px] w-[27px] shrink-0 -translate-y-px\"> <img src=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -466,14 +466,14 @@ func brand() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "\" alt=\"\" width=\"18\" height=\"18\" class=\"brand-dark h-[18px] w-[18px] shrink-0 -translate-y-px\"> <span class=\"truncate text-base font-semibold leading-none text-ink\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "\" alt=\"\" width=\"27\" height=\"27\" class=\"brand-dark h-[27px] w-[27px] shrink-0 -translate-y-px\"> <span class=\"truncate text-base font-light leading-none text-ink\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var24 string
 		templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(ProductName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sidenav/nav.templ`, Line: 128, Col: 85}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/sidenav/nav.templ`, Line: 128, Col: 82}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 		if templ_7745c5c3_Err != nil {
