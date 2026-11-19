@@ -6,7 +6,8 @@
 #   DIR defaults to $MAM_FACE_MODEL_DIR, then $MAM_DATA_DIR/models, then ~/Library/Application Support/mam/models (macOS) or
 #   ${XDG_CONFIG_HOME:-~/.config}/mam/models (anything else, Git Bash on Windows included: pass DIR for %AppData%\mam\models).
 # The ONNX Runtime library (1.23.x) is a separate download. Windows: scripts/fetch-onnxruntime.sh <DIR> (the version the
-# installer bundles, SHA-256 checked). macOS / Linux: https://github.com/microsoft/onnxruntime/releases
+# installer bundles, SHA-256 checked). macOS / Linux: the NuGet package Microsoft.ML.OnnxRuntime 1.23.2 on nuget.org
+# (a zip; runtimes/osx-arm64, osx-x64, linux-x64 or linux-arm64 /native holds the library).
 # See spec/architecture/model-adapters.md §10.1.
 set -euo pipefail
 

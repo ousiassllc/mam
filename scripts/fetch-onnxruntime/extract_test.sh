@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Tests for the success path of scripts/fetch-onnxruntime.sh and for the ways it opens the zip, without the network (#1073). A curl on
-# PATH serves a made-up zip that matches the pins of a copy of the script (in a scratch repository, with the pins of the made-up files), so
-# the files land in the directory whichever way the zip was opened. Each way of opening it (unzip, bsdtar, a tar that is bsdtar, 7z, the
-# tar.exe of Windows) is tried with only that program on PATH, in the order the script prefers them. The refusals of a download that is
-# not the pinned one are in scripts/fetch-onnxruntime_test.sh; the real download is checked by ci.yml's windows job.
+# Tests for the success path of scripts/fetch-onnxruntime.sh and for the ways it opens the .nupkg (a zip), without the network (#1073,
+# #1173). A curl on PATH serves a made-up .nupkg that matches the pins of a copy of the script (in a scratch repository, with the pins of
+# the made-up files), so the files land in the directory whichever way it was opened. Each way of opening it (unzip, bsdtar, a tar that
+# is bsdtar, 7z, the tar.exe of Windows) is tried with only that program on PATH, in the order the script prefers them. The refusals of a
+# download that is not the pinned one are in scripts/fetch-onnxruntime_test.sh; the real download is checked by ci.yml's windows job.
 # Run: bash scripts/fetch-onnxruntime/extract_test.sh
 set -euo pipefail
 
@@ -22,29 +22,30 @@ check() { # check <name> <expected: pass|fail> <command...>
 }
 
 # --- the success path and the ways of opening the zip -------------------------------------------------------------------------------
-ortdir="onnxruntime-win-x64-1.23.2"
-members=("$ortdir/lib/onnxruntime.dll" "$ortdir/lib/onnxruntime_providers_shared.dll" "$ortdir/LICENSE" "$ortdir/ThirdPartyNotices.txt")
+native_dir="runtimes/win-x64/native"
+members=("$native_dir/onnxruntime.dll" "$native_dir/onnxruntime_providers_shared.dll" "LICENSE" "ThirdPartyNotices.txt")
 
-# make_tree <dir> <dll content>: the files of the zip (the license texts are the committed ones, with CRLF as the release has them).
+# make_tree <dir> <dll content>: the files of the package (the license texts are the committed ones, with CRLF as the package has them).
 make_tree() {
-  mkdir -p "$1/$ortdir/lib"
-  printf '%s' "$2" >"$1/$ortdir/lib/onnxruntime.dll"
-  printf 'providers' >"$1/$ortdir/lib/onnxruntime_providers_shared.dll"
+  mkdir -p "$1/$native_dir"
+  printf '%s' "$2" >"$1/$native_dir/onnxruntime.dll"
+  printf 'providers' >"$1/$native_dir/onnxruntime_providers_shared.dll"
   local f
   for f in LICENSE ThirdPartyNotices.txt; do
-    sed 's/$/\r/' "$repo/build/windows/onnxruntime/$f" >"$1/$ortdir/$f"
+    sed 's/$/\r/' "$repo/build/windows/onnxruntime/$f" >"$1/$f"
   done
 }
 
 make_zip() { # make_zip <tree dir> <zip file>
   if command -v zip >/dev/null 2>&1; then
-    (cd "$1" && zip -q -r "$2" "$ortdir")
+    (cd "$1" && zip -q -r "$2" runtimes LICENSE ThirdPartyNotices.txt)
   elif command -v python3 >/dev/null 2>&1; then
     (cd "$1" && python3 -c 'import sys, zipfile, pathlib
 with zipfile.ZipFile(sys.argv[1], "w") as z:
-    for p in sorted(pathlib.Path(sys.argv[2]).rglob("*")):
-        if p.is_file():
-            z.write(p)' "$2" "$ortdir")
+    for top in sys.argv[2:]:
+        for p in sorted(pathlib.Path(top).rglob("*")) if pathlib.Path(top).is_dir() else [pathlib.Path(top)]:
+            if p.is_file():
+                z.write(p)' "$2" runtimes LICENSE ThirdPartyNotices.txt)
   else
     echo "zip or python3 is required to make the test zip" >&2
     return 1
@@ -59,9 +60,9 @@ scratch_repo() {
   local dir="$1" zip="$2"
   mkdir -p "$dir/repo/scripts" "$dir/repo/build/windows"
   cp -R "$repo/build/windows/onnxruntime" "$dir/repo/build/windows/"
-  sed -e "s/^zip_sha256=.*/zip_sha256=\"$(sha "$zip")\"/" \
-    -e "s/^dll_sha256=.*/dll_sha256=\"$(sha "$work/good/$ortdir/lib/onnxruntime.dll")\"/" \
-    -e "s/^providers_sha256=.*/providers_sha256=\"$(sha "$work/good/$ortdir/lib/onnxruntime_providers_shared.dll")\"/" \
+  sed -e "s/^pkg_sha256=.*/pkg_sha256=\"$(sha "$zip")\"/" \
+    -e "s/^dll_sha256=.*/dll_sha256=\"$(sha "$work/good/$native_dir/onnxruntime.dll")\"/" \
+    -e "s/^providers_sha256=.*/providers_sha256=\"$(sha "$work/good/$native_dir/onnxruntime_providers_shared.dll")\"/" \
     "$script" >"$dir/repo/scripts/fetch-onnxruntime.sh"
 }
 
@@ -70,7 +71,7 @@ make_zip "$work/good" "$work/good.zip"
 make_tree "$work/otherdll" "another dll"
 make_zip "$work/otherdll" "$work/otherdll.zip"
 make_tree "$work/otherlicense" "the good dll"
-echo "an edited line" >>"$work/otherlicense/$ortdir/LICENSE"
+echo "an edited line" >>"$work/otherlicense/LICENSE"
 make_zip "$work/otherlicense" "$work/otherlicense.zip"
 
 # A curl that serves $FAKE_ZIP (and says so in $FAKE_LOG), and a program that opens the zip by copying the made-up files ($FAKE_TREE) to
@@ -119,7 +120,7 @@ fetch_with() {
   done
   scratch_repo "$c" "$zip"
   : >"$c/log"
-  FAKE_LOG="$c/log" FAKE_ZIP="$zip" FAKE_TREE="$tree/$ortdir/.." SYSTEMROOT="$c/sys" PATH="$c/bin" \
+  FAKE_LOG="$c/log" FAKE_ZIP="$zip" FAKE_TREE="$tree" SYSTEMROOT="$c/sys" PATH="$c/bin" \
     "$BASH" "$c/repo/scripts/fetch-onnxruntime.sh" "$c/dest" >"$c/out" 2>&1
 }
 
@@ -127,7 +128,7 @@ fetch_with() {
 used() { [[ "$(grep -v '^curl$' "$work/$1/log" | cut -d' ' -f1 | sed -n 1p 2>/dev/null)" == "$2" ]]; }
 installed() { # installed <case>: the two DLLs are the made-up ones, and nothing else is left in the directory
   local d="$work/$1/dest"
-  cmp -s "$d/onnxruntime.dll" "$work/good/$ortdir/lib/onnxruntime.dll" && cmp -s "$d/onnxruntime_providers_shared.dll" "$work/good/$ortdir/lib/onnxruntime_providers_shared.dll" \
+  cmp -s "$d/onnxruntime.dll" "$work/good/$native_dir/onnxruntime.dll" && cmp -s "$d/onnxruntime_providers_shared.dll" "$work/good/$native_dir/onnxruntime_providers_shared.dll" \
     && [[ "$(find "$d" -type f | wc -l)" -eq 2 ]] && grep -q "ONNX Runtime 1.23.2 is in $d" "$work/$1/out"
 }
 opened_with_the_members() { # opened_with_the_members <case>: the call named the four members of the zip
@@ -154,7 +155,7 @@ unexpected_dll_is_refused() {
   ! fetch_with other-dll "$work/otherdll.zip" "$work/otherdll" unzip && grep -q "unexpected onnxruntime.dll" "$work/other-dll/out" && [[ ! -e "$work/other-dll/dest" ]]
 }
 changed_license_is_refused() {
-  ! fetch_with other-license "$work/otherlicense.zip" "$work/otherlicense" unzip && grep -q "LICENSE of $ortdir.zip differs" "$work/other-license/out" && [[ ! -e "$work/other-license/dest" ]]
+  ! fetch_with other-license "$work/otherlicense.zip" "$work/otherlicense" unzip && grep -q "LICENSE of microsoft.ml.onnxruntime.1.23.2.nupkg differs" "$work/other-license/out" && [[ ! -e "$work/other-license/dest" ]]
 }
 present_files_are_not_fetched_again() {
   fetch_with again "$work/good.zip" "$work/good" unzip || return 1
