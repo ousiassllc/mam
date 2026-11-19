@@ -9,8 +9,8 @@
 #   - material copied into the source tree: the Iconoir icons of backend/internal/web/atoms/icon.templ, with the
 #     license text of the release they were copied from (atoms/icons/LICENSE; the release is named in icon.templ)
 #   - the ONNX Runtime DLL the installer bundles (Face Identity Similarity): the LICENSE and ThirdPartyNotices.txt of the
-#     pinned release, committed in build/windows/onnxruntime/ (scripts/fetch-onnxruntime.sh pins the version and refuses
-#     a zip whose two files differ from the committed ones)
+#     pinned package (the NuGet package Microsoft.ML.OnnxRuntime), committed in build/windows/onnxruntime/
+#     (scripts/fetch-onnxruntime.sh pins the version and refuses a package whose two files differ from the committed ones)
 #   - scripts/third-party-notices-musetalk.md: the MuseTalk section (text that is written by hand)
 #   - scripts/third-party-notices-irodori.md: the Irodori-TTS section and its weights (text that is written by hand, with the Python packages)
 #   - scripts/third-party-notices-llamacpp.md: the llama.cpp section, the weights of the local LLMs and the Ollama section with its three models (text that is written by hand)
@@ -162,7 +162,7 @@ Nefos Video の Windows 版に含まれるサードパーティのソフトウ�
 - Go の標準ライブラリと、Windows 版 exe（`backend/cmd/wails`、`GOOS=windows`、`-tags production`）にリンクされる Go モジュール
 - `static/` の本番バンドルに入る npm パッケージ（`static/src/main.ts` から import されるもの。`static/src/dist/app.css` に Tailwind CSS が含まれるので `tailwindcss` も）と、画面に使うフォント（Sora・Noto Sans JP・JetBrains Mono。SIL Open Font License 1.1。`@fontsource-variable/*` のファイルを `static/src/dist/fonts/` に同梱する）
 - ソースにコピーして同梱した素材: アイコンの Iconoir（MIT。取り込んだ版の `LICENSE` の全文）
-- インストーラーが `mam.exe` の隣に置く ONNX Runtime の DLL（`onnxruntime.dll`・`onnxruntime_providers_shared.dll`。MIT、Microsoft）: 顔の同一性の数値評価に使います。取り込んだ版の `LICENSE` と、Microsoft が付ける第三者の通知 `ThirdPartyNotices.txt` の全文を載せています（`build/windows/onnxruntime/` にある写しで、`scripts/fetch-onnxruntime.sh` が固定した版のリリースと同じ内容であることを確かめます）。ONNX Runtime を Go から呼ぶバインディング（`github.com/shota3506/onnxruntime-purego`、MIT）と、その下の `github.com/ebitengine/purego`（Apache-2.0）は、上の Go モジュールに入っています。バインディングは、Windows 対応の修正（DLL の読み込みとモデルのパスの UTF-16 化）の 1 コミットだけを足した `github.com/aubs3993/onnxruntime-purego` のコミットに `go.mod` の `replace` で差し替えています（上の「版」は元のモジュールのもので、`LICENSE` は同じ MIT です）
+- インストーラーが `mam.exe` の隣に置く ONNX Runtime の DLL（`onnxruntime.dll`・`onnxruntime_providers_shared.dll`。MIT、Microsoft）: 顔の同一性の数値評価に使います。取り込んだ版の `LICENSE` と、Microsoft が付ける第三者の通知 `ThirdPartyNotices.txt` の全文を載せています（`build/windows/onnxruntime/` にある写しで、`scripts/fetch-onnxruntime.sh` が固定した版の NuGet パッケージ（Microsoft.ML.OnnxRuntime）と同じ内容であることを確かめます）。ONNX Runtime を Go から呼ぶバインディング（`github.com/shota3506/onnxruntime-purego`、MIT）と、その下の `github.com/ebitengine/purego`（Apache-2.0）は、上の Go モジュールに入っています。バインディングは、Windows 対応の修正（DLL の読み込みとモデルのパスの UTF-16 化）の 1 コミットだけを足した `github.com/aubs3993/onnxruntime-purego` のコミットに `go.mod` の `replace` で差し替えています（上の「版」は元のモジュールのもので、`LICENSE` は同じ MIT です）
 - インストーラーに同梱する Microsoft の WebView2 ブートストラッパー（下の節）
 
 開発用のツール・テスト用のパッケージ（`devDependencies` など）は配布物に入らないので載せていません（フォントの `@fontsource-variable/*` だけは、`devDependencies` でもファイルを同梱するので載せています）。ffmpeg・ComfyUI・GPT-SoVITS・MuseTalk・Irodori-TTS・Codex は同梱しません（利用者が取得する別プログラムとして、下の節に載せています）。
