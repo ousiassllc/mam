@@ -47,7 +47,7 @@ fail() {
   echo "mam update failed: $1"
   cleanup
   osascript -e 'on run argv' \
-    -e 'display alert "MAM のアップデートに失敗しました" message (item 1 of argv) as critical' \
+    -e 'display alert "Nefos Video のアップデートに失敗しました" message (item 1 of argv) as critical' \
     -e 'end run' "$1" >/dev/null 2>&1
   [ -d "$app" ] && open "$app"
   exit 1
@@ -56,7 +56,7 @@ fail() {
 n=0
 while kill -0 "$pid" 2>/dev/null; do
   n=$((n + 1))
-  [ "$n" -gt 600 ] && fail "MAM が終了しませんでした。いったん終了してから、もう一度アップデートを確認してください。"
+  [ "$n" -gt 600 ] && fail "Nefos Video が終了しませんでした。いったん終了してから、もう一度アップデートを確認してください。"
   sleep 0.1
 done
 
@@ -128,11 +128,11 @@ func MacUpdatableBundle(exe string) (string, error) {
 		return "", err
 	}
 	if strings.Contains(bundle, "/AppTranslocation/") {
-		return "", fmt.Errorf("%s is running from a translocated copy: move MAM to /Applications and start it from there", bundle)
+		return "", fmt.Errorf("%s is running from a translocated copy: move Nefos Video (MAM.app) to /Applications and start it from there", bundle)
 	}
 	probe, err := createUpdateProbe(filepath.Dir(bundle))
 	if err != nil {
-		return "", fmt.Errorf("the folder of %s is not writable (a disk image is read-only): move MAM to /Applications and start it from there: %w", bundle, err)
+		return "", fmt.Errorf("the folder of %s is not writable (a disk image is read-only): move Nefos Video (MAM.app) to /Applications and start it from there: %w", bundle, err)
 	}
 	return bundle, errors.Join(probe.Close(), os.Remove(probe.Name()))
 }

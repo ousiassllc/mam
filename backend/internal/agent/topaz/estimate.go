@@ -124,7 +124,7 @@ func usable(lo, hi float64) bool {
 func buildRequest(r cloudenhance.CloudRequest) (createRequest, outputBody, error) {
 	m, ok := modelOf(r.Model)
 	if !ok {
-		return createRequest{}, outputBody{}, unsupported("Topaz のモデル「" + r.Model + "」は、mam では使えません。")
+		return createRequest{}, outputBody{}, unsupported("Topaz のモデル「" + r.Model + "」は、Nefos Video では使えません。")
 	}
 	if m.Op != r.Params.Op {
 		return createRequest{}, outputBody{}, unsupported("このモデル（" + m.Label + "）では、その処理（拡大・フレーム補間）はできません。")

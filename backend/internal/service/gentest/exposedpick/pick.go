@@ -117,7 +117,7 @@ func (Picker) classify(row *Row, raw json.RawMessage, spec inputSpec, w localcfg
 	case linked:
 		return "ほかのノードがつないでいる入力のため選べません"
 	case slices.ContainsFunc(w.Assignments, func(a localcfg.Assignment) bool { return a.Node == row.Node && a.Input == row.Input }):
-		return "mam が値を入れる入力（プロンプト・シード・サイズ・ステップ数など）のため選べません。こだわりの詳細設定にあります"
+		return "Nefos Video が値を入れる入力（プロンプト・シード・サイズ・ステップ数など）のため選べません。こだわりの詳細設定にあります"
 	}
 	var v any
 	_ = json.Unmarshal(raw, &v)

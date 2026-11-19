@@ -17,7 +17,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 	r.Files.RegisterDownload(KindProjectBundle, bundle(svc.Bundle))
 
 	mcpkit.Read(r, "export_project_bundle",
-		"プロジェクトをバンドル（ZIP: データと素材ファイル）として書き出すダウンロード URL を発行する（15 分有効）。別の mam では create_upload_ticket の purpose=import_bundle で取り込める / Download URL of the Project's portable bundle (ZIP); import it with purpose import_bundle.",
+		"プロジェクトをバンドル（ZIP: データと素材ファイル）として書き出すダウンロード URL を発行する（15 分有効）。別の Nefos Video では create_upload_ticket の purpose=import_bundle で取り込める / Download URL of the Project's portable bundle (ZIP); import it with purpose import_bundle.",
 		func(ctx context.Context, in Input) (Output, error) {
 			link, err := r.Files.DownloadURL(ctx, KindProjectBundle, in.ProjectID)
 			return Output{Link: link}, err

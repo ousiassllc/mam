@@ -208,7 +208,7 @@ func TestChatGPTCodex_TheDetailOffersTheLogoutThatAlsoRemovesTheEngineOnlyWhenSi
 	rec := s.actFromModal(http.MethodDelete, paths.ChatGPTCodex()+"?remove=true", nil) // htmx sends the fields of a DELETE in the query
 	require.Equal(t, http.StatusOK, rec.Code)
 	assert.Equal(t, "modal-close", rec.Header().Get("HX-Trigger-After-Swap"))
-	assert.Contains(t, rec.Body.String(), "ログアウトして、取得した Codex 本体と mam 専用の CODEX_HOME を削除しました")
+	assert.Contains(t, rec.Body.String(), "ログアウトして、取得した Codex 本体と Nefos Video 専用の CODEX_HOME を削除しました")
 }
 
 func TestChatGPTCodex_LoginWithoutAnEngineAsksForOne(t *testing.T) {

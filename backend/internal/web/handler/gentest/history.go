@@ -289,7 +289,7 @@ func (h Handlers) prompts(ctx context.Context, m view.Message) view.Prompts {
 	p := view.Prompts{Message: m}
 	list, err := h.Svc.Prompts(ctx)
 	if err != nil {
-		p.Error = "プロンプトの履歴を読み込めませんでした。mam のログを確認してください"
+		p.Error = "プロンプトの履歴を読み込めませんでした。Nefos Video のログを確認してください"
 		return p
 	}
 	for _, e := range list {

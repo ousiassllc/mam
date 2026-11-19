@@ -95,5 +95,5 @@ func unlisted(model string, l llmmodels.List) string {
 	case l.Source == llmmodels.SourceAPI:
 		return "「" + model + "」は " + l.Provider + " の一覧にありません。使えないかもしれません（保存はできます）"
 	}
-	return "「" + model + "」は mam の既定候補にありません（" + l.Provider + ": " + l.Fallback.Message() + "）。新しいモデルなら使えることもありますが、使えないかもしれません（保存はできます）"
+	return "「" + model + "」は Nefos Video の既定候補にありません（" + l.Provider + ": " + l.Fallback.Message() + "）。新しいモデルなら使えることもありますが、使えないかもしれません（保存はできます）"
 }

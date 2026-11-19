@@ -13,3 +13,5 @@ tasks:
 
 # build/windows/icon.ico is committed. To regenerate it from build/appicon.png:
 #   cd build && wails3 generate icons -input appicon.png -windowsfilename windows/icon.ico -macfilename /tmp/icons.icns
+# (Issue #1171: the committed icon.ico is not that output: it holds 256 and 128 scaled from appicon.png, 64 / 48 / 32 / 16 from the
+# Nefos Video files icon-64-light.png, favicon.ico (48) and icon-32/16-light.png, which are mono at 32 and 16.)

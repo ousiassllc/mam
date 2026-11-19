@@ -126,7 +126,7 @@ func TestAnInterruptedCloudJobTellsTheRequestIDToLookItUpBy(t *testing.T) {
 	got, err := r.Repo.GetResult(context.Background(), ref.ResultID)
 	require.NoError(t, err)
 	require.Equal(t, "failed", got.Status)
-	assert.NotContains(t, got.Error, "mam が停止したため中断されました（課金される生成は再開しません）")
+	assert.NotContains(t, got.Error, "Nefos Video が停止したため中断されました（課金される生成は再開しません）")
 	assert.Contains(t, got.Error, "req-1", "the request id to look the job up by")
 	assert.Contains(t, got.Error, "Topaz")
 	assert.Contains(t, got.Error, "クレジット")

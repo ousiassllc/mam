@@ -6,6 +6,9 @@
 /* The fade of the overlays and the ripple of a press (M4, M5). */
 @import "./motion.css";
 
+/* The Light and the Dark file of the logo: one of them is shown (brand.css). */
+@import "./brand.css";
+
 /* The common look of every <input type="range"> (#955): the pseudo-elements of a slider cannot be written as utilities. It is in the
    components layer, so that a utility class on a slider (w-full, ...) still wins over it. */
 @import "./slider.css" layer(components);

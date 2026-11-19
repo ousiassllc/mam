@@ -15,7 +15,7 @@
    "i2v"
   ]
  },
- "description": "【中ティア・非検閲ではない標準モデル】Lightricks の LTX-Video 13B 0.9.8 の蒸留版（8 ステップ・cfg 1。fp8）。チェックポイント（映像の VAE を含む約 15.7 GB）と T5 テキストエンコーダー（fp8、約 4.9 GB、ltx-video-2b と共有）の 2 ファイル、合計約 20.6 GB。テキストからも先頭フレームからも作れる（T2V・I2V）。24fps・音声なし。得意: 13B なのに蒸留で 8 ステップと速く、LTX-Video 2B（ltx-video-2b）より高品質。試行錯誤の速さと画質の両立。注意: 公式の 13B 蒸留のワークフローはカスタムノード（STG のガイダンス・LTXVBaseSampler など）とマルチスケール（縮めた解像度で作って潜在を拡大する 2 段）を使うが、mam は標準ノードだけの 1 段にしたので、品質は公式の既定より落ちる場合がある（実機では未検証）。先頭と最後のフレーム（FLF2V）には対応しない。音声つきの動画は LTX-2.5（ltx-2.5-22b-distilled）を選ぶ。VRAM 24 GB は mam の見積り。ライセンス: LTXV Open Weights License 0.X で、年間売上が 1,000 万米ドル以上の事業者は Lightricks との有償の商用ライセンスが要る（それ未満は商用を含めて使える）。違法・有害な用途を禁じる使用制限が付く。",
+ "description": "【中ティア・非検閲ではない標準モデル】Lightricks の LTX-Video 13B 0.9.8 の蒸留版（8 ステップ・cfg 1。fp8）。チェックポイント（映像の VAE を含む約 15.7 GB）と T5 テキストエンコーダー（fp8、約 4.9 GB、ltx-video-2b と共有）の 2 ファイル、合計約 20.6 GB。テキストからも先頭フレームからも作れる（T2V・I2V）。24fps・音声なし。得意: 13B なのに蒸留で 8 ステップと速く、LTX-Video 2B（ltx-video-2b）より高品質。試行錯誤の速さと画質の両立。注意: 公式の 13B 蒸留のワークフローはカスタムノード（STG のガイダンス・LTXVBaseSampler など）とマルチスケール（縮めた解像度で作って潜在を拡大する 2 段）を使うが、Nefos Video は標準ノードだけの 1 段にしたので、品質は公式の既定より落ちる場合がある（実機では未検証）。先頭と最後のフレーム（FLF2V）には対応しない。音声つきの動画は LTX-2.5（ltx-2.5-22b-distilled）を選ぶ。VRAM 24 GB は Nefos Video の見積り。ライセンス: LTXV Open Weights License 0.X で、年間売上が 1,000 万米ドル以上の事業者は Lightricks との有償の商用ライセンスが要る（それ未満は商用を含めて使える）。違法・有害な用途を禁じる使用制限が付く。",
  "files": [
   {
    "name": "ltxv-13b-0.9.8-distilled-fp8.safetensors",
@@ -34,7 +34,7 @@
  ],
  "vram": {
   "min_gb": 24,
-  "source": "Lightricks の ComfyUI-LTXVideo の README は、13B の fp8 版を「消費者向けの GPU（例: NVIDIA 4090・5090）に向く」と書く（GB の数字は書いていない。0.9.7 の fp8 の紹介の文で、0.9.8 の fp8 も同じ位置づけ）。mam は、名前の挙がる 2 枚のうち小さい方の RTX 4090 の 24 GB を最低の目安にした（推定。mam の実機では未検証）",
+  "source": "Lightricks の ComfyUI-LTXVideo の README は、13B の fp8 版を「消費者向けの GPU（例: NVIDIA 4090・5090）に向く」と書く（GB の数字は書いていない。0.9.7 の fp8 の紹介の文で、0.9.8 の fp8 も同じ位置づけ）。Nefos Video は、名前の挙がる 2 枚のうち小さい方の RTX 4090 の 24 GB を最低の目安にした（推定。Nefos Video の実機では未検証）",
   "estimate": true
  },
  "license": {

@@ -182,7 +182,7 @@ func TestTheComfyTierOffersThePickerOfTheExposedInputs(t *testing.T) {
 	require.NotEmpty(t, table)
 	assert.Contains(t, table, "KSampler.denoise")
 	assert.Contains(t, testid(page, "gt-picker-others"), "ほかのノードがつないでいる")
-	assert.Contains(t, testid(page, "gt-picker-others"), "mam が値を入れる")
+	assert.Contains(t, testid(page, "gt-picker-others"), "Nefos Video が値を入れる")
 	assert.Contains(t, page, `data-testid="gt-picker-readonly"`, "a model that no place keeps cannot be changed here")
 }
 

@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<!-- Info.plist of MAM.app. scripts/package-macos.sh replaces @VERSION@ with the release version (X.Y.Z). -->
+<!-- Info.plist of MAM.app (CFBundleName / CFBundleDisplayName: Nefos Video). scripts/package-macos.sh replaces @VERSION@ with the release version (X.Y.Z). -->
 <plist version="1.0">
 <dict>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleName</key>
-	<string>MAM</string>
+	<string>Nefos Video</string>
 	<key>CFBundleDisplayName</key>
-	<string>MAM</string>
+	<string>Nefos Video</string>
 	<key>CFBundleExecutable</key>
 	<string>mam</string>
 	<key>CFBundleIdentifier</key>

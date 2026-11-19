@@ -2,7 +2,7 @@
  "id": "flf2v-wan21-14b",
  "label": "Wan 2.1 FLF2V 14B: 最初と最後のフレームから動画",
  "media": "video",
- "description": "Wan 2.1 FLF2V 14B 720P（fp8 の wan2.1_flf2v_720p_14B_fp8_e4m3fn.safetensors、テキストエンコーダー umt5_xxl_fp8_e4m3fn_scaled.safetensors、CLIP Vision の clip_vision_h.safetensors、VAE wan_2.1_vae.safetensors）で、先頭フレームと最後のフレームの 2 枚から、その間の動きを作る（FLF2V）標準ノードだけのワークフロー。ComfyUI の公式テンプレート（wan2.1_flf2v_720_f16）に従う: 2 枚の画像をそれぞれ CLIPVisionEncode（crop は none）に通し、WanFirstLastFrameToVideo に渡す。20 ステップ・uni_pc/simple・cfg 3 の 1 つの KSampler、ModelSamplingSD3 の shift は 8。公式は fp16（32.8 GB）だが、mam は Comfy-Org の fp8（16.4 GB）を使う。16fps、フレーム数は 4n+1。公式の例は 720p（720×1280・33 フレーム）で、Wan 公式は 720P 専用のモデルと書くので、解像度は 720p のみ。2 枚の画像は同じ縦横比にする。GPU では未実行（構造のテストのみ）。",
+ "description": "Wan 2.1 FLF2V 14B 720P（fp8 の wan2.1_flf2v_720p_14B_fp8_e4m3fn.safetensors、テキストエンコーダー umt5_xxl_fp8_e4m3fn_scaled.safetensors、CLIP Vision の clip_vision_h.safetensors、VAE wan_2.1_vae.safetensors）で、先頭フレームと最後のフレームの 2 枚から、その間の動きを作る（FLF2V）標準ノードだけのワークフロー。ComfyUI の公式テンプレート（wan2.1_flf2v_720_f16）に従う: 2 枚の画像をそれぞれ CLIPVisionEncode（crop は none）に通し、WanFirstLastFrameToVideo に渡す。20 ステップ・uni_pc/simple・cfg 3 の 1 つの KSampler、ModelSamplingSD3 の shift は 8。公式は fp16（32.8 GB）だが、Nefos Video は Comfy-Org の fp8（16.4 GB）を使う。16fps、フレーム数は 4n+1。公式の例は 720p（720×1280・33 フレーム）で、Wan 公式は 720P 専用のモデルと書くので、解像度は 720p のみ。2 枚の画像は同じ縦横比にする。GPU では未実行（構造のテストのみ）。",
  "model": {
   "media": "video",
   "video": {"durations": [2, 3, 4, 5], "resolutions": ["720p"]},

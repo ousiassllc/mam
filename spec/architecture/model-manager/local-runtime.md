@@ -1,6 +1,6 @@
 # ローカルランタイム（GPT-SoVITS・Irodori-TTS・MuseTalk・llama.cpp・Ollama）
 
-[model-manager.md](model-manager.md)（同梱の ComfyUI エンジン）と同じ作りで、**声（GPT-SoVITS）と口パク（MuseTalk 1.5）をローカルで動かす実行環境を、MAM が自動で導入・起動・停止・状態表示まで管理する**ための基盤。親 Issue は #912（決定事項: 実行方式 B「ComfyUI の同梱エンジンと同じ感じで、mam が自動で入れて起動まで管理する」）。この文書は基盤と GPT-SoVITS の環境導入（Issue #918）、重み・依存ファイルの固定カタログと取得・検証・出典とライセンスの表示・画面と MCP（Issue #920。§12）、MuseTalk 1.5 の環境の組み立て・起動・口パクの入口（Issue #921。§13）を定める。実装は `backend/internal/modelmgr/runtime`（導入・判定・起動コマンド・重みの検証と取得）、`backend/internal/modelmgr/catalog`（カタログ）と `backend/internal/service/localruntime`（Service）。改訂履歴は [model-manager.changelog.md](model-manager.changelog.md)。
+[model-manager.md](model-manager.md)（同梱の ComfyUI エンジン）と同じ作りで、**声（GPT-SoVITS）と口パク（MuseTalk 1.5）をローカルで動かす実行環境を、Nefos Video が自動で導入・起動・停止・状態表示まで管理する**ための基盤。親 Issue は #912（決定事項: 実行方式 B「ComfyUI の同梱エンジンと同じ感じで、Nefos Video が自動で入れて起動まで管理する」）。この文書は基盤と GPT-SoVITS の環境導入（Issue #918）、重み・依存ファイルの固定カタログと取得・検証・出典とライセンスの表示・画面と MCP（Issue #920。§12）、MuseTalk 1.5 の環境の組み立て・起動・口パクの入口（Issue #921。§13）を定める。実装は `backend/internal/modelmgr/runtime`（導入・判定・起動コマンド・重みの検証と取得）、`backend/internal/modelmgr/catalog`（カタログ）と `backend/internal/service/localruntime`（Service）。改訂履歴は [model-manager.changelog.md](model-manager.changelog.md)。
 
 | 範囲 | Issue |
 |---|---|
@@ -17,9 +17,9 @@
 
 ## 1. 方針（変えない前提）
 
-- **ComfyUI を経由せず、ランタイムごとに独立した Python 環境とプロセスを持つ**。GPT-SoVITS は公式の `api_v2.py`（FastAPI）を、mam が同梱する起動用スクリプト（トークンと Host の確認を足す。§5.2）経由で、MAM が `127.0.0.1` 限定で起動して HTTP で呼ぶ。ComfyUI のカスタムノード経由にしない（親 Issue「ComfyUI のカスタムノードは古いものが多い」。決定事項 1 で、MAM が管理する独立の実行環境・プロセスに決まった）。
+- **ComfyUI を経由せず、ランタイムごとに独立した Python 環境とプロセスを持つ**。GPT-SoVITS は公式の `api_v2.py`（FastAPI）を、Nefos Video が同梱する起動用スクリプト（トークンと Host の確認を足す。§5.2）経由で、Nefos Video が `127.0.0.1` 限定で起動して HTTP で呼ぶ。ComfyUI のカスタムノード経由にしない（親 Issue「ComfyUI のカスタムノードは古いものが多い」。決定事項 1 で、Nefos Video が管理する独立の実行環境・プロセスに決まった）。
 - **ランタイムの種類はデータ**（`catalog/data/runtimes/<名前>.json`）。コードは GPT-SoVITS を知らない。MuseTalk は同じ形の JSON を足し、起動の引数・確認パス・対応環境の判定の文を書くだけで載る（§9）。
-- **MAM は何も同梱しない**。公式の配布先から取得する別プログラムで、`THIRD_PARTY_NOTICES.md`（GPT-SoVITS の節）に載せる。ライセンスと商用利用の可否の表示は §12（#920）。
+- **Nefos Video は何も同梱しない**。公式の配布先から取得する別プログラムで、`THIRD_PARTY_NOTICES.md`（GPT-SoVITS の節）に載せる。ライセンスと商用利用の可否の表示は §12（#920）。
 - **置き場所は `<mam.exe のあるディレクトリ>\localai\<ランタイム ID>\` だけ**（§2）。ライブラリのキャッシュと一時ファイルもその中に置く。インストール版はアンインストーラーが消し、ポータブル版は exe の隣に残る。書けない場所なら `store.ErrNotWritable` で断る。
 - **取得物は固定して SHA-256 を検証する**（model-manager.md §1 と同じ）。ハッシュ・サイズが合わないものは使わず消す。取得は `fetch`（`Range` 再開・空き容量確認）と `extract` をそのまま使う。
 - **対応は Windows x64 ＋ NVIDIA GPU だけ**（ComfyUI の同梱エンジンと同じ範囲）。それ以外は導入も起動もさせず、**理由の文とクラウド（ElevenLabs）を使う案内**を返す（§4）。macOS（Apple Silicon）の MPS / CPU 対応は §16 で調べた（確かな一次情報だけでは組み立てられないので、自動導入しない。ランタイムごとの理由を出す）。
@@ -60,7 +60,7 @@
 
 SHA-256 は Hugging Face の API（`/api/models/lj1995/GPT-SoVITS-windows-package/tree/<commit>?recursive=1` の `lfs.oid`）と、ダウンロード応答の `x-linked-etag`・`x-linked-size` の一致を確かめた値。展開後サイズは 7z のヘッダーの合計。
 
-**重みについて**: この統合パッケージは、v2Pro の**学習済みモデルの重み（`GPT_SoVITS\pretrained_models` ほか）を含む**（約 8 GB の大半）。MAM のインストーラー・リリースには含めず、ランタイムの取得で公式の配布先から一緒に入る。重みごとの出典・ライセンスの表示は §12。パッケージ内の Python パッケージ（約 100 個）のライセンスは確認していない（§11）。
+**重みについて**: この統合パッケージは、v2Pro の**学習済みモデルの重み（`GPT_SoVITS\pretrained_models` ほか）を含む**（約 8 GB の大半）。Nefos Video のインストーラー・リリースには含めず、ランタイムの取得で公式の配布先から一緒に入る。重みごとの出典・ライセンスの表示は §12。パッケージ内の Python パッケージ（約 100 個）のライセンスは確認していない（§11）。
 
 ## 4. 対応環境の判定（`modelmgr/runtime.Evaluate`）
 
@@ -86,7 +86,7 @@ SHA-256 は Hugging Face の API（`/api/models/lj1995/GPT-SoVITS-windows-packag
 
 1. 対応を判定（§4）→ 書き込み可否 → 空き容量（未取得分＋展開後。足りなければ `*fetch.NoSpaceError`）。
 2. `downloads\<名前>.part` へ `Range` 再開つきで取得し、SHA-256・サイズを検証してからリネーム（`ErrChecksum`・`ErrSize` は `.part` を消す。取り消し・ネットワークの失敗は残して、次の導入が続きから再開する）。
-3. 7z を `env.new\` へ展開し、続けて**カタログの `extra_files`（mam が同梱する起動用スクリプト `mam_gptsovits_server.py`。`catalog/data/overlays/`）を `env.new\` に書き**、`runtime\python.exe` と入口のスクリプト（`mam_gptsovits_server.py`）があることを確かめて `env\` と入れ替える（既存は `env.old\` に退避して成功で消す。失敗で戻す）。導入のたびに環境を作り直すので、更新・再導入でもこのファイルは今の mam のものになる。さらに**起動のたび**（`Installer.Command`）に、同じファイルを `env\` へ書き直す（起動用スクリプトは守り（トークン・Host・許可する要求）そのものなので、mam の修正が、パッケージの再取得なしで次の起動から効く）。`extra_files` は `build.files` と同じ形（`dest`＋`overlay` か `lines`。検証は `parts.CheckFiles`）で、組み立てるランタイム（`build`）とは併用しない。`Status` は、導入済みと記録されていても `extra_files` のファイルが無い環境（このスクリプトが入る前に導入したもの）を `broken`（導入し直す）にする。
+3. 7z を `env.new\` へ展開し、続けて**カタログの `extra_files`（Nefos Video が同梱する起動用スクリプト `mam_gptsovits_server.py`。`catalog/data/overlays/`）を `env.new\` に書き**、`runtime\python.exe` と入口のスクリプト（`mam_gptsovits_server.py`）があることを確かめて `env\` と入れ替える（既存は `env.old\` に退避して成功で消す。失敗で戻す）。導入のたびに環境を作り直すので、更新・再導入でもこのファイルは今の Nefos Video のものになる。さらに**起動のたび**（`Installer.Command`）に、同じファイルを `env\` へ書き直す（起動用スクリプトは守り（トークン・Host・許可する要求）そのものなので、Nefos Video の修正が、パッケージの再取得なしで次の起動から効く）。`extra_files` は `build.files` と同じ形（`dest`＋`overlay` か `lines`。検証は `parts.CheckFiles`）で、組み立てるランタイム（`build`）とは併用しない。`Status` は、導入済みと記録されていても `extra_files` のファイルが無い環境（このスクリプトが入る前に導入したもの）を `broken`（導入し直す）にする。
 4. `state.json` に版・変種・時刻を記録し、アーカイブと `downloads\` を消す。
 
 進捗は展開前の取得 70 %・展開 30 %。実行中のプロセスは、ファイルを入れ替える前に止める。失敗は日本語にして出す（SHA-256 不一致・大きさ不一致・空き容量・取得元の 4xx・書き込めない場所）。
@@ -95,16 +95,16 @@ SHA-256 は Hugging Face の API（`/api/models/lj1995/GPT-SoVITS-windows-packag
 
 | 項目 | 内容 |
 |---|---|
-| コマンド | `env\runtime\python.exe -I -u -X utf8 mam_gptsovits_server.py -a 127.0.0.1 -p <空きポート> -c GPT_SoVITS/configs/tts_infer.yaml`（作業ディレクトリは `env\`）。**公式の `api_v2.py` を直接は起動しない**: mam の起動用スクリプト（`catalog/data/overlays/mam_gptsovits_server.py`）が、`-I` で外れる `sys.path`（作業ディレクトリと `GPT_SoVITS`）を `api_v2.py` と同じに足して `api_v2` を import し（引数 `-a`・`-p`・`-c` は `api_v2.py` がそのまま読む。モデルを読み込んでからポートが開く）、その FastAPI アプリ（`api_v2.APP`）の前に下の守りを置いてから、`api_v2.py` の `__main__` と同じに `uvicorn.run(host, port, workers=1)` する。公式の `go-webui.bat`（`runtime\python.exe -I …`、`runtime` を `PATH` の先頭へ）と同じ作りで、`-I`（隔離モード）により利用者の Python・`PYTHONPATH` に影響されない |
+| コマンド | `env\runtime\python.exe -I -u -X utf8 mam_gptsovits_server.py -a 127.0.0.1 -p <空きポート> -c GPT_SoVITS/configs/tts_infer.yaml`（作業ディレクトリは `env\`）。**公式の `api_v2.py` を直接は起動しない**: Nefos Video の起動用スクリプト（`catalog/data/overlays/mam_gptsovits_server.py`）が、`-I` で外れる `sys.path`（作業ディレクトリと `GPT_SoVITS`）を `api_v2.py` と同じに足して `api_v2` を import し（引数 `-a`・`-p`・`-c` は `api_v2.py` がそのまま読む。モデルを読み込んでからポートが開く）、その FastAPI アプリ（`api_v2.APP`）の前に下の守りを置いてから、`api_v2.py` の `__main__` と同じに `uvicorn.run(host, port, workers=1)` する。公式の `go-webui.bat`（`runtime\python.exe -I …`、`runtime` を `PATH` の先頭へ）と同じ作りで、`-I`（隔離モード）により利用者の Python・`PYTHONPATH` に影響されない |
 | 待ち受け | **`127.0.0.1` だけ**（カタログの検証が、`127.0.0.1`・`{port}` を含み `0.0.0.0`・`::` を含まない引数だけを許す。起動用スクリプトも `-a` が `127.0.0.1` でなければ、モデルを読む前に終了コード 2 で断る）。ポートは前回のポートを優先し、空いていなければ空きポート（`proc.FreePort`） |
-| 認証と Host の確認 | 公式の `api_v2.py` はトークンも Host の確認も持たず、`GET /control?command=exit\|restart`・`/set_gpt_weights`・`/set_sovits_weights`（任意のパスの重みを読む）・`/tts?ref_audio_path=` が、ブラウザの Web ページからの単純な GET（と DNS リバインディング）で呼べてしまう。そこで起動用スクリプトの ASGI ミドルウェアが、**全要求**に次を課す（順に判定）。①`Host` が `127.0.0.1:<port>`・`localhost:<port>`（大文字小文字は問わない・1 つだけ）でなければ **403**。②**許可する要求だけ**を通す: `POST /tts`（mam の声の呼び出しが使う唯一のもの。`agent/audiodirector/gptsovits`）と `GET /openapi.json`（起動確認）。それ以外（`/control`・`/set_gpt_weights`・`/set_sovits_weights`・`/set_refer_audio`・`GET /tts`・`/docs` ほか）は**トークンを持っていても 404**（トークンの持ち主でも、サーバーに任意のパスを読み込ませたり止めさせたりできない）。③`POST /tts` はヘッダー `X-Mam-Token` が環境変数 `MAM_RUNTIME_TOKEN`（カタログの `launch.token_env`）と一致すること（`hmac.compare_digest`。ヘッダーが 2 つなら不一致）。違えば **403**。`GET /openapi.json` はトークンなし（mam の起動確認がトークンを持たない。Host の確認は受ける）。トークンは起動のたびに mam が作る 24 バイトの乱数（§13.3 の MuseTalk と同じ `localruntime` の `withToken`/`currentToken`）で、`MAM_RUNTIME_TOKEN` が無い・16 文字未満のときは起動用スクリプトが起動しない（終了コード 2）。トークンはログにも画面にも出さない |
+| 認証と Host の確認 | 公式の `api_v2.py` はトークンも Host の確認も持たず、`GET /control?command=exit\|restart`・`/set_gpt_weights`・`/set_sovits_weights`（任意のパスの重みを読む）・`/tts?ref_audio_path=` が、ブラウザの Web ページからの単純な GET（と DNS リバインディング）で呼べてしまう。そこで起動用スクリプトの ASGI ミドルウェアが、**全要求**に次を課す（順に判定）。①`Host` が `127.0.0.1:<port>`・`localhost:<port>`（大文字小文字は問わない・1 つだけ）でなければ **403**。②**許可する要求だけ**を通す: `POST /tts`（Nefos Video の声の呼び出しが使う唯一のもの。`agent/audiodirector/gptsovits`）と `GET /openapi.json`（起動確認）。それ以外（`/control`・`/set_gpt_weights`・`/set_sovits_weights`・`/set_refer_audio`・`GET /tts`・`/docs` ほか）は**トークンを持っていても 404**（トークンの持ち主でも、サーバーに任意のパスを読み込ませたり止めさせたりできない）。③`POST /tts` はヘッダー `X-Mam-Token` が環境変数 `MAM_RUNTIME_TOKEN`（カタログの `launch.token_env`）と一致すること（`hmac.compare_digest`。ヘッダーが 2 つなら不一致）。違えば **403**。`GET /openapi.json` はトークンなし（Nefos Video の起動確認がトークンを持たない。Host の確認は受ける）。トークンは起動のたびに Nefos Video が作る 24 バイトの乱数（§13.3 の MuseTalk と同じ `localruntime` の `withToken`/`currentToken`）で、`MAM_RUNTIME_TOKEN` が無い・16 文字未満のときは起動用スクリプトが起動しない（終了コード 2）。トークンはログにも画面にも出さない |
 | 応答の待ち | `GET /openapi.json` が 200（FastAPI の既定。**モデルを読み込んだ後にポートが開く**ので、応答があれば使える）。最長 5 分（初回はモデルの読み込みに時間がかかる） |
 | オフライン設定 | `HF_HUB_OFFLINE=1`・`TRANSFORMERS_OFFLINE=1`・`HF_DATASETS_OFFLINE=1`・`HF_HUB_DISABLE_TELEMETRY=1`・`DO_NOT_TRACK=1`・`GRADIO_ANALYTICS_ENABLED=False`（カタログの `launch.env`）。実行中にライブラリが重みを取りに行かない。必要な重みは取得済みのものだけを使う。ミラー（`modelscope`）も `MODELSCOPE_CACHE` をランタイムの `cache\` に向ける |
 | 書き込み先 | `HF_HOME`・`TORCH_HOME`・`MODELSCOPE_CACHE`・`XDG_CACHE_HOME` は `cache\`、`TEMP`・`TMP`・`TMPDIR` は `tmp\`（どちらもランタイムのディレクトリの中）。`PATH` の先頭に `env\runtime`。`PYTHONPATH`・`PYTHONHOME`・`PYTHONSTARTUP`・`VIRTUAL_ENV` は子に渡さない |
-| 子の管理 | `proc.Manager`（ComfyUI と共通）。コンソールを出さない（Windows の `CREATE_NO_WINDOW`）。Windows は Job Object（`KILL_ON_JOB_CLOSE`）、Linux は Pdeathsig とプロセスグループで、MAM の終了・異常終了で子が残らない。ランタイムの対応は Windows だけなので macOS では起動しないが、子の起動は ComfyUI と同じ `launch` で、macOS では見張りプロセスと次回起動の片付け（`runtime.pid`）が付く（[model-manager.md §3.4](model-manager.md)。実機で未確認） |
+| 子の管理 | `proc.Manager`（ComfyUI と共通）。コンソールを出さない（Windows の `CREATE_NO_WINDOW`）。Windows は Job Object（`KILL_ON_JOB_CLOSE`）、Linux は Pdeathsig とプロセスグループで、Nefos Video の終了・異常終了で子が残らない。ランタイムの対応は Windows だけなので macOS では起動しないが、子の起動は ComfyUI と同じ `launch` で、macOS では見張りプロセスと次回起動の片付け（`runtime.pid`）が付く（[model-manager.md §3.4](model-manager.md)。実機で未確認） |
 | 状態 | `stopped` / `starting` / `running` / `failed`（`proc.Status`）。起動の失敗は、エラー文（`GPT-SoVITS が起動しませんでした: …`）とログ末尾つきの `failed`。予期しない終了も `failed`。次の `Start` が再び試す。**導入（入れ直し・更新。重みだけの導入も）が成功したら、前回の起動の失敗を消して `stopped` にする**（`proc.Manager.ClearFailure`。エラー文も消え、`Watch` で通知する。ComfyUI のエンジンと同じ、[model-manager.md §3.4](model-manager.md)。Issue #1167）。導入が失敗したときは前回の失敗を残す。パッケージの導入が成功して重みの取得で失敗したときは、パッケージは入れ替わっているので消える |
-| ログの末尾 | `View.log_tail`（Ollama の起動の失敗の文言にも付く）は、**その `Start` 以降にログへ書かれた分だけ**（`localai\<id>\logs\runtime.log` は追記で前回までの出力が残るが、末尾は起動のたびに「ここから」を記録して、そこから読む）。導入が成功したときも「ここから」を進めるので、入れ直した直後は空で、次の起動が失敗したときはその回のログだけが出る。mam の起動直後（まだ `Start` していない間）は、ファイルの末尾をそのまま出す |
-| 遅延起動 | `Prepare(id)`（呼び出しの前に呼ぶ。動いていれば何もせず、止まっていれば `Start`）。**既定は遅延起動**。`SetAutoStart` で MAM の起動時に起動（`OnStartup`。待たずに別 goroutine で起動し、失敗はログと `Status` に出る） |
+| ログの末尾 | `View.log_tail`（Ollama の起動の失敗の文言にも付く）は、**その `Start` 以降にログへ書かれた分だけ**（`localai\<id>\logs\runtime.log` は追記で前回までの出力が残るが、末尾は起動のたびに「ここから」を記録して、そこから読む）。導入が成功したときも「ここから」を進めるので、入れ直した直後は空で、次の起動が失敗したときはその回のログだけが出る。Nefos Video の起動直後（まだ `Start` していない間）は、ファイルの末尾をそのまま出す |
+| 遅延起動 | `Prepare(id)`（呼び出しの前に呼ぶ。動いていれば何もせず、止まっていれば `Start`）。**既定は遅延起動**。`SetAutoStart` で Nefos Video の起動時に起動（`OnStartup`。待たずに別 goroutine で起動し、失敗はログと `Status` に出る） |
 | 起動前の確認 | 対応環境（§4）→ 導入済み（`ErrNotInstalled`）→ 導入中でない（`ErrBusy`）。どれも通らなければ起動しない |
 
 ## 6. Service API（`internal/service/localruntime`）
@@ -144,11 +144,11 @@ func (*Service) Watch(func(Event)) (cancel func())      // プロセスの状態
 
 ## 8. 状態（`localai\<id>\state.json`）
 
-`auto_start`・`last_port`・`installed`（`version`・`variant`・`installed_at`）。読めない記録は `state.json.corrupt` に退避して空から始める（MAM の起動を止めない。ファイルは残るので、`Status` は導入済みと見なさず、導入し直すと検証される）。ComfyUI の `comfyui\state.json` とは別のファイルで、互いに触れない。
+`auto_start`・`last_port`・`installed`（`version`・`variant`・`installed_at`）。読めない記録は `state.json.corrupt` に退避して空から始める（Nefos Video の起動を止めない。ファイルは残るので、`Status` は導入済みと見なさず、導入し直すと検証される）。ComfyUI の `comfyui\state.json` とは別のファイルで、互いに触れない。
 
 ## 9. MuseTalk が載せる形（実装は §13）
 
-`catalog/data/runtimes/musetalk.json` を足し、**重みと依存ファイルは #920 が `catalog/data/assets/musetalk.json` に固定済み**（§12.7）。同じ ID `musetalk` で結び付く。GPT-SoVITS と違って**公式の配布物が無い**ので、環境は mam が固定した部品から組み立てる（§13.1）。それに必要な拡張（`parts` の変種・`build`（型と検証は `catalog/parts`）・`token_env`・`max_compute_cap`）はコードに足した。ランタイムの種類がデータである方針は変えていない（MuseTalk の固有の部分は JSON と、mam が同梱する薄い HTTP ラッパー `catalog/data/overlays/mam_musetalk_*.py` だけ）。
+`catalog/data/runtimes/musetalk.json` を足し、**重みと依存ファイルは #920 が `catalog/data/assets/musetalk.json` に固定済み**（§12.7）。同じ ID `musetalk` で結び付く。GPT-SoVITS と違って**公式の配布物が無い**ので、環境は Nefos Video が固定した部品から組み立てる（§13.1）。それに必要な拡張（`parts` の変種・`build`（型と検証は `catalog/parts`）・`token_env`・`max_compute_cap`）はコードに足した。ランタイムの種類がデータである方針は変えていない（MuseTalk の固有の部分は JSON と、Nefos Video が同梱する薄い HTTP ラッパー `catalog/data/overlays/mam_musetalk_*.py` だけ）。
 
 ## 10. 先送りしたこと（決めたことの記録）
 
@@ -300,7 +300,7 @@ MuseTalk のランタイムのパッケージは #921 が決める。ここで�
 
 ### 12.9 Shisei のポーズ集（`data/assets/shisei-poses.json`。Issue #986）
 
-単発生成の「ポーズを選ぶ」（[../gentest/gentest.md](../gentest/gentest.md) §6）が使う、ポーズの参照画像（マネキンの線画と、ControlNet 用の深度・法線マップ。マップは Issue #1020）。**ランタイム（プロセス）ではなく、画像のファイルだけの資産セット**で、ID は `shisei-poses`（`data/runtimes/` には定義を置かない。§12.1 の「ランタイムが無い ID のファイルがあってもよい」と同じ扱い）。取得・検証は `rtm.Installer.EnsureAssets`（§12.3）をそのまま使い、`service/gentest/poses.Library.Install` が、同意（`accepted`）を確かめてから呼ぶ。置き場所は MAM の実行ファイルと同じ場所の `localai\shisei-poses\env\`（`catalog.json`、線画 `poses/<シリーズ>_<ID>_<アングル>.webp`、深度 `depth/` と法線 `normal/` の同名のファイル）。
+単発生成の「ポーズを選ぶ」（[../gentest/gentest.md](../gentest/gentest.md) §6）が使う、ポーズの参照画像（マネキンの線画と、ControlNet 用の深度・法線マップ。マップは Issue #1020）。**ランタイム（プロセス）ではなく、画像のファイルだけの資産セット**で、ID は `shisei-poses`（`data/runtimes/` には定義を置かない。§12.1 の「ランタイムが無い ID のファイルがあってもよい」と同じ扱い）。取得・検証は `rtm.Installer.EnsureAssets`（§12.3）をそのまま使い、`service/gentest/poses.Library.Install` が、同意（`accepted`）を確かめてから呼ぶ。置き場所は Nefos Video の実行ファイルと同じ場所の `localai\shisei-poses\env\`（`catalog.json`、線画 `poses/<シリーズ>_<ID>_<アングル>.webp`、深度 `depth/` と法線 `normal/` の同名のファイル）。
 
 | 名前 | 取得元（固定） | サイズ | 取り出すもの |
 |---|---|---|---|
@@ -312,11 +312,11 @@ MuseTalk のランタイムのパッケージは #921 が決める。ここで�
 
 - **取り出すのは全年齢向け（`rating: general`）で線画のあるポーズだけ**: 96 ポーズ・414 枚（展開後 約 10.85 MB、取得 約 19.7 MiB）。成人向けのシリーズ（`sexy`・`duo`）は、このセットでは**取り出さない**（メンバーに挙げない。Issue #1020 で**別の資産セット `shisei-poses-adult` に分けた**。下の「成人向けのシリーズ」）。`rating: suggestive` の `std`・`upper` のポーズ（55 ポーズ）は、どちらのセットにも入れない（シリーズが成人向けなのではなく個々のポーズの分類で、年齢確認の入口はシリーズ単位に絞った）。粘土風・写真は取らない。深度・法線は #1020 で足した（下）。
 - **深度・法線マップ（Issue #1020）**: Shisei の README が「ControlNet Depth / Normal 用」と言う Release の Zip（`shisei-depth-v0.4.1.zip`・`shisei-normal-v0.4.1.zip`）を、線画と同じ資産セットに足した（`required: true`。ダウンロードは 約 19.7 MB から 約 43.0 MB になる。導入済みの利用者は、足りない 2 つだけを取り直す）。**取り出すのは線画と同じポーズ・アングルの `std_`・`upper_` の分だけ**（メンバーは 335 枚ずつ。Shisei は深度・法線を線画の全部には作っておらず、取り出す線画 414 枚のうち 79 枚はマップが無い）。Zip には `depth/`（`normal/`）に `std`・`upper`・`sexy`・`duo` の 944 枚と `LICENSE`・`LICENSE-images`・`NOTICE` が入っているが、**`sexy`・`duo` のファイルは Zip の中にあってもメンバーに挙げず、取り出さない**（Zip 自体はダウンロードの間だけ `downloads` に置かれ、展開が終わると消える）。マップの名前は線画と同じ `<シリーズ>_<ID>_<アングル>.webp` なので、画像 ID は線画の ID の後ろに `.depth`・`.normal` を付ける（`std_P001_front.depth`。`poses.Library.File`・`ImageOwner`。MCP の `get_pose_library` は `depth_images`・`normal_images` で返す）。深度・法線を持たないポーズ・アングルは、その種類の一覧に出ない。固定は線画と同じ（リリースの資産 URL と、確かめた SHA-256・サイズ。リリースは `immutable: false` なので、タグではなく資産のバイト列を固定する）。ライセンスは線画と同じ CC0 1.0（Zip の `NOTICE`・`LICENSE-images` は、コミット `26522a70…` のファイルとバイト列が一致することを確かめた）。マップの作り方は `docs/LICENSING.md` の規則 3 に「Depth Anything V2 Small（Apache-2.0）・Marigold Normals v1-1（CreativeML OpenRAIL++-M。その使用制限はモデルの使い方に掛かり、出力の再配布には掛からない）。出力は CC0」とある。
-- **使い方（#1020）**: ポーズを選ぶ画面の「画像の種類」（線画・深度・法線）で、一覧と追加する画像の種類を選ぶ（ID が `…_front.depth` のように変わるだけで、取得元は `pose_library`、役割は `pose` のまま）。ControlNet のモデル（`sdxl-controlnet-depth`・`sdxl-controlnet-normal`。[model-manager.md §4.2](model-manager.md)）は参照画像を**そのまま制御画像にする**ので、モデルに合う種類を選ぶ（mam は深度・法線を推定しない。写真を渡しても期待した形にならない）。ControlNet のワークフローは、全体のほかに `pose` の役割を受ける（`ReferenceCaps`。警告「ポーズの参照に対応していない」は出ない）。既存の Canny（`sdxl-controlnet-canny`）は変えない（線画を渡すと従来どおり mam がエッジ画像にする）。
+- **使い方（#1020）**: ポーズを選ぶ画面の「画像の種類」（線画・深度・法線）で、一覧と追加する画像の種類を選ぶ（ID が `…_front.depth` のように変わるだけで、取得元は `pose_library`、役割は `pose` のまま）。ControlNet のモデル（`sdxl-controlnet-depth`・`sdxl-controlnet-normal`。[model-manager.md §4.2](model-manager.md)）は参照画像を**そのまま制御画像にする**ので、モデルに合う種類を選ぶ（Nefos Video は深度・法線を推定しない。写真を渡しても期待した形にならない）。ControlNet のワークフローは、全体のほかに `pose` の役割を受ける（`ReferenceCaps`。警告「ポーズの参照に対応していない」は出ない）。既存の Canny（`sdxl-controlnet-canny`）は変えない（線画を渡すと従来どおり Nefos Video がエッジ画像にする）。
 - **深度・法線を任意のファイルにはしない（#1020 の判断。現状のまま `required: true`）**: 線画だけ導入済みの利用者（#1020 より前の導入）は、深度・法線の Zip が足りないので、ライブラリは「未導入」に戻り、導入案内を出す。**再導入は足りない 2 つの Zip（約 22.2 MiB）だけ**で、導入済みの線画・目録は取り直さない（`Installer.EnsureAssets` は揃っているアセットを飛ばす）。画面は「導入済みのファイルは取り直しません。足りない分（深度・法線マップなど）だけ、今回 22.2 MiB をダウンロードします」と出し（`Status.RemainBytes`。MCP は `get_pose_library` の `download_remaining`）、再導入が要ることを隠さない。**任意のファイル**は、統合ブランチに `catalog.File.Optional`（#1025。モデルのファイル用。無くてもモデルは `installed`）が入ったが、これは**モデルカタログの `File`（`InstallModel` の経路）専用**で、ポーズ集が使う資産セットの `catalog.Resource`（`rtm.Installer.EnsureAssets` の経路。`Required` だけ）には無い。ポーズ集のためだけに別の仕組みを作ることはしない。任意にするなら、`Resource.Optional`・`NotReady` の読み替え・ギャラリーの「画像の種類」を入っている種類だけにする・`ReadIndex` が無い種類を黙って飛ばす（今は 1 つでも欠けると全体が未導入）の 4 つを、別の Issue で決める。
 - **成人向けのシリーズ（`sexy`・`duo`。#1020 の項目 2。実装した）**: 製品判断は「**既存の年齢確認（model-manager.md §6.2 の `AdultContent`。設定「成人向けモデルを表示する」、既定オフ、オンにするのは利用者の明示の確認だけ）をそのまま使う**。新しい年齢確認の方法・方針は足さない」。成人向けのモデルが §6.1 の述語（`HidesModel`）で導入・一覧・選択・生成を止められているのと同じ線に、ポーズを載せた。`poses.Deps.AdultOpen`（アプリは `ModelManager.AdultContentEnabled` を渡す。nil は永久に閉）を**呼び出しのたびに**聞くので、年齢確認をオン・オフした直後から効く（再起動・再導入は要らない）。
   - **資産セット `data/assets/shisei-poses-adult.json`（ID `shisei-poses-adult`。`localai\shisei-poses-adult`）**: 全年齢向けのセットとは**別の Zip・別のディレクトリ・別の記録**（`Library` が 2 つ目の `Installer` を持つ）。年齢確認がオフの間はこのセットを**取得もしない・ディスクにも置かない**（全年齢向けのセットに混ぜて「あるが出さない」にはしない）。4 つの Zip（すべて `wquguru/shisei` の Release `v0.4.1`、`required: true`、CC0 1.0＝`commercial: yes`）: `shisei-sexy-v0.4.1.zip`（SHA-256 `1df01ee7…`、9,304,519 B。`line/` の 352 枚＝80 ポーズ）、`shisei-duo-v0.4.1.zip`（`ca80b68b…`、7,744,472 B。201 枚＝49 ポーズ）、`shisei-depth-v0.4.1.zip`・`shisei-normal-v0.4.1.zip`（全年齢向けのセットと同じファイル〔7,110,041 B・16,185,565 B〕から `sexy_`・`duo_` の 427 枚ずつだけ。Shisei は深度・法線を線画の全部には作っておらず、線画 553 枚のうち 126 枚はマップが無い）。ダウンロードは合計 40,344,597 B（約 38.5 MiB。深度・法線の Zip は全年齢向けのセットと同じものを**もう一度**取る。展開後 28,254,816 B・1,407 枚・129 ポーズ）。URL・SHA-256・大きさは 2026-11-04 に GitHub の Release API（`digest`）と、実際にダウンロードした Zip の SHA-256 で確かめた。**メンバーも 1 枚ずつ SHA-256 と大きさを固定**した（Zip の中身から計算）。分類表 `catalog.json`（ポーズの名前・分類）は全年齢向けのセットの 1 つを使い、このセットには持たない（先に全年齢向けのポーズ集を導入していないと導入を断る＝`ErrBaseNotInstalled`）。
-  - **ライセンス**: 画像は CC0 1.0（`commercial: yes`。全年齢向けのセットと同じ `LICENSE-images`）。Shisei の README は、この 2 つを「suggestive adult pose references（faceless mannequins, no nudity detail）」と呼び、既定ではぼかして出すと書く（コミット `26522a70…` の README）。**MAM は年齢を自分で確認したことにしない**（§6.2 のとおり）。
+  - **ライセンス**: 画像は CC0 1.0（`commercial: yes`。全年齢向けのセットと同じ `LICENSE-images`）。Shisei の README は、この 2 つを「suggestive adult pose references（faceless mannequins, no nudity detail）」と呼び、既定ではぼかして出すと書く（コミット `26522a70…` の README）。**Nefos Video は年齢を自分で確認したことにしない**（§6.2 のとおり）。
   - **`rating` の扱い**: 区分は**シリーズ**（`Series[].Adult`。`sexy`・`duo`）で決め、ポーズごとの `rating` は見ない。目録 288 件のうち `sexy` 80（`suggestive` 75・`general` 5）と `duo` 55（`suggestive` 49・`general` 6。画像があるのは 49）は、`rating` が `general` でも成人向けのシリーズとして扱う（`Pose.Adult`）。全年齢向けのセットのポーズは従来どおり `rating: general` だけ。
   - **ゲートがオフの間、出さないもの**（`Library.Poses`・`File`・`ImageOwner`・`Pose` が閉じているときは、成人向けの分が無いものとして答える）: ①**画面**: ポーズを選ぶモーダルのギャラリー・検索・分類・「全身・sexy（成人向け）」「二人・duo（成人向け）」のグループ・画像（`/poses/image/:id` は 404）・行への追加（`/ref-row` は 404）・導入の案内（`Status.Adult` が nil。「成人向けのポーズ」という言葉も出さない）。②**MCP**: `get_pose_library` は `adult` の節を返さず、`series=sexy`／`duo`・名前・番号の検索にも出さない。`install_pose_library{adult:true}` は何も取得せず `validation` で断る。③**ジョブ一覧**: 単発生成のバッチは**モデル名と件数だけ**を載せ、入力画像の出どころ（ポーズの名前・画像）は載せない（ゲートの開閉どちらでもテストで確かめた）。④**履歴**: 結果の詳細（画面・MCP の `get_generation_result`）の `inputs[]` と「使われなかった入力」から、成人向けのポーズから取った入力（出どころが `pose_library` の `sexy_`・`duo_`、それを `batch_input` で取り直した写しも）を除き、その写しのファイル（`GET /generation-test/inputs/:id/file`）は 404、「この設定でもう一度」・新しい実行にも使えない（`history.Store.InputHidden`）。⑤**実行**: 成人向けのポーズの入力を持つバッチが、ゲートを閉じたあとに走り出そうとすると、何も呼ばずに失敗にする（`runner.ErrInputHidden`。メッセージにポーズ名・画像 ID を載せない）。ゲートを開け直すと元に戻る（写しはバッチに残る）。
   - **導入・削除**: 画面は、ゲートがオンのときだけギャラリーの下に「成人向けのポーズ（sexy・二人）」の節を出し、サイズ・ライセンス・取得元と**もう一度の同意のチェック**（`pose_accept`）で導入する（`POST /generation-test/poses/install-adult`。サービスもゲートが閉じていれば `ErrAdultGateClosed`、同意が無ければ `ErrNotAccepted`、全年齢向けが未導入なら `ErrBaseNotInstalled` で断る）。導入済みなら「成人向けのポーズを削除」（`POST /poses/remove-adult`、確認つき）。MCP は `install_pose_library{accepted, adult}`・`remove_pose_library{adult}`。**全年齢向けの「ポーズ集を削除」（`Library.Remove`）は成人向けのセットも一緒に消す**（名前の元の目録が無くなるため）。削除はゲートの開閉に関わらずできる（`DeleteModel` と同じ）。ゲートを閉じても、導入済みのファイルは消さない（隠すだけ）。
@@ -361,11 +361,11 @@ MuseTalk のランタイムのパッケージは #921 が決める。ここで�
 
 ## 13. MuseTalk 1.5 のランタイム（Issue #921）
 
-親 Issue #912 の決定事項 1（B）: MuseTalk 1.5 の実行環境（Python 環境とプロセス）を、mam が GPT-SoVITS・ComfyUI と同じように、自動で導入・起動・停止・状態表示する。**ComfyUI のカスタムノードは使わない**（古いものが多い。§1）。MuseTalk の公式の推論スクリプト（`scripts/inference.py`）と同じ手順を、mam が同梱する薄い HTTP ラッパーから 1 度だけ読み込んで呼ぶ。Windows x64 ＋ NVIDIA だけが自動導入の対象（§13.5）。重み（約 6 GB）は §12.7 のカタログで、環境の導入と同じジョブの最後に取得・検証する（§12.3）。
+親 Issue #912 の決定事項 1（B）: MuseTalk 1.5 の実行環境（Python 環境とプロセス）を、Nefos Video が GPT-SoVITS・ComfyUI と同じように、自動で導入・起動・停止・状態表示する。**ComfyUI のカスタムノードは使わない**（古いものが多い。§1）。MuseTalk の公式の推論スクリプト（`scripts/inference.py`）と同じ手順を、Nefos Video が同梱する薄い HTTP ラッパーから 1 度だけ読み込んで呼ぶ。Windows x64 ＋ NVIDIA だけが自動導入の対象（§13.5）。重み（約 6 GB）は §12.7 のカタログで、環境の導入と同じジョブの最後に取得・検証する（§12.3）。
 
 ### 13.1 実行環境の作り方（決定と理由）
 
-**決定**: 公式の手順（README の Installation: Python 3.10・PyTorch 2.0.1 + CUDA 11.8・`mmcv==2.0.1`・`mmdet==3.1.0`・`mmpose==1.1.0` ほか）と**同じ版**を、公式の配布先から**ファイルごとに固定の URL・SHA-256・サイズ**で取得し、**mam 自身が展開して組み立てる**。`pip`・`setup.py`・任意のコードは実行しない（実行時にどこにも取りに行かない）。部品は 84 個（`runtimes/musetalk.json` の `variants.nvidia.parts`）:
+**決定**: 公式の手順（README の Installation: Python 3.10・PyTorch 2.0.1 + CUDA 11.8・`mmcv==2.0.1`・`mmdet==3.1.0`・`mmpose==1.1.0` ほか）と**同じ版**を、公式の配布先から**ファイルごとに固定の URL・SHA-256・サイズ**で取得し、**Nefos Video 自身が展開して組み立てる**。`pip`・`setup.py`・任意のコードは実行しない（実行時にどこにも取りに行かない）。部品は 84 個（`runtimes/musetalk.json` の `variants.nvidia.parts`）:
 
 | 部品 | 数 | 取得元（固定） | 置き場所（`env\` の下） |
 |---|---|---|---|
@@ -376,17 +376,17 @@ MuseTalk のランタイムのパッケージは #921 が決める。ここで�
 | その他の Python パッケージ（mmengine・mmdet・mmpose・transformers・diffusers・numpy・opencv-python・librosa ほか） | 79 | PyPI（`files.pythonhosted.org`）。SHA-256・サイズは PyPI の JSON API（`digests.sha256`・`size`） | 同上 |
 
 - **閉包の決め方**: Linux（Python 3.10）に同じ版の環境を作り（`torch==2.0.1`・`mmcv==2.0.1` ほかを公式の README のとおりに入れ、`mmpose` は `chumpy`（sdist のみで Windows でビルドが壊れる。使われない）を避けて `--no-deps`）、**実際の推論が import するものだけ**を、足りないものを足しながら決めた（`xtcocotools`・`pycocotools`・`json_tricks`・`munkres`・`shapely`・`terminaltables`・`setuptools==69.5.1`（`pkg_resources`）が足りなかった）。`pip freeze` の各版について、**Windows cp310 の wheel が PyPI にあること**を確かめて固定した（`tokenizers` は `cp310-none-win_amd64`、`opencv-python` は `cp37-abi3-win_amd64`、`colorama` は Windows だけ必要）。sdist しか無いものは閉包に残っていない。
-- **公式の `requirements.txt` から外したもの**: `tensorflow`・`tensorboard`（学習）、`gradio`（`app.py`）、`gdown`（重みの取得。mam は §12 で取得）、`imageio`・`moviepy`・`requests`（推論の経路が import しない）、`openmim`（mam が wheel を直接取る）。推論の経路は、これらが無い環境で動くことを確かめた（§13.7）。
-- **wheel の展開**（`extract.Wheel`）: pip の代わりに mam が zip として展開する。パッケージのファイルと `*.dist-info`（`importlib.metadata` が読む。transformers が版を調べる）を `site-packages` に置き、`*.data/purelib`・`platlib` は `site-packages` の直下へ、`*.data/scripts`・`headers`・`data` は**展開しない**（`fonttools`・`numba`・`sympy` だけが持つ。スクリプトの実行ファイルは使わない）。84 個の全部で、`..`・絶対パス・ドライブ・リンク・同じパスを 2 つの部品が書くことが無いこと（`extract.ErrExists` で拒否する）を確かめた。
+- **公式の `requirements.txt` から外したもの**: `tensorflow`・`tensorboard`（学習）、`gradio`（`app.py`）、`gdown`（重みの取得。Nefos Video は §12 で取得）、`imageio`・`moviepy`・`requests`（推論の経路が import しない）、`openmim`（Nefos Video が wheel を直接取る）。推論の経路は、これらが無い環境で動くことを確かめた（§13.7）。
+- **wheel の展開**（`extract.Wheel`）: pip の代わりに Nefos Video が zip として展開する。パッケージのファイルと `*.dist-info`（`importlib.metadata` が読む。transformers が版を調べる）を `site-packages` に置き、`*.data/purelib`・`platlib` は `site-packages` の直下へ、`*.data/scripts`・`headers`・`data` は**展開しない**（`fonttools`・`numba`・`sympy` だけが持つ。スクリプトの実行ファイルは使わない）。84 個の全部で、`..`・絶対パス・ドライブ・リンク・同じパスを 2 つの部品が書くことが無いこと（`extract.ErrExists` で拒否する）を確かめた。
 - **展開の上限**: 各部品の `extracted_size`（実物を測った値）。それより大きいアーカイブ（展開爆弾・違うファイル）は 1 バイトも書く前に断る（`extract.ErrTooLarge`）。部品の `size`・`extracted_size` の合計が変種の値（2,887,125,530 B と 5,739,113,930 B）と一致することを検証する。
 - **組み込み Python の経路**: `python\python310._pth`（`build.files` の `lines`）を、`python310.zip`・`.`・`Lib/site-packages`・`..`（= `env\`。`musetalk` パッケージとラッパー）・`import site` に**置き換える**。組み込み版は環境変数を無視して、このファイルだけで `sys.path` を決める。
-- **ラッパー**: `catalog/data/overlays/mam_musetalk_{server,engine,common}.py`（mam に `embed` で同梱。ソースの `env\` 直下に書く）。部品の後に書くので、部品が同じ名前のファイルを持っていても mam のものになる。
+- **ラッパー**: `catalog/data/overlays/mam_musetalk_{server,engine,common}.py`（Nefos Video に `embed` で同梱。ソースの `env\` 直下に書く）。部品の後に書くので、部品が同じ名前のファイルを持っていても Nefos Video のものになる。
 
 | 案 | 判断 |
 |---|---|
-| **固定した部品を mam が展開して組み立てる（採用）** | 取得物はすべてファイル単位の SHA-256 とサイズで検証され、実行時の `pip` の依存解決・sdist のビルド・任意のコード実行が無い。再現できる。Windows の `mmcv` は、OpenMMLab の公式の事前ビルドを使うのでコンパイラがいらない |
+| **固定した部品を Nefos Video が展開して組み立てる（採用）** | 取得物はすべてファイル単位の SHA-256 とサイズで検証され、実行時の `pip` の依存解決・sdist のビルド・任意のコード実行が無い。再現できる。Windows の `mmcv` は、OpenMMLab の公式の事前ビルドを使うのでコンパイラがいらない |
 | `pip install --require-hashes -r …`（固定の要件ファイル） | 取らない。`pip` を組み込み Python で動かす手間（get-pip・ビルドツール）と、sdist に落ちたときのビルドの失敗が残る。許可ホストも同じだけ広がる |
-| 展開済みの環境の 7z を HF に置いて配る | 取らない。mam が再配布することになる（オーナーの決定: 重みも環境も同梱・再配布しない）。Linux の開発環境で Windows の環境を作って検証できない |
+| 展開済みの環境の 7z を HF に置いて配る | 取らない。Nefos Video が再配布することになる（オーナーの決定: 重みも環境も同梱・再配布しない）。Linux の開発環境で Windows の環境を作って検証できない |
 | Conda・uv で解決する | 取らない。実行時にネットワークと解決（コード）が要る |
 
 **GitHub のアーカイブのハッシュ**: `git archive` の zip は、GitHub の実装が変わると同じコミットでもバイト列が変わりうる（過去に一度起きた）。変わったときは SHA-256 の不一致で**導入が失敗する**（黙って別のものを使わない。「ダウンロードしたファイルの SHA-256 が一致しません」）。そのときはカタログの SHA-256 とサイズを更新する（コミットは同じなので中身は同じ）。未確認の保証として §13.8 に書く。
@@ -397,17 +397,17 @@ MuseTalk のランタイムのパッケージは #921 が決める。ここで�
 
 ### 13.3 プロセスの形と口パクの入口
 
-**形**: MuseTalk には常駐のサーバーが無いので、**mam が同梱する薄い HTTP ラッパー**（`mam_musetalk_server.py`。標準ライブラリの `http.server` だけ）を、MuseTalk の Python モジュールと同じプロセスで動かし、**モデルを 1 度だけ読み込む**（案 (a)。(b) の 1 クリップごとの子プロセスは、毎回 Whisper・VAE・UNet・DWPose・S3FD を読み込み直すので、数十秒の無駄が毎回かかる）。待ち受けは `127.0.0.1` だけ（ラッパーが他のホストを拒否し、カタログの検証も `0.0.0.0` を拒否する）。**ポートが開くのはモデルの読み込みの後**なので、`GET /health` が 200 なら使える。起動・停止・状態は §5.2 と同じ（`stopped` / `starting` / `running` / `failed`。起動の失敗はログ末尾つきの `failed`、予期しない終了も `failed`）。
+**形**: MuseTalk には常駐のサーバーが無いので、**Nefos Video が同梱する薄い HTTP ラッパー**（`mam_musetalk_server.py`。標準ライブラリの `http.server` だけ）を、MuseTalk の Python モジュールと同じプロセスで動かし、**モデルを 1 度だけ読み込む**（案 (a)。(b) の 1 クリップごとの子プロセスは、毎回 Whisper・VAE・UNet・DWPose・S3FD を読み込み直すので、数十秒の無駄が毎回かかる）。待ち受けは `127.0.0.1` だけ（ラッパーが他のホストを拒否し、カタログの検証も `0.0.0.0` を拒否する）。**ポートが開くのはモデルの読み込みの後**なので、`GET /health` が 200 なら使える。起動・停止・状態は §5.2 と同じ（`stopped` / `starting` / `running` / `failed`。起動の失敗はログ末尾つきの `failed`、予期しない終了も `failed`）。
 
 **起動**: `env\python\python.exe -I -u -X utf8 mam_musetalk_server.py --host 127.0.0.1 --port <空きポート> --use-float16`（作業ディレクトリ `env\`。MuseTalk の相対パス `./models/…`・`./musetalk/utils/dwpose/…` がそこで解決される）。fp16 は、公式が 4 GB の GPU で動かした設定（§13.5）。環境は §5.2 と同じ（オフライン設定・キャッシュと一時ファイルは `localai\musetalk` の中・`PATH` の先頭に `env\python`）。
 
-**認証**: 起動のたびに mam が**ランダムなトークン**（24 バイト）を作り、環境変数 `MAM_RUNTIME_TOKEN`（カタログの `launch.token_env`）で子に渡す。サーバーは**生成の要求**にヘッダー `X-Mam-Token` を要求する（Web ページは送れない。再起動で古いトークンは無効）。`Host` が `127.0.0.1:<port>`・`localhost:<port>` でない要求は全部拒否する（DNS リバインディング）。`/health` はトークンなし（mam の起動確認がトークンを持たず、何も書かない）。トークンはログにも画面にも出さない。
+**認証**: 起動のたびに Nefos Video が**ランダムなトークン**（24 バイト）を作り、環境変数 `MAM_RUNTIME_TOKEN`（カタログの `launch.token_env`）で子に渡す。サーバーは**生成の要求**にヘッダー `X-Mam-Token` を要求する（Web ページは送れない。再起動で古いトークンは無効）。`Host` が `127.0.0.1:<port>`・`localhost:<port>` でない要求は全部拒否する（DNS リバインディング）。`/health` はトークンなし（Nefos Video の起動確認がトークンを持たず、何も書かない）。トークンはログにも画面にも出さない。
 
 **入口**（`modelmgr/lipsync`。呼び出し側は `localruntime.Service.LipSync(ctx, lipsync.Request)`。#923 の Audio Director の口パクプロバイダーが呼ぶ）:
 
 | | 内容 |
 |---|---|
-| 要求 `lipsync.Request` | `video_path`（動画 mp4・mov・avi・mkv・flv か、顔が 1 つ写った画像 jpg・png・bmp・tif）・`audio_path`（ffmpeg が読める音声）・`output_path`（`.mp4`。入力と別）・`ffmpeg_path`（mam が探した ffmpeg。[../ffmpeg-lookup.md](../ffmpeg-lookup.md) の結果を呼び出し側が渡す。ランタイムは ffmpeg を持たない）・`fps`（画像のときだけ。省略で 25）。パスは**全部絶対パスでこの PC のもの**（動画のバイト列を HTTP で送らない）。`Request.Check()` が、サーバーと同じ規則（絶対パス・`.mp4`・出力が入力でない・fps 1〜60）を、ランタイムを起動する前に確かめる |
+| 要求 `lipsync.Request` | `video_path`（動画 mp4・mov・avi・mkv・flv か、顔が 1 つ写った画像 jpg・png・bmp・tif）・`audio_path`（ffmpeg が読める音声）・`output_path`（`.mp4`。入力と別）・`ffmpeg_path`（Nefos Video が探した ffmpeg。[../ffmpeg-lookup.md](../ffmpeg-lookup.md) の結果を呼び出し側が渡す。ランタイムは ffmpeg を持たない）・`fps`（画像のときだけ。省略で 25）。パスは**全部絶対パスでこの PC のもの**（動画のバイト列を HTTP で送らない）。`Request.Check()` が、サーバーと同じ規則（絶対パス・`.mp4`・出力が入力でない・fps 1〜60）を、ランタイムを起動する前に確かめる |
 | 応答 `lipsync.Response` | `output_path`・`frames`・`fps`・`duration_sec`（出力の長さ）・`elapsed_sec`（生成にかかった時間）。出力は H.264（yuv420p・crf 18）＋ AAC の mp4 で、音声の長さに揃える |
 | エラー `*lipsync.Error` | `code`（下表）・`status`（HTTP）・`message`（利用者向けの日本語の文。そのまま表示してよい）。`errors.Is` は `lipsync.Err…` に一致する |
 | 起動前の拒否（`LipSync` が生成の前に返す） | `*SupportError`（macOS・非 NVIDIA・VRAM 不足・RTX 50。理由＋ Sync Labs の案内）・`ErrNotInstalled`・`ErrBusy`（導入中）・`*WeightsError`（重みが不足）。どれもサーバーを起動しない |
@@ -433,7 +433,7 @@ MuseTalk のランタイムのパッケージは #921 が決める。ここで�
 
 重みと依存ファイルは §12.7 のカタログ（12 件、すべて必須）。`dest` は MuseTalk の既定のパスで、環境ディレクトリ（= MuseTalk のリポジトリの根）の下: `models/musetalkV15/{unet.pth,musetalk.json}`・`models/sd-vae/…`・`models/whisper/…`・`models/dwpose/dw-ll_ucoco_384.pth`・`models/syncnet/latentsync_syncnet.pt`・`models/face-parse-bisent/{79999_iter.pth,resnet18-5c106cde.pth}`・`musetalk/utils/face_detection/detection/sfd/s3fd.pth`。MuseTalk 1.0 の重み（`models/musetalk/…`）は **v1.5 の推論が読まない**（Linux で、それが無い環境で動くことを確かめた）ので入れない。SyncNet（`latentsync_syncnet.pt`）は、公式の `download_weights` が取得し、推論のコード（`scripts/inference.py` から import される範囲）は読まない（学習の `musetalk/models/syncnet.py` だけが使う）が、オーナーの決定事項 3 が挙げているので、必須のまま検証・取得する（約 1.5 GB）。
 
-**face-parse-bisent（オーナー指定: 方針を spec と PR 本文に書く）**: 原本は `zllrunning/face-parsing.PyTorch` の README が案内する Google Drive（`https://drive.google.com/open?id=154JgKpzCPW82qINcVieuPH3fZ2e0P812`）のファイルだけで、固定 URL も SHA-256 も無い。**方針: Hugging Face の第三者のミラー `ManyOtherFunctions/face-parse-bisent` のコミット固定（`0073b233a5a3c4b1377d4dbf49245017938a72b5`）のファイルを固定 URL として使い、SHA-256 は原本のファイルのものと一致することを確かめて固定する。mam 自身は再配布しない**（`source_note` に原本の場所と確かめた日付を書く。§12.1）。ミラーが消えたら `ErrSourceGone`（原本の場所つきのメッセージ）で失敗し、別の同一ハッシュのコピー（`gaga2210`・`n0x1103`・`vivym`・`leonelhs`）に URL を差し替えて、SHA-256 の一致を確かめ直す。
+**face-parse-bisent（オーナー指定: 方針を spec と PR 本文に書く）**: 原本は `zllrunning/face-parsing.PyTorch` の README が案内する Google Drive（`https://drive.google.com/open?id=154JgKpzCPW82qINcVieuPH3fZ2e0P812`）のファイルだけで、固定 URL も SHA-256 も無い。**方針: Hugging Face の第三者のミラー `ManyOtherFunctions/face-parse-bisent` のコミット固定（`0073b233a5a3c4b1377d4dbf49245017938a72b5`）のファイルを固定 URL として使い、SHA-256 は原本のファイルのものと一致することを確かめて固定する。Nefos Video 自身は再配布しない**（`source_note` に原本の場所と確かめた日付を書く。§12.1）。ミラーが消えたら `ErrSourceGone`（原本の場所つきのメッセージ）で失敗し、別の同一ハッシュのコピー（`gaga2210`・`n0x1103`・`vivym`・`leonelhs`）に URL を差し替えて、SHA-256 の一致を確かめ直す。
 
 | ファイル | 原本から取得して計算した SHA-256（2026-11-01） | サイズ | ミラー（カタログ）の SHA-256 | 一致 |
 |---|---|---|---|---|
@@ -448,18 +448,18 @@ MuseTalk のランタイムのパッケージは #921 が決める。ここで�
 
 | 条件 | `Code` | 理由（カタログの文の要旨） |
 |---|---|---|
-| macOS | `os` | 「macOS では MuseTalk 1.5 を自動導入できません。**公式の PyTorch 版は macOS（Apple Silicon）の GPU に対応しておらず（CUDA 前提。`mmcv 2.0.1` の Apple Silicon 向けの事前ビルドも無い）、第三者の MLX 版（mlx-community/MuseTalk-1.5-q4。MIT）は重みと UNet・VAE・Whisper の実装だけで、顔の検出・貼り戻しを含む起動できるサーバーが無いため、mam の自動導入の対象にしていません。**mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです」（#935 で具体化。§16.3） |
+| macOS | `os` | 「macOS では MuseTalk 1.5 を自動導入できません。**公式の PyTorch 版は macOS（Apple Silicon）の GPU に対応しておらず（CUDA 前提。`mmcv 2.0.1` の Apple Silicon 向けの事前ビルドも無い）、第三者の MLX 版（mlx-community/MuseTalk-1.5-q4。MIT）は重みと UNet・VAE・Whisper の実装だけで、顔の検出・貼り戻しを含む起動できるサーバーが無いため、Nefos Video の自動導入の対象にしていません。**Nefos Video が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです」（#935 で具体化。§16.3） |
 | Linux・その他の OS | `os` | 自動導入に対応していない |
 | 64 ビット x86 でない | `arch` | 同上 |
 | GPU を取得できない・NVIDIA がない（AMD・Intel） | `no_gpu`・`not_nvidia` | 同上（§4） |
 | NVIDIA の最大の専用メモリ < 4 GB | `low_vram` | 「{gpu} のビデオメモリは {vram_gb} GB で、MuseTalk 1.5 に必要な 4 GB に足りない」 |
 | Compute Capability ≥ 12.0（RTX 50） | `compute_cap` | 「{gpu} は NVIDIA の RTX 50 シリーズ（Blackwell）で、MuseTalk の公式の手順が使う PyTorch 2.0.1（CUDA 11.8）が対応していない」 |
 
-**VRAM の下限 4 GB は、公式の README の記載に基づく**（Gradio Demo の節: 「Windows の NVIDIA GeForce RTX 3050 Ti Laptop GPU、4GB VRAM で、fp16 で 8 秒の動画を約 5 分で生成」）。`vram.estimate=false`（出典あり）。ただし **mam 自身の実機での実測は無い**（§13.8）。出力の解像度・長さによっては 4 GB で足りず、そのときは `out_of_memory` でわかりやすい文を返す。**MLX 版の自動導入は実装しない**（#935 で調べた結果は §16.3）。**クラウドへの自動の切り替えはしない**（§10。利用者が設定で選ぶ。#924）。
+**VRAM の下限 4 GB は、公式の README の記載に基づく**（Gradio Demo の節: 「Windows の NVIDIA GeForce RTX 3050 Ti Laptop GPU、4GB VRAM で、fp16 で 8 秒の動画を約 5 分で生成」）。`vram.estimate=false`（出典あり）。ただし **Nefos Video 自身の実機での実測は無い**（§13.8）。出力の解像度・長さによっては 4 GB で足りず、そのときは `out_of_memory` でわかりやすい文を返す。**MLX 版の自動導入は実装しない**（#935 で調べた結果は §16.3）。**クラウドへの自動の切り替えはしない**（§10。利用者が設定で選ぶ。#924）。
 
 ### 13.6 ライセンスの記録
 
-MuseTalk 本体（コード MIT・学習済みモデルは商用を含むどんな目的にも使える）は、README の原文（「The code of MuseTalk is released under the MIT License. There is no limitation for both academic and commercial usage.」「The trained model are available for any purpose, even commercially.」「Other open-source models used must comply with their license, such as whisper, ft-mse-vae, dwpose, S3FD, etc..」）を `license.summary` に引いた（コミット `0a89dec4` の README を 2026-11-01 に確認）。重みと依存ファイルの出典・ライセンス・商用利用の可否は §12.7（`unknown` の 4 件を画面で目立たせる。#920 の画面がそのまま MuseTalk のカードに出す）。環境の部品の Python パッケージ 82 個のライセンスは、各 wheel のメタデータの表記を `THIRD_PARTY_NOTICES.md`（「MuseTalk 1.5（利用者が取得する別プログラム）」）に一覧にした。**原文との突き合わせはしていない**（未確認。`torch` の CUDA 版の wheel が含む NVIDIA の DLL の条件、`opencv-python`・`soundfile`・`soxr` が含む LGPL のライブラリを明記）。mam はどれも同梱せず、再配布しない。
+MuseTalk 本体（コード MIT・学習済みモデルは商用を含むどんな目的にも使える）は、README の原文（「The code of MuseTalk is released under the MIT License. There is no limitation for both academic and commercial usage.」「The trained model are available for any purpose, even commercially.」「Other open-source models used must comply with their license, such as whisper, ft-mse-vae, dwpose, S3FD, etc..」）を `license.summary` に引いた（コミット `0a89dec4` の README を 2026-11-01 に確認）。重みと依存ファイルの出典・ライセンス・商用利用の可否は §12.7（`unknown` の 4 件を画面で目立たせる。#920 の画面がそのまま MuseTalk のカードに出す）。環境の部品の Python パッケージ 82 個のライセンスは、各 wheel のメタデータの表記を `THIRD_PARTY_NOTICES.md`（「MuseTalk 1.5（利用者が取得する別プログラム）」）に一覧にした。**原文との突き合わせはしていない**（未確認。`torch` の CUDA 版の wheel が含む NVIDIA の DLL の条件、`opencv-python`・`soundfile`・`soxr` が含む LGPL のライブラリを明記）。Nefos Video はどれも同梱せず、再配布しない。
 
 ### 13.7 テスト
 
@@ -482,7 +482,7 @@ MuseTalk 本体（コード MIT・学習済みモデルは商用を含むどん�
 | Windows の cp310 wheel を Linux の同じ版で代用して決めた閉包が、Windows でも完全であること | **未確認**。Python のコードはプラットフォームに依存しない前提（`colorama` を足した）。`import` が足りなければ、起動の失敗がログ末尾つきの `failed` で出る |
 | GitHub の zip アーカイブのバイト列が将来も同じであること（§13.1）、PyPI・PyTorch・OpenMMLab・python.org の URL が将来も残ること | 保証できない。変わったら導入は SHA-256 の不一致・404 で失敗する（`ErrSourceGone` と同様に、旧い URL を差し替える更新が要る） |
 | 82 個の Python パッケージ・Python 本体・NVIDIA の DLL のライセンスの原文との突き合わせ | **未確認**（`THIRD_PARTY_NOTICES.md`） |
-| `ffmpeg` の libx264・aac を持つビルド（mam が導入する ffmpeg は GPL ビルドで持つが、利用者が設定で指す ffmpeg は未確認） | 出力の書き込みに失敗したら `ffmpeg_failed`（ffmpeg の末尾のメッセージつき） |
+| `ffmpeg` の libx264・aac を持つビルド（Nefos Video が導入する ffmpeg は GPL ビルドで持つが、利用者が設定で指す ffmpeg は未確認） | 出力の書き込みに失敗したら `ffmpeg_failed`（ffmpeg の末尾のメッセージつき） |
 
 ## 14. Irodori-TTS のランタイムと、モデルの選択（Issue #1015）
 
@@ -493,14 +493,14 @@ MuseTalk 本体（コード MIT・学習済みモデルは商用を含むどん�
 | 項目 | 内容 |
 |---|---|
 | ランタイム ID | `irodori-tts`（`data/runtimes/irodori-tts.json`。用途 `tts`）。声のプロバイダー値は `irodori`（GPT-SoVITS の `local` は変えない） |
-| 対応環境 | Windows x64 ＋ NVIDIA の GPU だけ（§4 の判定。GPT-SoVITS と同じ規則）。macOS・Linux・非 x64・NVIDIA 無しは `unsupported`（理由と ElevenLabs の案内は、カタログの文。macOS の文は「公式のサーバーは Apple silicon（MPS）での推論に対応していますが、mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです」） |
-| 入口 | 公式の API サーバー Irodori-TTS-Server（OpenAI 互換の `POST /v1/audio/speech`）。mam は公式の起動（`python -m irodori_openai_tts`）を**使わず**、mam の起動用スクリプト `mam_irodori_server.py`（`data/overlays`）が公式のアプリを読み込み、前に番人を置いて起動する（§14.3） |
+| 対応環境 | Windows x64 ＋ NVIDIA の GPU だけ（§4 の判定。GPT-SoVITS と同じ規則）。macOS・Linux・非 x64・NVIDIA 無しは `unsupported`（理由と ElevenLabs の案内は、カタログの文。macOS の文は「公式のサーバーは Apple silicon（MPS）での推論に対応していますが、Nefos Video が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです」） |
+| 入口 | 公式の API サーバー Irodori-TTS-Server（OpenAI 互換の `POST /v1/audio/speech`）。Nefos Video は公式の起動（`python -m irodori_openai_tts`）を**使わず**、Nefos Video の起動用スクリプト `mam_irodori_server.py`（`data/overlays`）が公式のアプリを読み込み、前に番人を置いて起動する（§14.3） |
 | 重み | 同梱しない。モデルの重み・音声コーデック・SilentCipher の透かしの重みを、固定の URL（コミット固定）と SHA-256 で取得（§14.4）。モデルは利用者が選ぶ（§14.5） |
 | 参照 | Issue #1015。親は #912（ローカルの声・口パクの基盤）。モデル一覧の絞り込みの項目は #1011（§14.8） |
 
 ### 14.2 実行環境の作り方（決定と理由）
 
-公式は Windows 向けの配布物（統合パッケージ）を出していない。そこで MuseTalk（§13.1）と同じく、mam が**部品をカタログに固定して取得し、組み立てる**（`catalog.RuntimeVariant.Parts`・`catalog.Runtime.Build`）。部品は 160 個、取得は 3,156,040,034 B、展開後 5,382,468,374 B（**どの部品も実物のファイルで SHA-256 と大きさを測った**。wheel は公式サーバーの `uv.lock` のコミット `61012c76…` の Windows・Python 3.10・CUDA 12.8（`torch 2.10.0+cu128`）の分で、ロックの SHA-256 と一致することを確かめた）。
+公式は Windows 向けの配布物（統合パッケージ）を出していない。そこで MuseTalk（§13.1）と同じく、Nefos Video が**部品をカタログに固定して取得し、組み立てる**（`catalog.RuntimeVariant.Parts`・`catalog.Runtime.Build`）。部品は 160 個、取得は 3,156,040,034 B、展開後 5,382,468,374 B（**どの部品も実物のファイルで SHA-256 と大きさを測った**。wheel は公式サーバーの `uv.lock` のコミット `61012c76…` の Windows・Python 3.10・CUDA 12.8（`torch 2.10.0+cu128`）の分で、ロックの SHA-256 と一致することを確かめた）。
 
 | 部品 | 数 | 置き場所（環境の下） |
 |---|---|---|
@@ -521,10 +521,10 @@ MuseTalk 本体（コード MIT・学習済みモデルは商用を含むどん�
 | 要求 | 条件 |
 |---|---|
 | `POST /v1/audio/speech` | ヘッダー `X-Mam-Token`（その起動のトークン。`hmac.compare_digest`）が要る |
-| `GET /health` | トークン不要（mam の準備確認） |
+| `GET /health` | トークン不要（Nefos Video の準備確認） |
 
-- Host が `127.0.0.1:<port>`・`localhost:<port>` 以外なら 403（DNS rebinding）。上の 2 つ以外の要求（声のアップロード・削除、`/v1/models`、ドキュメントの画面など）は、トークンがあっても 404。`lora_adapter` は mam が送らない。
-- 使うモデルは `MAM_RUNTIME_CHOICE`（§14.5）の名前のフォルダ（`models/<選択>/model.safetensors`）。コーデックは `models/codec/weights.pth`、透かしは `models/silentcipher/44_1_khz/73999_iteration/`（mam が取得して検証したもの）。`IRODORI_*` の設定（ホスト・ポート・チェックポイント・コーデック・声のフォルダ・先読み・参照無しの許可）は番人が決めて、公式のアプリを読み込む前に環境変数に入れる。
+- Host が `127.0.0.1:<port>`・`localhost:<port>` 以外なら 403（DNS rebinding）。上の 2 つ以外の要求（声のアップロード・削除、`/v1/models`、ドキュメントの画面など）は、トークンがあっても 404。`lora_adapter` は Nefos Video が送らない。
+- 使うモデルは `MAM_RUNTIME_CHOICE`（§14.5）の名前のフォルダ（`models/<選択>/model.safetensors`）。コーデックは `models/codec/weights.pth`、透かしは `models/silentcipher/44_1_khz/73999_iteration/`（Nefos Video が取得して検証したもの）。`IRODORI_*` の設定（ホスト・ポート・チェックポイント・コーデック・声のフォルダ・先読み・参照無しの許可）は番人が決めて、公式のアプリを読み込む前に環境変数に入れる。
 - SilentCipher の読み込み（`silentcipher.get_model`）は、公式では Hugging Face から取りに行くので、番人が**取得済みのファイルを読む形に差し替える**。差し替えは番人のテスト（偽の `silentcipher`）で確かめた。**実物の動作は未確認**。
 
 ### 14.4 重みと依存ファイル（`data/assets/irodori-tts.json`）
@@ -559,7 +559,7 @@ MuseTalk 本体（コード MIT・学習済みモデルは商用を含むどん�
 ### 14.6 同意（Gemma Terms of Use）
 
 - v4-Large 系（`v4-large`・`-int8`・`-int4`・`-fp8`）は Gemma Terms of Use と禁止用途ポリシーの下にある。**同意するまで、選ぶ・重みを取得する・起動することはできない**（`localruntime.refuse` が `choice.ErrConsentRequired` を返す。導入・重み・起動のすべての入口）。
-- 同意は、`Select` に**利用者自身の操作が渡す版**（画面のチェックボックスの値、MCP の `accept_license_version`）だけが記録する（`RuntimeState.Consents[ライセンスの id] = {version, accepted_at}`。モデルマネージャーの同意の記録 `store.Consent` と同じ形）。mam のコードは、同意を自動で行わない・代わりに渡さない（MCP の説明にも「エージェントが代わりに渡してはならない」と書いた）。テキストの版が変われば、もう一度同意を求める。版: `gemma-terms-2026-04-01+prohibited-use-2024-02-21`。**この版の文字列と、同意のテキストの文言は、オーナーの確認が要る**。
+- 同意は、`Select` に**利用者自身の操作が渡す版**（画面のチェックボックスの値、MCP の `accept_license_version`）だけが記録する（`RuntimeState.Consents[ライセンスの id] = {version, accepted_at}`。モデルマネージャーの同意の記録 `store.Consent` と同じ形）。Nefos Video のコードは、同意を自動で行わない・代わりに渡さない（MCP の説明にも「エージェントが代わりに渡してはならない」と書いた）。テキストの版が変われば、もう一度同意を求める。版: `gemma-terms-2026-04-01+prohibited-use-2024-02-21`。**この版の文字列と、同意のテキストの文言は、オーナーの確認が要る**。
 - 声のコピーの倫理上の制限（モデルカードより）は、全モデルの `cautions` に入れ、モデルの選択・設定の「音声・口パク」・Character の参照音声のフォームに同じ趣旨の文で出す: 本人の同意なしに実在の人の声をコピーしたりなりすましに使ったりしない／人をだます合成音声・ディープフェイクに使わない／参照音声なしの声が偶然実在の人に似ることがある／透かしが自動で入る（切れない）。
 
 ### 14.7 テスト
@@ -597,7 +597,7 @@ MuseTalk 本体（コード MIT・学習済みモデルは商用を含むどん�
 | **`torchcodec` と FFmpeg の DLL**（wheel が FFmpeg の共有ライブラリを必要とする。Windows で見つかるか） | **未確認**。音声の読み込みが `torchaudio`・`soundfile` で足りるか、公式のコードが `torchcodec` を呼ぶかは実機で確かめる |
 | 番人の SilentCipher の差し替え（取得済みのファイルを読む）が、実物の `silentcipher` でそのまま動くこと | **未確認** |
 | 生成した音声に実際に透かしが入ること | **未確認** |
-| **VRAM の数値**（v4.1-Small 6〜8 GB、v4-Large 10〜12 GB、int8 6〜8 GB、int4 5〜6 GB、fp8 6〜8 GB） | **mam の推定**で、実機では未確認（公式は推論に必要な数値を示していない。重みの大きさ＋コーデック約 0.4 GB＋作業領域）。`vram_estimate: true`。画面は「mam の推定です。実機では確かめていません」と言う |
+| **VRAM の数値**（v4.1-Small 6〜8 GB、v4-Large 10〜12 GB、int8 6〜8 GB、int4 5〜6 GB、fp8 6〜8 GB） | **Nefos Video の推定**で、実機では未確認（公式は推論に必要な数値を示していない。重みの大きさ＋コーデック約 0.4 GB＋作業領域）。`vram_estimate: true`。画面は「Nefos Video の推定です。実機では確かめていません」と言う |
 | 合成の質・速さ（日本語の聞き比べ）、MF（MeanFlow・4 ステップ）の質 | **未確認**。数値は出さない |
 | 量子化版の GPU 世代の条件（int4 は RTX 30 世代〔Ampere〕以降、fp8 は RTX 40 世代〔Ada〕以降。モデルカード） | 画面は注意書きを出すだけで、**GPU 世代で選択を制限しない**（オーナーの判断待ち） |
 | bf16（Large 系の `IRODORI_MODEL_PRECISION=bf16`）の質 | **未確認** |
@@ -616,7 +616,7 @@ PR #934 の研磨 2 周で出た minor（`--skip-minor` のため未対応だっ
 | ランタイムの更新（版を上げる）で `env/` ごと重みも消え、重みをすべて取り直す | **見送り（§12.3 の 6 で決めた動作）**。更新は旧環境の丸ごと入れ替えで、古い重みを新しい環境へ移すには、新しい版が同じ配置であることの保証が要る。重みを `env/` の外へ出す変更は配置の仕様（§2）を変える |
 | `Status()` が書き込みの確認・ログの末尾・重みの状態を毎回読む（TTS の 1 行ごと）ため、実行中の URL だけを返す軽い入口にしたい | **見送り**。`Ensure` が失敗する条件（実行中でない）は直した。軽い入口は `localruntime` の公開 API を増やす割に、1 行の TTS の間隔（秒単位）に対する費用は小さい |
 | `audiosettings.View()` の表示のたびに `CheckStart` が GPU を新しく調べる（nvidia-smi 2 回）。1 分のキャッシュを使いたい | **見送り**。`CheckStart` は「起動できるか」の判定なので、キャッシュを使うと古い GPU の情報で通る。表示用に別の入口（`fresh` の引数）を作るのは API の変更で、設定画面を開くときだけの費用 |
-| 重みの導入・修復（`WeightsOnly`）でも、動いているサーバーを止める | **見送り**。Windows では、動いているサーバーが開いている重みのファイルは置き換えられない（読み込み中のファイルの置き換えが失敗する）。どの重みが読み込み済みかは mam には分からないので、止めるのが安全。進行中の生成は `ErrUnreachable` で失敗し、再実行で直る |
+| 重みの導入・修復（`WeightsOnly`）でも、動いているサーバーを止める | **見送り**。Windows では、動いているサーバーが開いている重みのファイルは置き換えられない（読み込み中のファイルの置き換えが失敗する）。どの重みが読み込み済みかは Nefos Video には分からないので、止めるのが安全。進行中の生成は `ErrUnreachable` で失敗し、再実行で直る |
 | `audio.json` が壊れているときの `ErrUnreadable` が、`AIError`（HTTP 502「上流の AI の失敗」）で返る | **仕様として記録**。利用者へ出す文（`UserMessage`）は同じで、HTTP の分類だけが違う。この分類は `localspeech.Reason` の全体の規則（ローカルの設定の失敗も `AIError`）に合わせている。分類を変えるのは Audio Director の全プロバイダーの規則の変更になる |
 | GPT-SoVITS と MuseTalk の VRAM を合算せず、片方の常駐のまま他方を起動する | **仕様として記録**。`vram.min_gb` はランタイムごとの目安で、MAX QUALITY で両方を使うには両方の合計が要る。実機（Windows ＋ NVIDIA）で確かめていないので、アイドルのランタイムを止める仕組みは入れない。§11 の未確認に含む |
 | 新しい録音を置くとき、書き起こしの欄を触らないと、保存済みと同じ書き起こしは「送られていない」扱いで消える | **見送り**。サーバーは「触っていない」と「同じ文を入れ直した」を区別できない。画面は新しい録音を選んだときに書き起こしを入れ直すよう案内している（`spec/api/endpoints.md` §2.9）。クライアント側で欄を空にする変更は別 Issue |
@@ -624,17 +624,17 @@ PR #934 の研磨 2 周で出た minor（`--skip-minor` のため未対応だっ
 
 ## 16. macOS（Apple Silicon）の調査と、ランタイムごとの判定（Issue #935）
 
-#912 / PR #934 の後続。「Apple Silicon で声（GPT-SoVITS）と口パク（MuseTalk）をローカルで動かす」を、**一次情報（公式の README・ソース・PyPI の JSON API・Hugging Face の API・OpenMMLab の公式の索引）を 2026-11-04 に実際に取得して**調べた結果。**結論: どちらも mam が「固定した部品を展開して組み立てる」方式（§3・§13.1・§14）では、確かな一次情報だけでは組み立てられない。よって macOS（darwin/arm64）を対応 OS にせず、ランタイムごとの理由を画面・MCP・Audio Director に出す**（実機の Mac が無いので、組み立てても動作を確かめられない。確かめられない URL・SHA-256・サイズ・版を推測で入れない）。
+#912 / PR #934 の後続。「Apple Silicon で声（GPT-SoVITS）と口パク（MuseTalk）をローカルで動かす」を、**一次情報（公式の README・ソース・PyPI の JSON API・Hugging Face の API・OpenMMLab の公式の索引）を 2026-11-04 に実際に取得して**調べた結果。**結論: どちらも Nefos Video が「固定した部品を展開して組み立てる」方式（§3・§13.1・§14）では、確かな一次情報だけでは組み立てられない。よって macOS（darwin/arm64）を対応 OS にせず、ランタイムごとの理由を画面・MCP・Audio Director に出す**（実機の Mac が無いので、組み立てても動作を確かめられない。確かめられない URL・SHA-256・サイズ・版を推測で入れない）。
 
 ### 16.1 判定の仕組み（変更なし。各ランタイムが自分の理由を持つ）
 
-`Evaluate(runtime, Platform, gpu.Report)`（§4）は元からランタイムごとに `catalog.Runtime.Support`（`os_reasons.darwin`・`fallback`）を読む。macOS（Apple Silicon でも Intel でも）は、どのランタイムも `Code = os` で断られ、**そのランタイム自身の文**と**そのランタイムの代わりのクラウド**（GPT-SoVITS・Irodori-TTS は ElevenLabs、MuseTalk は Sync Labs）が付く。Apple Silicon のユニファイドメモリ（`gpu.VendorApple`、ComfyUI の同梱エンジンは [model-manager.md §3.7](model-manager.md) でこれを VRAM として扱う）は、**NVIDIA の VRAM としては数えない**（`bestNVIDIA` は NVIDIA だけを見るので、64 GB の Mac でも `Supported` にならない）。画面（モデルマネージャー・設定の「音声・口パク」）・MCP（`list_local_runtime`・`install_local_runtime`）・Audio Director（`localspeech.UnavailableFor` → `localvoice.UnavailableError{Kind: unsupported}`。クラウドへの切り替えは利用者が選ぶ。#924）は、同じ `Support.Message()` を使う。今回、`os_reasons.darwin` の文を、**ランタイムごとに具体的な理由**へ書き換えた（以前は「mam が自動で導入するのは Windows + NVIDIA だけです」だけ）。
+`Evaluate(runtime, Platform, gpu.Report)`（§4）は元からランタイムごとに `catalog.Runtime.Support`（`os_reasons.darwin`・`fallback`）を読む。macOS（Apple Silicon でも Intel でも）は、どのランタイムも `Code = os` で断られ、**そのランタイム自身の文**と**そのランタイムの代わりのクラウド**（GPT-SoVITS・Irodori-TTS は ElevenLabs、MuseTalk は Sync Labs）が付く。Apple Silicon のユニファイドメモリ（`gpu.VendorApple`、ComfyUI の同梱エンジンは [model-manager.md §3.7](model-manager.md) でこれを VRAM として扱う）は、**NVIDIA の VRAM としては数えない**（`bestNVIDIA` は NVIDIA だけを見るので、64 GB の Mac でも `Supported` にならない）。画面（モデルマネージャー・設定の「音声・口パク」）・MCP（`list_local_runtime`・`install_local_runtime`）・Audio Director（`localspeech.UnavailableFor` → `localvoice.UnavailableError{Kind: unsupported}`。クラウドへの切り替えは利用者が選ぶ。#924）は、同じ `Support.Message()` を使う。今回、`os_reasons.darwin` の文を、**ランタイムごとに具体的な理由**へ書き換えた（以前は「Nefos Video が自動で導入するのは Windows + NVIDIA だけです」だけ）。
 
 | ランタイム | 画面・MCP に出る macOS の理由（要旨） | 代わりの案内 |
 |---|---|---|
 | GPT-SoVITS | 公式は macOS の MPS / CPU に対応するが、導入は conda＋pip でその場でビルドする方式で Apple Silicon 向けの配布物が無い。固定して取得できる wheel だけでは、起動に必須の `pyopenjtalk`・`jieba_fast`・`jieba` が揃わない（§16.2） | クラウドの音声合成（ElevenLabs） |
 | MuseTalk 1.5 | 公式の PyTorch 版は CUDA 前提で、`mmcv==2.0.1` の Apple Silicon 向けの事前ビルドも無い。第三者の MLX 版（`mlx-community/MuseTalk-1.5-q4`、MIT）は重みと UNet・VAE・Whisper の実装だけで、顔の検出・貼り戻しを含む起動できるサーバーが無い（§16.3） | クラウドの口パク（Sync Labs） |
-| Irodori-TTS | 変更なし（公式のサーバーは Apple silicon（MPS）に対応するが、mam は自動導入しない。この Issue の範囲外） | ElevenLabs |
+| Irodori-TTS | 変更なし（公式のサーバーは Apple silicon（MPS）に対応するが、Nefos Video は自動導入しない。この Issue の範囲外） | ElevenLabs |
 
 テスト: `modelmgr/runtime/supporttest/macos_support_test.go`（Apple Silicon・Intel Mac の両方で、64 GiB のユニファイドメモリでも `Supported=false`・`Code=os`・ランタイムごとに別の理由と別のクラウド）、`service/localruntime/realcatalogtest/macos_fallback_test.go`（実カタログ・Mac で `Install`・`Start` が `ErrUnsupported` になり、Audio Director の `UnavailableError` の文が、そのランタイムの理由とそのランタイムのクラウドだけを含む）。`GOOS=darwin GOARCH=arm64` で `modelmgr/...`・`service/localruntime/...`・`service/localspeech/...` のビルドと vet が通ることを確かめた。
 
@@ -643,7 +643,7 @@ PR #934 の研磨 2 周で出た minor（`--skip-minor` のため未対応だっ
 確かめた一次情報:
 
 - **公式の macOS 対応**: README（タグ `20250606v2pro`）の Tested Environments に Apple silicon（Python 3.9 + PyTorch 2.5.1、Python 3.11 + PyTorch 2.7.0）と CPU がある。macOS の導入は `bash install.sh --device <MPS|CPU>`（conda 前提）で、README は「Mac で GPU を使って学習したモデルは品質が大きく劣るので、一時的に CPU を使う」と書く。**Windows の統合パッケージに当たる macOS の配布物は無い**（Hugging Face `lj1995/GPT-SoVITS-windows-package` は Windows 専用）。
-- **`install.sh` の中身**（タグ `20250606v2pro`）: conda で ffmpeg・cmake・make・unzip を入れ、重み・G2PW・NLTK データ・OpenJTalk の辞書を Hugging Face の第三者の `XXXXRT/GPT-SoVITS-Pretrained`（コミット固定でなく `main`）から取得し、`pip install -r requirements.txt` を**その場で**実行する。mam の方式（§3: 固定した部品を展開するだけで、pip・ビルドを走らせない）には載らない。
+- **`install.sh` の中身**（タグ `20250606v2pro`）: conda で ffmpeg・cmake・make・unzip を入れ、重み・G2PW・NLTK データ・OpenJTalk の辞書を Hugging Face の第三者の `XXXXRT/GPT-SoVITS-Pretrained`（コミット固定でなく `main`）から取得し、`pip install -r requirements.txt` を**その場で**実行する。Nefos Video の方式（§3: 固定した部品を展開するだけで、pip・ビルドを走らせない）には載らない。
 - **`requirements.txt` の閉包（macOS arm64・Python 3.10）**: `uv pip compile --python-platform aarch64-apple-darwin --python-version 3.10` で 222 個に解決した。各固定版について PyPI の JSON API で「macOS arm64（または `any`）の cp310 の wheel があるか」を調べたところ、**wheel が無い（ソース配布 `.tar.gz` だけの）ものが 8 個**: `pyopenjtalk 0.4.1`・`jieba_fast 0.53`・`jieba 0.42.1`・`distance 0.1.3`・`crcmod 1.7`・`oss2 2.19.1`（`funasr` が要求）・`antlr4-python3-runtime 4.9.3`・`openai-whisper 20250625`。
 - **そのうち起動に必須のもの**: 起動の import 連鎖は、`api_v2.py` → `TTS_infer_pack/TTS.py` → `TextPreprocessor.py` が `from text import chinese`（`chinese.py` が `import jieba_fast` を**無条件に**する）と `from text.LangSegmenter import LangSegmenter`（`import jieba`）を実行し、日本語の音素化は `text/japanese.py` の `import pyopenjtalk`（失敗しても例外の分岐で同じ import を再度して落ちる）。つまり **`jieba_fast`（C 拡張）・`jieba`・`pyopenjtalk`（C++ と cmake が要る）が無いと、日本語の声どころか起動できない**。
 - **代用の候補を採らなかった理由**: PyPI には macOS の wheel を持つ `pyopenjtalk-plus 0.4.1.post10`（universal2）・`pyopenjtalk-prebuilt 0.3.0`（arm64）があるが、どちらも公式が固定していない第三者のフォークで、GPT-SoVITS が呼ぶ関数（`run_frontend`・`make_label`・`mecab_dict_index`・`update_global_jtalk_with_user_dict`）の互換と日本語の出力の同一性を**実機で確かめられない**。`jieba_fast`（C 拡張）には macOS の wheel が無く、`jieba` で代用すると公式のコードを書き換えることになる。
@@ -655,11 +655,11 @@ PR #934 の研磨 2 周で出た minor（`--skip-minor` のため未対応だっ
 
 確かめた一次情報:
 
-- **公式（`TMElyralab/MuseTalk`、コミット `0a89dec4`）**: README は CUDA 前提（CUDA 11.7・`pytorch-cuda=11.8`）で macOS の記載が無い。mam の組み立て（§13.1）は `mmcv==2.0.1` の事前ビルド（OpenMMLab の索引 `…/mmcv/dist/cu118/torch2.0.0/`）を使うが、**macOS 向けの `mmcv 2.0.1` の wheel は OpenMMLab の索引にも PyPI（ソース配布のみ）にも無い**（索引にあるのは 2.0.0 の cp311 universal2 と、x86_64 の cp310 だけ。Python 3.11 は公式の検証範囲外）。さらに mam の `mam_musetalk_engine.py` は `cuda` か `cpu` だけを扱い、MPS を扱わない（実機で確かめられない書き換えになる）。
-- **第三者の MLX 版 `mlx-community/MuseTalk-1.5-q4`**（Hugging Face API。コミット `ff57bd4b785b3813f43be689390c3d7494258a35`、2026-06-05）: **実在する**。ライセンス MIT（モデルカードの `license: mit`。上流 MuseTalk を MIT と書く）。作者は MVS Collective（xocialize-code）。UNet の Linear を int4（group_size 64）にし、VAE と Whisper の encoder は fp16。ファイルは `unet.safetensors`（1,325,610,215 B、SHA-256 `7a66b9f6…0f1b`）・`vae.safetensors`（167,335,279 B、`2a767078…0f98`）・`whisper_encoder.safetensors`（16,423,174 B、`c04baf72…36d3`）・`config.json`。fp16・q8 の兄弟もある。モデルカードの数値（34 顔/秒・約 7 GB・上流との差 2.74/255）は**自己申告で mam は確かめていない**。
+- **公式（`TMElyralab/MuseTalk`、コミット `0a89dec4`）**: README は CUDA 前提（CUDA 11.7・`pytorch-cuda=11.8`）で macOS の記載が無い。Nefos Video の組み立て（§13.1）は `mmcv==2.0.1` の事前ビルド（OpenMMLab の索引 `…/mmcv/dist/cu118/torch2.0.0/`）を使うが、**macOS 向けの `mmcv 2.0.1` の wheel は OpenMMLab の索引にも PyPI（ソース配布のみ）にも無い**（索引にあるのは 2.0.0 の cp311 universal2 と、x86_64 の cp310 だけ。Python 3.11 は公式の検証範囲外）。さらに Nefos Video の `mam_musetalk_engine.py` は `cuda` か `cpu` だけを扱い、MPS を扱わない（実機で確かめられない書き換えになる）。
+- **第三者の MLX 版 `mlx-community/MuseTalk-1.5-q4`**（Hugging Face API。コミット `ff57bd4b785b3813f43be689390c3d7494258a35`、2026-06-05）: **実在する**。ライセンス MIT（モデルカードの `license: mit`。上流 MuseTalk を MIT と書く）。作者は MVS Collective（xocialize-code）。UNet の Linear を int4（group_size 64）にし、VAE と Whisper の encoder は fp16。ファイルは `unet.safetensors`（1,325,610,215 B、SHA-256 `7a66b9f6…0f1b`）・`vae.safetensors`（167,335,279 B、`2a767078…0f98`）・`whisper_encoder.safetensors`（16,423,174 B、`c04baf72…36d3`）・`config.json`。fp16・q8 の兄弟もある。モデルカードの数値（34 顔/秒・約 7 GB・上流との差 2.74/255）は**自己申告で Nefos Video は確かめていない**。
 - **コード `xocialize/musetalk-mlx`**（コミット `c6eb30eb…`）: `pip install -e .`（mlx・numpy・opencv-python・librosa・soundfile。**PyPI には無い**）で入る**ニューラルコアのライブラリ**（`MuseTalkPipeline.from_pretrained_mlx`・`generate_faces`）。README 自身が「顔の検出・DWPose・face-parse・貼り戻しは上流の CPU 前処理を**呼び出し側が**つなぐ」と書く。**サーバー（HTTP）も、動画から顔を検出して貼り戻す処理も無い**。リポジトリに `LICENSE` ファイルが無い（GitHub の API は license なし。`pyproject.toml` と README が MIT と書くだけ）。
 - **他の Apple Silicon 向けの実装**: `Lulzx/fast-lipsync`（MIT。Core ML、macOS 15 以降、`uv`・`ffmpeg`・`git` が前提の `setup.sh` が MuseTalk を clone してパッチを当て、重みを取得し、Core ML にコンパイルする）、`dahai80/musetalk-mlx`（Apache-2.0。別のライブラリ fusion-mlx の上の業務層）、`barnent1/musetalk-mac`（ライセンス NOASSERTION。MPS と Mediapipe、FastAPI サーバーだが、公式の API と別形で、自前の `requirements-mac.txt` を pip で入れる）。いずれも、**固定した部品の展開だけで組み立てられる配布物ではなく**、セットアップに pip・clone・コンパイルが要る。
-- **公式の API 形式との整合**: MuseTalk に公式の HTTP API は無い（§13.3）。mam の口パクの入口（`mam_musetalk_server.py` の `POST /v1/lipsync`）は mam 自身のラッパーなので、MLX 版を使うなら**新しいエンジンと顔検出・貼り戻しを mam が書く**ことになる（Windows 版では公式の `scripts/inference.py` を流用した部分）。実機（MLX が動く Mac）が無く、出来を確かめられない。
+- **公式の API 形式との整合**: MuseTalk に公式の HTTP API は無い（§13.3）。Nefos Video の口パクの入口（`mam_musetalk_server.py` の `POST /v1/lipsync`）は Nefos Video 自身のラッパーなので、MLX 版を使うなら**新しいエンジンと顔検出・貼り戻しを Nefos Video が書く**ことになる（Windows 版では公式の `scripts/inference.py` を流用した部分）。実機（MLX が動く Mac）が無く、出来を確かめられない。
 
 → **実装しない**。MLX 版は「出典・ライセンス・できること」を上に記録し、画面・MCP の理由の文でも名前を挙げる（`mlx-community/MuseTalk-1.5-q4`、MIT）。実装するなら、(a) 顔の検出・貼り戻しを含む `/v1/lipsync` のエンジンの設計（face detection に mmpose を使わない形）、(b) mlx・opencv などの macOS arm64 の wheel と python-build-standalone の `aarch64-apple-darwin` の固定、(c) 実機での確認、が要る。
 
@@ -699,7 +699,7 @@ llama-server.exe -m {model} --host 127.0.0.1 --port {port} --ctx-size {ctx_size}
                  --parallel 1 --no-webui --no-slots --sleep-idle-seconds 900 --offline
 ```
 
-- **任意の実行ファイル・任意の引数は受け付けない**。実行ファイルは `launch.program`（環境の下の固定のパス）、引数はこのテンプレートだけで、利用者・MCP・設定が渡せるのは**モデルの選択（カタログのモデルの id）**だけ。値は次の 4 つのプレースホルダーに入る: `{port}`（mam が決めた空きポート。前回のポートを優先）、`{model}`（選んだモデルの GGUF の、環境の下の相対パス）、`{choice}`（モデルの id。`--alias` で API のモデル名になる）、`{ctx_size}`・`{ngl}`（モデルごとの値。`choice.Values`）。値は英数字と `. _ -` だけ（空白・引用符で引数を増やせない）。`port`・`model`・`choice` の名前は組み込みで、モデルの値では上書きできない。`launchargs.Expand` は値の無いプレースホルダーが残ると起動しない（`{model}` のまま起動することはない）。カタログの検証が、`--host 127.0.0.1` と `{port}` を含み `0.0.0.0`・`::` を含まないことを確かめる（§5.2 と同じ）。
+- **任意の実行ファイル・任意の引数は受け付けない**。実行ファイルは `launch.program`（環境の下の固定のパス）、引数はこのテンプレートだけで、利用者・MCP・設定が渡せるのは**モデルの選択（カタログのモデルの id）**だけ。値は次の 4 つのプレースホルダーに入る: `{port}`（Nefos Video が決めた空きポート。前回のポートを優先）、`{model}`（選んだモデルの GGUF の、環境の下の相対パス）、`{choice}`（モデルの id。`--alias` で API のモデル名になる）、`{ctx_size}`・`{ngl}`（モデルごとの値。`choice.Values`）。値は英数字と `. _ -` だけ（空白・引用符で引数を増やせない）。`port`・`model`・`choice` の名前は組み込みで、モデルの値では上書きできない。`launchargs.Expand` は値の無いプレースホルダーが残ると起動しない（`{model}` のまま起動することはない）。カタログの検証が、`--host 127.0.0.1` と `{port}` を含み `0.0.0.0`・`::` を含まないことを確かめる（§5.2 と同じ）。
 - `--offline`・`HF_HUB_OFFLINE=1`: 実行中にモデルを取りに行かない。`--no-webui`: 組み込みの Web 画面を出さない。`--no-slots`: スロットの監視口を出さない。`--parallel 1`: 並列 1（VRAM を抑える）。
 - **認証**: 起動のたびに作る乱数のトークンを環境変数 **`LLAMA_API_KEY`**（`launch.token_env`）で渡す。llama-server はこれを API キーとして読み、`/health` 以外のすべての要求に `Authorization: Bearer <トークン>` を求める（実物の `--help` で `--api-key`・env `LLAMA_API_KEY` を確かめた）。ブラウザのページからは送れないので、`127.0.0.1` で待ち受けても他のサイトから叩けない。このトークンは設定の API キーとは別のもので、プロバイダー `local` が管理サーバーを使う間だけ使う（§local-llm.md §10）。
 - 準備の確認は `GET /health`（200 になるまで。起動の待ちは最長 900 秒＝27B をディスクから読み込む時間）。
@@ -729,9 +729,9 @@ Irodori の選択肢（§14.5）と同じ仕組み（`ResourceSet.Choices`・`Re
 - **ライセンスの根拠**: 元の重み（`google/gemma-4-12B-it`・`huihui-ai/Huihui-gemma-4-12B-it-abliterated`・`Qwen/Qwen3.8-27B`・`huihui-ai/Huihui-Qwen3.8-27B-abliterated`・`deepseek-ai/DeepSeek-R1-Distill-Qwen-14B`）と GGUF 変換元のモデルカードの `license:` を読んだ（Gemma は `apache-2.0` ＋ `license_link: ai.google.dev/gemma/docs/gemma_4_license`、DeepSeek のカードは「コードと重みは MIT。Qwen-2.5 系〔Apache 2.0〕から派生」）。**`huihui-ai/DeepSeek-R1-Distill-Qwen-14B-abliterated-v2` と、その GGUF `mradermacher/…-abliterated-v2-GGUF` のカードには `license` が無い**（`base_model` だけ）ので、**「商用不明」とし、商用可として扱わない**（注記は画面・MCP に出る）。**法的な保証ではない**。
 - **載せられなかったモデルは無い**: 6 本の元の重み・GGUF のリポジトリとファイル名はすべて Hugging Face に実在した（Issue の表の名前のまま。代わりの名前は使っていない）。
 - **非検閲（abliterated）の 4 つ**は `uncensored: true`（`choice.Choice.Uncensored`）。画面は「成人向け相当（非検閲）」のバッジと注記（安全のための拒否を取り除いた派生で、暴力・性的表現などを拒否せず出力しうる・質や JSON を守る力が落ちうる・使い道は利用者の責任）を出す。MCP の `list_local_runtime_models` にも `uncensored` と `cautions` が出る。
-- **同意**: どのモデルも `consent`（利用規約への同意）は無い（ライセンスが Apache-2.0・MIT で、同意を求める条件が無い）。**mam が `accept_terms`・同意を自動で行うことは無い**。モデルを選ぶ操作は利用者の選択（ラジオ・MCP の `select_local_runtime_model`）で、同意とは別。商用不明の注記は表示だけで、選択をふさがない。
-- **VRAM の目安**（`vram_min_gb`。mam の推定で `vram_estimate: true`・実機では未確認）: Gemma 12B 9 GB・DeepSeek 14B 11 GB・Qwen3.8-27B の Q3_K_M 16 GB・IQ4_XS 18 GB（重み + 文脈 16384 の KV キャッシュ + 作業領域）。**Qwen 27B は Q4_K_M（15.66 GiB）だと 16 GB に収まらないので載せず、IQ4_XS を標準・Q3_K_M を軽量版にした**。`ngl` は Gemma・DeepSeek が `all`、Qwen が `auto`（収まらない分は llama.cpp が CPU に置く）。`ctx_size` は全モデル 16384（mam の企画・脚本の入力は長く、既定の小さい値だと途中が切れる）。
-- **thinking**: Gemma・Qwen は考える過程があり、JSON を返す役割では mam が `chat_template_kwargs: {"enable_thinking": false}` を送ってオフにする（前半 [local-llm.md §3](../local-llm.md) の実装。`--jinja` は llama-server の既定で有効）。DeepSeek R1 Distill はオフにできないので、`<think>…</think>` を取り除いてから JSON を読む（同 §3.3）。これらが**このランタイム（偽 llama-server）でも効く**ことは `llamaservertest` で確かめた（§17.6）。
+- **同意**: どのモデルも `consent`（利用規約への同意）は無い（ライセンスが Apache-2.0・MIT で、同意を求める条件が無い）。**Nefos Video が `accept_terms`・同意を自動で行うことは無い**。モデルを選ぶ操作は利用者の選択（ラジオ・MCP の `select_local_runtime_model`）で、同意とは別。商用不明の注記は表示だけで、選択をふさがない。
+- **VRAM の目安**（`vram_min_gb`。Nefos Video の推定で `vram_estimate: true`・実機では未確認）: Gemma 12B 9 GB・DeepSeek 14B 11 GB・Qwen3.8-27B の Q3_K_M 16 GB・IQ4_XS 18 GB（重み + 文脈 16384 の KV キャッシュ + 作業領域）。**Qwen 27B は Q4_K_M（15.66 GiB）だと 16 GB に収まらないので載せず、IQ4_XS を標準・Q3_K_M を軽量版にした**。`ngl` は Gemma・DeepSeek が `all`、Qwen が `auto`（収まらない分は llama.cpp が CPU に置く）。`ctx_size` は全モデル 16384（Nefos Video の企画・脚本の入力は長く、既定の小さい値だと途中が切れる）。
+- **thinking**: Gemma・Qwen は考える過程があり、JSON を返す役割では Nefos Video が `chat_template_kwargs: {"enable_thinking": false}` を送ってオフにする（前半 [local-llm.md §3](../local-llm.md) の実装。`--jinja` は llama-server の既定で有効）。DeepSeek R1 Distill はオフにできないので、`<think>…</think>` を取り除いてから JSON を読む（同 §3.3）。これらが**このランタイム（偽 llama-server）でも効く**ことは `llamaservertest` で確かめた（§17.6）。
 
 ### 17.3 導入・起動・停止・状態
 
@@ -739,7 +739,7 @@ Irodori の選択肢（§14.5）と同じ仕組み（`ResourceSet.Choices`・`Re
 
 ### 17.4 macOS（Apple Silicon）は「対応外」にした（理由）
 
-公式のリリースには `llama-b11960-bin-macos-arm64.tar.gz`（Metal。16,465,074 B。SHA-256 `58e5a5e1…1e3c`）がある。ランタイム定義の `os_reasons.darwin` に理由を書き、画面・MCP・`Service.Install` は「macOS（Apple Silicon）では llama.cpp の自動導入に対応していません。公式のリリースには macOS arm64（Metal）のビルド済みバイナリがありますが、mam はこの開発環境で macOS の実機を使えず…」と代わりの案内（Ollama・LM Studio への接続、クラウドの LLM）を返す。**理由**: ①`.tar.gz` の展開と `llama-server` の実行権限・Gatekeeper（未署名の実行ファイル）・Metal の動作は、実機なしで確かめられない。②§10 と同じく Apple Silicon の自動導入はオーナーの判断（別 Issue）。③ GPU の判定（`gpu.Report` の Apple Silicon のユニファイドメモリ）と VRAM の目安が、Windows + NVIDIA の規則とは別に要る。**ランタイム定義・テスト（非対応の理由・案内・`Install` が断ること）は他のランタイムと同じ水準で入れた**。Apple Silicon の Mac では、Ollama または LM Studio を入れて設定の「ローカル LLM サーバー」で接続する（local-llm.md §8）。
+公式のリリースには `llama-b11960-bin-macos-arm64.tar.gz`（Metal。16,465,074 B。SHA-256 `58e5a5e1…1e3c`）がある。ランタイム定義の `os_reasons.darwin` に理由を書き、画面・MCP・`Service.Install` は「macOS（Apple Silicon）では llama.cpp の自動導入に対応していません。公式のリリースには macOS arm64（Metal）のビルド済みバイナリがありますが、Nefos Video はこの開発環境で macOS の実機を使えず…」と代わりの案内（Ollama・LM Studio への接続、クラウドの LLM）を返す。**理由**: ①`.tar.gz` の展開と `llama-server` の実行権限・Gatekeeper（未署名の実行ファイル）・Metal の動作は、実機なしで確かめられない。②§10 と同じく Apple Silicon の自動導入はオーナーの判断（別 Issue）。③ GPU の判定（`gpu.Report` の Apple Silicon のユニファイドメモリ）と VRAM の目安が、Windows + NVIDIA の規則とは別に要る。**ランタイム定義・テスト（非対応の理由・案内・`Install` が断ること）は他のランタイムと同じ水準で入れた**。Apple Silicon の Mac では、Ollama または LM Studio を入れて設定の「ローカル LLM サーバー」で接続する（local-llm.md §8）。
 
 ### 17.5 表示（画面・MCP・docs）
 
@@ -776,19 +776,19 @@ Irodori の選択肢（§14.5）と同じ仕組み（`ResourceSet.Choices`・`Re
 | 項目 | 読んで分かったこと |
 |---|---|
 | 公式の手順 | `webui.py` の「1A・1B・1C のデータ整形」→「1Aa SoVITS（S2）の学習」→「1Ab GPT（S1）の学習」。データの整形の前に、音声の分割（`tools/slice_audio.py`）・ノイズ除去・文字起こし（ASR。`tools/asr/*`）がある。README は「約 1 分の学習データで声の近さが上がる（Few-shot TTS）」とだけ書く |
-| データ整形 | 入力は**リストファイル**（1 行 `ファイル名\|話者名\|言語\|書き起こし`）と音声のフォルダ。`1-get-text.py`（音素と、中国語だけの BERT 特徴 → `2-name2text.txt`）、`2-get-hubert-wav32k.py`（32 kHz の音声と SSL 特徴）、`3-get-semantic.py`（事前学習の S2G の重みでセマンティックトークン → `6-name2semantic.tsv`）。**設定は環境変数**（`inp_text`・`inp_wav_dir`・`exp_name`・`opt_dir`・`bert_pretrained_dir`・`cnhubert_base_dir`・`pretrained_s2G`・`s2config_path`・`is_half`・`_CUDA_VISIBLE_DEVICES`・`i_part`・`all_parts`）。v2Pro だけ `2-get-sv.py` が足される（mam が学習するのは v2。§18.3） |
+| データ整形 | 入力は**リストファイル**（1 行 `ファイル名\|話者名\|言語\|書き起こし`）と音声のフォルダ。`1-get-text.py`（音素と、中国語だけの BERT 特徴 → `2-name2text.txt`）、`2-get-hubert-wav32k.py`（32 kHz の音声と SSL 特徴）、`3-get-semantic.py`（事前学習の S2G の重みでセマンティックトークン → `6-name2semantic.tsv`）。**設定は環境変数**（`inp_text`・`inp_wav_dir`・`exp_name`・`opt_dir`・`bert_pretrained_dir`・`cnhubert_base_dir`・`pretrained_s2G`・`s2config_path`・`is_half`・`_CUDA_VISIBLE_DEVICES`・`i_part`・`all_parts`）。v2Pro だけ `2-get-sv.py` が足される（Nefos Video が学習するのは v2。§18.3） |
 | 学習 | S2 は `s2.json` を読んで `batch_size`・`epochs`・`text_low_lr_rate`・`pretrained_s2G`・**`pretrained_s2D`（判別器。学習だけが読む）**・`save_weight_dir`・`exp_dir` などを書いた一時の設定ファイルで `s2_train.py --config` を起動する。S1 は `s1longer-v2.yaml` に `batch_size`・`epochs`・`pretrained_s1`・`half_weights_save_dir`・`train_semantic_path`・`train_phoneme_path`・`output_dir` を書いて `s1_train.py --config_file` を起動する。fp16 が使えない GPU は、精度を 32 にしてバッチを半分にする |
 | 既定値・上限 | SoVITS は既定 8 エポック（上限 25）、GPT は既定 15（上限 50）、バッチは「GPU のビデオメモリ（GB）の半分」（GPU が無ければメモリの 1/4）。クリップは 0.6〜54 秒だけが学習に入る（`data_utils.py`） |
-| VRAM・所要時間 | **公式は数値を示していない**（README にも `webui.py` にも無い）。バッチの既定が VRAM の GB の半分、という手がかりだけ。mam は数値を出さない（§18.9） |
+| VRAM・所要時間 | **公式は数値を示していない**（README にも `webui.py` にも無い）。バッチの既定が VRAM の GB の半分、という手がかりだけ。Nefos Video は数値を出さない（§18.9） |
 | 出力される重み | S2: `SoVITS_weights_v2/<名前>_e<エポック>_s<ステップ>.pth`、S1: `GPT_weights_v2/<名前>-e<エポック>.ckpt`（半精度に変換した推論用の重み。`process_ckpt.savee`・`s1_train.py`）。チェックポイントは `logs/<名前>/` に別に残る |
-| 進み具合 | S2 は `logs/<名前>/train.log`（Python の `logging`）に `====> Epoch: N` を書き、標準出力には `start training from epoch` と `training done` だけ。S1 は PyTorch Lightning のログ（進捗バー）で、エポックの行の形は固定されていない → **mam は公式の出力を読まず、駆動スクリプトが 2 秒ごとに数える**（§18.3） |
-| 重みの切り替え（`api_v2.py`） | `GET /set_gpt_weights?weights_path=…`・`GET /set_sovits_weights?weights_path=…`。**任意のパスを読み込ませる**ので、mam の起動用スクリプトは許可しない（§5.2 は変えない）。代わりに起動用スクリプトが `POST /mam/voice` を自分で答える（§18.5）。`TTS.init_*_weights` は読み込んだパスを設定ファイルへ書き戻すので、起動用スクリプトは設定ファイルの**コピー**を使う |
-| 文字起こし（ASR）と分割 | 統合パッケージには `tools/asr/models/` の**空のフォルダ**（FunASR）しか無く、`fasterwhisper_asr.py` は `HF_ENDPOINT=https://hf-mirror.com`（第三者のミラー）から実行時に重みを取る。mam の「実行中に取得しない」方針（§1・§5.2）に合わないので、**mam は ASR も自動分割もしない**。利用者が書き起こしつきの短い録音（クリップ）を用意する（§18.2） |
+| 進み具合 | S2 は `logs/<名前>/train.log`（Python の `logging`）に `====> Epoch: N` を書き、標準出力には `start training from epoch` と `training done` だけ。S1 は PyTorch Lightning のログ（進捗バー）で、エポックの行の形は固定されていない → **Nefos Video は公式の出力を読まず、駆動スクリプトが 2 秒ごとに数える**（§18.3） |
+| 重みの切り替え（`api_v2.py`） | `GET /set_gpt_weights?weights_path=…`・`GET /set_sovits_weights?weights_path=…`。**任意のパスを読み込ませる**ので、Nefos Video の起動用スクリプトは許可しない（§5.2 は変えない）。代わりに起動用スクリプトが `POST /mam/voice` を自分で答える（§18.5）。`TTS.init_*_weights` は読み込んだパスを設定ファイルへ書き戻すので、起動用スクリプトは設定ファイルの**コピー**を使う |
+| 文字起こし（ASR）と分割 | 統合パッケージには `tools/asr/models/` の**空のフォルダ**（FunASR）しか無く、`fasterwhisper_asr.py` は `HF_ENDPOINT=https://hf-mirror.com`（第三者のミラー）から実行時に重みを取る。Nefos Video の「実行中に取得しない」方針（§1・§5.2）に合わないので、**Nefos Video は ASR も自動分割もしない**。利用者が書き起こしつきの短い録音（クリップ）を用意する（§18.2） |
 
 ### 18.2 学習に使うデータ（クリップ）
 
 - 1 つのクリップは、**話している人が 1 人だけの録音と、その書き起こし**。`.wav/.mp3/.flac/.ogg/.m4a`（参照音声と同じ形式・署名の検査）、10 MB まで、**2〜30 秒**（ffprobe で測る。ffprobe が無いときはクリップを受け付けない: 長さを検査できない）。書き起こしは 1〜500 文字（`|`・制御文字を含められない: リストファイルの区切りだから）。言語は参照音声の言語。
-- 合計は **60 秒以上（下限。公式 README の「約 1 分」）・30 分まで（上限）・200 個まで**。上限は mam の決めた値で、公式の制限ではない（公式のスクリプトは 0.6〜54 秒のクリップを読むだけ）。足りない・多すぎるときは、**学習を送らずに**理由（`problems`）を画面と MCP に出し、始めようとすると `invalid_input`（#1010 の共通エラー）で断る。
+- 合計は **60 秒以上（下限。公式 README の「約 1 分」）・30 分まで（上限）・200 個まで**。上限は Nefos Video の決めた値で、公式の制限ではない（公式のスクリプトは 0.6〜54 秒のクリップを読むだけ）。足りない・多すぎるときは、**学習を送らずに**理由（`problems`）を画面と MCP に出し、始めようとすると `invalid_input`（#1010 の共通エラー）で断る。
 - 置き場所: `<assets>/voicetrain/_draft/<project-|series-><id>/<character id>/`（クリップのファイルと `index.json`）。`_draft` は学習済みの声の ID の形ではないので、合成のサーバーが読むことも、不要な重みの掃除の対象になることも無い。学習が始まると、クリップは**作業ディレクトリへコピー**する（学習の最中にクリップを消しても、学習は変わらない）。
 - 前提: そのキャラクターに**参照音声がある**こと（合成は学習した声でも、参照音声を読む。§18.6）。
 
@@ -796,17 +796,17 @@ Irodori の選択肢（§14.5）と同じ仕組み（`ResourceSet.Choices`・`Re
 
 | 項目 | 内容 |
 |---|---|
-| 学習する版 | **v2 だけ**（`GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/` の事前学習。§12.6 の重みと同じ）。v2Pro・v3・v4 は学習しない（mam が起動する既定が v2 で、合成側も v2 の重みを前提にしているため。ほかの版は実機で確かめてから） |
-| 呼び方 | **任意のコマンド・スクリプト・パスを外から指定できない固定の組み立て**。`Installer.Tool(script, args, env)` は、カタログ（`runtimes/gptsovits.json`）の **`tool_files`**（mam が同梱する `mam_gptsovits_train.py` だけ）の `dest` 以外を `ErrNotATool` で断り、サーバーと同じ `python -I -u -X utf8 <script> <step> <job.json>`（作業ディレクトリは `env\`）、同じオフライン設定・キャッシュ・一時ファイルの場所で起動する。`<step>` は `text`・`hubert`・`semantic`・`sovits`・`gpt` の 5 つだけで、駆動スクリプトの表（`SCRIPTS`）が公式の 5 つのスクリプトに対応づける（それ以外は起動しない）。`job.json` は mam が書く（パスは作業ディレクトリの中だけ。`..`・シンボリックリンクで外へ出るパス・`exp_name` の不正・範囲外のエポック数は駆動スクリプトが終了コード 3 で断る）。MCP・画面の入力はキャラクターの ID・エポック数・クリップだけ |
+| 学習する版 | **v2 だけ**（`GPT_SoVITS/pretrained_models/gsv-v2final-pretrained/` の事前学習。§12.6 の重みと同じ）。v2Pro・v3・v4 は学習しない（Nefos Video が起動する既定が v2 で、合成側も v2 の重みを前提にしているため。ほかの版は実機で確かめてから） |
+| 呼び方 | **任意のコマンド・スクリプト・パスを外から指定できない固定の組み立て**。`Installer.Tool(script, args, env)` は、カタログ（`runtimes/gptsovits.json`）の **`tool_files`**（Nefos Video が同梱する `mam_gptsovits_train.py` だけ）の `dest` 以外を `ErrNotATool` で断り、サーバーと同じ `python -I -u -X utf8 <script> <step> <job.json>`（作業ディレクトリは `env\`）、同じオフライン設定・キャッシュ・一時ファイルの場所で起動する。`<step>` は `text`・`hubert`・`semantic`・`sovits`・`gpt` の 5 つだけで、駆動スクリプトの表（`SCRIPTS`）が公式の 5 つのスクリプトに対応づける（それ以外は起動しない）。`job.json` は Nefos Video が書く（パスは作業ディレクトリの中だけ。`..`・シンボリックリンクで外へ出るパス・`exp_name` の不正・範囲外のエポック数は駆動スクリプトが終了コード 3 で断る）。MCP・画面の入力はキャラクターの ID・エポック数・クリップだけ |
 | 駆動スクリプト | `mam_gptsovits_train.py`（job.json の検査・5 つのステップの表・環境変数と設定ファイルは、行数の上限のため同じ `tool_files` の `mam_gptsovits_train_job.py` に分けた。`Installer.Tool` は起動のたびに**すべての** tool file を書き直し、起動できるのは tool file の `dest` だけ）。標準ライブラリだけ。GPT の設定の読み書きだけ PyYAML を使う: パッケージにある）。公式の `webui.py` と同じ環境変数・一時設定を作って公式のスクリプトを起動し、**2 秒ごとに**進み具合を数えて標準出力に `MAM_TRAIN {"step","done","total"}` の行を出す（hubert: 作った特徴ファイルの数、sovits: `train.log` の `====> Epoch: N` の最大の N、gpt: 保存された重みの最大のエポック）。公式の出力は標準エラーへ。`tool_files` は `extra_files` と違い `Status` が検査しない（学習が入る前に導入した環境が `broken` にならない）。起動のたびに書き直す |
-| 段階と進み具合 | 5 つの段階（text 0〜5 %・hubert 5〜15 %・semantic 15〜20 %・sovits 20〜60 %・gpt 60〜98 %。割合は**見た目だけの mam の値**で、時間の割合ではない）。**エポック n/m・経過・残り時間**を、ジョブ一覧（`Progress.Text`: 「SoVITS の学習 エポック 3 / 8（4 / 5 段階）・経過 15分0秒・この段階の残り約 20分0秒」）と `get_job` の `progress`（`live.View`: `node`＝段階、`step`/`max_step`＝エポック、`percent`、`elapsed_seconds`、`eta_seconds`。#1002 と同じ形）に出す。**残り時間はその段階のエポックの平均から**で、最初のエポックが終わるまでは出さず、`eta_unavailable` に理由を書く。次の段階の時間は分からないので、残りは「この段階の」だけ（全体の残りは言わない） |
-| ジョブの種類 | **メモリ上の追跡（`internal/worktrack`。新しい種類 `voice_train`）**。理由: ①`job` テーブルのジョブはキューの再試行・再開（`attempts`）の仕組みに乗るが、学習は**再起動をまたいで再開しない**ので、再開の無い仕組みが要る（#1019 の動画の書き出し・音声の作成と同じ判断）、②テーブルに種類を足すと、CHECK 制約のマイグレーションと全画面の一覧が要るが、得るものが無い、③進み具合は子プロセスと同じ寿命の記録で足りる。ジョブ一覧には `ScreenProjectWorld`（Project の World State）・`ScreenSeries`（Series のページ）への「開く」つきで出る。MCP の `get_job` は `train_character_voice` の種類（`InMemory`: mam を再起動すると、その後は履歴の終わりだけで答える） |
-| **再開しない（決定）** | 学習は数十分かかるが、**mam の再起動・異常終了をまたいだ、チェックポイントからの再開はしない**。公式の `s1_train.py` は `logs/` の最新のチェックポイントから再開する作りだが、①mam は作業ディレクトリごと消して、**部分的な出力を残さない**方針、②再起動後に「どの学習がどこまで進んだか」を信頼して引き継ぐには、データ・設定の同一性の確認と再開の UI が要る、③mam の再起動は稀、のため。再起動後に残った作業ディレクトリは、次の学習の前の掃除（`voicerefsvc.CleanFinetunes` は学習済みの声と `.tmp-` の途中のコピー。作業ディレクトリは `localruntime.Service.BeginTool` が、ランタイムを確保した直後（ほかの学習が動いていないことが確かな時点）に `localai\<id>\train\` の直下を消す。リンクはたどらず、`train` 自体がリンクならリンクだけを消す）で消える |
-| 中止 | `Cancel(owner, characterID)`（画面「学習を中止」・MCP `cancel_character_voice_training`）。動いている段階のプロセスのグループを、まず穏やかに、次に強制で止め（`proc.Piped.Stop`。Windows は Job Object、Linux はプロセスグループ）、作業ディレクトリと、書きかけの重み（`.tmp-<id>/`）を消す。**部分的な出力は残らず、学習済みの声は付かない**。状態は `cancelled`。mam の終了（`Close`）も同じに止めて片付けを待つ |
+| 段階と進み具合 | 5 つの段階（text 0〜5 %・hubert 5〜15 %・semantic 15〜20 %・sovits 20〜60 %・gpt 60〜98 %。割合は**見た目だけの Nefos Video の値**で、時間の割合ではない）。**エポック n/m・経過・残り時間**を、ジョブ一覧（`Progress.Text`: 「SoVITS の学習 エポック 3 / 8（4 / 5 段階）・経過 15分0秒・この段階の残り約 20分0秒」）と `get_job` の `progress`（`live.View`: `node`＝段階、`step`/`max_step`＝エポック、`percent`、`elapsed_seconds`、`eta_seconds`。#1002 と同じ形）に出す。**残り時間はその段階のエポックの平均から**で、最初のエポックが終わるまでは出さず、`eta_unavailable` に理由を書く。次の段階の時間は分からないので、残りは「この段階の」だけ（全体の残りは言わない） |
+| ジョブの種類 | **メモリ上の追跡（`internal/worktrack`。新しい種類 `voice_train`）**。理由: ①`job` テーブルのジョブはキューの再試行・再開（`attempts`）の仕組みに乗るが、学習は**再起動をまたいで再開しない**ので、再開の無い仕組みが要る（#1019 の動画の書き出し・音声の作成と同じ判断）、②テーブルに種類を足すと、CHECK 制約のマイグレーションと全画面の一覧が要るが、得るものが無い、③進み具合は子プロセスと同じ寿命の記録で足りる。ジョブ一覧には `ScreenProjectWorld`（Project の World State）・`ScreenSeries`（Series のページ）への「開く」つきで出る。MCP の `get_job` は `train_character_voice` の種類（`InMemory`: Nefos Video を再起動すると、その後は履歴の終わりだけで答える） |
+| **再開しない（決定）** | 学習は数十分かかるが、**Nefos Video の再起動・異常終了をまたいだ、チェックポイントからの再開はしない**。公式の `s1_train.py` は `logs/` の最新のチェックポイントから再開する作りだが、①Nefos Video は作業ディレクトリごと消して、**部分的な出力を残さない**方針、②再起動後に「どの学習がどこまで進んだか」を信頼して引き継ぐには、データ・設定の同一性の確認と再開の UI が要る、③Nefos Video の再起動は稀、のため。再起動後に残った作業ディレクトリは、次の学習の前の掃除（`voicerefsvc.CleanFinetunes` は学習済みの声と `.tmp-` の途中のコピー。作業ディレクトリは `localruntime.Service.BeginTool` が、ランタイムを確保した直後（ほかの学習が動いていないことが確かな時点）に `localai\<id>\train\` の直下を消す。リンクはたどらず、`train` 自体がリンクならリンクだけを消す）で消える |
+| 中止 | `Cancel(owner, characterID)`（画面「学習を中止」・MCP `cancel_character_voice_training`）。動いている段階のプロセスのグループを、まず穏やかに、次に強制で止め（`proc.Piped.Stop`。Windows は Job Object、Linux はプロセスグループ）、作業ディレクトリと、書きかけの重み（`.tmp-<id>/`）を消す。**部分的な出力は残らず、学習済みの声は付かない**。状態は `cancelled`。Nefos Video の終了（`Close`）も同じに止めて片付けを待つ |
 | 失敗 | 段階のプロセスが 0 以外で終わると、標準エラーの末尾から `training_failed`（#1010 の共通エラー）にする。`out of memory` は原因の文「学習中に GPU のメモリが足りなくなりました」、`No space left` は `disk_full` にする。作業ディレクトリは消し、重みは残さない |
 | 同時実行 | 学習は 1 つずつ（GPU は 1 つ）。別のキャラクターの学習が動いていれば `conflict`。学習の間、ランタイムは `BeginTool` が確保し、**合成のサーバーは止められ**、導入・重みの導入・起動・削除は `ErrTraining`（学習のファイルを入れ替えない。画面・MCP は `conflict`「声の学習が動いています。終わってから、または中止してからやり直してください」、音声合成の案内は同じ文の `process` 種別）。学習が終わる・中止・失敗で `End` が返す |
 | **VRAM（ComfyUI）** | **学習を始めるとき**、`gpufree.Guard`（#1015。声のサーバーが起動する前に使う）に通す: 同梱の ComfyUI が**生成中なら始めない**（`conflict`。「同梱の ComfyUI が生成中で、GPU が空いていません」）、動いていても生成していなければモデルを解放（`POST /free`）させてから始める。**逆向き（学習の最中に ComfyUI が生成を始める）は、この Issue では止めていない**（§18.9。Irodori-TTS の声と同じ範囲） |
-| 学習の前の検査 | データ量（§18.2）、参照音声、ランタイム（`BeginTool` が対応環境・導入済み・導入中でない・重みがそろう〔学習だけが読む判別器 `s2D2333k.pth` も。§18.4〕を確かめ、理由つきで断る）、**空き容量**: 作業ディレクトリのあるディスクに「6 GiB ＋ 録音 1 秒あたり 200 KiB ＋ クリップのサイズ」（mam の控えめな見積もり。チェックポイントは判別器・オプティマイザを含み大きい。**実測していない**）、重みを残すディスクに 512 MiB。足りなければ**何も送らず**、`disk_full`（「学習に約 X 必要で、空きは Y です。場所: …」）で断る。エポック数が範囲外なら `invalid_input` |
+| 学習の前の検査 | データ量（§18.2）、参照音声、ランタイム（`BeginTool` が対応環境・導入済み・導入中でない・重みがそろう〔学習だけが読む判別器 `s2D2333k.pth` も。§18.4〕を確かめ、理由つきで断る）、**空き容量**: 作業ディレクトリのあるディスクに「6 GiB ＋ 録音 1 秒あたり 200 KiB ＋ クリップのサイズ」（Nefos Video の控えめな見積もり。チェックポイントは判別器・オプティマイザを含み大きい。**実測していない**）、重みを残すディスクに 512 MiB。足りなければ**何も送らず**、`disk_full`（「学習に約 X 必要で、空きは Y です。場所: …」）で断る。エポック数が範囲外なら `invalid_input` |
 | バッチ | `GPU のビデオメモリ（GB）の半分`（1〜32）。S2・S1 とも。公式の既定と同じ考え方（`webui.py`）。fp16 が使えない GPU は、駆動スクリプトが公式と同じに半分にする |
 
 ### 18.4 重み（判別器）
@@ -821,14 +821,14 @@ Irodori の選択肢（§14.5）と同じ仕組み（`ResourceSet.Choices`・`Re
 | 書き込み | 学習が終わると、重みを `.tmp-<id>/` に置いてから `voicetrain/<id>/` へ移し（2 つとも揃うまで本来の名前では存在しない）、`voicerefsvc.BindFinetune` がキャラクターの行に付ける。**Series の正本**に付けると正本に新しいバージョンができる（参照音声と同じ）。以前の学習済みの声は、ほかの行が使っていなければ重みごと消える。**新しい参照音声を置いても、学習した声は残る**（同じ話者の別の録音）。参照音声を消すと学習した声も消える |
 | 継承 | **正本→Episode は参照音声と同じコピー**: `POST /series/:id/episodes`・`POST /series` は `voice_reference` の JSON をそのままコピーするので、**以後に作る Episode は学習した声を引き継ぐ**。作成済みの Episode は変わらない（参照音声と同じ）。Episode のコピー・Branch のコピーは**同じ重みのファイルを共有**し、最後の行が外れるまで重みは消えない（`voicerefrepo.FinetuneInUse`） |
 | 合成 | `voicerefsvc.ForSpeaker` が `Voice.Trained`（重みの `id`）を返し、`localspeech.Voices` が `localvoice.Voice.Trained` に載せる。`gptsovits.Client` は、**サーバーに読み込まれている声と違うときだけ**、`POST /mam/voice {"voice": "<id>"}`（トークンつき。ゼロショットの話者は `""`）を送ってから `POST /tts` する（話者が替わるたびに重みを読み直す。同じ話者の連続した行では読み込まない。サーバーの再起動はトークンが変わるので検知して読み直す）。**学習した重みがあるキャラクターは、必ずその重みで話す** |
-| 起動用スクリプト | `mam_gptsovits_server.py` の許可する要求に **`POST /mam/voice`**（トークン必須）を足した。`voice` は `^[A-Za-z0-9-]{1,64}$` で、環境変数 `MAM_VOICE_WEIGHTS_DIR`（mam が起動時に渡す `<assets>/voicetrain`。`localruntime.Deps.Env`）の直下のディレクトリの `gpt.ckpt`・`sovits.pth`（`realpath` がそのディレクトリの中であること）だけを読む。**リクエストはパスを持てない**。`""` は起動時の重みに戻す。`/set_gpt_weights`・`/set_sovits_weights`・`/control` は引き続き 404。読み込みの失敗（壊れたファイル）は 500、ファイル無しは 404 |
+| 起動用スクリプト | `mam_gptsovits_server.py` の許可する要求に **`POST /mam/voice`**（トークン必須）を足した。`voice` は `^[A-Za-z0-9-]{1,64}$` で、環境変数 `MAM_VOICE_WEIGHTS_DIR`（Nefos Video が起動時に渡す `<assets>/voicetrain`。`localruntime.Deps.Env`）の直下のディレクトリの `gpt.ckpt`・`sovits.pth`（`realpath` がそのディレクトリの中であること）だけを読む。**リクエストはパスを持てない**。`""` は起動時の重みに戻す。`/set_gpt_weights`・`/set_sovits_weights`・`/control` は引き続き 404。読み込みの失敗（壊れたファイル）は 500、ファイル無しは 404 |
 | **壊れている・無いとき（決定）** | **ゼロショットに黙って戻さず、止める**。重みのファイルが無い・サイズが書いたときと違うキャラクターは `voicerefsvc.ErrNoWeights` → その話者は**声が使えない話者**として実行の前に断る（`localvoice.ErrTrainedVoice`。文: 「学習した声のファイルが無いか壊れている話者がいます: 「ユイ」。Character の「学習した声」を削除してゼロショットの声に戻すか、学習し直してください（別の声に黙って替えることはしません）」）。理由: 学習した声を期待している利用者に、別の声（ゼロショット）で作った声を黙って渡すと、シリーズの途中で声が変わる事故になる。**戻す手段は明示**: 「学習した声を削除」（画面・`delete_character_trained_voice`。ファイルが無くても削除できる）。サーバーが重みを読み込めなかった場合（`/mam/voice` の失敗）も、その行を別の声で作らず `UnavailableError`（理由つき）で止める |
 | バンドル | **学習した重みは書き出し（プロジェクトバンドル）に入れない**。書き出し（`bundlezip.dropTrainedVoices`）は `finetune` をデータから外し、参照音声の録音だけを入れる。取り込み（`voiceref.Reference.Validate`）は `finetune` を持つ行を拒否する。理由: ①重みは約 250 MB の大きなファイルで、声の持ち主の同意の範囲を超えて渡る恐れがある、②重みはこの PC の GPT-SoVITS の版（v2）に結び付き、取り込む先で動く保証が無い、③バンドルの検証（相対パス・サイズ）の枠に入らない。取り込んだ先では、参照音声のゼロショットの声になる（学習し直せる） |
 | バックアップ | 重みはデータディレクトリ（`<assets>/voicetrain/`）にあり、データの移行はアセットのフォルダごとコピーすれば付いていく（`character.voice_reference` の JSON と同じ場所） |
 
 ### 18.6 画面と MCP
 
-- **画面**: Character の参照音声のフォーム（Series 正本の Character の欄・World State の Character の欄）の下に「声の学習（fine-tune）」の欄（`web/organisms/voicetrainpanel`）を足した。ページ読み込み時に `hx-trigger="load"` で自分を読み、参照音声を保存・削除すると（`HX-Trigger: voice-reference-changed`）読み直す。中身: 状態のバッジ（学習中／学習済み／未学習）、**声のコピーには本人の同意が要るという注意書き**（`data-testid="voice-train-consent-notice"`。参照音声のフォームと同じ趣旨。mam は同意を確かめない）、学習に使う音声の一覧（長さ・書き起こし・削除）と合計・限度・足りない理由、音声の追加（ファイル＋書き起こし）、エポック数と「学習を始める」（確認ダイアログで、時間・GPU・再起動でやり直し・本人の同意を言う）、実行中は `<progress>` と段階・エポック・経過・残り時間（3 秒ごとに自分を読み直す）と「学習を中止」、失敗は共通のエラーの箱（`errorbox`）、学習済みの声の情報と「学習した声を削除（ゼロショットに戻す）」。**見込み時間は、始める前には出せない**（実機で測っていない）と画面に書き、最初のエポックが終わったあとから残り時間を出す。
+- **画面**: Character の参照音声のフォーム（Series 正本の Character の欄・World State の Character の欄）の下に「声の学習（fine-tune）」の欄（`web/organisms/voicetrainpanel`）を足した。ページ読み込み時に `hx-trigger="load"` で自分を読み、参照音声を保存・削除すると（`HX-Trigger: voice-reference-changed`）読み直す。中身: 状態のバッジ（学習中／学習済み／未学習）、**声のコピーには本人の同意が要るという注意書き**（`data-testid="voice-train-consent-notice"`。参照音声のフォームと同じ趣旨。Nefos Video は同意を確かめない）、学習に使う音声の一覧（長さ・書き起こし・削除）と合計・限度・足りない理由、音声の追加（ファイル＋書き起こし）、エポック数と「学習を始める」（確認ダイアログで、時間・GPU・再起動でやり直し・本人の同意を言う）、実行中は `<progress>` と段階・エポック・経過・残り時間（3 秒ごとに自分を読み直す）と「学習を中止」、失敗は共通のエラーの箱（`errorbox`）、学習済みの声の情報と「学習した声を削除（ゼロショットに戻す）」。**見込み時間は、始める前には出せない**（実機で測っていない）と画面に書き、最初のエポックが終わったあとから残り時間を出す。
 - ルート（Series 正本は `/series/:id/characters/:characterId/voice-training`、Project は `/projects/:id/characters/:characterId/voice-training`。どちらも同じ形）: `GET`（欄）、`POST`（開始。`epochs_sovits`・`epochs_gpt`）、`POST /cancel`、`POST /clips`（multipart `file`・`text`。アップロードのルート）、`DELETE /clips`・`DELETE /clips/:clipId`、`DELETE /voice`。応答はどれも欄だけ。
 - **MCP**（[mcp-tools-world-notes.md](../../api/mcp-tools-world-notes.md)）: `get_character_voice_training`（状態・データ・限度・学習済み・いまの学習）、`start_character_voice_training`（`job_id` を返す。`get_job` で進み具合）、`cancel_character_voice_training`、`delete_character_voice_training_clips`、`delete_character_trained_voice`、アップロードの `purpose=character_voice_training_clip`。**任意のパス・コマンド・重みのファイル名を受けない**（入力はキャラクターの ID・エポック数・`clip_id`・クリップのファイル）。説明に同意の注意を入れた（エージェントが同意を代わりに確認したことにしてはならない）。
 
@@ -849,7 +849,7 @@ Irodori の選択肢（§14.5）と同じ仕組み（`ResourceSet.Choices`・`Re
 |---|---|
 | **実際の学習**（実物の GPT-SoVITS・GPU・実重みでの 5 つの段階の完走）、**学習した声の質**（ゼロショットより声が近くなるか。日本語の聞き比べ） | **未確認**（`device_only`）。この開発環境は Linux で GPU が無く、実物の統合パッケージ（約 14 GB）も展開していない。偽のプロセス・偽のサーバー・偽のパッケージ（Python のテスト）まで |
 | 公式のスクリプトが、駆動スクリプトの作る環境変数・一時設定で動くこと、進み具合の数え方（S2 の `train.log` の `====> Epoch: N`、S1 の保存される重みのエポック）が実物で合うこと、重みの保存先（駆動スクリプトが `save_weight_dir`・`half_weights_save_dir` を作業ディレクトリへ向ける）が効くこと | **未確認**。ソース（タグ `20250606v2pro`）を読んで合わせた。`if_save_every_weights`・`save_every_epoch` の効き方を含む |
-| **学習の VRAM・所要時間・ディスクの使用量**（空き容量の見積もり 6 GiB ＋ 録音 1 秒あたり 200 KiB は mam の控えめな見積もり。バッチ＝VRAM の GB の半分は公式の既定の考え方） | **未確認**。公式に数値が無く、実測していない。画面は「見込み時間は、始める前には出せません」と言い、最初のエポックの後に残り時間を出す |
+| **学習の VRAM・所要時間・ディスクの使用量**（空き容量の見積もり 6 GiB ＋ 録音 1 秒あたり 200 KiB は Nefos Video の控えめな見積もり。バッチ＝VRAM の GB の半分は公式の既定の考え方） | **未確認**。公式に数値が無く、実測していない。画面は「見込み時間は、始める前には出せません」と言い、最初のエポックの後に残り時間を出す |
 | 12 GB 以下の GPU で、バッチ・学習が収まるか。fp16 が使えない GPU の挙動 | **未確認** |
 | `POST /mam/voice` の `init_vits_weights`／`init_t2s_weights` の実物での切り替え（学習した重みの読み込みと、`None` で起動時の重みに戻ること。設定ファイルのコピーを使うこと） | **未確認**（偽の `api_v2`・Python のテスト）。`TTS.py`（タグ `20250606v2pro`）を読んで書いた |
 | 学習を始めた後の ComfyUI の生成（**逆向きの排他**） | **実装していない**。`gpufree.Guard` は「声（学習）が始まる前に ComfyUI の生成中を断る・空きを作る」だけで、学習の最中に ComfyUI が生成を始めるのは止めない（Irodori-TTS の声と同じ範囲）。止めるには、ComfyUI 側の生成の入口に学習中を断るフックが要る（別 Issue の候補） |
@@ -875,18 +875,18 @@ llama.cpp（§17.1）と同じ「ネイティブのサーバー」のランタ�
 | 対応と変種 | **Windows x64 のみ**。`nvidia`（GPU が NVIDIA、または GPU なし〔CPU 実行〕）→ `ollama-windows-amd64.zip`、1,614,941,966 B、SHA-256 `9ca74a7ab66ec86870b1eecac7df160df08dc4e3a291ab5d2d59bcf9310221c6`（GitHub のアセットの `digest`。**2026-11-07 に実物をダウンロードして測り直し、SHA-256・サイズが一致した**）。展開後は 80 ファイル・2,263,717,391 B（`ollama.exe` と `lib\…`。必要な空き容量はこれと zip の合計）。AMD（Radeon）は別アセット `ollama-windows-amd64-rocm.zip`（258,790,357 B。標準の zip に重ねて展開する形。公式の windows.mdx の記述）で、**この Issue では扱わない**（「この PC では使えません。AMD の GPU は未対応です」の理由。決定が要ること）。Windows arm64（`ollama-windows-arm64.zip`）・MLX 版も扱わない |
 | ライセンス | **MIT**（GitHub API の `license`、リポジトリの `LICENSE`）。商用利用: 可（`yes`）。カードの詳細のソース・ライセンスのリンクは `github.com/ollama/ollama` |
 | 置き場所 | `<mam.exe のあるディレクトリ>\localai\ollama\`（§2 と同じ。`env\`・`downloads\`・`cache\`・`tmp\`・`models\`〔Ollama のモデル。下記〕・`state.json`・ログ）。Ollama 自身のホーム（`%USERPROFILE%\.ollama`）には**書かせない**: 環境変数 `OLLAMA_MODELS` を `localai\ollama\models` にし、`HOME`・`USERPROFILE` を `localai\ollama\home` にして、利用者が別に入れた Ollama のモデル・設定と混ざらないようにする（`USERPROFILE` の付け替えが Windows の Ollama で効くことは**未確認**。効かなければ利用者の `.ollama` に `history` などが書かれる。§19.7） |
-| 起動 | `env\ollama.exe serve` を**直接**起動する。引数は `serve` だけ（任意の引数・実行ファイルは受け付けない。利用者・MCP・設定が渡せるのはモデルの名前だけ）。環境変数: `OLLAMA_HOST=127.0.0.1:{port}`（**`127.0.0.1` だけ**。カタログの検証が、`OLLAMA_HOST` に `127.0.0.1` と `{port}` を含み `0.0.0.0`・`::`・`[` を含まないことを確かめる）・`OLLAMA_MODELS`・`OLLAMA_KEEP_ALIVE=15m`（llama.cpp の `--sleep-idle-seconds 900` と同じ長さ。§17.1）。**利用者自身の `OLLAMA_*`（mam を起動した環境の `OLLAMA_ORIGINS=*`・`OLLAMA_NOPRUNE`・`OLLAMA_NO_CLOUD` など。自分で入れた別の Ollama のための設定）は、管理している Ollama に渡さない**（ランタイム定義の `launch.drop_env_prefixes: ["OLLAMA_"]` に当たる変数を、mam の環境から落としてから、上の mam が決めた値だけを足す）。したがって `OLLAMA_ORIGINS`・`OLLAMA_NOPRUNE` は常に Ollama の既定のまま（既定は localhost 系のみ。mam が `OLLAMA_ORIGINS` を決めて渡すことはしない）。他のランタイム（GPT-SoVITS・llama.cpp など）の環境の引き継ぎは変えない。**Ollama のクラウド機能（クラウドのモデル・Web 検索）は無効にする**: `server.json` の `disable_ollama_cloud: true`（公式の faq.mdx の手順。置き場所は上の `home` の下の `.ollama\server.json`。mam が起動のたびに書く）。クラウドのモデルは、プロンプトを Ollama のサーバーへ送るので、「ローカルで動く」という Issue の前提に反する |
+| 起動 | `env\ollama.exe serve` を**直接**起動する。引数は `serve` だけ（任意の引数・実行ファイルは受け付けない。利用者・MCP・設定が渡せるのはモデルの名前だけ）。環境変数: `OLLAMA_HOST=127.0.0.1:{port}`（**`127.0.0.1` だけ**。カタログの検証が、`OLLAMA_HOST` に `127.0.0.1` と `{port}` を含み `0.0.0.0`・`::`・`[` を含まないことを確かめる）・`OLLAMA_MODELS`・`OLLAMA_KEEP_ALIVE=15m`（llama.cpp の `--sleep-idle-seconds 900` と同じ長さ。§17.1）。**利用者自身の `OLLAMA_*`（Nefos Video を起動した環境の `OLLAMA_ORIGINS=*`・`OLLAMA_NOPRUNE`・`OLLAMA_NO_CLOUD` など。自分で入れた別の Ollama のための設定）は、管理している Ollama に渡さない**（ランタイム定義の `launch.drop_env_prefixes: ["OLLAMA_"]` に当たる変数を、Nefos Video の環境から落としてから、上の Nefos Video が決めた値だけを足す）。したがって `OLLAMA_ORIGINS`・`OLLAMA_NOPRUNE` は常に Ollama の既定のまま（既定は localhost 系のみ。Nefos Video が `OLLAMA_ORIGINS` を決めて渡すことはしない）。他のランタイム（GPT-SoVITS・llama.cpp など）の環境の引き継ぎは変えない。**Ollama のクラウド機能（クラウドのモデル・Web 検索）は無効にする**: `server.json` の `disable_ollama_cloud: true`（公式の faq.mdx の手順。置き場所は上の `home` の下の `.ollama\server.json`。Nefos Video が起動のたびに書く）。クラウドのモデルは、プロンプトを Ollama のサーバーへ送るので、「ローカルで動く」という Issue の前提に反する |
 | 準備の確認 | `GET /api/version` が 200（最長 60 秒。モデルはこの時点では読み込まない。読み込みは最初の生成のとき） |
 | 認証 | **無い**（Ollama には API キーの仕組みが無い。llama.cpp の `LLAMA_API_KEY` に当たるものが無い）。§19.4 |
 | 同梱 | しない。実行時に取得する。`THIRD_PARTY_NOTICES.md`・README に Ollama（MIT）と 3 つのモデルの一覧（出典・ライセンス）を足す |
 
-導入・起動・停止・自動起動（既定オフ。最初の LLM の呼び出しで起動）・削除・状態・排他・`View` は §5〜§8 と同じ。`Remove` は `env\`・`downloads\`・`cache\`・`tmp\`・`home\` を消し、**`models\`（取得したモデル。数十 GB）は消す前に確認する**（`hx-confirm`「取得した Ollama のモデルも消えます」。他のランタイムの `Remove`〔重みも消す〕と同じ振る舞いで、確認の文だけが違う）。更新（固定版が上がった）は導入し直しで、`models\` は残す。**モデルの取得（`ollama:<名前>:<タグ>` のジョブ。待ちを含む）が動いている間は、`Remove`・導入し直し（更新。`InstallWeights` も）・`Stop`（カードの「停止」）を `ErrBusy`（HTTP 409。理由に取得中のモデル名: 「<名前> を取得している最中です。取得が終わってから、または取得を中断してからやり直してください」）で断る**（サーバーは止めず、ファイルは消さない。取得は同じサーバーの `/api/pull` を使っていて、止めると取得が途中で失敗するため）。取得が終わった（または中断した）あとは通る。層をまたぐので `localruntime.Deps.HeldBy`（関数値）で取得側〔`ollamapull.Service.Pulling`〕から渡す（循環 import を作らない）。LLM の呼び出しの前の `Prepare` と、生成の前のメモリ降ろし（§19.5。止めずに `keep_alive: 0`）は、この規則の外。mam の終了（`Close`）は断らない。
+導入・起動・停止・自動起動（既定オフ。最初の LLM の呼び出しで起動）・削除・状態・排他・`View` は §5〜§8 と同じ。`Remove` は `env\`・`downloads\`・`cache\`・`tmp\`・`home\` を消し、**`models\`（取得したモデル。数十 GB）は消す前に確認する**（`hx-confirm`「取得した Ollama のモデルも消えます」。他のランタイムの `Remove`〔重みも消す〕と同じ振る舞いで、確認の文だけが違う）。更新（固定版が上がった）は導入し直しで、`models\` は残す。**モデルの取得（`ollama:<名前>:<タグ>` のジョブ。待ちを含む）が動いている間は、`Remove`・導入し直し（更新。`InstallWeights` も）・`Stop`（カードの「停止」）を `ErrBusy`（HTTP 409。理由に取得中のモデル名: 「<名前> を取得している最中です。取得が終わってから、または取得を中断してからやり直してください」）で断る**（サーバーは止めず、ファイルは消さない。取得は同じサーバーの `/api/pull` を使っていて、止めると取得が途中で失敗するため）。取得が終わった（または中断した）あとは通る。層をまたぐので `localruntime.Deps.HeldBy`（関数値）で取得側〔`ollamapull.Service.Pulling`〕から渡す（循環 import を作らない）。LLM の呼び出しの前の `Prepare` と、生成の前のメモリ降ろし（§19.5。止めずに `keep_alive: 0`）は、この規則の外。Nefos Video の終了（`Close`）は断らない。
 
 ### 19.2 Ollama のモデル（`data/ollama/models.json`。新設）
 
 > 置き場所は、当初の想定の `data/assets/ollama.json` ではなく `data/ollama/models.json`: `data/assets/` は重みの集合（`ResourceSet`）のスキーマの置き場で、Ollama のモデルは層・manifest の形が違うため。ランタイム `ollama` は `own_models: true`（`data/assets/ollama.json` を持たない。検証が、持つものには要求し、持たないものには禁じる）。
 
-Ollama のモデルは、**mam の `fetch` ではなく、管理している Ollama 自身の `POST /api/pull` で取得する**（Ollama のモデルは複数の blob と manifest の組で、置き場所の規則・再開・重複排除は Ollama が持つ。mam が直接書くと、`OLLAMA_MODELS` の内部形式に依存する）。mam が持つのは、**厳選した名前の一覧**（カタログ）と、取得後の照合だけ。
+Ollama のモデルは、**Nefos Video の `fetch` ではなく、管理している Ollama 自身の `POST /api/pull` で取得する**（Ollama のモデルは複数の blob と manifest の組で、置き場所の規則・再開・重複排除は Ollama が持つ。Nefos Video が直接書くと、`OLLAMA_MODELS` の内部形式に依存する）。Nefos Video が持つのは、**厳選した名前の一覧**（カタログ）と、取得後の照合だけ。
 
 | 名前（Ollama の `<名前>:<タグ>`） | 画面の名前 | モデルの層（`model`）のサイズ・digest（レジストリの manifest で確認した値） | 取得の合計 | ライセンス（レジストリの `license` の層の本文） |
 |---|---|---|---|---|
@@ -896,7 +896,7 @@ Ollama のモデルは、**mam の `fetch` ではなく、管理している Oll
 
 （確認日 2026-11-07。`GET https://registry.ollama.ai/v2/library/<名前>/manifests/<タグ>` の `layers[]`、`license` の層の本文は `…/blobs/<digest>`。**Ollama のタグは書き換えられる**ので、digest は「その日の実物」を記録したもので、将来 `pull` が別の中身を返すことがある。照合の扱いは §19.3。）
 
-- 選んだ 3 つは llama.cpp の選択肢（§17.2）の純正モデルと同じ系統。**非検閲（abliterated）の派生は載せない**（Ollama のレジストリのコミュニティ版は、ライセンスの層が無いものが多く、`huihui_ai/…` などの名前の空間にあって、mam がライセンスと成人向けの扱いを確かめられない。#1008 後半の llama.cpp では Hugging Face のカードで確かめた）。載せる名前を増やすときは、上と同じ確認（manifest の層・ライセンスの本文）を要する。
+- 選んだ 3 つは llama.cpp の選択肢（§17.2）の純正モデルと同じ系統。**非検閲（abliterated）の派生は載せない**（Ollama のレジストリのコミュニティ版は、ライセンスの層が無いものが多く、`huihui_ai/…` などの名前の空間にあって、Nefos Video がライセンスと成人向けの扱いを確かめられない。#1008 後半の llama.cpp では Hugging Face のカードで確かめた）。載せる名前を増やすときは、上と同じ確認（manifest の層・ライセンスの本文）を要する。
 - **画面に出さない・使わない**: タグが `cloud` を含むもの（クラウドのモデル）。レジストリの名前の空間が `library` 以外のもの。
 
 ### 19.3 取得（`pull`）の流れ・進捗・中断・照合
@@ -905,7 +905,7 @@ Ollama のモデルは、**mam の `fetch` ではなく、管理している Oll
 - **取得**: `POST http://127.0.0.1:<port>/api/pull`（`{"model":"<名前>:<タグ>","stream":true}`）の NDJSON を読む。`status`（`pulling manifest`・`pulling <digest>`・`verifying sha256 digest`・`writing manifest`・`success`）と `total`・`completed` から進捗（%・バイト数・段階の日本語）を作る。層ごとの `total`・`completed` は、層が切り替わるたびに 0 に戻る（公式の api.md）ので、**合計の進捗は、カタログの合計のサイズ（上の表）に対する、確定した層の分＋今の層の `completed`** で出す（Ollama の応答に全体の合計は無い）。`error` のある行は失敗（日本語にして出す。ディスクの空き不足・ネットワーク・名前が無い）。
 - **空き容量**: 取得の前に、`models\` のあるドライブの空きが、合計のサイズ＋ 1 GiB に足りなければ、ジョブを作らず 409（`*fetch.NoSpaceError`。他のモデルの導入と同じ文面「必要量・空き・場所」）。
 - **中断**: `POST /model-manager/jobs/:job/cancel`（`target` が `ollama:` なら管理している Ollama への `/api/pull` の接続を閉じる）。Ollama は途中の層を残すので、取り直すと続きから進む想定（**未確認**。§19.7）。
-- **照合**（`success` のあと）: `OLLAMA_MODELS` の `manifests\registry.ollama.ai\library\<名前>\<タグ>` を読み、`model` の層の digest・サイズがカタログと同じかを確かめる。**同じ → 状態 `verified`**。**違う → 状態 `changed`**（バッジ「上流で更新されています」と注記。「モデルの内容がカタログに記録した版と違います。使えますが、mam は確かめていません。出典のページで内容を確認してください」。**削除も使用の禁止もしない**: Ollama が自分で digest を検証して書いた正規のファイルで、タグが更新されただけの場合が多いため）。manifest が読めない（形式が変わった）ときも `changed`。Ollama 自身が各層の SHA-256 を manifest の digest と照合する（`verifying sha256 digest`）ので、**転送の破損は Ollama が検出する**。mam の固定との違いは、**「どの内容を取得するか」を mam が固定できない**（タグが動く）点で、これは llama.cpp・ComfyUI のモデル（コミット固定）より弱い。決定が要ること。
+- **照合**（`success` のあと）: `OLLAMA_MODELS` の `manifests\registry.ollama.ai\library\<名前>\<タグ>` を読み、`model` の層の digest・サイズがカタログと同じかを確かめる。**同じ → 状態 `verified`**。**違う → 状態 `changed`**（バッジ「上流で更新されています」と注記。「モデルの内容がカタログに記録した版と違います。使えますが、Nefos Video は確かめていません。出典のページで内容を確認してください」。**削除も使用の禁止もしない**: Ollama が自分で digest を検証して書いた正規のファイルで、タグが更新されただけの場合が多いため）。manifest が読めない（形式が変わった）ときも `changed`。Ollama 自身が各層の SHA-256 を manifest の digest と照合する（`verifying sha256 digest`）ので、**転送の破損は Ollama が検出する**。Nefos Video の固定との違いは、**「どの内容を取得するか」を Nefos Video が固定できない**（タグが動く）点で、これは llama.cpp・ComfyUI のモデル（コミット固定）より弱い。決定が要ること。
 - **削除**: `DELETE /model-manager/ollama/models?name=<名前>:<タグ>`（名前にコロンがあるのでクエリ。管理している Ollama の `DELETE /api/delete`）。使われている LLM の割り当て（`llmassign` が `local` の `model` に指している）があれば 422（使われている Agent の名前を出す。HF の導入の削除と同じ）。取得中は 409。未取得は 409。Ollama が止まっていれば、削除の間だけ起動する。
 - **一覧と状態**: `GET /api/tags`（Ollama が持つモデル）とカタログを合わせる。状態: `missing`（未取得）・`pulling`・`installed`（取得済み・`verified`）・`changed`・`unavailable`（Ollama が未導入・起動できない）。**カタログに無いモデル**（利用者が自分で `ollama pull` したもの）は、`GET /api/tags` にあれば「そのほかのモデル」として名前・サイズだけを一覧の末尾に出す（取得・削除はしない。削除は利用者の `ollama` で）。自由入力の取得は決定が要ること（既定: しない）。
 - **LLM の割り当て**: 割り当ての `model` は `<名前>:<タグ>`（`gemma4:12b`）。`use` が `ollama` の間、モデルの選択（`GET /model-picker/…` の `llm`）には、`GET /api/tags` の取得済みのモデルだけが出る（llama.cpp の「選んだ 1 つだけ」〔local-llm.md §10.1〕と違い、Ollama は複数のモデルを持てるので、すべて出す）。**モデルを切り替えても Ollama は止まらない**（呼び出しの `model` で決まる）。
@@ -913,11 +913,11 @@ Ollama のモデルは、**mam の `fetch` ではなく、管理している Oll
 
 ### 19.4 認証が無いことと、受け入れる危険
 
-管理している Ollama は `127.0.0.1` だけで待ち受けるが、**認証が無い**。同じ PC のほかのプログラム・ブラウザの Web ページ（DNS リバインディングや Content-Type を `text/plain` にした単純な POST）から `/api/pull`・`/api/delete`・`/api/generate` を呼べる可能性がある。llama.cpp（`LLAMA_API_KEY` で防ぐ。§17.1）・GPT-SoVITS（起動用スクリプトが Host を確かめる。§5.2）のような防ぎ方が、Ollama には**ない**。mam が前に認証つきのリバースプロキシを置く案もあるが、新しいプロセスと仕組みを足すので、この Issue では**足さない**（決定が要ること）。受け入れる範囲: 利用者が別に入れた Ollama を `custom` で使っても同じ状態であること、`OLLAMA_ORIGINS` の既定が localhost 系だけであること、Ollama の新しい版が Host の確認を持つこと（CVE-2024-28224 の修正。詳細は**未確認**。§19.7）。画面の「?」と詳細に、「このサーバーには認証がありません。信用できないソフトを同じ PC で動かさないでください」を書く。
+管理している Ollama は `127.0.0.1` だけで待ち受けるが、**認証が無い**。同じ PC のほかのプログラム・ブラウザの Web ページ（DNS リバインディングや Content-Type を `text/plain` にした単純な POST）から `/api/pull`・`/api/delete`・`/api/generate` を呼べる可能性がある。llama.cpp（`LLAMA_API_KEY` で防ぐ。§17.1）・GPT-SoVITS（起動用スクリプトが Host を確かめる。§5.2）のような防ぎ方が、Ollama には**ない**。Nefos Video が前に認証つきのリバースプロキシを置く案もあるが、新しいプロセスと仕組みを足すので、この Issue では**足さない**（決定が要ること）。受け入れる範囲: 利用者が別に入れた Ollama を `custom` で使っても同じ状態であること、`OLLAMA_ORIGINS` の既定が localhost 系だけであること、Ollama の新しい版が Host の確認を持つこと（CVE-2024-28224 の修正。詳細は**未確認**。§19.7）。画面の「?」と詳細に、「このサーバーには認証がありません。信用できないソフトを同じ PC で動かさないでください」を書く。
 
 ### 19.5 VRAM・起動
 
-llama.cpp（local-llm.md §10.3）と同じ `gpufree.Guard` に載せる: LLM の呼び出しの前に ComfyUI が生成中なら待つ・画像・動画の生成の前に Ollama のモデルを降ろす（`keep_alive: 0` を送る。メモリ降ろしの既存の仕組みと同じ呼び出し。サーバーは止めない。取得中でも通る）・アイドルは `OLLAMA_KEEP_ALIVE=15m`。「画像・動画を作る前に、Ollama のモデルをメモリから降ろす」のスイッチ（`unload_before_generation`）は、管理している Ollama でも効く（local-llm.md §11）。27B のモデルは ComfyUI と同居できない（VRAM の目安は llama.cpp の表〔§17.2〕と同じ。mam の推定で未確認）。
+llama.cpp（local-llm.md §10.3）と同じ `gpufree.Guard` に載せる: LLM の呼び出しの前に ComfyUI が生成中なら待つ・画像・動画の生成の前に Ollama のモデルを降ろす（`keep_alive: 0` を送る。メモリ降ろしの既存の仕組みと同じ呼び出し。サーバーは止めない。取得中でも通る）・アイドルは `OLLAMA_KEEP_ALIVE=15m`。「画像・動画を作る前に、Ollama のモデルをメモリから降ろす」のスイッチ（`unload_before_generation`）は、管理している Ollama でも効く（local-llm.md §11）。27B のモデルは ComfyUI と同居できない（VRAM の目安は llama.cpp の表〔§17.2〕と同じ。Nefos Video の推定で未確認）。
 
 ### 19.6 macOS（Apple Silicon）は対応外にした（既定。決定が要ること）
 

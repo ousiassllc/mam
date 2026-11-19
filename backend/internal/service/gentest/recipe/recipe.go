@@ -143,7 +143,7 @@ func (s *Service) load(ctx context.Context, id string) (Recipe, error) {
 	}
 	r, err := fromRow(row)
 	if err != nil {
-		return Recipe{}, gterr.Invalid("このレシピは読めません（新しい版の mam が保存した可能性があります）")
+		return Recipe{}, gterr.Invalid("このレシピは読めません（新しい版の Nefos Video が保存した可能性があります）")
 	}
 	return r, nil
 }

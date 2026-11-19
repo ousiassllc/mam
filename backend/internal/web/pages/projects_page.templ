@@ -13,7 +13,7 @@ import (
 templ ProjectsPage(csrfToken string, projects []domain.Project, form organisms.NewProjectFormData) {
 	@layout.AppLayout("プロジェクト", csrfToken, sidenav.At(sidenav.Projects)) {
 		@pagehead.Main(pagehead.Wide) {
-			@pagehead.Header("mam", "Autonomous Shot Studio", "")
+			@pagehead.Header("Nefos Video", "Autonomous Shot Studio", "")
 			@organisms.NewProjectForm(form)
 			@organisms.ProjectImportForm(organisms.ProjectImportFormData{})
 			<h2 class="text-sm font-semibold text-ink">プロジェクト</h2>

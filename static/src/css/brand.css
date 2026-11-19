@@ -1,0 +1,23 @@
+/* The logo of Nefos Video comes in a Light and a Dark file (static/brand), as they are: the page shows the one of its theme. This is
+   the same choice as tokens.css makes for the colours: the data-theme of <html>, and the OS while the page has none of its own. */
+.brand-dark {
+  display: none;
+}
+
+:root[data-theme="dark"] .brand-light {
+  display: none;
+}
+
+:root[data-theme="dark"] .brand-dark {
+  display: block;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .brand-light {
+    display: none;
+  }
+
+  :root:not([data-theme="light"]) .brand-dark {
+    display: block;
+  }
+}

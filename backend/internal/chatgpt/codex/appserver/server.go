@@ -42,7 +42,7 @@ var ErrStart = errors.New("codex app-server: could not start")
 
 // ErrNotOurHome means the app-server reported a CODEX_HOME other than mam's own: mam would then share the user's
 // credentials and settings, so the process is stopped.
-var ErrNotOurHome = errors.New("codex app-server: it does not use mam's own CODEX_HOME")
+var ErrNotOurHome = errors.New("codex app-server: it does not use Nefos Video's own CODEX_HOME")
 
 // Options of a Server.
 type Options struct {
@@ -172,7 +172,7 @@ func (s *Server) Ensure(ctx context.Context) (*Session, error) {
 		switch {
 		case s.closed:
 			s.mu.Unlock()
-			return nil, fmt.Errorf("%w: mam is shutting down", ErrStart)
+			return nil, fmt.Errorf("%w: Nefos Video is shutting down", ErrStart)
 		case s.cur != nil:
 			cur := s.cur
 			s.mu.Unlock()

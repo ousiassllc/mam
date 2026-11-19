@@ -2,6 +2,7 @@ package layout_test
 
 import (
 	"context"
+	"path/filepath"
 	"strings"
 	"testing"
 
@@ -65,6 +66,20 @@ func TestAppLayoutAt_CanonicalLinkIsInTheHeadOnlyWhenGiven(t *testing.T) {
 	assert.Less(t, strings.Index(with, `rel="canonical"`), strings.Index(with, "</head>"))
 
 	assert.NotContains(t, render(ctx, t, layout.AppLayout("t", "csrf", sidenav.At(sidenav.None))), `rel="canonical"`)
+}
+
+// The tab says Nefos Video and shows its favicon: the head names the page, the product and the files of static/brand that the build
+// copies into dist (static/build.mjs), so the links must point at files the brand folder has.
+func TestAppLayout_HeadHasTheProductTitleAndTheFavicon(t *testing.T) {
+	ctx := templ.WithChildren(context.Background(), templ.Raw("<main></main>"))
+	page := render(ctx, t, layout.AppLayout("Settings", "csrf", sidenav.At(sidenav.None)))
+	head := page[:strings.Index(page, "</head>")]
+
+	assert.Contains(t, head, `<title>Settings | Nefos Video</title>`)
+	for _, file := range []string{"favicon.ico", "icon-32-light.png", "icon-16-light.png", "icon-192.png", "manifest.webmanifest"} {
+		assert.Contains(t, head, `href="/static/brand/`+file+`"`)
+		assert.FileExists(t, filepath.Join("..", "..", "..", "..", "static", "brand", file), "the link points at a file of static/brand")
+	}
 }
 
 // The desktop window (Wails) is a web view: a swipe on a trackpad past the edge of the page stretches the whole

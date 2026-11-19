@@ -2,7 +2,7 @@
 
 Issue #1008（前半）。LLM のプロバイダーに、自分の PC や LAN で動く **OpenAI 互換のサーバー**（Ollama・LM Studio・llama.cpp server）を足す。API キー不要・オフライン・内容の制限を自分で決められる形で、企画・脚本・Shot 計画などを回せるようにする。Reasoning LLM Adapter の全体は [`model-adapters.md`](model-adapters.md) §2。共通のエラーは [`errors.md`](errors.md)。モデルの絞り込み・使えるかどうかは [`model-manager/model-filter.md`](model-manager/model-filter.md)。
 
-**構成**: §1〜§9 は「すでに動いている OpenAI 互換サーバー」につなぐ部分（前半）。**GGUF のカタログ（モデルマネージャーからのダウンロード）と、mam が管理する llama.cpp server（同梱ランタイム）は §10**（後半）。§7 の推奨モデルは、そのカタログに入れた 6 系統の調査結果。
+**構成**: §1〜§9 は「すでに動いている OpenAI 互換サーバー」につなぐ部分（前半）。**GGUF のカタログ（モデルマネージャーからのダウンロード）と、Nefos Video が管理する llama.cpp server（同梱ランタイム）は §10**（後半）。§7 の推奨モデルは、そのカタログに入れた 6 系統の調査結果。
 
 ## 1. プロバイダー `local`
 
@@ -16,7 +16,7 @@ Issue #1008（前半）。LLM のプロバイダーに、自分の PC や LAN �
 ## 2. モデル一覧・使えるか（#1013）
 
 - `llmmodels.Service.List("local")`: `GET /v1/models` の `data[].id`（埋め込み・rerank・whisper を含む名前は除く）。**キーは要らない**（あれば付ける）。10 分キャッシュ、失敗は 1 分。アドレスは `Options.LocalBaseURL`（設定画面で変えられるので呼び出しのたびに読む）。
-- サーバーに接続できない・一覧を読めないときは `Fallback = FallbackLocalDown`（文言「ローカルサーバーに接続できません」）、`Source = default`（mam が持つ候補は無いので `Models` は空）、`Availability` は**使えない**（`Reason = endpoint_unusable`、`settings_route = /settings/llm`、メッセージに「設定の「テキスト生成（LLM）」の「ローカル LLM サーバー」で確かめます」）。接続できてモデルが 0 件のサーバーは、接続できているので使える（`SourceAPI`・空の一覧）。
+- サーバーに接続できない・一覧を読めないときは `Fallback = FallbackLocalDown`（文言「ローカルサーバーに接続できません」）、`Source = default`（Nefos Video が持つ候補は無いので `Models` は空）、`Availability` は**使えない**（`Reason = endpoint_unusable`、`settings_route = /settings/llm`、メッセージに「設定の「テキスト生成（LLM）」の「ローカル LLM サーバー」で確かめます」）。接続できてモデルが 0 件のサーバーは、接続できているので使える（`SourceAPI`・空の一覧）。
 - `Availability("local")`（ネットワークを使わない）は、`List` が覚えている結果に従う（成功なら使える、失敗の記憶〜1 分は使えない）。まだ一度も読んでいなければ使えるとみなす（キーのあるプロバイダーと同じ）。
 - `Candidates` の項目（`Candidate.Item`）は `Kinds=[llm]`、`Origin=local`（このアプリが動く PC か LAN のサーバー）、`Installed=true`（サーバーが一覧に出したもの）、`Provider=local`。ピッカーの初期の絞り込み（使えるものだけ）で、接続できているローカルのモデルが出て、接続できないときは「使えないものも表示」に理由つきで出る。`Warnings` は、保存済みの割り当てが接続できないサーバーを指しているときに警告する（保存は拒まない）。
 - 割り当て: 14 の Agent すべての primary / fallback に `local` を選べる（`llmassign` の検証は `llm.Providers()` に従う。モデル名は空・空白・改行・128 バイト超を拒否する従来の規則のまま）。`set_llm_assignment`（MCP）も同じ。一覧にないモデル名は拒否せず警告して保存する（接続できないサーバーのときは「確かめられません」の警告）。
@@ -60,9 +60,9 @@ ComfyUI と同じ GPU（16GB 級）でローカル LLM を動かすと、LLM の
 
 1. **設定でオンにしたときだけ**、ローカルの画像・動画の生成を始める前に、Ollama のモデルをメモリから降ろす。既定はオフ（`providers.local.unload_before_generation`）。理由: 降ろすと次の LLM の呼び出しでモデルを読み込み直すので、数秒〜数十秒遅くなる。CPU メモリや別の GPU に余裕がある人には不要。Ollama 以外のサーバーを黙って操作しない。
 2. **実装**（`llmlocal.Service.BeforeGeneration`／`UnloadModels`）: `GET {base_url}/api/ps`（Ollama が今メモリに置いているモデルの一覧。公式の API）で名前を取り、各モデルに `POST {base_url}/api/generate` `{"model": <名前>, "keep_alive": 0}`（公式の FAQ にある「すぐ降ろす」方法）。全体で 10 秒まで。キー（あれば）は付ける。アプリでは、ローカルのモデルの生成の前に呼ばれる `Prepare` のフック（同梱の ComfyUI を起動するのと同じ場所）から呼ぶ。**失敗は警告ログだけで、生成は止めない**（降ろせなくても生成は試せる）。
-3. **Ollama 以外**（LM Studio・llama.cpp server）: `/api/ps` が無い（404）ので何もしない。LM Studio は「Idle TTL and Auto-Evict」（モデルを使わない間に自動で降ろす）をサーバー側で設定する。llama.cpp server は、mam が管理するもの（§10）なら生成の前に止まる。自分で立てた llama-server は、必要なときだけ立ち上げる、またはモデルサイズ・`-ngl`（GPU に載せる層の数）で VRAM に収める。mam の画面・API には、これらを降ろす操作は入れていない（OpenAI 互換の API には「降ろす」が無い）。
+3. **Ollama 以外**（LM Studio・llama.cpp server）: `/api/ps` が無い（404）ので何もしない。LM Studio は「Idle TTL and Auto-Evict」（モデルを使わない間に自動で降ろす）をサーバー側で設定する。llama.cpp server は、Nefos Video が管理するもの（§10）なら生成の前に止まる。自分で立てた llama-server は、必要なときだけ立ち上げる、またはモデルサイズ・`-ngl`（GPU に載せる層の数）で VRAM に収める。Nefos Video の画面・API には、これらを降ろす操作は入れていない（OpenAI 互換の API には「降ろす」が無い）。
 4. **実機での確認はしていない**: Ollama の `/api/ps`・`keep_alive: 0` は公式ドキュメントの API に合わせて実装し、偽の Ollama サーバー（httptest）でリクエストの形をテストした。実際の Ollama と ComfyUI を同時に動かしての確認は device_only（悠太さんの PC）。
-5. mam が管理する llama.cpp は、画像・動画の生成の前に**止めて VRAM を空ける**（§10.3）。LLM の起動の前に ComfyUI が生成中なら待ち、空いていれば ComfyUI のモデルを降ろす（§10.3。逆方向）。Ollama 以外の外部サーバーは従来どおり何もしない。
+5. Nefos Video が管理する llama.cpp は、画像・動画の生成の前に**止めて VRAM を空ける**（§10.3）。LLM の起動の前に ComfyUI が生成中なら待ち、空いていれば ComfyUI のモデルを降ろす（§10.3。逆方向）。Ollama 以外の外部サーバーは従来どおり何もしない。
 
 ## 6. 非機能の注意
 
@@ -96,8 +96,8 @@ ComfyUI と同じ GPU（16GB 級）でローカル LLM を動かすと、LLM の
 
 1. [Ollama](https://ollama.com/download) を入れて起動する（既定で `http://localhost:11434`）。
 2. モデルを取る。Hugging Face の GGUF はそのまま取れる: `ollama pull hf.co/mradermacher/gemma-4-12B-it-GGUF:Q4_K_M`（`ollama list` で名前を確かめる）。
-3. 文脈の長さを確かめる。Ollama の既定は 4096 トークン（`OLLAMA_CONTEXT_LENGTH` で変える）で、mam の企画・脚本の入力は長く、既定のままだと途中が切れて答えが崩れることがある。`OLLAMA_CONTEXT_LENGTH=16384 ollama serve`（systemd・Windows・macOS の環境変数の設定は Ollama の FAQ）。大きくするほど VRAM を使う。
-4. mam の設定「テキスト生成（LLM）」→ カード「ローカル LLM サーバー」で、ベース URL を `http://localhost:11434` にして「接続テスト」→ 「保存」。モデルの一覧に `ollama list` の名前（`hf.co/…:Q4_K_M` など）が出る。
+3. 文脈の長さを確かめる。Ollama の既定は 4096 トークン（`OLLAMA_CONTEXT_LENGTH` で変える）で、Nefos Video の企画・脚本の入力は長く、既定のままだと途中が切れて答えが崩れることがある。`OLLAMA_CONTEXT_LENGTH=16384 ollama serve`（systemd・Windows・macOS の環境変数の設定は Ollama の FAQ）。大きくするほど VRAM を使う。
+4. Nefos Video の設定「テキスト生成（LLM）」→ カード「ローカル LLM サーバー」で、ベース URL を `http://localhost:11434` にして「接続テスト」→ 「保存」。モデルの一覧に `ollama list` の名前（`hf.co/…:Q4_K_M` など）が出る。
 5. 「LLM の割り当て」で Agent のプロバイダーを `local`、モデルを選ぶ。
 6. ComfyUI と同居するなら、カードの「画像・動画を作る前に、Ollama のモデルをメモリから降ろす」をオンにする（§5.3）。降ろさない代わりに `OLLAMA_KEEP_ALIVE=0` を Ollama 側に設定する方法もある（使うたびに降ろす）。
 
@@ -105,13 +105,13 @@ ComfyUI と同じ GPU（16GB 級）でローカル LLM を動かすと、LLM の
 
 1. [LM Studio](https://lmstudio.ai/) でモデルをダウンロードする（検索欄に `mradermacher/gemma-4-12B-it-GGUF` など。量子化は `Q4_K_M`）。
 2. 「Developer」タブ（または `lms server start`）で**ローカルサーバーを起動**する（既定 `http://localhost:1234`）。モデルは読み込んでおく（または Just-In-Time 読み込み）。LAN の他の PC から使うときは「Serve on Local Network」。
-3. mam のカードのベース URL を `http://localhost:1234`（`/v1` を付けてもよい）にして「接続テスト」→「保存」。
-4. 「Idle TTL and Auto-Evict」を設定すると、使っていないモデルが自動で降ろされ、ComfyUI との VRAM の取り合いが減る（mam からは操作しない）。
+3. Nefos Video のカードのベース URL を `http://localhost:1234`（`/v1` を付けてもよい）にして「接続テスト」→「保存」。
+4. 「Idle TTL and Auto-Evict」を設定すると、使っていないモデルが自動で降ろされ、ComfyUI との VRAM の取り合いが減る（Nefos Video からは操作しない）。
 
 ### 8.3 llama.cpp server
 
 1. `llama-server -m <モデル>.gguf --port 8080 -ngl 99 -c 16384` のように起動する（`-ngl`: GPU に載せる層の数、`-c`: 文脈の長さ）。`--jinja` を付けると chat template を使うモデルで `enable_thinking` などが効く。
-2. mam のカードのベース URL を `http://localhost:8080` にする。サーバーを `--api-key` で起動したときだけ、カードの API キーに同じキーを入れる。
+2. Nefos Video のカードのベース URL を `http://localhost:8080` にする。サーバーを `--api-key` で起動したときだけ、カードの API キーに同じキーを入れる。
 3. llama-server は 1 つのモデルを読み込んで動かす。モデルの一覧には読み込んだ 1 つが出る。
 
 ## 9. テスト
@@ -123,16 +123,16 @@ ComfyUI と同じ GPU（16GB 級）でローカル LLM を動かすと、LLM の
 - 統合（`orchestrator`）: 偽の OpenAI 互換サーバーで、Producer・Writer・Director・Storyboard のすべてを `local` に割り当て、`response_format` を拒否するサーバー・`<think>` つきの答え・コードフェンスの答え・最初は JSON でない答え（リトライ）を含めて、**企画が Shot 計画・絵コンテまで最後まで通る**（`TestHandle_PlanningRunsToTheEndOnALocalOpenAICompatibleServer`）。
 - **device_only（未確認）**: 実際の Ollama・LM Studio・llama.cpp server につないでの企画の通し、実際の Ollama の `/api/ps`・`keep_alive: 0` での VRAM の解放と ComfyUI との同居、各モデルの出力の質・JSON の守り方。
 
-## 10. mam が管理する llama.cpp（GGUF の LLM。Issue #1008 後半）
+## 10. Nefos Video が管理する llama.cpp（GGUF の LLM。Issue #1008 後半）
 
-モデルマネージャーの「ローカル」から llama.cpp の `llama-server` と GGUF の重みを導入し、mam が起動・停止して LLM のプロバイダー `local` から使う。ランタイムの定義・導入・モデルの選択は [model-manager/local-runtime.md §17](model-manager/local-runtime.md)（Irodori-TTS と同じ基盤）。この節は、LLM として使う側。
+モデルマネージャーの「ローカル」から llama.cpp の `llama-server` と GGUF の重みを導入し、Nefos Video が起動・停止して LLM のプロバイダー `local` から使う。ランタイムの定義・導入・モデルの選択は [model-manager/local-runtime.md §17](model-manager/local-runtime.md)（Irodori-TTS と同じ基盤）。この節は、LLM として使う側。
 
 ### 10.1 「この PC の llama.cpp を使う」（管理されたサーバー）
 
-- 設定「テキスト生成（LLM）」のカード「ローカル LLM サーバー」に、チェックボックス「この PC の llama.cpp を使う」（`providers.local.use_managed_runtime`。既定オフ）。**#1104 のあと、これはモデルマネージャーの「使うサーバー」（`#mm-llm-use`）のラジオ `llama-cpp` になる**（§11）。オンの間、プロバイダー `local` の呼び出しは**ベース URL・API キーを使わず**、管理サーバーの `http://127.0.0.1:<ポート>` に向かう。起動中はそのポートを自動で使い（ポートは起動のたびに mam が決める。前回のポートを優先）、ベース URL の欄は別のサーバー（Ollama など）用にそのまま残る。オフにすれば元のアドレスに戻る。
+- 設定「テキスト生成（LLM）」のカード「ローカル LLM サーバー」に、チェックボックス「この PC の llama.cpp を使う」（`providers.local.use_managed_runtime`。既定オフ）。**#1104 のあと、これはモデルマネージャーの「使うサーバー」（`#mm-llm-use`）のラジオ `llama-cpp` になる**（§11）。オンの間、プロバイダー `local` の呼び出しは**ベース URL・API キーを使わず**、管理サーバーの `http://127.0.0.1:<ポート>` に向かう。起動中はそのポートを自動で使い（ポートは起動のたびに Nefos Video が決める。前回のポートを優先）、ベース URL の欄は別のサーバー（Ollama など）用にそのまま残る。オフにすれば元のアドレスに戻る。
 - カードは、サーバーの状態（`unsupported` この PC では使えない／`not_installed` 未導入か重みが不足／`stopped` 導入済み（最初の呼び出しで起動）／`starting`／`running`／`failed`）と、使うモデル名、理由と何をすればよいか、モデルマネージャーへのリンクを出す。管理サーバーが無い PC（macOS など）では、理由とクラウド・Ollama への案内。モデルの導入と選択はモデルマネージャーでする（カードは選ばない）。
 - **モデル名**: 管理サーバーが答えるモデル名は、選んだモデルの id（`--alias`。例 `gemma-4-12b-it`・`qwen3.8-27b`）。`list_llm_models` の `local` と LLM の割り当てのモデル選択には、管理サーバーを選んでいる間は**そのモデル 1 つだけ**が出る（止まっていても出る。未導入・非対応は 0 件）。割り当ての `model` にその id を指定する。モデルを切り替える（モデルマネージャー・MCP の `select_local_runtime_model`）とサーバーが止まり、次の呼び出しで新しいモデルが起動する。
-- **起動**: 最初の LLM の呼び出し（`localllm` のバックエンドが `Endpoint` を呼ぶ）でサーバーが止まっていれば起動し、`/health` が 200 になるまで待つ（モデルの読み込みで数十秒〜数分。起動は呼び出しのものではなく、ランタイムの `start_timeout_sec`（llama.cpp は 900 秒）だけが区切る。呼び出しは完了を待つだけで、`timeout_seconds` が先に切れても読み込み中のサーバーは止められず、その呼び出しだけが失敗する。次の呼び出しが同じ起動に合流する。同時の呼び出しでも起動は 1 回。大きなモデルでは、最初の呼び出しが失敗しても 2 回目以降で使えるようになる）。自動起動（モデルマネージャーのカードのスイッチ）をオンにすれば mam の起動時に起動する（既定オフ）。起動できないとき（非対応・未導入・重みが不足・ComfyUI が生成中のまま・起動の失敗）は、理由つきのエラーで、**黙って別のアドレスに切り替えない**。エージェントの呼び出しからは「ローカルサーバーが応答しない」と同じ扱い（`local_llm_unreachable`。再試行・代替プロバイダーへの切り替えの対象）。
+- **起動**: 最初の LLM の呼び出し（`localllm` のバックエンドが `Endpoint` を呼ぶ）でサーバーが止まっていれば起動し、`/health` が 200 になるまで待つ（モデルの読み込みで数十秒〜数分。起動は呼び出しのものではなく、ランタイムの `start_timeout_sec`（llama.cpp は 900 秒）だけが区切る。呼び出しは完了を待つだけで、`timeout_seconds` が先に切れても読み込み中のサーバーは止められず、その呼び出しだけが失敗する。次の呼び出しが同じ起動に合流する。同時の呼び出しでも起動は 1 回。大きなモデルでは、最初の呼び出しが失敗しても 2 回目以降で使えるようになる）。自動起動（モデルマネージャーのカードのスイッチ）をオンにすれば Nefos Video の起動時に起動する（既定オフ）。起動できないとき（非対応・未導入・重みが不足・ComfyUI が生成中のまま・起動の失敗）は、理由つきのエラーで、**黙って別のアドレスに切り替えない**。エージェントの呼び出しからは「ローカルサーバーが応答しない」と同じ扱い（`local_llm_unreachable`。再試行・代替プロバイダーへの切り替えの対象）。
 - **接続テスト**: 管理サーバーを選んでいる間は、フォームのアドレスを試さず、サーバーの状態を言う（起動はしない。モデルの読み込みは接続テストより長いため）。MCP は `set_local_llm_server` の `use_managed_runtime`、`get_global_settings` の `llm.local_server.managed_runtime`（`state`・`reason`・`model`）。
 
 ### 10.2 コマンドラインは外から指定できない
@@ -168,7 +168,7 @@ JSON を返す役割は `enable_thinking=false`、DeepSeek は `<think>` を除�
 
 ローカル LLM を、モデルマネージャーの分類 `local-llm`「ローカル LLM」の 1 つの導線にする。画面の構成・ID・テストは [../components/model-manager-screen.md](../components/model-manager-screen.md) の「ローカル LLM の統合（#1104）」、ルートは [../api/endpoints-model-manager.md](../api/endpoints-model-manager.md)。
 
-- **向き先は 1 つ（`use`）**: プロバイダー `local` の呼び出しは、次の 3 つのどれか 1 つだけに行く。`llama-cpp`（mam が導入・起動する llama.cpp。§10）・`ollama`（mam が導入・起動する Ollama。[model-manager/local-runtime.md](model-manager/local-runtime.md) §19。#1105）・`custom`（別のサーバー。LM Studio・自分で入れた Ollama・llama-server など。`providers.local.base_url`。§1）。保存は `llm.json` の `providers.local` の 2 つのブール値: `use_managed_runtime`（llama.cpp。今のまま）と `use_managed_ollama`（Ollama。新設。既定偽）。2 つは同時に真にならない（`llm.ParseConfig` が検査し、両方真は `InvalidError`。`llmlocal.Service.SetUse` が片方を真にするときもう片方を偽にする）。両方偽が `custom`。
+- **向き先は 1 つ（`use`）**: プロバイダー `local` の呼び出しは、次の 3 つのどれか 1 つだけに行く。`llama-cpp`（Nefos Video が導入・起動する llama.cpp。§10）・`ollama`（Nefos Video が導入・起動する Ollama。[model-manager/local-runtime.md](model-manager/local-runtime.md) §19。#1105）・`custom`（別のサーバー。LM Studio・自分で入れた Ollama・llama-server など。`providers.local.base_url`。§1）。保存は `llm.json` の `providers.local` の 2 つのブール値: `use_managed_runtime`（llama.cpp。今のまま）と `use_managed_ollama`（Ollama。新設。既定偽）。2 つは同時に真にならない（`llm.ParseConfig` が検査し、両方真は `InvalidError`。`llmlocal.Service.SetUse` が片方を真にするときもう片方を偽にする）。両方偽が `custom`。
 - **管理サーバーでの呼び出し**: `ollama` のときは llama.cpp と同じく**ベース URL・API キーを使わず**、管理している Ollama の `http://127.0.0.1:<ポート>` に向かう。Ollama には API キーの仕組みが無いので、`Authorization` は付けない（llama.cpp の合言葉〔§10.2〕に当たるものが無い。理由と受け入れる危険は local-runtime.md §19.4）。モデルの一覧（§2）は、そのサーバーの `GET /v1/models`（Ollama に取得済みのモデル）。割り当ての `model` は Ollama のモデル名（`gemma4:12b` など）。
 - **状態の言い方**: `use` の状態は 1 つの `Info`（`state`・`reason`・`model`）にまとめ、設定のカード（`llm-local-state`）・モデルマネージャーの概要・`#mm-llm-use-state`・MCP の `get_global_settings` の `llm.local_server.managed_runtime`（今は llama.cpp だけ。`ollama` のときもこの名前で同じ形を返し、どちらのサーバーかは新設の `llm.local_server.use`〔`llama-cpp`・`ollama`・`custom`〕で分かる）が同じ文を出す。
 - **Ollama のメモリ降ろし（§5.3）**: 降ろす相手は `use` が `custom` のとき `base_url`、`ollama` のとき管理している Ollama（`/api/ps`・`keep_alive: 0`）。`llama-cpp` のときは今のとおり llama.cpp を止める（§10.3）。スイッチ `unload_before_generation` は `ollama`・`custom` のときだけ意味を持つ。
@@ -185,3 +185,4 @@ JSON を返す役割は `enable_thinking=false`、DeepSeek は `<think>` を除�
 | 1.3 | 2026-11-07 | §11 を実装した。状態を「実装済み」にした。`llm.ProviderConfig.UseManagedOllama`（`use_managed_ollama`。`llm.ParseConfig` が `use_managed_runtime` との両方真を拒む）・`llmlocal.Service` の `Use`・`SetUse`・`Status`・`SetManagedOllama`（管理する Ollama を持つ app だけ `ollama` を選べる。#1105 がつなぐ）。使っている管理サーバーは、画像・動画の生成の前に止める（llama.cpp と同じ）。Ollama のモデルの一覧・メモリ降ろしの `/api/ps` 経路の管理 Ollama への適用は #1105 | Issue #1104 |
 | 1.4 | 2026-11-07 | 管理する Ollama（`use` が `ollama`。#1105）を実装した。呼び出しは `llamaserver.Server{ID: "ollama", NoKey: true}`（認証ヘッダーなし）。モデルの選択は `GET /api/tags` の取得済みのモデルをすべて出す（`ManagedInfo.Models`）。画像・動画の生成の前は、llama.cpp のように止めず、スイッチ `unload_before_generation` がオンのときだけ `/api/ps` と `keep_alive: 0` で降ろす（`BeforeGeneration`。動いていなければ何もしない）。LLM の割り当てが使うモデルは、モデルマネージャーの削除が 422（`llmassign.UsedBy`）。実機での降ろしの効きは未確認（`device_only`） | Issue #1105 |
 | 1.5 | 2026-11-07 | §11 に、管理する Ollama の取得中は停止・削除・導入し直しを 409 で断ること、利用者の `OLLAMA_*` を継承しないことを足した（実装済み） | PR #1110 のレビュー |
+| 1.6 | 2026-11-19 | 本文の製品名の表示を「MAM」から「Nefos Video」に改めた（過去の改訂履歴の文は当時のまま） | #1170: 製品名を MAM から Nefos Video に変更（表示名のみ。識別子・パス・実行ファイル名は変更しない） |

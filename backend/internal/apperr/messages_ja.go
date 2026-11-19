@@ -5,7 +5,7 @@ package apperr
 // (Error.Args); an argument that is not given reads as nothing.
 var messagesJa = map[string]string{ //nolint:gosec // texts of errors (they mention "API キー" and credits, but hold no credential)
 	"unknown.cause":  "原因がわかりませんでした。想定していない失敗です。",
-	"unknown.remedy": "もう一度試してください。直らないときは、詳細（とエラー ID）を添えて報告してください。mam のログにも同じ ID で残しています。",
+	"unknown.remedy": "もう一度試してください。直らないときは、詳細（とエラー ID）を添えて報告してください。Nefos Video のログにも同じ ID で残しています。",
 
 	"key_missing.cause":  "{service}API キーが設定されていません。",
 	"key_missing.remedy": "設定画面の「API キーとログイン」で、使うサービスの API キーを登録してください。",
@@ -74,7 +74,7 @@ var messagesJa = map[string]string{ //nolint:gosec // texts of errors (they ment
 	"node_missing.remedy": "モデル管理で必要なカスタムノードを導入し、ComfyUI を再起動してから実行し直してください。",
 
 	"face_models_missing.cause":  "顔の類似度を測る顔モデルがありません（{files}）。顔の類似度（SFace）はオフです。",
-	"face_models_missing.remedy": "モデルマネージャー（/model-manager）の「顔チェック用モデル」から、ボタン 1 つで {dir} に導入できます（YuNet は MIT・SFace は Apache-2.0。取得元は opencv/opencv_zoo の固定したコミットで、SHA-256 を確かめます。導入したあと mam を再起動する必要はなく、次の単発生成から測れます）。手で置くときは {dir} に置いてください（リポジトリの scripts/fetch-face-models.sh {dir} が、同じ固定したコミットから取得して置きます）。置き場所を変えるときは起動オプション --face-model-dir を使います。顔の類似度を測るには、このモデルのほかに ONNX Runtime のライブラリも要ります（Windows のインストーラー版は mam.exe と同じフォルダに入れます）。",
+	"face_models_missing.remedy": "モデルマネージャー（/model-manager）の「顔チェック用モデル」から、ボタン 1 つで {dir} に導入できます（YuNet は MIT・SFace は Apache-2.0。取得元は opencv/opencv_zoo の固定したコミットで、SHA-256 を確かめます。導入したあと Nefos Video を再起動する必要はなく、次の単発生成から測れます）。手で置くときは {dir} に置いてください（リポジトリの scripts/fetch-face-models.sh {dir} が、同じ固定したコミットから取得して置きます）。置き場所を変えるときは起動オプション --face-model-dir を使います。顔の類似度を測るには、このモデルのほかに ONNX Runtime のライブラリも要ります（Windows のインストーラー版は mam.exe と同じフォルダに入れます）。",
 
 	"face_runtime_missing.cause":  "顔の類似度を測る ONNX Runtime のライブラリを読み込めません。顔の類似度（SFace）はオフです。",
 	"face_runtime_missing.remedy": "顔モデル（YuNet・SFace）は置いてあります。モデルマネージャーの「顔チェック用モデル」から導入し直しても直りません（直すのは ONNX Runtime のライブラリです）。ONNX Runtime 1.23.x のライブラリ（Windows は mam.exe と同じフォルダの onnxruntime.dll。インストーラー版は置いてあります。ポータブル版は含まないので、https://github.com/microsoft/onnxruntime/releases の v1.23.2 の onnxruntime-win-x64-1.23.2.zip を開き、lib フォルダの onnxruntime.dll を mam.exe と同じフォルダへコピーしてください。コマンドは要りません。ほかの OS は libonnxruntime）を用意してください。場所は起動オプション --onnxruntime-lib で指定できます。Windows で DLL があるのに読めないときは、Microsoft Visual C++ 2015-2022 Redistributable (x64) が必要です。置いたあとは、次の単発生成から測れます（再起動は要りません）。詳細に顔モデルのファイルの読み込みの失敗が出ているときは、モデルマネージャーの「顔チェック用モデル」で削除してから入れ直してください。",
@@ -92,7 +92,7 @@ var messagesJa = map[string]string{ //nolint:gosec // texts of errors (they ment
 	"media_timeout.remedy": "素材ファイルが壊れていないか、大きすぎないかを確かめて、もう一度実行してください。",
 
 	"download_corrupt.cause":  "ダウンロードしたファイルが、固定した SHA-256 または大きさと一致しませんでした。破棄しました（取得元の改ざんか、転送の破損の可能性があります）。",
-	"download_corrupt.remedy": "もう一度導入してください。続くときは、mam を更新してから試してください。",
+	"download_corrupt.remedy": "もう一度導入してください。続くときは、Nefos Video を更新してから試してください。",
 
 	"install_failed.cause":     "導入を完了できませんでした。",
 	"install_failed.remedy":    "原因は詳細にあります。モデル管理の画面から、もう一度導入してください。",
@@ -111,13 +111,13 @@ var messagesJa = map[string]string{ //nolint:gosec // texts of errors (they ment
 	"no_usable_model.cause":    "画像・動画の生成に使えるモデルがありません。",
 	"no_usable_model.remedy":   "API キーを登録する（設定の「API キー」）、ChatGPT にログインする、ローカルモデルを導入する（モデル管理）、または設定の「画像・動画モデル」で割り当てを使えるモデルに変えてください。",
 	"image_unavailable.cause":  "ChatGPT サブスクリプションでの画像生成に使える Codex のモデルが見つかりませんでした（OpenAI が ChatGPT ログインで使えるモデルを入れ替えた可能性があります）。",
-	"image_unavailable.remedy": "mam を最新版に更新して、もう一度実行してください。直らない場合は、設定で ChatGPT 画像生成を OFF にして、API キーで使える画像モデルに切り替えてください。",
+	"image_unavailable.remedy": "Nefos Video を最新版に更新して、もう一度実行してください。直らない場合は、設定で ChatGPT 画像生成を OFF にして、API キーで使える画像モデルに切り替えてください。",
 
 	"image_model_pinned.cause":  "画像生成のために固定した Codex のモデル（Options.Driver）を、ChatGPT のアカウントが受け付けませんでした。固定したモデルだけを使う設定なので、ほかのモデルは試していません。",
-	"image_model_pinned.remedy": "mam を更新しても直りません。モデルの固定を外して mam にアカウントで使えるモデルを選ばせるか、アカウントが使えるモデルを固定し直してください。",
+	"image_model_pinned.remedy": "Nefos Video を更新しても直りません。モデルの固定を外して Nefos Video にアカウントで使えるモデルを選ばせるか、アカウントが使えるモデルを固定し直してください。",
 
 	"save_failed.cause":  "設定やデータを保存できませんでした{why}。",
-	"save_failed.remedy": "ディスクの空き容量とフォルダの権限を確かめてから、もう一度保存してください。続くときは mam のログを確認してください。",
+	"save_failed.remedy": "ディスクの空き容量とフォルダの権限を確かめてから、もう一度保存してください。続くときは Nefos Video のログを確認してください。",
 
 	"ffmpeg_missing.cause":  "ffmpeg と ffprobe が見つかりません。",
 	"ffmpeg_missing.remedy": "モデルマネージャーの「付随ソフト」で、ffmpeg と ffprobe をダウンロードするか、自分で入れたもののパスを指定してください。",
@@ -126,16 +126,16 @@ var messagesJa = map[string]string{ //nolint:gosec // texts of errors (they ment
 	"media_failed.remedy": "素材の動画が壊れていないか、保存先の空き容量と書き込み権限を確かめてから、もう一度実行してください。続くときは、詳細（ffmpeg の出力の末尾）を添えて報告してください。",
 
 	"facefusion_unavailable.cause":  "FaceFusion を使えません。見つからないか、設定したパスが使えません。",
-	"facefusion_unavailable.remedy": "FaceFusion は mam に同梱していないので、自分で入れてください。入れ方の手順は、モデルマネージャーの「付随ソフト」にあります。入れてあるときは、そこで Python と FaceFusion のフォルダのパスを確かめてください。詳細に、見つからなかった理由と探した場所があります。",
+	"facefusion_unavailable.remedy": "FaceFusion は Nefos Video に同梱していないので、自分で入れてください。入れ方の手順は、モデルマネージャーの「付随ソフト」にあります。入れてあるときは、そこで Python と FaceFusion のフォルダのパスを確かめてください。詳細に、見つからなかった理由と探した場所があります。",
 
 	"facefusion_failed.cause":  "FaceFusion が画像を作れませんでした。{why}",
 	"facefusion_failed.remedy": "顔の画像と入れ替え先の画像に、顔がはっきり写っているか確かめてください。成人向けの画像は FaceFusion が断ります。GPU のメモリ不足や FaceFusion の導入の不備のこともあります。詳細（FaceFusion の出力の末尾）と、モデルマネージャーの「付随ソフト」の FaceFusion の状態を確かめてください。",
 
 	"update_network.cause":  "更新の確認で、ネットワークに接続できませんでした。",
-	"update_network.remedy": "ネットワークの接続を確かめてください。mam はしばらくしてから、自動でもう一度確認します。",
+	"update_network.remedy": "ネットワークの接続を確かめてください。Nefos Video はしばらくしてから、自動でもう一度確認します。",
 
 	"update_rate_limit.cause":  "GitHub の取得回数の上限に達したため、更新を確認できませんでした。",
-	"update_rate_limit.remedy": "しばらく待ってください。mam が自動でもう一度確認します。",
+	"update_rate_limit.remedy": "しばらく待ってください。Nefos Video が自動でもう一度確認します。",
 
 	"update_access.cause":  "更新のリリースを GitHub から取得できませんでした（アクセスが拒否されたか、ファイルがありません）。",
 	"update_access.remedy": "しばらくしてから、もう一度確認してください。続くときは、プロキシやファイアウォールが GitHub への接続を止めていないか確かめてください。",
@@ -162,16 +162,16 @@ var messagesJa = map[string]string{ //nolint:gosec // texts of errors (they ment
 	"topaz_job_timeout.remedy": "もう一度見積りを取って実行してください。長い動画は短く分けて試してください。",
 
 	"topaz_job_failed.cause":  "Topaz が処理を完了できませんでした（相手側の失敗か、処理が取り消されました）。クレジットは返金されます。",
-	"topaz_job_failed.remedy": "もう一度見積りを取って実行してください。同じ動画で続くときは、標準の H.264 の mp4 に変換した動画で試すか、詳細にあるリクエスト ID を添えて Topaz のサポートに連絡してください。同じ処理を mam が自動でやり直すことはありません（二重に課金されないため）。",
+	"topaz_job_failed.remedy": "もう一度見積りを取って実行してください。同じ動画で続くときは、標準の H.264 の mp4 に変換した動画で試すか、詳細にあるリクエスト ID を添えて Topaz のサポートに連絡してください。同じ処理を Nefos Video が自動でやり直すことはありません（二重に課金されないため）。",
 
 	"topaz_source_invalid.cause":  "Topaz が元の動画を処理できませんでした（ファイルが壊れている、拡張子と中身の形式が違う、動画の情報が実際と違う、のどれかです）。課金はされません。",
 	"topaz_source_invalid.remedy": "元の動画が再生できるか確かめて、もう一度実行してください。続くときは、動画を標準の H.264 の mp4 に変換してから試してください。",
 
 	"topaz_transfer_failed.cause":  "Topaz との動画のやり取り（元の動画のアップロード、または結果のダウンロード）に失敗しました。",
-	"topaz_transfer_failed.remedy": "ネットワーク（プロキシ・VPN・ファイアウォール）を確かめてください。アップロードに失敗したときは、見積りの有効期限が切れていないか確かめて、もう一度見積りを取って実行してください。処理が済んだあとのダウンロードの失敗は、結果が Topaz に 7 日間残るので、時間を置いてから確かめられます。同じ処理を mam が自動でやり直すことはありません（二重に課金されないため）。",
+	"topaz_transfer_failed.remedy": "ネットワーク（プロキシ・VPN・ファイアウォール）を確かめてください。アップロードに失敗したときは、見積りの有効期限が切れていないか確かめて、もう一度見積りを取って実行してください。処理が済んだあとのダウンロードの失敗は、結果が Topaz に 7 日間残るので、時間を置いてから確かめられます。同じ処理を Nefos Video が自動でやり直すことはありません（二重に課金されないため）。",
 
-	"topaz_job_interrupted.cause":  "処理の途中で mam が止まったか、ジョブが取り消されたため、Topaz の結果を待つのをやめました。Topaz はこの処理をすでに受け付けているため、Topaz 側では続いている可能性があり、クレジットが引かれることがあります（リクエスト ID: {request_id}）。",
-	"topaz_job_interrupted.remedy": "mam からは Topaz の処理を取り消せません（取り消しの呼び出しは未実装です）。Topaz のアカウントで、このリクエスト ID（{request_id}）の処理の状況と使われたクレジットを確かめてください。同じ処理を mam が自動でやり直すことはありません（二重に課金されないため）。",
+	"topaz_job_interrupted.cause":  "処理の途中で Nefos Video が止まったか、ジョブが取り消されたため、Topaz の結果を待つのをやめました。Topaz はこの処理をすでに受け付けているため、Topaz 側では続いている可能性があり、クレジットが引かれることがあります（リクエスト ID: {request_id}）。",
+	"topaz_job_interrupted.remedy": "Nefos Video からは Topaz の処理を取り消せません（取り消しの呼び出しは未実装です）。Topaz のアカウントで、このリクエスト ID（{request_id}）の処理の状況と使われたクレジットを確かめてください。同じ処理を Nefos Video が自動でやり直すことはありません（二重に課金されないため）。",
 
 	"invalid_input.cause":    "入力が正しくありません。",
 	"invalid_input.remedy":   "入力内容を直してから、もう一度実行してください。",

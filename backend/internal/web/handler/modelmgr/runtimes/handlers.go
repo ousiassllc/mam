@@ -69,7 +69,7 @@ func refuseRuntime(c *gin.Context, err error) (status int, msg string) {
 		return http.StatusNotFound, msg
 	}
 	_ = c.Error(err)
-	return http.StatusInternalServerError, "処理できませんでした。mam のログを確認してください"
+	return http.StatusInternalServerError, "処理できませんでした。Nefos Video のログを確認してください"
 }
 
 // runtimeCard answers an action of a runtime with its card. A runtime that is not there is a 404 with the section's message.
@@ -199,7 +199,7 @@ func (h Handlers) SetRuntimeAutoStart(c *gin.Context) {
 	}
 	h.runtimeCard(c, http.StatusOK, id, "", false, func(r *card.Runtime) {
 		if on {
-			r.Notice = "mam の起動時に " + r.Name + " を起動します"
+			r.Notice = "Nefos Video の起動時に " + r.Name + " を起動します"
 		} else {
 			r.Notice = r.Name + " は、最初に使うときに起動します"
 		}

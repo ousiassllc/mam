@@ -17,7 +17,7 @@ import (
 
 const (
 	unreadable    = "設定ファイル（ffmpeg.json）を読めません。壊れていれば、直すか削除してください"
-	savedNotice   = "保存しました。すぐに使われます（mam を再起動する必要はありません）"
+	savedNotice   = "保存しました。すぐに使われます（Nefos Video を再起動する必要はありません）"
 	clearedNotice = "パスの指定を解除しました。すぐに、自動で探した ffmpeg に切り替わります"
 )
 

@@ -135,7 +135,7 @@ func TestFailureOfTheChatGPTImageWithoutACodexModelIsExplained(t *testing.T) {
 	assert.Equal(t, gentestrepo.StatusFailed, st.Results[0].Status)
 	require.NotNil(t, st.Results[0].Failure)
 	assert.Equal(t, apperr.CodeImageUnavailable, st.Results[0].Failure.Code)
-	assert.Contains(t, st.Results[0].Error, "mam を最新版に更新して、もう一度実行してください")
+	assert.Contains(t, st.Results[0].Error, "Nefos Video を最新版に更新して、もう一度実行してください")
 	assert.NotContains(t, st.Results[0].Error, "ベンダーがリクエストを拒否しました")
 	assert.NotContains(t, st.Results[0].Failure.Cause+st.Results[0].Failure.Remedy, "gpt-5.5", "the vendor's 400 is the symptom: it is in the detail only")
 	assert.Contains(t, st.Results[0].Failure.Detail, "gpt-5.5")

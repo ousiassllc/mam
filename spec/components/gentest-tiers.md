@@ -44,7 +44,7 @@
 ## 3. 品質のプリセット（モデルごとの値）
 
 - プリセットは**テンプレートのワークフローに持たせる**（`backend/internal/agent/modeladapter/localcfg/templates/image/*.json` の `workflow.quality_presets`）。理由は §7。形は `{"fast": {"steps": N, "cfg": C}, "high": {"steps": N, "cfg": C}}`（各項目は省ける。`steps`・`cfg` は #973 の `Param` が載る値）。**標準は書かない**: 標準 = そのワークフローのグラフが持つ値そのもの（上書きなし）。
-- 値は mam の目安（モデルカード・テンプレートの既定から、速い = 既定より少ないステップ・きれい = 既定より多いステップに寄せたもの）で、**GPU では確かめていない**（`needs_real_device`）。`quality_presets` を持つテンプレート: SDXL 系（`txt2img-sdxl`・`-clipskip2`・`-controlnet`・`-ipadapter`・`img2img-sdxl`・`-clipskip2`: 速い 15・きれい 40。標準 25）、FLUX.1 dev（`txt2img-flux-dev`・`-lora`: 12・30。標準 20）、Chroma（16・40。標準 26）、Qwen-Image・Qwen-Image-Edit-2511（12・30。標準 20）、Qwen-Image 2.1（15・40。標準 25）、SD3.5 Medium（18・40。標準 28）。FLUX.1 schnell・FLUX.2 klein は 4 ステップで作る蒸留モデルなので**持たない**（3 ボタンの代わりに理由が出る）。インペイント・アップスケールのテンプレートも持たない。
+- 値は Nefos Video の目安（モデルカード・テンプレートの既定から、速い = 既定より少ないステップ・きれい = 既定より多いステップに寄せたもの）で、**GPU では確かめていない**（`needs_real_device`）。`quality_presets` を持つテンプレート: SDXL 系（`txt2img-sdxl`・`-clipskip2`・`-controlnet`・`-ipadapter`・`img2img-sdxl`・`-clipskip2`: 速い 15・きれい 40。標準 25）、FLUX.1 dev（`txt2img-flux-dev`・`-lora`: 12・30。標準 20）、Chroma（16・40。標準 26）、Qwen-Image・Qwen-Image-Edit-2511（12・30。標準 20）、Qwen-Image 2.1（15・40。標準 25）、SD3.5 Medium（18・40。標準 28）。FLUX.1 schnell・FLUX.2 klein は 4 ステップで作る蒸留モデルなので**持たない**（3 ボタンの代わりに理由が出る）。インペイント・アップスケールのテンプレートも持たない。
 - 読み込みの検査（`localcfg.ValidateModel`）: プリセットは、そのワークフローが受け取る値（steps・cfg の割り当て）にだけ書ける。速さのモードを持つワークフローは持てない。範囲は #973 と同じ。速いはワークフローの steps より少なく、きれいは多くなければならない（ボタンが言うとおりに動くため）。
 - 効き方: リクエストの `quality`（`fast`／`high`）は、**リクエストが steps・cfg を名指ししていない項目だけ**にプリセットの値を入れる（`sampling.Caps.WithQuality`）。名指した値（こだわりのスライダー・MCP の `sampling`）が勝つ。受け取らないモデル・速さのモードのモデル・プリセットの無いモデルに `quality` を送ると、見積りの警告 `quality_ignored`（標準の値で作る）。標準を送るのは空と同じ。
 - 結果に残るのは、実際に使った steps・cfg（`params.sampling`。#973）なので、品質の名前を別に残す必要は無い（結果の「使った設定」から作り直せる）。
@@ -123,7 +123,7 @@
 ### 10.1 今の設定を ComfyUI で開く
 
 - **ボタン**: 「今の設定を ComfyUI で開く」（`data-testid="gt-comfy-open-button"`）が、かんたんの下端とこだわりのレシピの下にある。フォームの値（モデル・プロンプト・縦横比・シード・ステップ数などの詳細設定・LoRA・画面に出す値。かんたんならやりたいことから決めたモデルと品質）で**そのモデルのグラフを組み**（`comfyui.GraphFor`。実行と同じ組み立て: 割り当て・LoRA・画面に出す値を適用）、ノード画面で開く。`POST /generation-test/comfy/open`。
-- **渡し方**: ノード画面にグラフを直接渡す口は無い（ComfyUI のフロントエンドは、サーバーの `workflows` フォルダのファイルを開く）。そこで、既存の「ワークフローをノード画面で開く」（[../architecture/comfy/comfy-workflows.md](../architecture/comfy/comfy-workflows.md) §3）と同じ流れで、グラフを**画面の形式**（ノードの位置・ウィジェットの値の並び・リンクの表。`service/workflows/graphui` が、API 形式と `GET /object_info` から組む。独自のグラフエディタではない）に直し、ComfyUI のユーザーデータ `workflows/mam/今の設定 <モデル名>.json` へ置いて（`Service.OpenUI`。同名は上書き）、`HX-Redirect` でノード画面（`/nodes?opened=…`）へ移る。ノード画面が置いたファイルの場所を案内する（左の「ワークフロー」から開く）。mam のワークフローとしては**保存しない**（保存は「ワークフローを取り込む」で）。
+- **渡し方**: ノード画面にグラフを直接渡す口は無い（ComfyUI のフロントエンドは、サーバーの `workflows` フォルダのファイルを開く）。そこで、既存の「ワークフローをノード画面で開く」（[../architecture/comfy/comfy-workflows.md](../architecture/comfy/comfy-workflows.md) §3）と同じ流れで、グラフを**画面の形式**（ノードの位置・ウィジェットの値の並び・リンクの表。`service/workflows/graphui` が、API 形式と `GET /object_info` から組む。独自のグラフエディタではない）に直し、ComfyUI のユーザーデータ `workflows/mam/今の設定 <モデル名>.json` へ置いて（`Service.OpenUI`。同名は上書き）、`HX-Redirect` でノード画面（`/nodes?opened=…`）へ移る。ノード画面が置いたファイルの場所を案内する（左の「ワークフロー」から開く）。Nefos Video のワークフローとしては**保存しない**（保存は「ワークフローを取り込む」で）。
 - **入らないもの**: 入力画像（読み込みのノードのファイルはワークフローのまま）と、英訳（プロンプトは入力したまま）。画像なしでは動かないワークフロー（ControlNet・IP-Adapter・部分描き直しの入力画像とマスク）は、その読み込みのノードと、それにつながるノード（ControlNetApplyAdvanced・IPAdapterAdvanced・VAEEncode・SetLatentNoiseMask・ImageCompositeMasked）を削らず、テンプレートが持つファイル名のまま出す（必須の入力が欠けたグラフを出さない。ノード画面で利用者が差し替える）。編集モデルの参照枠（任意）と img2img の参照は、画像なしの実行と同じく外し、文字だけから作る形で出す。ボタンの隣の結果欄ではなく、移った先の案内にも、この 2 点を出す。
 - **開けないとき**: モデルが 1 つでない・ComfyUI のワークフローでない（クラウドのモデル）・ComfyUI が止まっていて起動できない・ノードの情報が取れない、など。理由を `#gt-comfy-open`（`aria-live="polite"`）に出し、フォームは壊さない。
 - 動画のフォームには出さない。
@@ -152,3 +152,4 @@
 | 1.7 | 2026-11-03 | 統合後レビューの修正: §5 の復元に速さのモード（`speed_mode`）を足し（モデルに無いときは既定で作ると言う）、描き直しの結果の「この設定でもう一度」も英訳つきなら送った英訳を入れて英訳を切る。§9 のレシピは速さのモードも保存し、「使う」で選ぶ | Issue #977・#991 |
 | 1.8 | 2026-11-04 | §4: モデルごとの「効く・効かない」を短い言葉（効きます・効きが弱いかも・効きません・未確認）に整理し、ヘルプは選んでいるモデルの分だけ・表示名で出すようにした。効かないモデルでは入力欄の下に短い注意を出す | Issue #1023 |
 | 1.9 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |
+| 1.10 | 2026-11-19 | 本文の製品名の表示を「MAM」から「Nefos Video」に改めた（過去の改訂履歴の文は当時のまま） | #1170: 製品名を MAM から Nefos Video に変更（表示名のみ。識別子・パス・実行ファイル名は変更しない） |

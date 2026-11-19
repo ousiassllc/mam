@@ -3,10 +3,13 @@ package sidenav
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/navstate"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
 	"github.com/ousiassllc/mam/backend/internal/web/themestate"
 )
 
 const (
+	// ProductName is the name of the product, what the menu says of itself to a screen reader.
+	ProductName = "Nefos Video"
 	// ID is the id of the menu (the fold button controls it).
 	ID = "sidenav"
 	// LabelFold and LabelOpen name the fold button in each state; static/src/components/sidenav swaps them.
@@ -61,7 +64,7 @@ templ menu(s State, folded bool) {
 		class="group sticky top-0 flex h-screen w-14 shrink-0 flex-col gap-4 border-r border-border bg-bone px-2 py-4 md:data-[folded=false]:w-56"
 	>
 		<div class="flex items-center justify-between gap-2 px-1 group-data-[folded=true]:justify-center max-md:justify-center">
-			<span class="truncate text-base text-ink max-md:sr-only group-data-[folded=true]:sr-only">mam</span>
+			@brand()
 			<button
 				type="button"
 				data-sidenav-toggle
@@ -110,6 +113,25 @@ templ menu(s State, folded bool) {
 			<span class="max-md:sr-only group-data-[folded=true]:sr-only">{ LabelTheme }</span>
 		</button>
 	</nav>
+}
+
+// brand is the name of the product at the top of the menu: the mark of Nefos Video with its name as text beside it while the menu is open
+// (the mark has no tile: the file is 16 px square with the ring 10.5 px of it, so at 27 px the ring stands 18 px high and has about 4.6 px of empty file on each side, which with gap-1 (4 px) leaves about 8 px between the ring and the name; raised 1px to the middle of the capitals; the name is Sora Light, as the words of the old lockup were), the mark with its tile (the app icon) alone on a narrow window (the menu
+// is folded there, with no room beside the fold button; a folded menu on a wide window shows only that button, as before). Each comes in
+// a Light and a Dark file, as they are: static/src/css/brand.css shows the one of the theme. The name stays as text for a screen reader.
+templ brand() {
+	<span class="flex min-w-0 items-center" data-testid="sidenav-brand">
+		<span class="sr-only">{ ProductName }</span>
+		<span aria-hidden="true" class="flex items-center gap-1 max-md:hidden group-data-[folded=true]:hidden">
+			<img src={ paths.StaticBrand + "mark-light.svg" } alt="" width="27" height="27" class="brand-light h-[27px] w-[27px] shrink-0 -translate-y-px"/>
+			<img src={ paths.StaticBrand + "mark-dark.svg" } alt="" width="27" height="27" class="brand-dark h-[27px] w-[27px] shrink-0 -translate-y-px"/>
+			<span class="truncate text-base font-light leading-none text-ink">{ ProductName }</span>
+		</span>
+		<span aria-hidden="true" class="hidden max-md:block">
+			<img src={ paths.StaticBrand + "icon-32-light.png" } alt="" width="32" height="32" class="brand-light h-8 w-8"/>
+			<img src={ paths.StaticBrand + "icon-32-dark.png" } alt="" width="32" height="32" class="brand-dark h-8 w-8"/>
+		</span>
+	</span>
 }
 
 // mmList is the second level of the model manager: the overview and the categories.

@@ -2,8 +2,8 @@ package apperr
 
 // messagesEn are the English texts: the same keys as messagesJa (a test pins it).
 var messagesEn = map[string]string{ //nolint:gosec // texts of errors (they say "credits" and "API key", but hold no credential)
-	"unknown.cause":  "The cause is not known. This is a failure mam did not expect.",
-	"unknown.remedy": "Try again. If it keeps failing, report it with the detail and the error ID; the log of mam has the same ID.",
+	"unknown.cause":  "The cause is not known. This is a failure Nefos Video did not expect.",
+	"unknown.remedy": "Try again. If it keeps failing, report it with the detail and the error ID; the log of Nefos Video has the same ID.",
 
 	"key_missing.cause":  "No {service}API key is set.",
 	"key_missing.remedy": "Register the API key of the service in Settings > API keys and sign-in.",
@@ -72,7 +72,7 @@ var messagesEn = map[string]string{ //nolint:gosec // texts of errors (they say 
 	"node_missing.remedy": "Install the custom node in the model manager, restart ComfyUI and run it again.",
 
 	"face_models_missing.cause":  "The face models for the face similarity are missing ({files}). The face similarity (SFace) is off.",
-	"face_models_missing.remedy": "Install them with one button from the \"Face check models\" section of the model manager (/model-manager): they go to {dir} (YuNet is MIT, SFace is Apache-2.0; they come from a pinned commit of opencv/opencv_zoo and their SHA-256 is checked). You do not need to restart mam: the next single generation measures. To put them there by hand, copy them to {dir} (scripts/fetch-face-models.sh {dir} in the repository fetches the same pinned files). To use another folder, start mam with --face-model-dir. The face similarity also needs the ONNX Runtime library besides these models (the Windows installer puts it next to mam.exe).",
+	"face_models_missing.remedy": "Install them with one button from the \"Face check models\" section of the model manager (/model-manager): they go to {dir} (YuNet is MIT, SFace is Apache-2.0; they come from a pinned commit of opencv/opencv_zoo and their SHA-256 is checked). You do not need to restart mam: the next single generation measures. To put them there by hand, copy them to {dir} (scripts/fetch-face-models.sh {dir} in the repository fetches the same pinned files). To use another folder, start Nefos Video with --face-model-dir. The face similarity also needs the ONNX Runtime library besides these models (the Windows installer puts it next to mam.exe).",
 
 	"face_runtime_missing.cause":  "The ONNX Runtime library for the face similarity cannot be loaded. The face similarity (SFace) is off.",
 	"face_runtime_missing.remedy": "The face models (YuNet and SFace) are in place; installing them again from the model manager does not fix this (the ONNX Runtime library does). Provide the ONNX Runtime 1.23.x library (on Windows onnxruntime.dll next to mam.exe: the installer version has put it there; the portable version does not include it, so open onnxruntime-win-x64-1.23.2.zip of v1.23.2 at https://github.com/microsoft/onnxruntime/releases and copy lib/onnxruntime.dll next to mam.exe, no command needed; libonnxruntime elsewhere). --onnxruntime-lib sets its location. If the DLL is there but does not load on Windows, the Microsoft Visual C++ 2015-2022 Redistributable (x64) is needed. Once it is in place the next single generation measures (no restart needed). If the detail shows that a face model file failed to load, remove them in the \"Face check models\" section of the model manager and install them again.",
@@ -90,7 +90,7 @@ var messagesEn = map[string]string{ //nolint:gosec // texts of errors (they say 
 	"media_timeout.remedy": "Check that the source file is not broken or too large and run it again.",
 
 	"download_corrupt.cause":  "The downloaded file did not match its fixed SHA-256 or size and was discarded (the source may have been tampered with, or the transfer was corrupted).",
-	"download_corrupt.remedy": "Install it again. If it continues, update mam and try again.",
+	"download_corrupt.remedy": "Install it again. If it continues, update Nefos Video and try again.",
 
 	"install_failed.cause":     "The install could not be completed.",
 	"install_failed.remedy":    "The reason is in the detail. Install it again from the model manager.",
@@ -109,10 +109,10 @@ var messagesEn = map[string]string{ //nolint:gosec // texts of errors (they say 
 	"no_usable_model.cause":    "No model can be used to generate the image or the video.",
 	"no_usable_model.remedy":   "Register an API key (Settings > API keys), sign in to ChatGPT, install a local model (model manager), or change the assignment in Settings > Image and video models to a model that can be used.",
 	"image_unavailable.cause":  "No Codex model that can host the image generation was found for the ChatGPT subscription (OpenAI may have changed the models a ChatGPT sign-in can use).",
-	"image_unavailable.remedy": "Update mam to the latest version and run it again. If it does not help, turn the ChatGPT image generation OFF in Settings and switch to an image model that works with an API key.",
+	"image_unavailable.remedy": "Update Nefos Video to the latest version and run it again. If it does not help, turn the ChatGPT image generation OFF in Settings and switch to an image model that works with an API key.",
 
 	"image_model_pinned.cause":  "The ChatGPT account refused the Codex model that was pinned for the image generation (Options.Driver), so no other model was tried.",
-	"image_model_pinned.remedy": "Updating mam does not help. Remove the pin so that mam picks a model of the account by itself, or pin a model the account can use.",
+	"image_model_pinned.remedy": "Updating Nefos Video does not help. Remove the pin so that Nefos Video picks a model of the account by itself, or pin a model the account can use.",
 
 	"save_failed.cause":  "The setting or the data could not be saved{why}.",
 	"save_failed.remedy": "Check the free disk space and the permissions of the folder and save again. If it continues, check the log of mam.",
@@ -124,21 +124,21 @@ var messagesEn = map[string]string{ //nolint:gosec // texts of errors (they say 
 	"media_failed.remedy": "Check that the source video is not broken, and the free space and the write permission of the destination, then run it again. If it continues, report it with the detail (the end of the output of ffmpeg).",
 
 	"facefusion_unavailable.cause":  "FaceFusion cannot be used. It was not found, or the path that is set cannot be used.",
-	"facefusion_unavailable.remedy": "mam does not ship FaceFusion; install it yourself. The steps to install it are in the model manager > Companion software. If it is installed, check the paths of Python and the FaceFusion folder there. The detail has why it was not found and where mam looked.",
+	"facefusion_unavailable.remedy": "Nefos Video does not ship FaceFusion; install it yourself. The steps to install it are in the model manager > Companion software. If it is installed, check the paths of Python and the FaceFusion folder there. The detail has why it was not found and where Nefos Video looked.",
 
 	"facefusion_failed.cause":  "FaceFusion could not make the picture. {why}",
 	"facefusion_failed.remedy": "Check that a face is clearly visible in the face picture and in the target picture. FaceFusion refuses adult images. A shortage of GPU memory or a faulty install of FaceFusion can also be the cause. Check the detail (the end of the output of FaceFusion) and the state of FaceFusion shown in the model manager > Companion software.",
 
 	"update_network.cause":  "The update check could not connect to the network.",
-	"update_network.remedy": "Check the network connection. mam checks again by itself after a while.",
+	"update_network.remedy": "Check the network connection. Nefos Video checks again by itself after a while.",
 
 	"update_rate_limit.cause":  "The update could not be checked because the request limit of GitHub was reached.",
-	"update_rate_limit.remedy": "Wait a while. mam checks again by itself.",
+	"update_rate_limit.remedy": "Wait a while. Nefos Video checks again by itself.",
 
 	"update_access.cause":  "The update release could not be fetched from GitHub (access was refused, or the file is gone).",
 	"update_access.remedy": "Check again after a while. If it continues, check that a proxy or a firewall does not block GitHub.",
 
-	"update_verification.cause":  "The downloaded update file could not be verified (it may be damaged or tampered with, so mam does not update).",
+	"update_verification.cause":  "The downloaded update file could not be verified (it may be damaged or tampered with, so Nefos Video does not update).",
 	"update_verification.remedy": "Check again after a while. If it continues, get a new version from the distributor and install it again.",
 
 	"update_release.cause":  "The content of the published release is not valid.",
@@ -160,16 +160,16 @@ var messagesEn = map[string]string{ //nolint:gosec // texts of errors (they say 
 	"topaz_job_timeout.remedy": "Get a new quote and run it again. Try a shorter video for a long one.",
 
 	"topaz_job_failed.cause":  "Topaz could not finish the job (a failure on its side, or the job was cancelled). The credits are refunded.",
-	"topaz_job_failed.remedy": "Get a new quote and run it again. If it continues with the same video, try the video converted to a standard H.264 mp4, or send the request ID in the detail to the Topaz support. mam never repeats the job by itself (it would be charged twice).",
+	"topaz_job_failed.remedy": "Get a new quote and run it again. If it continues with the same video, try the video converted to a standard H.264 mp4, or send the request ID in the detail to the Topaz support. Nefos Video never repeats the job by itself (it would be charged twice).",
 
 	"topaz_source_invalid.cause":  "Topaz could not process the source video (it may be damaged, in another format than its extension says, or its facts differ from the real ones). Nothing is charged.",
 	"topaz_source_invalid.remedy": "Check that the source video plays, then run it again. If it continues, convert the video to a standard H.264 mp4 and try again.",
 
 	"topaz_transfer_failed.cause":  "The transfer of the video to or from Topaz failed (the upload of the source or the download of the result).",
-	"topaz_transfer_failed.remedy": "Check the network (proxy, VPN, firewall). If the upload failed, get a new quote and run it again. A failed download of a finished job can be tried later: Topaz keeps the result for 7 days. mam never repeats the job by itself (it would be charged twice).",
+	"topaz_transfer_failed.remedy": "Check the network (proxy, VPN, firewall). If the upload failed, get a new quote and run it again. A failed download of a finished job can be tried later: Topaz keeps the result for 7 days. Nefos Video never repeats the job by itself (it would be charged twice).",
 
-	"topaz_job_interrupted.cause":  "mam stopped, or the job was cancelled, while it waited for Topaz, so it stopped waiting for the result. Topaz had already accepted the job, so it may keep running there and the credits may be charged (request ID: {request_id}).",
-	"topaz_job_interrupted.remedy": "mam cannot cancel a job at Topaz (the cancel call is not implemented). Look the request ID ({request_id}) up in your Topaz account to see the state of the job and the credits used. mam never repeats the job by itself (it would be charged twice).",
+	"topaz_job_interrupted.cause":  "Nefos Video stopped, or the job was cancelled, while it waited for Topaz, so it stopped waiting for the result. Topaz had already accepted the job, so it may keep running there and the credits may be charged (request ID: {request_id}).",
+	"topaz_job_interrupted.remedy": "Nefos Video cannot cancel a job at Topaz (the cancel call is not implemented). Look the request ID ({request_id}) up in your Topaz account to see the state of the job and the credits used. Nefos Video never repeats the job by itself (it would be charged twice).",
 
 	"invalid_input.cause":    "The input is not valid.",
 	"invalid_input.remedy":   "Correct the input and run it again.",

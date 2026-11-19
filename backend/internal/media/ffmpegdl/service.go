@@ -137,7 +137,7 @@ func (s *Service) newInstall() *exeinstall.Runner {
 		Kind:        worktrack.KindFFmpegInstall,
 		Subject:     "ffmpeg",
 		Starting:    exeinstall.Status{Phase: string(PhaseDownload), Message: phaseMessage[PhaseDownload]},
-		ErrClosed:   errors.New("ffmpegdl: mam is shutting down"),
+		ErrClosed:   errors.New("ffmpegdl: Nefos Video is shutting down"),
 		ErrRemoving: ErrBusy,
 		Preflight: func() error {
 			if err := s.installer.Layout.CheckWritable(); err != nil {
@@ -187,14 +187,14 @@ func Explain(err error) string {
 	case fetch.IsConnectionLost(err):
 		return fetch.ConnectionLostMessage
 	case errors.Is(err, fetch.ErrChecksum), errors.Is(err, fetch.ErrSize):
-		return "ダウンロードしたファイルが、mam が確かめた版と一致しませんでした（SHA-256 またはサイズの不一致）。ファイルは使わずに削除しました。配布元が差し替わったか、通信の途中で書き換わった可能性があります"
+		return "ダウンロードしたファイルが、Nefos Video が確かめた版と一致しませんでした（SHA-256 またはサイズの不一致）。ファイルは使わずに削除しました。配布元が差し替わったか、通信の途中で書き換わった可能性があります"
 	case errors.Is(err, exeinstall.ErrMismatch), errors.Is(err, exeinstall.ErrUnsafeArchive):
-		return "ダウンロードしたアーカイブの中身が、mam が確かめた版と一致しませんでした。ファイルは使わずに削除しました"
+		return "ダウンロードしたアーカイブの中身が、Nefos Video が確かめた版と一致しませんでした。ファイルは使わずに削除しました"
 	case errors.Is(err, ErrNotRunnable):
 		return "ダウンロードした ffmpeg を実行できませんでした。セキュリティ製品に止められていないか確認してください。何も入れていません: " + err.Error()
 	case errors.As(err, &herr):
 		if herr.Status == http.StatusNotFound || herr.Status == http.StatusGone {
-			return fmt.Sprintf("配布元に、この mam が使う版のファイルがありません（HTTP %d）。mam を新しい版に更新してください", herr.Status)
+			return fmt.Sprintf("配布元に、この Nefos Video が使う版のファイルがありません（HTTP %d）。Nefos Video を新しい版に更新してください", herr.Status)
 		}
 		return fmt.Sprintf("配布元がエラーを返しました（HTTP %d %s）。しばらくしてからもう一度お試しください", herr.Status, http.StatusText(herr.Status))
 	}

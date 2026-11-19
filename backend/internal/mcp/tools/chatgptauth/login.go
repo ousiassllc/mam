@@ -17,8 +17,8 @@ type LoginOutput struct {
 	State   string `json:"state" jsonschema:"pending / succeeded / failed / cancelled"`
 	Message string `json:"message,omitempty"`
 	// AuthURL is the authorization URL of a browser login.
-	AuthURL       string `json:"auth_url,omitempty" jsonschema:"ブラウザでのログインの認可 URL。mam が動いている PC のブラウザで開く（コールバックがその PC の 127.0.0.1 に来る）"`
-	BrowserOpened bool   `json:"browser_opened,omitempty" jsonschema:"mam が自分の PC の既定ブラウザを開いた"`
+	AuthURL       string `json:"auth_url,omitempty" jsonschema:"ブラウザでのログインの認可 URL。Nefos Video が動いている PC のブラウザで開く（コールバックがその PC の 127.0.0.1 に来る）"`
+	BrowserOpened bool   `json:"browser_opened,omitempty" jsonschema:"Nefos Video が自分の PC の既定ブラウザを開いた"`
 	// VerificationURL and UserCode are the device login's page and code.
 	VerificationURL string `json:"verification_url,omitempty" jsonschema:"デバイスコードのログイン: 利用者がどの端末でも開く URL"`
 	UserCode        string `json:"user_code,omitempty" jsonschema:"デバイスコードのログイン: 利用者が URL で入力するコード。自分で始めたログインのときだけ入力させる"`
@@ -49,7 +49,7 @@ func (h handlers) startLogin(_ context.Context, _ Input) (LoginOutput, error) {
 		return LoginOutput{}, err
 	}
 	out := loginOutput("official", l)
-	out.Note = "ブラウザは mam が動いている PC で開きます。リモート（tailnet など）から操作している場合は、その PC でこの auth_url を開いてログインしてください。公式のログインにデバイスコードはありません。"
+	out.Note = "ブラウザは Nefos Video が動いている PC で開きます。リモート（tailnet など）から操作している場合は、その PC でこの auth_url を開いてログインしてください。公式のログインにデバイスコードはありません。"
 	return out, nil
 }
 
@@ -97,14 +97,14 @@ func (h handlers) loginStatus(_ context.Context, in LoginStatusInput) (LoginOutp
 // LogoutInput names the sign-in to end.
 type LogoutInput struct {
 	Account     string `json:"account" jsonschema:"official（公式のログイン）、codex（Codex 経由のログイン）または image（画像生成・非公式のログイン）"`
-	RemoveFiles bool   `json:"remove_files,omitempty" jsonschema:"codex のときだけ指定できる。取得した Codex 本体と mam 専用の CODEX_HOME も削除する（アンインストールの前に使う）"`
+	RemoveFiles bool   `json:"remove_files,omitempty" jsonschema:"codex のときだけ指定できる。取得した Codex 本体と Nefos Video 専用の CODEX_HOME も削除する（アンインストールの前に使う）"`
 }
 
 // LogoutOutput is what the sign-out did.
 type LogoutOutput struct {
 	Account         string `json:"account"`
 	WasSignedIn     bool   `json:"was_signed_in"`
-	RevokeConfirmed bool   `json:"revoke_confirmed" jsonschema:"OpenAI がリフレッシュトークンの失効を確認した。false のときは ChatGPT の設定（Settings）で mam の接続を解除するよう利用者に伝える"`
+	RevokeConfirmed bool   `json:"revoke_confirmed" jsonschema:"OpenAI がリフレッシュトークンの失効を確認した。false のときは ChatGPT の設定（Settings）で Nefos Video の接続を解除するよう利用者に伝える"`
 	Message         string `json:"message"`
 }
 
@@ -135,7 +135,7 @@ func (h handlers) logout(ctx context.Context, in LogoutInput) (LogoutOutput, err
 	case res.RevokeConfirmed:
 		out.Message = "ログアウトしました。トークンを失効し、保存したトークンを削除しました"
 	default:
-		out.Message = "ログアウトし、保存したトークンを削除しました。ただし OpenAI 側での失効を確認できませんでした。ChatGPT の設定（Settings）で mam の接続を解除してください"
+		out.Message = "ログアウトし、保存したトークンを削除しました。ただし OpenAI 側での失効を確認できませんでした。ChatGPT の設定（Settings）で Nefos Video の接続を解除してください"
 	}
 	return out, nil
 }

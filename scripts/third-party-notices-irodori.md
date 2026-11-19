@@ -1,6 +1,6 @@
 ## Irodori-TTS（利用者が取得する別プログラム）
 
-MAM のローカルランタイム管理（Issue #1015）は、利用者の操作で Irodori-TTS（日本語専用の音声合成。Aratako 氏）の実行環境を、MAM の実行ファイルと同じ場所の `localai\irodori-tts` ディレクトリに組み立て、別のプロセス（MAM が同梱する起動用スクリプト `mam_irodori_server.py` が、公式の API サーバー Irodori-TTS-Server の FastAPI アプリの前に番人を置いて起動する。起動のたびに作る合言葉を付けた `POST /v1/audio/speech` だけに答え、`127.0.0.1` だけで待ち受け）として起動します。**公式は Windows 向けの配布物を出していないため、MAM が部品をカタログに固定して取得し、組み立てます**（MuseTalk と同じ作り）。MAM はこれらを同梱せず再配布しません。
+Nefos Video のローカルランタイム管理（Issue #1015）は、利用者の操作で Irodori-TTS（日本語専用の音声合成。Aratako 氏）の実行環境を、Nefos Video の実行ファイルと同じ場所の `localai\irodori-tts` ディレクトリに組み立て、別のプロセス（Nefos Video が同梱する起動用スクリプト `mam_irodori_server.py` が、公式の API サーバー Irodori-TTS-Server の FastAPI アプリの前に番人を置いて起動する。起動のたびに作る合言葉を付けた `POST /v1/audio/speech` だけに答え、`127.0.0.1` だけで待ち受け）として起動します。**公式は Windows 向けの配布物を出していないため、Nefos Video が部品をカタログに固定して取得し、組み立てます**（MuseTalk と同じ作り）。Nefos Video はこれらを同梱せず再配布しません。
 
 - Irodori-TTS-Server（API サーバー。MIT）: <https://github.com/Aratako/Irodori-TTS-Server/tree/61012c760f22f7b4a6c21c5c5f8f9e148120b6f9>（ライセンス文は同じコミットの `LICENSE`）。
 - Irodori-TTS（推論のコード。MIT）: <https://github.com/Aratako/Irodori-TTS/tree/89f9d8fbd4d51ea019867ee1197725ede1df13c5>。
@@ -174,7 +174,7 @@ MAM のローカルランタイム管理（Issue #1015）は、利用者の操�
 
 ### Irodori-TTS の重みと依存ファイル
 
-MAM のローカルランタイム管理は、Irodori-TTS のモデルの重み・音声コーデックの重み・SilentCipher の透かしの重みを、固定の URL（Hugging Face のコミット固定）と SHA-256 で検証します。**MAM は再配布せず**、利用者の操作で取得元から取得します。モデルは利用者がモデルマネージャーで選び（既定は v4.1-Small）、選んだモデルの重みだけを取得します。出典・ライセンス・商用利用の可否・使うときの制限は、モデルマネージャーの画面と MCP（`list_local_runtime_models`）にも表示します。
+Nefos Video のローカルランタイム管理は、Irodori-TTS のモデルの重み・音声コーデックの重み・SilentCipher の透かしの重みを、固定の URL（Hugging Face のコミット固定）と SHA-256 で検証します。**Nefos Video は再配布せず**、利用者の操作で取得元から取得します。モデルは利用者がモデルマネージャーで選び（既定は v4.1-Small）、選んだモデルの重みだけを取得します。出典・ライセンス・商用利用の可否・使うときの制限は、モデルマネージャーの画面と MCP（`list_local_runtime_models`）にも表示します。
 
 | 名前 | 出典 | ライセンス | 商用利用 |
 |---|---|---|---|
@@ -185,5 +185,5 @@ MAM のローカルランタイム管理は、Irodori-TTS のモデルの重み�
 
 - 取得先のコミットは、v4.1-Small `2b28324d…`、v4.1-Small-MF `ccc78f5d…`、v4-Large `2e0c5542…`、v4-Large-Quantized `bdef9592…`、Semantic-DACVAE `47376ee2…`、sony/silentcipher `a1c4d021…`。
 - 各ライセンスは、モデルカードの表記を読んで記録したもので、**原文との突き合わせや学習データのライセンスの確認はしていません（未確認）**。
-- **声のコピー（参照音声）の使い方の制限**: モデルカードは、本人の同意なしに実在の人（声優・有名人など）の声をコピーしたりなりすましに使ったりすること、人をだます合成音声・ディープフェイクに使うことを禁じています。MAM は画面・MCP でこの制限を伝えますが、守る責任は利用者にあります。
+- **声のコピー（参照音声）の使い方の制限**: モデルカードは、本人の同意なしに実在の人（声優・有名人など）の声をコピーしたりなりすましに使ったりすること、人をだます合成音声・ディープフェイクに使うことを禁じています。Nefos Video は画面・MCP でこの制限を伝えますが、守る責任は利用者にあります。
 

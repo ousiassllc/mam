@@ -203,7 +203,7 @@ func (s *Service) list(ctx context.Context, provider string) (List, error) {
 			// nothing is kept and the next opening reads the list again.
 			return s.defaults(p, failedFallback(p)), nil
 		}
-		s.o.Logger.Warn("llm model list unavailable; showing the candidates of mam", "provider", p, "error", err)
+		s.o.Logger.Warn("llm model list unavailable; showing the candidates of Nefos Video", "provider", p, "error", err)
 		e.ttl, e.list = failureTTL, s.defaults(p, failedFallback(p))
 	}
 	if keep {

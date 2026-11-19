@@ -53,7 +53,7 @@ func writeRecord(path string, child int, probe prober, logger *slog.Logger) bool
 		return false
 	}
 	if err != nil {
-		logger.Warn("pid file not written: a child that outlives mam is not found at the next start", "err", err)
+		logger.Warn("pid file not written: a child that outlives Nefos Video is not found at the next start", "err", err)
 	}
 	return err == nil
 }
@@ -112,7 +112,7 @@ func reclaim(path string, probe prober, signal func(pid int, force bool), grace,
 		logger.Debug("the child of the pid file is gone", "pid", rec.Child.PID, "probe_err", err)
 		return
 	}
-	logger.Warn("ending a child that the previous mam left behind", "pid", rec.Child.PID)
+	logger.Warn("ending a child that the previous Nefos Video left behind", "pid", rec.Child.PID)
 	signal(rec.Child.PID, false)
 	if !waitGone(rec.Child, probe, grace, poll) {
 		signal(rec.Child.PID, true)

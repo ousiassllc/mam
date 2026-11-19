@@ -75,7 +75,7 @@ templ InstallPanel(w Wire, in Install) {
 	<div class="flex flex-col gap-3" data-testid="gt-pose-install">
 		<p class="text-sm text-ink">
 			ポーズ集（Shisei）は、顔のない人形の線画で描いたポーズの見本です（{ strconv.Itoa(in.Poses) } 種類・線画と、ControlNet 用の深度・法線マップを合わせて { strconv.Itoa(in.Images) } 枚。アングルは正面・斜め・横・上から・下から）。
-			MAM には同梱せず、初回だけ { in.Source } から { in.Download } をダウンロードします（リリースを固定し、ファイルごとに SHA-256 を検証します）。
+			Nefos Video には同梱せず、初回だけ { in.Source } から { in.Download } をダウンロードします（リリースを固定し、ファイルごとに SHA-256 を検証します）。
 			if in.Remain != "" && in.Remain != in.Download {
 				<span data-testid="gt-pose-remain">
 					導入済みのファイルは取り直しません。足りない分（深度・法線マップなど）だけ、今回 { in.Remain } をダウンロードします。

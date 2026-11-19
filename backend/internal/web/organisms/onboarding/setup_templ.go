@@ -230,7 +230,7 @@ func FFmpegBody(f FFmpeg) templ.Component {
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"text-sm text-ink\">ffmpeg と ffprobe は、品質判定（Judge）・Take のプレビュー・部分採用で使います。無くても mam は起動しますが、これらは使えなくなります。モデルマネージャーの「付随ソフト」でパスを指定していればそのパスを、無ければ mam を起動した環境の PATH（Mac では Homebrew の /opt/homebrew/bin と /usr/local/bin も）から探し、どこにも無ければ mam でダウンロードして入れたものを使います。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<p class=\"text-sm text-ink\">ffmpeg と ffprobe は、品質判定（Judge）・Take のプレビュー・部分採用で使います。無くても Nefos Video は起動しますが、これらは使えなくなります。モデルマネージャーの「付随ソフト」でパスを指定していればそのパスを、無ければ Nefos Video を起動した環境の PATH（Mac では Homebrew の /opt/homebrew/bin と /usr/local/bin も）から探し、どこにも無ければ Nefos Video でダウンロードして入れたものを使います。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -357,7 +357,7 @@ func FFmpegBody(f FFmpeg) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<p class=\"text-sm text-ink\">入れたあとは、下の「もう一度確認する」を押してください。mam を再起動する必要はありません。</p><p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "<p class=\"text-sm text-ink\">入れたあとは、下の「もう一度確認する」を押してください。Nefos Video を再起動する必要はありません。</p><p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -636,7 +636,7 @@ func MacBody(m Mac) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<section class=\"flex flex-col gap-2 rounded-md border border-border px-4 py-3\" aria-labelledby=\"onboarding-comfy-title\" data-testid=\"onboarding-comfy\"><h3 id=\"onboarding-comfy-title\" class=\"text-base font-semibold\">ComfyUI は外部のものを使います</h3><p class=\"text-sm text-ink\">mam は ComfyUI を同梱しません。ローカルで画像・動画を作りたいときは、公式の <strong>Comfy Desktop</strong>（macOS 13 以降・Apple Silicon）を入れて、その接続先の URL を mam に入れます。Comfy Desktop は、.dmg から入れるだけで、Python と MPS の設定まで自動で行います。</p><ol role=\"list\" class=\"list-decimal pl-6 text-sm text-ink\"><li>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<section class=\"flex flex-col gap-2 rounded-md border border-border px-4 py-3\" aria-labelledby=\"onboarding-comfy-title\" data-testid=\"onboarding-comfy\"><h3 id=\"onboarding-comfy-title\" class=\"text-base font-semibold\">ComfyUI は外部のものを使います</h3><p class=\"text-sm text-ink\">Nefos Video は ComfyUI を同梱しません。ローカルで画像・動画を作りたいときは、公式の <strong>Comfy Desktop</strong>（macOS 13 以降・Apple Silicon）を入れて、その接続先の URL を Nefos Video に入れます。Comfy Desktop は、.dmg から入れるだけで、Python と MPS の設定まで自動で行います。</p><ol role=\"list\" class=\"list-decimal pl-6 text-sm text-ink\"><li>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -693,7 +693,7 @@ func MacBody(m Mac) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "\">http://127.0.0.1:8000</code>）。</li><li>mam の「設定」→ ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "\">http://127.0.0.1:8000</code>）。</li><li>Nefos Video の「設定」→ ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

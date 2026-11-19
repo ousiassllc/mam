@@ -116,7 +116,7 @@
 | FaceFusion | **#1106 で、このカードも外れ、「付随ソフト」にまとまった**。以前は「FaceFusion を使えます」（ok）／「未設定（使うときだけ入れます）」（neutral）／「設定ファイルを読めません」（warn）（`facefusionsettings.Service` の探した結果。#995） | `/settings/facefusion` |
 | 付随ソフト（#1106。状態: 実装済み） | 「ffmpeg: 使えます・FaceFusion: 未設定」。`data-state` は [model-manager-screen.md](model-manager-screen.md) の概要の `companion` と同じ（`full`・`partial`〔FaceFusion が未設定でも警告にしない〕・`attention`〔ffmpeg が見つからない・設定ファイルが読めない〕）。`Services.FFmpeg`・`FaceFusion` のどちらかがあるときだけ。説明は「別の画面を開きます」を含める | `paths.ModelManagerPart("companion")` |
 | バージョンとアップデート | 版（`updatepanel.Data.Version`）と状態（最後の確認の結果。`Tone` をそのまま使う） | `/settings/update` |
-| 第三者のライセンス | 項目の数「n 件」（neutral。`licenses.Catalog.Len`）。説明は 1 行「MAM が使っているソフトウェアのライセンス文。」（#910。[settings-screen-licenses.md](settings-screen-licenses.md) §4） | `/settings/licenses` |
+| 第三者のライセンス | 項目の数「n 件」（neutral。`licenses.Catalog.Len`）。説明は 1 行「Nefos Video が使っているソフトウェアのライセンス文。」（#910。[settings-screen-licenses.md](settings-screen-licenses.md) §4） | `/settings/licenses` |
 | モデルマネージャー（決定事項 6(a)） | ComfyUI の状態（[home-screen.md](home-screen.md) §5。`hx-get="/tools/model-manager/status"` を使う）。説明は「別の画面を開きます」を含める | `paths.ModelManager()` |
 
 - 11 枚（#995 で FaceFusion、#856 で ffmpeg、#924 で音声・口パク、#910 で第三者のライセンスを足した）で、並びはナビと同じ順にモデルマネージャーを最後に置く。`Settings` サービスが無い構成では LLM・画像動画のカードを出さない（ナビと同じ条件）。
@@ -225,3 +225,4 @@
 | 0.17 | 2026-11-06 | §2 の分類「ffmpeg」「FaceFusion」と §5 の概要のカード 2 枚を、モデルマネージャーの `companion` へ移すと決め、概要に「付随ソフト」の 1 枚を足した（状態は仕様のみ） | Issue #1106 |
 | 0.18 | 2026-11-07 | §2 の分類「ffmpeg」「FaceFusion」と §5 の概要のカード 2 枚を外し、概要に「付随ソフト」の 1 枚を足した（#1106）。状態は「実装済み」 | Issue #1106 |
 | 0.19 | 2026-11-11 | §4 の概要の図と §5 の概要のカードの表の「API キー n / 14 件」を 18 件（`len(service.CredentialProviders)`）に直した | PR #1141 のレビュー指摘 |
+| 0.20 | 2026-11-19 | 本文の製品名の表示を「MAM」から「Nefos Video」に改めた（過去の改訂履歴の文は当時のまま） | #1170: 製品名を MAM から Nefos Video に変更（表示名のみ。識別子・パス・実行ファイル名は変更しない） |

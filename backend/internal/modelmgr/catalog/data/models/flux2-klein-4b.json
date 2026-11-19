@@ -31,7 +31,7 @@
  ],
  "vram": {
   "min_gb": 12,
-  "source": "BFL のモデルカードは bf16 で約 13 GB、ComfyUI の公式ガイドは fp8 蒸留版で 8.4 GB（RTX 5090 での値）と書く。mam は fp8 とテキストエンコーダー（Qwen3 4B、約 8 GB）の分を見て 12 GB を目安にした。mam の実機（16 GB）では未確認",
+  "source": "BFL のモデルカードは bf16 で約 13 GB、ComfyUI の公式ガイドは fp8 蒸留版で 8.4 GB（RTX 5090 での値）と書く。Nefos Video は fp8 とテキストエンコーダー（Qwen3 4B、約 8 GB）の分を見て 12 GB を目安にした。Nefos Video の実機（16 GB）では未確認",
   "estimate": true
  },
  "license": {
@@ -39,7 +39,7 @@
   "version": "2.0",
   "name": "Apache License 2.0",
   "url": "https://huggingface.co/black-forest-labs/FLUX.2-klein-4b-fp8/blob/main/LICENSE.md",
-  "summary": "FLUX.2 [klein] 4B は Apache 2.0（BFL のモデルカードに「商用利用を含む」と明記）。著作権表示とライセンス文を保つ。生成物の権利は主張されない。モデルカードには、違法・児童の搾取・同意のない性的な画像・欺瞞的な内容などに使わない旨の使用範囲の制限が別に書かれる（ライセンス自体の条件ではなく、モデルカードの注記）。同じ FLUX.2 [klein] でも 9B は非商用のライセンスで、mam は入れない。",
+  "summary": "FLUX.2 [klein] 4B は Apache 2.0（BFL のモデルカードに「商用利用を含む」と明記）。著作権表示とライセンス文を保つ。生成物の権利は主張されない。モデルカードには、違法・児童の搾取・同意のない性的な画像・欺瞞的な内容などに使わない旨の使用範囲の制限が別に書かれる（ライセンス自体の条件ではなく、モデルカードの注記）。同じ FLUX.2 [klein] でも 9B は非商用のライセンスで、Nefos Video は入れない。",
   "commercial": "yes",
   "checked_at": "2026-11-02",
   "components": [

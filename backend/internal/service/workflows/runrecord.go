@@ -92,7 +92,7 @@ func (s *Service) Run(_ context.Context, id string) (RunRecord, error) {
 	}
 	if rec.Status == RunRunning {
 		if rec.BootID != s.bootID {
-			rec.Status, rec.Error = RunFailed, "mam が再起動したため、この実行は中断されました。もう一度実行してください"
+			rec.Status, rec.Error = RunFailed, "Nefos Video が再起動したため、この実行は中断されました。もう一度実行してください"
 		} else if u, ok := s.runs.get(id); ok {
 			rec.Percent, rec.Message = u.Percent, u.Message
 		}

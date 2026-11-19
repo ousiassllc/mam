@@ -1,7 +1,7 @@
 {
  "id": "controlnet-aux",
  "name": "comfyui_controlnet_aux（ControlNet の前処理）",
- "description": "写真からポーズ（OpenPose・DWPose）・深度・線画・エッジなどの制御画像を作る、ControlNet の前処理のノード集。同梱の Python 環境にない多数のパッケージ（OpenCV・scikit-image・mediapipe・onnxruntime ほか）が要るため、今は導入できない。Canny の制御画像は、導入しなくても mam が写真から作る（ControlNet のテンプレートの reference_preprocess: canny）。ポーズ・深度の前処理は、重みが非商用か不明のため作らない。",
+ "description": "写真からポーズ（OpenPose・DWPose）・深度・線画・エッジなどの制御画像を作る、ControlNet の前処理のノード集。同梱の Python 環境にない多数のパッケージ（OpenCV・scikit-image・mediapipe・onnxruntime ほか）が要るため、今は導入できない。Canny の制御画像は、導入しなくても Nefos Video が写真から作る（ControlNet のテンプレートの reference_preprocess: canny）。ポーズ・深度の前処理は、重みが非商用か不明のため作らない。",
  "repo": "https://github.com/Fannovel16/comfyui_controlnet_aux",
  "commit": "a587a4c1594524c1d2de5cd1a86cd868ff448e1c",
  "archive_url": "https://github.com/Fannovel16/comfyui_controlnet_aux/archive/a587a4c1594524c1d2de5cd1a86cd868ff448e1c.zip",
@@ -14,7 +14,7 @@
   "version": "2.0",
   "name": "Apache License 2.0（コード）。前処理モデルの重みは別のライセンス",
   "url": "https://github.com/Fannovel16/comfyui_controlnet_aux/blob/a587a4c1594524c1d2de5cd1a86cd868ff448e1c/LICENSE.txt",
-  "summary": "リポジトリの LICENSE.txt は Apache License 2.0 の全文。ただし各前処理（OpenPose・DWPose・Depth Anything・MiDaS など）は、実行時にそれぞれの配布元から重みを取得して使い、重みのライセンスは前処理ごとに違う。ソースが取得先として指す Hugging Face のカードは、lllyasviel/Annotators が license: other（本文なし）、depth-anything/Depth-Anything-V2-Large が license: cc-by-nc-4.0（非商用）、yzd-v/DWPose が license: apache-2.0（2026-11-03 に API で確認）。mam は重みの取得を固定・検証できず、前処理ごとの商用可否は確かめられていない。",
+  "summary": "リポジトリの LICENSE.txt は Apache License 2.0 の全文。ただし各前処理（OpenPose・DWPose・Depth Anything・MiDaS など）は、実行時にそれぞれの配布元から重みを取得して使い、重みのライセンスは前処理ごとに違う。ソースが取得先として指す Hugging Face のカードは、lllyasviel/Annotators が license: other（本文なし）、depth-anything/Depth-Anything-V2-Large が license: cc-by-nc-4.0（非商用）、yzd-v/DWPose が license: apache-2.0（2026-11-03 に API で確認）。Nefos Video は重みの取得を固定・検証できず、前処理ごとの商用可否は確かめられていない。",
   "commercial": "unknown",
   "checked_at": "2026-11-03",
   "notice": "コードは Apache-2.0 ですが、前処理ごとに実行時に取得される重みのライセンスは前処理で違い、非商用のもの（Depth Anything V2 Large は cc-by-nc-4.0）や本文のないもの（lllyasviel/Annotators は license: other）を含みます。導入できる状態になっても、商用で使う前に、使う前処理の重みの配布元で確かめてください。"
@@ -39,7 +39,7 @@
   "addict",
   "trimesh"
  ],
- "install_blocked": "同梱の Python 環境に OpenCV（cv2）・scikit-image・mediapipe・onnxruntime・matplotlib・albumentations・timm・huggingface_hub・yacs・omegaconf・addict・trimesh などが無く、mam は pip を実行しません。さらに前処理ごとに、実行時に Hugging Face などから重みを取得します（mam の「固定して SHA-256 を検証する」方針に合わない）。Canny は重みが要らないので mam の中（Go。backend/internal/imgprep）で作り、このノードは導入しません。",
+ "install_blocked": "同梱の Python 環境に OpenCV（cv2）・scikit-image・mediapipe・onnxruntime・matplotlib・albumentations・timm・huggingface_hub・yacs・omegaconf・addict・trimesh などが無く、Nefos Video は pip を実行しません。さらに前処理ごとに、実行時に Hugging Face などから重みを取得します（Nefos Video の「固定して SHA-256 を検証する」方針に合わない）。Canny は重みが要らないので Nefos Video の中（Go。backend/internal/imgprep）で作り、このノードは導入しません。",
  "node_classes": [
   "CannyEdgePreprocessor",
   "DWPreprocessor",

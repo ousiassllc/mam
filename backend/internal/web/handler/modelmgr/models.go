@@ -81,8 +81,8 @@ func nodesPopup(model string, problems []nodegate.Problem) reason.Popup {
 	for _, pr := range problems {
 		text := "導入されていません。"
 		if pr.Blocked != "" {
-			text = "今の mam では導入できません。" + pr.Blocked
-			p.Remedy = "このモデルが必要とする追加ノードは、今の mam では導入できません。mam は Python の依存を自動で入れません。導入できるようになるまで、このモデルは導入できません。ノードごとの状態は「追加ノード」の画面で確かめられます。"
+			text = "今の Nefos Video では導入できません。" + pr.Blocked
+			p.Remedy = "このモデルが必要とする追加ノードは、今の Nefos Video では導入できません。Nefos Video は Python の依存を自動で入れません。導入できるようになるまで、このモデルは導入できません。ノードごとの状態は「追加ノード」の画面で確かめられます。"
 		}
 		p.Items = append(p.Items, reason.Item{Name: "追加ノード「" + pr.Name + "」", Text: text})
 	}

@@ -1,6 +1,6 @@
 # ComfyUI ワークフローの保存・版・生成
 
-ComfyUI のノード画面（[comfy-embedding.md](comfy-embedding.md)）で作ったワークフローを mam に保存し、画像・動画のモデル（Shot の生成方法）として使う（Issue #834）。実装は `backend/internal/repository/comfywf`（保存）・`service/workflows`（サービス）・`mcp/tools/workflows`（MCP）・`web/handler/workflows`＋`web/organisms/workflows`（画面）。テーブルは [er-comfy-workflows.md](er-comfy-workflows.md)。改訂履歴は [comfy-workflows.changelog.md](comfy-workflows.changelog.md)。
+ComfyUI のノード画面（[comfy-embedding.md](comfy-embedding.md)）で作ったワークフローを Nefos Video に保存し、画像・動画のモデル（Shot の生成方法）として使う（Issue #834）。実装は `backend/internal/repository/comfywf`（保存）・`service/workflows`（サービス）・`mcp/tools/workflows`（MCP）・`web/handler/workflows`＋`web/organisms/workflows`（画面）。テーブルは [er-comfy-workflows.md](er-comfy-workflows.md)。改訂履歴は [comfy-workflows.changelog.md](comfy-workflows.changelog.md)。
 
 ## 1. 持ち方
 
@@ -41,11 +41,11 @@ ComfyUI のノード画面（[comfy-embedding.md](comfy-embedding.md)）で作�
 
 ## 5. 実行（`run_workflow`・画面なしの試し実行）
 
-保存したグラフと割り当てを、Shot と同じ `comfyui.Backend` で実行する。入力: プロンプト・ネガティブ・縦横比・（動画）解像度と長さ（ワークフローが作れる長さに丸める）・参照画像／最初と最後のフレーム（Project の素材）。Project には何も書かず、Cost Ledger の行も作らない（ワークフロー単体の試し）。結果は `<data-dir>/workflow-runs/<run id>/` に置き、7 日で消す。MCP は `job_id` を返し、`get_job` が進捗と結果（トークン付きのダウンロード URL）を返す。mam の再起動で止まった実行は失敗として扱う。
+保存したグラフと割り当てを、Shot と同じ `comfyui.Backend` で実行する。入力: プロンプト・ネガティブ・縦横比・（動画）解像度と長さ（ワークフローが作れる長さに丸める）・参照画像／最初と最後のフレーム（Project の素材）。Project には何も書かず、Cost Ledger の行も作らない（ワークフロー単体の試し）。結果は `<data-dir>/workflow-runs/<run id>/` に置き、7 日で消す。MCP は `job_id` を返し、`get_job` が進捗と結果（トークン付きのダウンロード URL）を返す。Nefos Video の再起動で止まった実行は失敗として扱う。
 
 ## 6. プロジェクトバンドル
 
-ワークフローは全体で持つので**バンドルに含めない**（`bundle` の `unbundledTables` に理由つきで載せる）。バンドルを取り込んだとき、その Project の Take（`model_name`）と Video Model の LOCK が指す `comfy:<id>@v<N>` のうち、この mam に無いワークフロー（または版）があれば、**取り込みは成功させ**、その Project のチャットに「見つからない」と一覧を出して警告する（`repository/bundle.MissingWorkflows`）。該当の Shot は、ワークフローを取り込むか別のモデルを選び直すまで、固定が無視されて AUTO と同じ経路で選ばれる。
+ワークフローは全体で持つので**バンドルに含めない**（`bundle` の `unbundledTables` に理由つきで載せる）。バンドルを取り込んだとき、その Project の Take（`model_name`）と Video Model の LOCK が指す `comfy:<id>@v<N>` のうち、この Nefos Video に無いワークフロー（または版）があれば、**取り込みは成功させ**、その Project のチャットに「見つからない」と一覧を出して警告する（`repository/bundle.MissingWorkflows`）。該当の Shot は、ワークフローを取り込むか別のモデルを選び直すまで、固定が無視されて AUTO と同じ経路で選ばれる。
 
 **アップスケールのワークフロー（Issue #975）**: 画像を大きくするワークフロー（`upscale` の印。[../local-models.md](../local-models.md) §4.5）は、モデルマネージャーのカタログ（`kind: upscale`）が同梱エンジンに作る。保存したワークフロー（この表）には、印はまだ持てない（保存の画面は `upscale` を編集しない）。印のある同梱のワークフローは、保存したワークフローの「モデルとしての公開」（§2）と同じ「プロンプトを渡すモデル」の一覧には出ない。
 

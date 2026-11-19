@@ -9,7 +9,7 @@
   "version": "3.0",
   "name": "GNU General Public License v3.0",
   "url": "https://github.com/Comfy-Org/ComfyUI/blob/v0.42.1/LICENSE",
-  "summary": "ComfyUI は mam とは別のプログラムで、GPL-3.0 で公開されている。mam は ComfyUI のバイトを配布せず、利用者の PC に公式のリリースから取得する。ソースコードは GitHub の v0.42.1 のタグにある。",
+  "summary": "ComfyUI は Nefos Video とは別のプログラムで、GPL-3.0 で公開されている。Nefos Video は ComfyUI のバイトを配布せず、利用者の PC に公式のリリースから取得する。ソースコードは GitHub の v0.42.1 のタグにある。",
   "commercial": "yes",
   "checked_at": "2026-11-01"
  },

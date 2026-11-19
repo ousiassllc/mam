@@ -10,7 +10,7 @@ Finder や Dock から起動した macOS のアプリは、`launchd` の `PATH`�
 2. 指定が無いとき、次の場所を**この順に**探す（`locate.SearchDirs`）。
    1. 環境変数 `PATH` の各ディレクトリ（`PATH` の並び順）
    2. macOS（`GOOS=darwin`）だけ: Homebrew の既定の場所 `/opt/homebrew/bin`、`/usr/local/bin`
-   3. 追加のディレクトリ（`locate.Finder.Extra`。mam が自分で置く場所用）。**mam がダウンロードして入れた ffmpeg の `bin/`**（#900。[ffmpeg-download.md](ffmpeg-download.md)）がここに入る。導入の記録があり、ファイルがそろっているときだけで、**最後**に探すので、利用者が自分で入れた ffmpeg（`PATH`・Homebrew）が必ず勝つ
+   3. 追加のディレクトリ（`locate.Finder.Extra`。Nefos Video が自分で置く場所用）。**Nefos Video がダウンロードして入れた ffmpeg の `bin/`**（#900。[ffmpeg-download.md](ffmpeg-download.md)）がここに入る。導入の記録があり、ファイルがそろっているときだけで、**最後**に探すので、利用者が自分で入れた ffmpeg（`PATH`・Homebrew）が必ず勝つ
 3. **ログインシェルの `PATH` は読まない**（シェルの設定ファイルの実行を伴い、遅く、環境ごとに挙動が違うため）。
 
 `SearchDirs` は OS に依存しない純関数で、環境変数もディスクも読まない（`goos`・`PATH` の値・追加のディレクトリを引数にとる）。空・相対パスの項目と重複は除く（相対パスは作業ディレクトリに結果が左右されるため）。Windows は `;` 区切りで `"` を外し、ファイル名に `.exe` を付ける。
@@ -53,3 +53,4 @@ ffmpeg と ffprobe は別々に指定でき、片方だけ指定したときの�
 | 1.4 | 2026-11-06 | §3「反映」を、次の起動から → 保存・ダウンロード・削除のすぐあとに改めた（`media.Tools` を差し替え可能にし、各サービスに同じものを渡す。画面の「使えます」はサービスが動かせるものと一致する）。実行中の呼び出しは壊さない | Issue #1047 |
 | 1.5 | 2026-11-06 | 画面とルートを、設定画面からモデルマネージャーの `companion` の `#mm-ffmpeg` へ移すと決めた（`PUT /model-manager/companion/ffmpeg`。探し方は変えない。状態は仕様のみ） | Issue #1106 |
 | 1.6 | 2026-11-07 | 画面とルートの移し替え（#1106）を実装した（`PUT /model-manager/companion/ffmpeg`）。探し方は変えていない。状態は「実装済み」 | Issue #1106 |
+| 1.7 | 2026-11-19 | 本文の製品名の表示を「MAM」から「Nefos Video」に改めた（過去の改訂履歴の文は当時のまま） | #1170: 製品名を MAM から Nefos Video に変更（表示名のみ。識別子・パス・実行ファイル名は変更しない） |

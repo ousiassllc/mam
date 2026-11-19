@@ -58,7 +58,7 @@ type JobStatus struct {
 	ProjectID  string         `json:"project_id,omitempty" jsonschema:"対象が属する Project の ID（無ければ省略）/ Project of the target, when it has one"`
 	StartedAt  time.Time      `json:"started_at"`
 	FinishedAt *time.Time     `json:"finished_at,omitempty" jsonschema:"ジョブキューが終了を記録した時刻 / when the job queue recorded the end"`
-	EndedAt    *time.Time     `json:"ended_at,omitempty" jsonschema:"終わった時刻（ジョブキューの記録があればそれ、無ければ mam が終了を最初に確かめた時刻）/ when it ended: the job queue's time, else when mam first saw the end"`
+	EndedAt    *time.Time     `json:"ended_at,omitempty" jsonschema:"終わった時刻（ジョブキューの記録があればそれ、無ければ Nefos Video が終了を最初に確かめた時刻）/ when it ended: the job queue's time, else when Nefos Video first saw the end"`
 }
 
 // JobInfo is what a Probe is told about the job it looks at.

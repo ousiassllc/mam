@@ -38,7 +38,11 @@ var (
 	weight   = regexp.MustCompile(`(?:^|[^\w-])(?:[a-z0-9\[\]-]+:)*font-(medium|bold|extrabold|black|light|thin)(?:[^\w-]|$)`)
 )
 
-// A size that is not in the guide's scale, and a weight that is not Regular (400) or SemiBold (600), do not come back (T2, T3).
+// brandNameWeight is the one place that has a weight outside Regular (400) and SemiBold (600): the product name in nav.templ is font-light
+// for the brand wordmark (Sora Light 300), the thinness of the words of the logo it replaced (#1171). No other exception is allowed.
+const brandNameWeight = "../organisms/sidenav/nav.templ|light"
+
+// A size that is not in the guide's scale, and a weight that is not Regular (400) or SemiBold (600), do not come back (T2, T3), but for brandNameWeight.
 func TestSources_UseOnlyTheGuidesSizesAndWeights(t *testing.T) {
 	for _, path := range colorSources(t) {
 		if strings.HasSuffix(path, ".css") {
@@ -53,7 +57,7 @@ func TestSources_UseOnlyTheGuidesSizesAndWeights(t *testing.T) {
 				}
 				t.Errorf("%s:%d: text-%s is not in the size scale of the guide (xs sm base lg xl 2xl 3xl)", path, n+1, m[2])
 			}
-			if m := weight.FindStringSubmatch(line); m != nil {
+			if m := weight.FindStringSubmatch(line); m != nil && path+"|"+m[1] != brandNameWeight {
 				t.Errorf("%s:%d: font-%s: the weights are Regular (400) and SemiBold (600, headings and buttons only)", path, n+1, m[1])
 			}
 		}

@@ -89,7 +89,7 @@ const BucketCodex = "codex"
 // ClientInfoName and ClientInfoTitle identify mam to the app-server (clientInfo; OpenAI's compliance logs use the name).
 const (
 	ClientInfoName  = "mam"
-	ClientInfoTitle = "MAM"
+	ClientInfoTitle = "Nefos Video"
 )
 
 // Config keys and values mam passes to the app-server with -c (TOML values).

@@ -1,4 +1,4 @@
-# MAM
+# Nefos Video
 
 AI Video Production Agent。企画・脚本・演出・撮影・品質判定・撮り直し・編集・音声・最終 QC までを AI が自律的に進める、ローカル動作の AI Production Studio です。サーバーは自分の PC の `127.0.0.1` だけで待ち受け、画面は既定ブラウザ、または Windows・macOS（Apple Silicon）ではネイティブウィンドウで開きます。
 
@@ -14,7 +14,7 @@ AI Video Production Agent。企画・脚本・演出・撮影・品質判定・�
 | 声（日本語専用。参照音声からの声の再現・キャプションでの声質や感情の指定） | Irodori-TTS | [Aratako/Irodori-TTS-Server](https://github.com/Aratako/Irodori-TTS-Server)・[Aratako/Irodori-TTS](https://github.com/Aratako/Irodori-TTS)（重みは [Aratako の Hugging Face](https://huggingface.co/Aratako)） | コードは MIT。モデルは v4.1-Small・v4.1-Small-MF が MIT、v4-Large 系が Gemma Terms of Use（商用可。禁止用途ポリシーに従う。選ぶときに同意が要る） |
 | 口パク | MuseTalk 1.5 | [TMElyralab/MuseTalk](https://github.com/TMElyralab/MuseTalk)（重みは [TMElyralab/MuseTalk](https://huggingface.co/TMElyralab/MuseTalk)） | コード MIT。モデルは商用を含む利用が可と README にあります。ただし依存の重みの一部は商用利用がはっきりしません。RTX 50 シリーズは非対応です |
 
-- 実行環境（Python 環境）と重みは**インストーラーに含まれません**。モデルマネージャー（`/model-manager`）の「ローカル音声・口パク」から、mam が取得して導入・起動・停止します（固定した URL と SHA-256 を確かめます）。重み・依存ファイル（whisper・sd-vae・DWPose・face-parse-bisent など）の出典とライセンスは、そこと、設定の「音声・口パク」に出ます。**商用利用がはっきりしないものは、画面に目立つ注記が出ます。商用の動画に使う前に確認してください。**
+- 実行環境（Python 環境）と重みは**インストーラーに含まれません**。モデルマネージャー（`/model-manager`）の「ローカル音声・口パク」から、Nefos Video が取得して導入・起動・停止します（固定した URL と SHA-256 を確かめます）。重み・依存ファイル（whisper・sd-vae・DWPose・face-parse-bisent など）の出典とライセンスは、そこと、設定の「音声・口パク」に出ます。**商用利用がはっきりしないものは、画面に目立つ注記が出ます。商用の動画に使う前に確認してください。**
 - 設定の「API キー」（`/settings/api-keys`）の先頭で、Kling などのクラウド動画モデルを呼ぶ **API プロバイダー**（公式・OpenRouter・fal.ai・Replicate）を選べます。公式の API は、二次ソースによると最低前払い（Flagship $500〜 / General $700〜、180 日で失効）が重いとされます。公式の価格は未確認なので、契約前に公式で確認してください。従量のクレジットで使える OpenRouter・fal.ai・Replicate 経由にもできます（見積りと費用は選んだ先の単価で出ます。選んだ先が提供しないモデル〔OpenRouter の Kling 4.0 など〕は理由つきで使えない表示になります。MCP の `get_video_provider`・`set_video_provider` でも同じです）。
 - 設定の「音声・口パク」（`/settings/audio`）で、声と口パクをそれぞれクラウドかローカルかで選びます（MCP の `get_audio_providers`・`set_audio_providers` でも同じです）。**選ばないときはクラウド**です。保存した選択は、次の音声作成から使われます。
 - 声は、Character（Series のキャラは正本）に設定した**参照音声**（約 3〜10 秒）で話すので、毎回同じ声になります。Irodori-TTS は参照音声が合計 120 秒までで、Character の性格とシーンの感情から声の調子を指定し、台本の「（笑）」「（ため息）」などを絵文字に直して感情を出します。生成した音声には SilentCipher の見えない透かしが自動で入ります。**声のコピーには、声の持ち主本人の同意を得た音声だけを使ってください。**本人の同意なしに実在の人（声優・有名人など）の声をコピーしたり、なりすましや人をだます合成音声・ディープフェイクに使ったりすることは、Irodori-TTS のモデルカードで禁じられています。
@@ -24,13 +24,13 @@ AI Video Production Agent。企画・脚本・演出・撮影・品質判定・�
 
 ### ローカル LLM（llama.cpp）
 
-LLM（企画・脚本・Shot 計画など）も、この PC のローカルモデルで動かせます（API キー不要・オフライン）。**Windows + NVIDIA の GPU** の PC では、モデルマネージャー（`/model-manager`）の「ローカル音声・口パク・LLM」の llama.cpp（[ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp)。MIT）から、`llama-server` と GGUF の重みを mam が取得して導入・起動・停止します（固定した URL と SHA-256 を確かめます。インストーラーには含まれません）。起動の引数は mam が決める固定の組み合わせだけで、利用者がコマンドラインを指定することはできません（`127.0.0.1` だけで待ち受け、起動のたびの合言葉つき）。
+LLM（企画・脚本・Shot 計画など）も、この PC のローカルモデルで動かせます（API キー不要・オフライン）。**Windows + NVIDIA の GPU** の PC では、モデルマネージャー（`/model-manager`）の「ローカル音声・口パク・LLM」の llama.cpp（[ggml-org/llama.cpp](https://github.com/ggml-org/llama.cpp)。MIT）から、`llama-server` と GGUF の重みを Nefos Video が取得して導入・起動・停止します（固定した URL と SHA-256 を確かめます。インストーラーには含まれません）。起動の引数は Nefos Video が決める固定の組み合わせだけで、利用者がコマンドラインを指定することはできません（`127.0.0.1` だけで待ち受け、起動のたびの合言葉つき）。
 
 | 系統 | 純正 | 非検閲（abliterated。成人向け相当） | ライセンス |
 |---|---|---|---|
 | Gemma 4 12B（約 7 GiB。ComfyUI と同居しやすい。標準） | [google/gemma-4-12B-it](https://huggingface.co/google/gemma-4-12B-it) の GGUF（Q4_K_M） | [huihui-ai/Huihui-gemma-4-12B-it-abliterated](https://huggingface.co/huihui-ai/Huihui-gemma-4-12B-it-abliterated) の GGUF | Apache-2.0（商用可） |
 | Qwen3.8-27B（IQ4_XS 14.36 GiB が標準、Q3_K_M 12.57 GiB が軽量版。16 GB の GPU でも ComfyUI とは同居できません） | [Qwen/Qwen3.8-27B](https://huggingface.co/Qwen/Qwen3.8-27B) の GGUF | [huihui-ai/Huihui-Qwen3.8-27B-abliterated](https://huggingface.co/huihui-ai/Huihui-Qwen3.8-27B-abliterated) の GGUF | Apache-2.0（商用可） |
-| DeepSeek-R1-Distill-Qwen-14B（約 8.4 GiB。常に考える過程が出るので、mam が取り除いて読みます） | [deepseek-ai/DeepSeek-R1-Distill-Qwen-14B](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-14B) の GGUF | [huihui-ai/DeepSeek-R1-Distill-Qwen-14B-abliterated-v2](https://huggingface.co/huihui-ai/DeepSeek-R1-Distill-Qwen-14B-abliterated-v2) の GGUF | 純正は MIT（商用可）。**非検閲版は派生側にライセンスの表示が無く、商用不明**です |
+| DeepSeek-R1-Distill-Qwen-14B（約 8.4 GiB。常に考える過程が出るので、Nefos Video が取り除いて読みます） | [deepseek-ai/DeepSeek-R1-Distill-Qwen-14B](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-14B) の GGUF | [huihui-ai/DeepSeek-R1-Distill-Qwen-14B-abliterated-v2](https://huggingface.co/huihui-ai/DeepSeek-R1-Distill-Qwen-14B-abliterated-v2) の GGUF | 純正は MIT（商用可）。**非検閲版は派生側にライセンスの表示が無く、商用不明**です |
 
 - GGUF は [mradermacher](https://huggingface.co/mradermacher) が変換したもの（コミット固定。2026-11-03 に Hugging Face の API で確認。gated ではなく、利用規約への同意は要りません）。使うモデルは、モデルマネージャーの llama.cpp のカードの「使うモデルの選択」で 1 つ選びます（選んだものだけ取得します。非検閲のモデルには「成人向け相当」の注記が出ます）。
 - モデルマネージャーの「ローカル LLM」で、llama.cpp を導入して「使うサーバー」に「この PC の llama.cpp」を選ぶと、導入した llama.cpp が自動でその LLM プロバイダー `local` になります（起動中はそのポートを自動で使います。モデルの id〔例 `gemma-4-12b-it`〕を「LLM の割り当て」の model に指定します）。Ollama・LM Studio など別のサーバーにも、同じページの「別のサーバーにつなぐ」でベース URL を指定して接続できます（設定の「ローカル LLM サーバー」のカードは、このページへのリンクです）。
@@ -92,26 +92,26 @@ ChatGPT Business / Enterprise / Edu のワークスペースアカウントで�
 3. 「ブラウザでログイン」か「デバイスコードでログイン」で、組織のアカウントにログインします
 4. 「LLM の割り当て」で、使う Agent のプロバイダーを `chatgpt-codex` にします
 
-使うには、ワークスペースの所有者が「Codex をローカルで使う」権限（Codex Local）をメンバーに許可している必要があります。デバイスコードでログインするには、デバイスコードのログインも許可されている必要があります。この方式はワークスペースの Codex の利用上限を使います。また、ローカル・オープンソースでの利用のためのもので、MAM をサーバーで動かして他の人に提供する用途には使えません。テキスト生成だけで、画像・動画・音声の生成には使いません。
+使うには、ワークスペースの所有者が「Codex をローカルで使う」権限（Codex Local）をメンバーに許可している必要があります。デバイスコードでログインするには、デバイスコードのログインも許可されている必要があります。この方式はワークスペースの Codex の利用上限を使います。また、ローカル・オープンソースでの利用のためのもので、Nefos Video をサーバーで動かして他の人に提供する用途には使えません。テキスト生成だけで、画像・動画・音声の生成には使いません。
 
-Codex のログイン情報は、MAM 専用の `CODEX_HOME`（Windows は `%AppData%\mam\codex-home`、macOS は `~/Library/Application Support/mam/codex-home`。あなたの `~/.codex` とは混ざりません）と、OS の資格情報の保管庫（Windows の資格情報マネージャー、macOS のキーチェーン）に Codex が保存します。MAM は読みません。アンインストールしても、`%AppData%\mam` と資格情報マネージャーの項目は残る場合があります（アンインストールの動作は Windows 実機では未確認です）。アンインストールの前に、設定画面で「ログアウト」（「取得した Codex 本体と mam 専用の CODEX_HOME も削除する」にチェック）をしてください。
+Codex のログイン情報は、Nefos Video 専用の `CODEX_HOME`（Windows は `%AppData%\mam\codex-home`、macOS は `~/Library/Application Support/mam/codex-home`。あなたの `~/.codex` とは混ざりません）と、OS の資格情報の保管庫（Windows の資格情報マネージャー、macOS のキーチェーン）に Codex が保存します。Nefos Video は読みません。アンインストールしても、`%AppData%\mam` と資格情報マネージャーの項目は残る場合があります（アンインストールの動作は Windows 実機では未確認です）。アンインストールの前に、設定画面で「ログアウト」（「取得した Codex 本体と Nefos Video 専用の CODEX_HOME も削除する」にチェック）をしてください。
 
 ### ffmpeg を入れる
 
-ffmpeg は同梱していません。無くても起動はできますが、Judge（品質判定）、動画のプレビュー、部分採用の合成、Export は ffmpeg と ffprobe を使うので、使うなら入れてください。**MAM がボタン 1 つでダウンロードして入れられます**。
+ffmpeg は同梱していません。無くても起動はできますが、Judge（品質判定）、動画のプレビュー、部分採用の合成、Export は ffmpeg と ffprobe を使うので、使うなら入れてください。**Nefos Video がボタン 1 つでダウンロードして入れられます**。
 
-1. MAM のモデルマネージャーの「付随ソフト」（初回ガイドの「ffmpeg の確認」でも同じです）で「ffmpeg をダウンロードして入れる」を押します。約 110 MB（展開後は約 200 MB）を、配布元の [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) のビルド（GitHub Releases の固定の版。mam が決めた SHA-256 と一致したものだけを使い、一致しなければ削除します）から取得し、`mam.exe` と同じ場所の `ffmpeg` フォルダに置きます（アンインストールで消えます）。ボタンを押したときだけ通信し、自動の更新確認はしません。ライセンスは GPL v3 です（ソースは配布元にあります。[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) も見てください）
-2. 「ffmpeg と ffprobe を入れました。すぐに使えます」と出たら、そのまま使えます（MAM の再起動は要りません）
+1. Nefos Video のモデルマネージャーの「付随ソフト」（初回ガイドの「ffmpeg の確認」でも同じです）で「ffmpeg をダウンロードして入れる」を押します。約 110 MB（展開後は約 200 MB）を、配布元の [gyan.dev](https://www.gyan.dev/ffmpeg/builds/) のビルド（GitHub Releases の固定の版。Nefos Video が決めた SHA-256 と一致したものだけを使い、一致しなければ削除します）から取得し、`mam.exe` と同じ場所の `ffmpeg` フォルダに置きます（アンインストールで消えます）。ボタンを押したときだけ通信し、自動の更新確認はしません。ライセンスは GPL v3 です（ソースは配布元にあります。[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) も見てください）
+2. 「ffmpeg と ffprobe を入れました。すぐに使えます」と出たら、そのまま使えます（Nefos Video の再起動は要りません）
 3. 確認: モデルマネージャーの「付随ソフト」の ffmpeg に「使えます」と場所が出れば使えます
 
-自分で入れたい人は、これまでどおりにできます。PowerShell で `winget install Gyan.FFmpeg` を実行する（または [ffmpeg.org](https://ffmpeg.org/download.html) から Windows ビルドを展開して、`ffmpeg.exe` と `ffprobe.exe` があるフォルダを環境変数 `PATH` に追加する）か、設定画面の「ffmpeg」でパスを指定します。**自分で入れた ffmpeg（設定したパス・`PATH`）は、MAM がダウンロードしたものより優先して使います。** MAM がダウンロードしたものは、ほかに見つからないときに使います。
+自分で入れたい人は、これまでどおりにできます。PowerShell で `winget install Gyan.FFmpeg` を実行する（または [ffmpeg.org](https://ffmpeg.org/download.html) から Windows ビルドを展開して、`ffmpeg.exe` と `ffprobe.exe` があるフォルダを環境変数 `PATH` に追加する）か、設定画面の「ffmpeg」でパスを指定します。**自分で入れた ffmpeg（設定したパス・`PATH`）は、Nefos Video がダウンロードしたものより優先して使います。** Nefos Video がダウンロードしたものは、ほかに見つからないときに使います。
 
 ## macOS（Apple Silicon）でインストールする
 
 [GitHub Releases](https://github.com/ousiassllc/mam/releases) の最新版から `mam-<version>-darwin-arm64.dmg` をダウンロードします（macOS 12 以降、Apple Silicon（M1 以降）だけ。Intel Mac 用はありません）。
 
 1. dmg を開き、`MAM.app` を `/Applications` にドラッグします。**`/Applications` に置いてください**（ディスクイメージの中や「ダウンロード」フォルダのままでは、自動更新が働きません）
-2. 初回だけ、Gatekeeper が止めます。MAM は Apple の Developer ID による署名・公証をしていないためです。`/Applications` の `MAM.app` を**右クリック（control + クリック）→「開く」**を選び、確認のダイアログで「開く」を押します（2 回目以降は普通に開けます）。macOS 15 以降で「開く」が出ないときは、いったん開こうとしてから「システム設定 > プライバシーとセキュリティ」の「このまま開く」を押します
+2. 初回だけ、Gatekeeper が止めます。Nefos Video は Apple の Developer ID による署名・公証をしていないためです。`/Applications` の `MAM.app` を**右クリック（control + クリック）→「開く」**を選び、確認のダイアログで「開く」を押します（2 回目以降は普通に開けます）。macOS 15 以降で「開く」が出ないときは、いったん開こうとしてから「システム設定 > プライバシーとセキュリティ」の「このまま開く」を押します
 3. ターミナルで済ませるときは、隔離属性を外します: `xattr -dr com.apple.quarantine /Applications/MAM.app`
 
 起動するとウィンドウが開き、ウィンドウを閉じるとアプリ全体が終了します。プロジェクト・設定・生成物は `~/Library/Application Support/mam` に保存します（アプリを消しても残ります）。
@@ -122,20 +122,20 @@ ffmpeg は同梱していません。無くても起動はできますが、Judg
 
 macOS 版でまだ使えないもの:
 
-- **ローカルの声（GPT-SoVITS・Irodori-TTS）とローカルの口パク（MuseTalk 1.5）**。mam が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。macOS では、声（GPT-SoVITS・Irodori-TTS）は公式が macOS の MPS / CPU での推論に対応しているものの mam は自動導入せず（GPT-SoVITS は、Apple Silicon 向けの部品だけでは起動に必須の `pyopenjtalk`・`jieba_fast`・`jieba` が揃わないためです）、口パクは公式の PyTorch 版が macOS（Apple Silicon）の GPU に対応していません（第三者の MLX 版 `mlx-community/MuseTalk-1.5-q4`（MIT）は、顔の検出・貼り戻しを含む起動できるサーバーが無いため、mam の対象外です）。どちらも実機の Mac では確かめていません（調べた内容は `spec/architecture/model-manager/local-runtime.md` §16）。設定の「音声・口パク」では、macOS だとローカルを選べず、その理由が出ます。**クラウドの ElevenLabs（声）と Sync Labs（口パク）は macOS でもそのまま使えます**（設定の「API キーとログイン」で `elevenlabs`・`synclabs` のキーを登録します。何も選ばないときの既定はクラウドです）。
+- **ローカルの声（GPT-SoVITS・Irodori-TTS）とローカルの口パク（MuseTalk 1.5）**。Nefos Video が自動で導入するのは Windows + NVIDIA の GPU の組み合わせだけです。macOS では、声（GPT-SoVITS・Irodori-TTS）は公式が macOS の MPS / CPU での推論に対応しているものの Nefos Video は自動導入せず（GPT-SoVITS は、Apple Silicon 向けの部品だけでは起動に必須の `pyopenjtalk`・`jieba_fast`・`jieba` が揃わないためです）、口パクは公式の PyTorch 版が macOS（Apple Silicon）の GPU に対応していません（第三者の MLX 版 `mlx-community/MuseTalk-1.5-q4`（MIT）は、顔の検出・貼り戻しを含む起動できるサーバーが無いため、Nefos Video の対象外です）。どちらも実機の Mac では確かめていません（調べた内容は `spec/architecture/model-manager/local-runtime.md` §16）。設定の「音声・口パク」では、macOS だとローカルを選べず、その理由が出ます。**クラウドの ElevenLabs（声）と Sync Labs（口パク）は macOS でもそのまま使えます**（設定の「API キーとログイン」で `elevenlabs`・`synclabs` のキーを登録します。何も選ばないときの既定はクラウドです）。
   - **声の学習（fine-tune。GPT-SoVITS のみ・Windows + NVIDIA）**: 登場人物の参照音声の欄の下で、書き起こしつきの録音（合計 1〜30 分）から声を学習し、その登場人物の声の合成に使えます。数十分かかり、学習中は GPU を使います。声のコピーには声の持ち主本人の同意が必要です（実在の人の声を同意なしに学習したり、なりすましに使ったりしないでください）。学習した声は書き出し（プロジェクトバンドル）には入りません。実物の GPU・重みでの動作は未確認です（[仕様](spec/architecture/model-manager/local-runtime.md) §18）。
 
 ffmpeg は同梱していません（次の節）。
 
 ### macOS で ffmpeg を入れる
 
-ffmpeg は同梱していません。無くても起動はできますが、Judge（品質判定）、動画のプレビュー、部分採用の合成、Export は ffmpeg と ffprobe を使うので、使うなら入れてください。**MAM がボタン 1 つでダウンロードして入れられます**（Apple Silicon のみ）。
+ffmpeg は同梱していません。無くても起動はできますが、Judge（品質判定）、動画のプレビュー、部分採用の合成、Export は ffmpeg と ffprobe を使うので、使うなら入れてください。**Nefos Video がボタン 1 つでダウンロードして入れられます**（Apple Silicon のみ）。
 
-1. MAM のモデルマネージャーの「付随ソフト」（初回ガイドの「ffmpeg の確認」でも同じです）で「ffmpeg をダウンロードして入れる」を押します。約 54 MB（展開後は約 126 MB）を、配布元の [martin-riedl.de](https://ffmpeg.martin-riedl.de/) のビルド（Developer ID で署名された固定の版。mam が決めた SHA-256 と一致したものだけを使い、一致しなければ削除します）から取得し、データディレクトリ（既定は `~/Library/Application Support/mam`。`--data-dir` や `MAM_DATA_DIR` で変えたときはそこ）の `ffmpeg` フォルダに置きます（`MAM.app` の中には置かないので、自動更新で消えません）。ボタンを押したときだけ通信し、自動の更新確認はしません。ライセンスは GPL v3 です（ソースは配布元にあります。[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) も見てください）
-2. 「ffmpeg と ffprobe を入れました。すぐに使えます」と出たら、そのまま使えます（MAM の再起動は要りません）
+1. Nefos Video のモデルマネージャーの「付随ソフト」（初回ガイドの「ffmpeg の確認」でも同じです）で「ffmpeg をダウンロードして入れる」を押します。約 54 MB（展開後は約 126 MB）を、配布元の [martin-riedl.de](https://ffmpeg.martin-riedl.de/) のビルド（Developer ID で署名された固定の版。Nefos Video が決めた SHA-256 と一致したものだけを使い、一致しなければ削除します）から取得し、データディレクトリ（既定は `~/Library/Application Support/mam`。`--data-dir` や `MAM_DATA_DIR` で変えたときはそこ）の `ffmpeg` フォルダに置きます（`MAM.app` の中には置かないので、自動更新で消えません）。ボタンを押したときだけ通信し、自動の更新確認はしません。ライセンスは GPL v3 です（ソースは配布元にあります。[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) も見てください）
+2. 「ffmpeg と ffprobe を入れました。すぐに使えます」と出たら、そのまま使えます（Nefos Video の再起動は要りません）
 3. 確認: モデルマネージャーの「付随ソフト」の ffmpeg に「使えます」と場所が出れば使えます
 
-自分で入れたい人は、ターミナルで `brew install ffmpeg` を実行します（[Homebrew](https://brew.sh) が無いときは先に入れます。ffprobe も一緒に入ります）。Finder や Dock から起動した MAM は、ターミナルの `PATH` を引き継ぎません。そのため MAM は `PATH` に加えて、Homebrew の既定の場所（Apple Silicon は `/opt/homebrew/bin`、Intel は `/usr/local/bin`）も探します。ほかの場所（MacPorts など）に入れたときは、設定画面の「ffmpeg」で ffmpeg と ffprobe のパスを指定してください。ログインシェルの `PATH` は読みません。**自分で入れた ffmpeg は、MAM がダウンロードしたものより優先して使います。**
+自分で入れたい人は、ターミナルで `brew install ffmpeg` を実行します（[Homebrew](https://brew.sh) が無いときは先に入れます。ffprobe も一緒に入ります）。Finder や Dock から起動した Nefos Video は、ターミナルの `PATH` を引き継ぎません。そのため Nefos Video は `PATH` に加えて、Homebrew の既定の場所（Apple Silicon は `/opt/homebrew/bin`、Intel は `/usr/local/bin`）も探します。ほかの場所（MacPorts など）に入れたときは、設定画面の「ffmpeg」で ffmpeg と ffprobe のパスを指定してください。ログインシェルの `PATH` は読みません。**自分で入れた ffmpeg は、Nefos Video がダウンロードしたものより優先して使います。**
 
 ## Linux、ブラウザで使う
 
@@ -169,6 +169,6 @@ Windows 版（Wails ウィンドウ + ユーザー単位の NSIS インストー
 
 ## ライセンス
 
-MAM は [GNU Affero General Public License v3.0](LICENSE)（AGPL-3.0）で公開しています。Copyright (C) 2026 Ousiass合同会社。改変した MAM をネットワーク越しに利用させるときも、その利用者にソースコードを提供する義務があります（AGPL-3.0 第 13 条）。
+Nefos Video は [GNU Affero General Public License v3.0](LICENSE)（AGPL-3.0）で公開しています。Copyright (C) 2026 Ousiass合同会社。改変した Nefos Video をネットワーク越しに利用させるときも、その利用者にソースコードを提供する義務があります（AGPL-3.0 第 13 条）。
 
-Windows 版が使うサードパーティのソフトウェアのライセンス表記は [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) にあります。インストーラーは `LICENSE` とこのファイル（同梱する ONNX Runtime の MIT ライセンスと Microsoft の第三者の通知を含みます）をインストール先に置きます。同じ内容は、MAM の設定画面の「第三者のライセンス」からも読めます（このファイルをバイナリに埋め込んで、項目ごとに出します）。`go.mod` や `static/package-lock.json` の依存を変えたら、`scripts/third-party-notices.sh` で作り直します。画面のアイコンは [Lucide](https://lucide.dev)（ISC。Feather 由来のものは MIT）の SVG をソースにコピーしたもので、取り込んだ版のライセンス文は [`backend/internal/web/atoms/icons/LICENSE`](backend/internal/web/atoms/icons/LICENSE) にあり、`THIRD_PARTY_NOTICES.md` にも載ります。
+Windows 版が使うサードパーティのソフトウェアのライセンス表記は [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md) にあります。インストーラーは `LICENSE` とこのファイル（同梱する ONNX Runtime の MIT ライセンスと Microsoft の第三者の通知を含みます）をインストール先に置きます。同じ内容は、Nefos Video の設定画面の「第三者のライセンス」からも読めます（このファイルをバイナリに埋め込んで、項目ごとに出します）。`go.mod` や `static/package-lock.json` の依存を変えたら、`scripts/third-party-notices.sh` で作り直します。画面のアイコンは [Lucide](https://lucide.dev)（ISC。Feather 由来のものは MIT）の SVG をソースにコピーしたもので、取り込んだ版のライセンス文は [`backend/internal/web/atoms/icons/LICENSE`](backend/internal/web/atoms/icons/LICENSE) にあり、`THIRD_PARTY_NOTICES.md` にも載ります。

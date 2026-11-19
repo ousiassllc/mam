@@ -14,12 +14,12 @@ func valid() []choice.Choice {
 	return []choice.Choice{
 		{
 			ID: "small", Name: "Small", Description: "既定", Default: true, Kind: "tts", Languages: []string{"ja"}, License: "mit",
-			Cautions: []string{"本人の同意なく声をコピーしない"}, VRAMMinGB: 6, VRAMRecommendedGB: 8, VRAMLimits: "長い文で足りなくなる", VRAMNote: "mam の推定", VRAMEstimate: true,
+			Cautions: []string{"本人の同意なく声をコピーしない"}, VRAMMinGB: 6, VRAMRecommendedGB: 8, VRAMLimits: "長い文で足りなくなる", VRAMNote: "Nefos Video の推定", VRAMEstimate: true,
 		},
 		{
 			ID: "large", Name: "Large", Description: "大きい", Kind: "tts", Languages: []string{"ja"}, License: "gemma",
 			Consent:  &choice.Consent{Version: "v1", Text: "規約に同意します"},
-			Cautions: []string{"禁止用途ポリシーに従う"}, VRAMMinGB: 10, VRAMNote: "mam の推定", Env: []string{"IRODORI_MODEL_PRECISION=bf16"},
+			Cautions: []string{"禁止用途ポリシーに従う"}, VRAMMinGB: 10, VRAMNote: "Nefos Video の推定", Env: []string{"IRODORI_MODEL_PRECISION=bf16"},
 		},
 	}
 }

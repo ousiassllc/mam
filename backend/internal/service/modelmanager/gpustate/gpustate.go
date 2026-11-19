@@ -39,7 +39,7 @@ type Deps struct {
 // waits. It reads and never changes anything.
 type View struct {
 	gpu.Status
-	ComfyUI []ComfyUIState `json:"comfyui" jsonschema:"mam が知っている ComfyUI（同梱エンジンと外部の接続先）ごとの VRAM とジョブ"`
+	ComfyUI []ComfyUIState `json:"comfyui" jsonschema:"Nefos Video が知っている ComfyUI（同梱エンジンと外部の接続先）ごとの VRAM とジョブ"`
 }
 
 // ComfyUIState is what one ComfyUI endpoint says (GET /system_stats and GET /queue).

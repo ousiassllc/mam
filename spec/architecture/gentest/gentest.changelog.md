@@ -66,3 +66,4 @@
 | 1.59 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（仕様書・画面の文言・MCP ツールの説明・エラーメッセージ）。ルート `/generation-test`・API パス・MCP ツール名（`*_generation_test`・`*_generation_*`）・パッケージ名 `gentest`・DB のテーブルと保存先は変えない。履歴・設定はそのまま使える。過去の変更履歴の文は当時のまま | Issue #1137 |
 | 1.60 | 2026-11-10 | 「チャットで作る」を足した: LLM のエージェントループ（`agent/gentestchat`・`service/gentest/chat`）と確認のカード。専用の文書 [gentest-chat.md](gentest-chat.md) を新設し、§8（画面）と §10（パッケージ）に参照を足した | Issue #1138 |
 | 1.61 | 2026-11-11 | gentest-adapter.md の「ネガティブの欄」に、OpenRouter 経由の Kling 3.0 は欄を持たず `folded` になることを足した | PR #1141 のレビュー指摘 |
+| 1.62 | 2026-11-19 | 本文の製品名の表示を「MAM」から「Nefos Video」に改めた（過去の改訂履歴の文は当時のまま） | #1170: 製品名を MAM から Nefos Video に変更（表示名のみ。識別子・パス・実行ファイル名は変更しない） |

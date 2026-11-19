@@ -115,7 +115,7 @@ const (
 	sentenceListen    = "アドレスとポートを開けませんでした。そのアドレスがこの PC にあるか、ほかのアプリがポートを使っていないか、ファイアウォールの設定を確かめてください。"
 	sentenceFile      = "ファイルを開けませんでした。ファイルの場所と、読む権限があるかを確かめてください。"
 	sentenceMalformed = "中身を読めませんでした。書き直すか、ファイルを削除すると既定（127.0.0.1）に戻ります。"
-	sentenceLocal     = "このマシンのネットワークの一覧を調べられませんでした。ネットワークの接続を確かめて、mam を起動し直してください。"
+	sentenceLocal     = "このマシンのネットワークの一覧を調べられませんでした。ネットワークの接続を確かめて、Nefos Video を起動し直してください。"
 )
 
 // localAddrsError is a failure of listing the network interfaces (bind.Validate needs them): not a failure of opening an address, although

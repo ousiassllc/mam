@@ -137,7 +137,7 @@ func probeComfyUI(ctx context.Context, c *localhttp.Client) TestResult {
 		res.Message += "。デバイス: " + stats.Devices[0].Name
 	}
 	if v, ok := parseVersion(stats.System.Version); ok && less(v, minSafeCancel) {
-		res.Note = "このバージョンの ComfyUI は中断を 1 つのジョブに限れません。mam から中断すると他の人のジョブも止まる恐れがあります（0.3.57 以降を推奨）"
+		res.Note = "このバージョンの ComfyUI は中断を 1 つのジョブに限れません。Nefos Video から中断すると他の人のジョブも止まる恐れがあります（0.3.57 以降を推奨）"
 	}
 	return res
 }

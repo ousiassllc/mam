@@ -26,7 +26,7 @@ func registerEngine(r *mcpkit.Registrar, h handlers) {
 		"GPU の今の状態（読み取り専用）: GPU ごとの名前・VRAM の合計/使用中/空き・使用率・温度と、ComfyUI（同梱エンジンと外部の接続先）が持っている VRAM・実行中のジョブの進み具合（ステップ・%・残り時間の目安）・順番待ちのジョブの数と順番。ローカルの生成ジョブを投げる前に GPU が空いているか確かめるのに使う。取れない値は省かれ、unavailable に取れない理由が付く（エラーにはしない）。NVIDIA は nvidia-smi、Apple Silicon は ioreg / sysctl / vm_stat から読む（Apple Silicon はユニファイドメモリで、温度は取れない）/ Read-only live state of the GPUs and of the ComfyUI queue; a value that cannot be read is left out with its reason in `unavailable`.",
 		h.gpuStatus)
 	mcpkit.Read(r, "detect_comfyui",
-		"この PC で動いている既存の ComfyUI（127.0.0.1 の 8188・8000 番。ComfyUI Desktop を含む）を探す。見つかったものは外部の接続先として使い、mam は起動も停止もしない / Look for a ComfyUI that is already running here.",
+		"この PC で動いている既存の ComfyUI（127.0.0.1 の 8188・8000 番。ComfyUI Desktop を含む）を探す。見つかったものは外部の接続先として使い、Nefos Video は起動も停止もしない / Look for a ComfyUI that is already running here.",
 		h.detectComfy)
 	mcpkit.Write(r, "install_model_engine",
 		"ComfyUI のポータブル版を取得して導入する（約 1.5〜2 GB。SHA-256 を検証し、中断しても再開できる）。job_id を返すので get_job で進捗を見る。variant を省くと GPU で決まる。対応する GPU が無いときは拒否され、cpu=true を明示したときだけ CPU 実行で導入する / Download and install the pinned ComfyUI engine as a job (get_job).",
@@ -41,7 +41,7 @@ func registerEngine(r *mcpkit.Registrar, h handlers) {
 		"同梱の ComfyUI エンジンを削除する（導入したモデルのファイルは残る）。導入中は拒否される / Delete the installed engine; the model files stay.",
 		h.removeEngine, mcpkit.Idempotent())
 	mcpkit.Write(r, "set_model_engine_autostart",
-		"mam の起動時に同梱の ComfyUI を起動するか（既定はオフ: モデルを最初に使うときに起動）/ Start the engine when mam starts.",
+		"Nefos Video の起動時に同梱の ComfyUI を起動するか（既定はオフ: モデルを最初に使うときに起動）/ Start the engine when Nefos Video starts.",
 		h.setAutoStart, mcpkit.Idempotent())
 	mcpkit.Write(r, "cancel_model_install",
 		"動いているエンジン・モデル・ローカルの実行環境の導入を中断する。ジョブは失敗で終わるが、ダウンロード済みの分は残り、もう一度導入すると続きから再開する / Cancel a running install; installing again resumes the download.",
@@ -149,7 +149,7 @@ func (h handlers) removeEngine(ctx context.Context, _ Input) (RemovedOutput, err
 
 // AutoStartInput is the setting.
 type AutoStartInput struct {
-	On bool `json:"on" jsonschema:"true: mam の起動時に起動する / false: 最初に使うときに起動する"`
+	On bool `json:"on" jsonschema:"true: Nefos Video の起動時に起動する / false: 最初に使うときに起動する"`
 }
 
 // AutoStartOutput is the setting after the change.

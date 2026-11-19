@@ -2,7 +2,7 @@
  "id": "txt2video-wan22-14b-remix",
  "label": "Wan2.2-Remix T2V v2.0: テキストから動画",
  "media": "video",
- "description": "Wan2.2-Remix NSFW T2V v2.0（fp8 の Wan2.2_Remix_NSFW_t2v_14b_high_lighting_v2.0.safetensors と Wan2.2_Remix_NSFW_t2v_14b_low_lighting_v2.0.safetensors、テキストエンコーダー umt5_xxl_fp8_e4m3fn_scaled.safetensors）でテキストから動画を作る、標準ノードだけのワークフロー。Remix は Lightning 系の少ステップ版なので、作者の同梱ワークフロー（Wan2.2-Remix-comfy-t2v-workflow.json）の値に従う: 12 ステップ・euler/simple・cfg 1、10 ステップ目で高ノイズから低ノイズへ切り替え、ModelSamplingSD3 の shift は 5、空の潜在は EmptyHunyuanLatentVideo。作者の推奨は非検閲版のテキストエンコーダー（NSFW-Wan-UMT5-XXL）だが、mam は Wan 2.2 の標準の umt5_xxl_fp8_e4m3fn_scaled を使う（I2V の Remix と共有）。16fps、VAE は Wan 2.1 の wan_2.1_vae.safetensors。GPU では未実行（構造のテストのみ）。",
+ "description": "Wan2.2-Remix NSFW T2V v2.0（fp8 の Wan2.2_Remix_NSFW_t2v_14b_high_lighting_v2.0.safetensors と Wan2.2_Remix_NSFW_t2v_14b_low_lighting_v2.0.safetensors、テキストエンコーダー umt5_xxl_fp8_e4m3fn_scaled.safetensors）でテキストから動画を作る、標準ノードだけのワークフロー。Remix は Lightning 系の少ステップ版なので、作者の同梱ワークフロー（Wan2.2-Remix-comfy-t2v-workflow.json）の値に従う: 12 ステップ・euler/simple・cfg 1、10 ステップ目で高ノイズから低ノイズへ切り替え、ModelSamplingSD3 の shift は 5、空の潜在は EmptyHunyuanLatentVideo。作者の推奨は非検閲版のテキストエンコーダー（NSFW-Wan-UMT5-XXL）だが、Nefos Video は Wan 2.2 の標準の umt5_xxl_fp8_e4m3fn_scaled を使う（I2V の Remix と共有）。16fps、VAE は Wan 2.1 の wan_2.1_vae.safetensors。GPU では未実行（構造のテストのみ）。",
  "model": {
   "media": "video",
   "video": {"durations": [3, 4, 5], "resolutions": ["480p", "720p"]},

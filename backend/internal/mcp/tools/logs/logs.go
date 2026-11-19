@@ -28,7 +28,7 @@ const (
 // Register adds get_app_logs. The log directory is the Kit's (r.LogDir); the service layer is not used.
 func Register(r *mcpkit.Registrar, _ *service.Services) {
 	mcpkit.Read(r, "get_app_logs",
-		"mam のアプリログを新しい順に返す（ローテーション済みの世代も読む）。level（最低レベル）・since / until・keyword・attrs（project_id・shot_id・take_id・job_id・error_id などの属性）で絞り込む。internal エラーの原因は error_id（エラーの文面と get_job / list_jobs に出る）を attrs に渡して探す。API キー・トークンなどの秘密は返さない / Read the mam application log, newest first, filtered by level, time range, keyword and attributes.",
+		"Nefos Video のアプリログを新しい順に返す（ローテーション済みの世代も読む）。level（最低レベル）・since / until・keyword・attrs（project_id・shot_id・take_id・job_id・error_id などの属性）で絞り込む。internal エラーの原因は error_id（エラーの文面と get_job / list_jobs に出る）を attrs に渡して探す。API キー・トークンなどの秘密は返さない / Read the Nefos Video application log, newest first, filtered by level, time range, keyword and attributes.",
 		func(ctx context.Context, in Input) (Output, error) { return read(ctx, r.LogDir, r.Credentials, in) })
 }
 

@@ -108,7 +108,7 @@ func NewID() string { return "err_" + uuid.Must(uuid.NewV7()).String() }
 // Link is a screen that helps: the words of the link and its path.
 type Link struct {
 	Label string `json:"label" jsonschema:"リンクの文言 / words of the link"`
-	Path  string `json:"path" jsonschema:"mam の画面のパス（/settings/api-keys など）/ path of the screen in mam"`
+	Path  string `json:"path" jsonschema:"Nefos Video の画面のパス（/settings/api-keys など）/ path of the screen in Nefos Video"`
 }
 
 // View is a failure in words, what a screen draws and a tool returns.

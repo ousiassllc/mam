@@ -55,7 +55,7 @@ func refuse(c *gin.Context, err error) (status int, msg string) {
 		return http.StatusNotFound, msg
 	}
 	_ = c.Error(err)
-	return http.StatusInternalServerError, "処理できませんでした。mam のログを確認してください"
+	return http.StatusInternalServerError, "処理できませんでした。Nefos Video のログを確認してください"
 }
 
 // nodeCard answers an action of a node with its card. A node that is not there is a 404 with the section's message.
@@ -106,9 +106,9 @@ func (h Handlers) Reason(c *gin.Context) {
 		return
 	}
 	render(c, http.StatusOK, reason.Body(reason.Popup{
-		Title: "「" + n.Name + "」を導入できない理由と対処", Lead: "このノードは、今の mam では導入できません。",
+		Title: "「" + n.Name + "」を導入できない理由と対処", Lead: "このノードは、今の Nefos Video では導入できません。",
 		Items:  []reason.Item{{Text: n.Blocked}},
-		Remedy: "mam は Python の依存を自動で入れません。導入できるようになるまで、このノードと、このノードを必要とするモデルは導入できません。",
+		Remedy: "Nefos Video は Python の依存を自動で入れません。導入できるようになるまで、このノードと、このノードを必要とするモデルは導入できません。",
 	}))
 }
 

@@ -31,7 +31,7 @@
  ],
  "vram": {
   "min_gb": 10,
-  "source": "SDXL base の見積もり（8 GB）に IP-Adapter（約 0.8 GB）と CLIP ViT-H（約 2.5 GB）を足した mam の見積もり（出典なし・実機未検証）",
+  "source": "SDXL base の見積もり（8 GB）に IP-Adapter（約 0.8 GB）と CLIP ViT-H（約 2.5 GB）を足した Nefos Video の見積もり（出典なし・実機未検証）",
   "estimate": true
  },
  "license": {

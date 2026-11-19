@@ -63,7 +63,7 @@
  ],
  "vram": {
   "min_gb": 16,
-  "source": "wan22-i2v-14b と同じ。16〜24 GB 以上の目安。Issue #841 付録（Notion の記載または mam の推定。mam の実機では未検証）",
+  "source": "wan22-i2v-14b と同じ。16〜24 GB 以上の目安。Issue #841 付録（Notion の記載または Nefos Video の推定。Nefos Video の実機では未検証）",
   "estimate": true
  },
  "license": {
@@ -88,7 +88,7 @@
     "commercial": "unknown"
    }
   ],
-  "notice": "この mam のインストール先に取得するモデルです。ライセンスの記載が無いため、商用には使わないでください。"
+  "notice": "この Nefos Video のインストール先に取得するモデルです。ライセンスの記載が無いため、商用には使わないでください。"
  },
  "consent_required": true,
  "requires_hf_token": false,

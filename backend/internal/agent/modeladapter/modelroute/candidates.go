@@ -98,7 +98,7 @@ func (e Env) fits(m domain.ModelName, n need) string {
 	case !n.keyframe && requires(cfg, m, localcfg.RequiredFirstFrame):
 		return "最初のフレームが必要（この Shot には Keyframe がない）"
 	case requires(cfg, m, localcfg.RequiredLastFrame), requires(cfg, m, localcfg.RequiredReference):
-		return "mam が渡さない入力（最後のフレーム・参照画像）が必須"
+		return "Nefos Video が渡さない入力（最後のフレーム・参照画像）が必須"
 	}
 	return ""
 }

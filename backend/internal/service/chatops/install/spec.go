@@ -64,7 +64,7 @@ type RuntimeArgs struct {
 func init() {
 	commandinterpreter.Register(OpInstallModel, commandinterpreter.Spec{
 		Example: `{"type": "install_model", "args": {"model": "FLUX.1 schnell"}}`,
-		Doc: `- "install_model": the director wants a model of mam's catalog downloaded for local image or video generation ("FLUX.1 schnell を入れて", "Wan 2.2 を導入して"). ` +
+		Doc: `- "install_model": the director wants a model of Nefos Video's catalog downloaded for local image or video generation ("FLUX.1 schnell を入れて", "Wan 2.2 を導入して"). ` +
 			`"args.model" is the id or the name as the director said it; NEVER invent an id: the chat looks it up in the catalog and asks which one when several match. ` +
 			`Not for the ComfyUI engine ("install_model_engine"), a voice or lip-sync runtime ("install_local_runtime") or a file of Hugging Face ("install_hf_file").` + "\n",
 		Clean: cleanModel, Asked: AsksModel, AnyMode: true, Confirm: true, Global: true,

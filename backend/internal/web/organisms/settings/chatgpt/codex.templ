@@ -14,7 +14,7 @@ const (
 	// codexExplanation is the rest of it, in the detail.
 	codexExplanation = "Codex の app-server（OpenAI の公式のプログラム）をこの PC で動かし、そこで ChatGPT にログインします。個人のアカウントでも使えます。画像・動画・音声の生成には使いません。LLM の割り当てでは、プロバイダー「chatgpt-codex」を選びます。"
 	// codexTerms is the condition of the use of this route; the card says it in a "商用注意" mark and the detail in full.
-	codexTerms = "この方式はローカル・オープンソースの利用のためのもので、商用・ホスティング（mam をサーバーで動かして他の人に提供する形）での提供には使えません。ワークスペースの Codex の利用上限を使います。"
+	codexTerms = "この方式はローカル・オープンソースの利用のためのもので、商用・ホスティング（Nefos Video をサーバーで動かして他の人に提供する形）での提供には使えません。ワークスペースの Codex の利用上限を使います。"
 	// commercialMark is on the card whatever its state.
 	commercialMark = "商用注意"
 )
@@ -132,7 +132,7 @@ templ codexEngine(c Codex) {
 			<pre class="whitespace-pre-wrap break-words text-xs text-danger" role="alert" data-testid="chatgpt-codex-engine-error">{ c.Engine.Error }</pre>
 		}
 		if c.Engine.UpdateAvailable {
-			<p class="text-sm text-warning" data-testid="chatgpt-codex-update">この mam が確かめた版は { c.Engine.PinnedVersion } です。取得済みの { c.Engine.Version } は使いません。もう一度取得してください。</p>
+			<p class="text-sm text-warning" data-testid="chatgpt-codex-update">この Nefos Video が確かめた版は { c.Engine.PinnedVersion } です。取得済みの { c.Engine.Version } は使いません。もう一度取得してください。</p>
 		}
 		if canInstall(c.Engine) {
 			<p class="text-sm text-mute" data-testid="chatgpt-codex-download-notice">{ downloadConfirm(c.Engine) }カードの「Codex をダウンロード」で始めます。</p>
@@ -200,7 +200,7 @@ templ codexWho(c Codex) {
 // codexAccount is where Codex keeps its tokens (the detail).
 templ codexAccount(c Codex) {
 	if c.SignedIn {
-		<p class="text-sm text-mute" data-testid="chatgpt-codex-account">トークンは Codex が自分で保存・更新します（mam は読みも保存もしません）。保存先: { codexStore(c.CredentialsStore) }</p>
+		<p class="text-sm text-mute" data-testid="chatgpt-codex-account">トークンは Codex が自分で保存・更新します（Nefos Video は読みも保存もしません）。保存先: { codexStore(c.CredentialsStore) }</p>
 	}
 }
 
@@ -233,7 +233,7 @@ templ codexLogoutAndRemove() {
 		hx-swap="innerHTML"
 		hx-sync="this:drop"
 		hx-disabled-elt="find button[type=submit]"
-		hx-confirm="ログアウトします。Codex が保存したトークンを消し、取得した Codex 本体と mam 専用の CODEX_HOME も削除します。よろしいですか？"
+		hx-confirm="ログアウトします。Codex が保存したトークンを消し、取得した Codex 本体と Nefos Video 専用の CODEX_HOME も削除します。よろしいですか？"
 	>
 		<input type="hidden" name="remove" value="true"/>
 		@atoms.SmallButtonFor(atoms.ToneDanger, "ログアウトして Codex 本体と CODEX_HOME も削除", codexTitle, templ.Attributes{"type": "submit", "data-testid": "chatgpt-logout-codex-remove"})

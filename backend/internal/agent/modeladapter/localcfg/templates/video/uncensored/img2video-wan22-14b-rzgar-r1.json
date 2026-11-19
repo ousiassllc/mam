@@ -2,7 +2,7 @@
  "id": "img2video-wan22-14b-rzgar-r1",
  "label": "Wan2.2 I2V R1 base v2（rzgar・非検閲マージ）: 先頭フレームから動画",
  "media": "video",
- "description": "rzgar の Wan2.2_I2V_R1_base_v2（Wan 2.2 I2V 14B に非検閲の LoRA と LightX2V を 20% の強さで焼き込んだ高ノイズ用 Wan2.2_I2V_High_R1_n54w_v2.safetensors と低ノイズ用 Wan2.2_I2V_Low_R1_n54w_v2.safetensors、ComfyUI の comfy_quant 形式の fp8）で先頭フレーム 1 枚から動画を作る標準ノードだけのワークフロー。LightX2V が入っているので少ステップ・cfg 1 の設定。作者の同梱ワークフロー（Wan2.2_I2V_R1_v2_workflow.json）は 高ノイズ側 2 ステップ＋低ノイズ側 3 ステップ（低ノイズ側は denoise 0.55）の 2 つの KSampler（dpmpp_2m_sde・sgm_uniform・cfg 1）で、mam は標準の 2 段（KSamplerAdvanced の合計 5 ステップ、2 ステップ目で高ノイズから低ノイズへ切り替え。高 2・低 3 の配分は同じで、低ノイズ側のシグマの切り方だけが作者と少し違う）に直した。ModelSamplingSD3 の shift は 8（Wan 2.2 の既定と同じ）、16fps、VAE は Wan 2.1 の wan_2.1_vae.safetensors。空白の画像を先頭フレームにすればテキストから動画に近い使い方もできる（作者の説明）。GPU では未実行（構造のテストのみ）。",
+ "description": "rzgar の Wan2.2_I2V_R1_base_v2（Wan 2.2 I2V 14B に非検閲の LoRA と LightX2V を 20% の強さで焼き込んだ高ノイズ用 Wan2.2_I2V_High_R1_n54w_v2.safetensors と低ノイズ用 Wan2.2_I2V_Low_R1_n54w_v2.safetensors、ComfyUI の comfy_quant 形式の fp8）で先頭フレーム 1 枚から動画を作る標準ノードだけのワークフロー。LightX2V が入っているので少ステップ・cfg 1 の設定。作者の同梱ワークフロー（Wan2.2_I2V_R1_v2_workflow.json）は 高ノイズ側 2 ステップ＋低ノイズ側 3 ステップ（低ノイズ側は denoise 0.55）の 2 つの KSampler（dpmpp_2m_sde・sgm_uniform・cfg 1）で、Nefos Video は標準の 2 段（KSamplerAdvanced の合計 5 ステップ、2 ステップ目で高ノイズから低ノイズへ切り替え。高 2・低 3 の配分は同じで、低ノイズ側のシグマの切り方だけが作者と少し違う）に直した。ModelSamplingSD3 の shift は 8（Wan 2.2 の既定と同じ）、16fps、VAE は Wan 2.1 の wan_2.1_vae.safetensors。空白の画像を先頭フレームにすればテキストから動画に近い使い方もできる（作者の説明）。GPU では未実行（構造のテストのみ）。",
  "model": {
   "media": "video",
   "video": {"durations": [3, 4, 5], "resolutions": ["480p", "720p"]},

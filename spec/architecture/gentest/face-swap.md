@@ -1,19 +1,19 @@
 # 顔の入れ替え（外部ツール FaceFusion。Issue #995）
 
-生成した画像の顔を、別の画像の顔に入れ替える。入れ替えは **FaceFusion**（<https://github.com/facefusion/facefusion>）が行い、mam は **ffmpeg と同じように「同梱しない外部ツール」** として扱う。mam のバイナリにもインストーラーにも FaceFusion とそのモデルは入れない。利用者が別に入れたものを、mam が別のプロセスとして `facefusion.py headless-run`（FaceFusion の非対話モード）で呼ぶだけにする。**この方式は Issue #995 の方針で、変えない**（拡散モデルでの入れ替えなど別の方式は [../local-models.md](../local-models.md) §4.6 の「顔入れ替え」の整理と #960 のとおり別の話）。
+生成した画像の顔を、別の画像の顔に入れ替える。入れ替えは **FaceFusion**（<https://github.com/facefusion/facefusion>）が行い、Nefos Video は **ffmpeg と同じように「同梱しない外部ツール」** として扱う。Nefos Video のバイナリにもインストーラーにも FaceFusion とそのモデルは入れない。利用者が別に入れたものを、Nefos Video が別のプロセスとして `facefusion.py headless-run`（FaceFusion の非対話モード）で呼ぶだけにする。**この方式は Issue #995 の方針で、変えない**（拡散モデルでの入れ替えなど別の方式は [../local-models.md](../local-models.md) §4.6 の「顔入れ替え」の整理と #960 のとおり別の話）。
 
-> **#1106 の追記（2026-11-06）— 状態: 実装済み（Issue #1106。FaceFusion の取得・導入のジョブは作っていない）**: 上の「mam は取得しない」は**変えない**。変わるのは**入口**だけで、FaceFusion のパスの欄・探した結果（§2）は設定の分類「FaceFusion」から、モデルマネージャーの分類 `companion`「付随ソフト」の区画 `#mm-facefusion` へ移り、そこに**入れる手順**（公式の conda → `git clone` → `python install.py`。推奨版 `facefusion.RecommendedTag` = `3.9.2`）と「もう一度探す」が加わる（[../../components/model-manager-screen.md](../../components/model-manager-screen.md)「付随ソフトの導入（#1106）」）。**mam が取得する案への変更は CTO の判断待ち**（同節「決定が要ること」。条文の確認・同意の画面・Python の環境の固定が要る）。§2 の「画面」「反映」、§4 の設定へのリンクは、この追記のとおり読み替える。
+> **#1106 の追記（2026-11-06）— 状態: 実装済み（Issue #1106。FaceFusion の取得・導入のジョブは作っていない）**: 上の「Nefos Video は取得しない」は**変えない**。変わるのは**入口**だけで、FaceFusion のパスの欄・探した結果（§2）は設定の分類「FaceFusion」から、モデルマネージャーの分類 `companion`「付随ソフト」の区画 `#mm-facefusion` へ移り、そこに**入れる手順**（公式の conda → `git clone` → `python install.py`。推奨版 `facefusion.RecommendedTag` = `3.9.2`）と「もう一度探す」が加わる（[../../components/model-manager-screen.md](../../components/model-manager-screen.md)「付随ソフトの導入（#1106）」）。**Nefos Video が取得する案への変更は CTO の判断待ち**（同節「決定が要ること」。条文の確認・同意の画面・Python の環境の固定が要る）。§2 の「画面」「反映」、§4 の設定へのリンクは、この追記のとおり読み替える。
 
 関連: [gentest.md](gentest.md)（単発生成。結果は履歴とジョブ一覧に並ぶ）、[../ffmpeg-lookup.md](../ffmpeg-lookup.md)（検出と設定のお手本）、[../local-models.md](../local-models.md) §4.6・§4.9（顔固定と顔の類似度の計測）。
 
 ## 1. 方針
 
-- **同梱しない**: FaceFusion 本体は 2025-02 に MIT から **OpenRAIL-AS** になった。利用の制限が使う人に直接かかり、リポジトリに条文の全文は無い（条項は未確認で、mam は読んだことにしない）。mam は取得も配布もせず、設定画面で場所を指すだけにする。
-- **mam は取得しない**: 入れ替えモデルのファイルは、初めて使うとき **FaceFusion 自身が**配布元から取得する（mam は取得しないし、同意の画面も出さない）。画面にその旨を書く（`facefusion.FirstRunNote`）。
+- **同梱しない**: FaceFusion 本体は 2025-02 に MIT から **OpenRAIL-AS** になった。利用の制限が使う人に直接かかり、リポジトリに条文の全文は無い（条項は未確認で、Nefos Video は読んだことにしない）。Nefos Video は取得も配布もせず、設定画面で場所を指すだけにする。
+- **Nefos Video は取得しない**: 入れ替えモデルのファイルは、初めて使うとき **FaceFusion 自身が**配布元から取得する（Nefos Video は取得しないし、同意の画面も出さない）。画面にその旨を書く（`facefusion.FirstRunNote`）。
 - **既定のモデルは商用利用しやすいものに限る**: 入れ替え `ghost_2_256`（GHOST、Apache 2.0）・顔検出 `yunet`（MIT）・復元 `gfpgan_1.4`（Apache 2.0）。**GHOST は顔の特徴の変換に CrossFace（OpenRAIL-M）の重みも使う**ので、「商用の制限なし」ではなく「条件つき」とし、その旨を注に出す（条項は使う前に読む）。GHOST の 3 つの版（`ghost_1_256`・`ghost_2_256`・`ghost_3_256`）のどれが良く見えるかは**比べていない**（GPU が要る）。既定は 2 を仮に置いた。
 - **非商用・研究用・商用不明のモデルは、利用者が自分で選んだときだけ使え、警告を出す**。選んだ瞬間（画面の選択を変えたとき）と、実行した結果（結果の詳細に残る）に出す。警告は「個人の試用に限り、商用の作品には使わない」。
 - **どのモデルを選んでも付く注意**（`facefusion.ArcFaceNote`）: FaceFusion は顔の特徴の計算に **ArcFace**（InsightFace 由来。FaceFusion の一覧では Non-Commercial）を使い、`facefusion/face_recognizer.py` にそのモデルしか無く、選択肢で置き換えられない。つまり**既定の組み合わせでも、商用の作品に使えるとは確かめられない**。Issue 本文の「既定は商用利用しやすいものに限る」は、選べるモデルの範囲についてであって、全体としての商用可を意味しない（画面と MCP の `notes` に出す）。
-- **成人向けの画像には使えない**（`facefusion.AdultNote`）: 公式はヌード・成人向けの処理を断り、NSFW の判定（content analyser）は無効にできない（<https://docs.facefusion.io/introduction/disclaimer>）。mam の成人向けモデルの結果には使えない前提で、その旨を画面（設定・結果の詳細の箱・結果の詳細の行）と MCP の `notes` に出す。mam は画像の中身を判定しない（NudeNet などは持たない）ので入れ替えを事前には断らず、FaceFusion が断ったらその出力の最後の数行が結果の失敗の理由になる。
+- **成人向けの画像には使えない**（`facefusion.AdultNote`）: 公式はヌード・成人向けの処理を断り、NSFW の判定（content analyser）は無効にできない（<https://docs.facefusion.io/introduction/disclaimer>）。Nefos Video の成人向けモデルの結果には使えない前提で、その旨を画面（設定・結果の詳細の箱・結果の詳細の行）と MCP の `notes` に出す。Nefos Video は画像の中身を判定しない（NudeNet などは持たない）ので入れ替えを事前には断らず、FaceFusion が断ったらその出力の最後の数行が結果の失敗の理由になる。
 - **非公式の ComfyUI ラッパー**（huygiatrng/Facefusion_comfyui。ライセンス表記 NOASSERTION）は使わない。
 - **範囲**: 生成済みの画像 1 枚 + 顔の画像 1 枚（その中でいちばん大きい顔）→ 画像 1 枚。動画・複数の顔・顔の選択（左から何番目）・マスク・pixel boost・weight は今回は扱わない。
 
@@ -30,7 +30,7 @@
 | 反映 | **保存するとすぐ**使われる（ffmpeg も同じ。ffmpeg は保存のすぐあとに探し直して全サービスの `media.Tools` を入れ替える。FaceFusion は入れ替えのたびに探す） |
 | FaceFusion を実行して確かめない | 状態の表示は、ファイルの有無と `metadata.py` の読み取りだけ（`facefusion.py --version` も走らせない。モデルのランタイムを読み込むので数秒かかる） |
 
-画面は設定の分類「FaceFusion」（`/settings/facefusion`。ffmpeg の次。**#1106 で、モデルマネージャーの `companion` の `#mm-facefusion` へ移る**。`GET /settings/facefusion` は 303。状態: 実装済み）。概要のカードは「FaceFusion を使えます」（ok）／「未設定（使うときだけ入れます）」（neutral）／「設定ファイルを読めません」（warn）。表に、入れ替え・顔検出・復元の各モデルの ID・ライセンスの級（バッジ）・FaceFusion の一覧の表記・既定・注を並べ、標準の注意（§1）とライセンスの出典へのリンクを付ける。ルートは `PUT /settings/facefusion`（#1106 のあと `PUT /model-manager/companion/facefusion`。フォーム `python`・`path`。空は指定なし。200 は分類の本文（`#facefusion-panel`）と通知、使えない値は 422 で入力を残す）。`settingsroutes.Services.FaceFusion` があるときだけ分類とルートがある（ない構成では 404）。#1106 のあと、見つけた版が `3.` で始まらないときは「mam が確かめたのは 3.x の選択肢です」の注記だけを出す（断らない）。
+画面は設定の分類「FaceFusion」（`/settings/facefusion`。ffmpeg の次。**#1106 で、モデルマネージャーの `companion` の `#mm-facefusion` へ移る**。`GET /settings/facefusion` は 303。状態: 実装済み）。概要のカードは「FaceFusion を使えます」（ok）／「未設定（使うときだけ入れます）」（neutral）／「設定ファイルを読めません」（warn）。表に、入れ替え・顔検出・復元の各モデルの ID・ライセンスの級（バッジ）・FaceFusion の一覧の表記・既定・注を並べ、標準の注意（§1）とライセンスの出典へのリンクを付ける。ルートは `PUT /settings/facefusion`（#1106 のあと `PUT /model-manager/companion/facefusion`。フォーム `python`・`path`。空は指定なし。200 は分類の本文（`#facefusion-panel`）と通知、使えない値は 422 で入力を残す）。`settingsroutes.Services.FaceFusion` があるときだけ分類とルートがある（ない構成では 404）。#1106 のあと、見つけた版が `3.` で始まらないときは「Nefos Video が確かめたのは 3.x の選択肢です」の注記だけを出す（断らない）。
 
 ## 3. 入れ替えの実行
 
@@ -49,8 +49,8 @@
      --face-swapper-model ghost_2_256 --face-detector-model yunet --face-enhancer-model gfpgan_1.4
    ```
 
-   復元を使わない（`enhancer: none`）ときは `--processors face_swapper` だけで、`--face-enhancer-model` は付けない。作業ディレクトリは FaceFusion のフォルダ（相対の `facefusion.py` と `.assets` のため）。**入力・出力・ジョブ・一時ファイルは mam が作る一時ディレクトリ（`mam-facefusion-*`。終わったら消す）に置き**、FaceFusion のフォルダには書かせない。環境変数 `PYTHONIOENCODING=utf-8`・`PYTHONUTF8=1`・`PYTHONUNBUFFERED=1` を足す。Windows では `CREATE_NO_WINDOW`（コンソールの窓を出さない）。
-5. **モデルの検査**: 入れ替え・顔検出・復元のモデル ID は mam が持つ表（`facefusion.Swappers`・`Detectors`・`Enhancers`。FaceFusion 3.x の `choices` と同じ名前）にあるものだけ。無い ID は、プロセスを起動する前に「選べません（選べるもの一覧）」で拒否する。
+   復元を使わない（`enhancer: none`）ときは `--processors face_swapper` だけで、`--face-enhancer-model` は付けない。作業ディレクトリは FaceFusion のフォルダ（相対の `facefusion.py` と `.assets` のため）。**入力・出力・ジョブ・一時ファイルは Nefos Video が作る一時ディレクトリ（`mam-facefusion-*`。終わったら消す）に置き**、FaceFusion のフォルダには書かせない。環境変数 `PYTHONIOENCODING=utf-8`・`PYTHONUTF8=1`・`PYTHONUNBUFFERED=1` を足す。Windows では `CREATE_NO_WINDOW`（コンソールの窓を出さない）。
+5. **モデルの検査**: 入れ替え・顔検出・復元のモデル ID は Nefos Video が持つ表（`facefusion.Swappers`・`Detectors`・`Enhancers`。FaceFusion 3.x の `choices` と同じ名前）にあるものだけ。無い ID は、プロセスを起動する前に「選べません（選べるもの一覧）」で拒否する。
 6. **失敗**: 非ゼロの終了・時間切れ（既定 30 分。初回はモデルの取得で長い）・終了しても出力が無い・出力が画像でない、は `*facefusion.RunError`。出力（標準出力・標準エラーの末尾の数行。キャリッジリターンも改行として扱う）を結果の理由に含める。結果の `failure` は `facefusion_failed`（原因は終わり方: 時間切れ・異常終了・出力なし。直し方は顔がはっきり写っているか・成人向けの画像は断られる・GPU のメモリ・設定画面の確認。出力の末尾は詳細）。出力に `out of memory` などがあれば `vram_oom`（共通エラー §5）。英語の出力そのものは `detail` にだけ出る。ジョブが取り消されたとき（コンテキスト）は FaceFusion の失敗として扱わない。
 7. **記録**（`record.FaceSwap`、結果の `params.face_swap`）: 元の結果 ID（入れ替え先が履歴の結果のとき）・入れ替え / 顔検出 / 復元のモデル・**ライセンスの警告**。元の結果を後で消しても、この結果は残る。
 8. **顔の類似度**: 顔の画像は役割 `face` の入力なので、結果には通常の生成と同じ顔の類似度（SFace。[../local-models.md](../local-models.md) §4.9）も測って付く。入れ替えで顔が実際に近づいたかを同じ物差しで見られる。
@@ -76,7 +76,7 @@
 
 ## 6. モデルのライセンス表（一次情報）
 
-出典: FaceFusion の公式ドキュメント **「Licenses」<https://docs.facefusion.io/introduction/licenses>**（2026-11-03 に確認。FaceFusion 3.9.2）。Issue 本文の列挙は信じず、この表を元にした。**一覧に載っていない・ライセンスが「Unknown」「None」のものは「商用不明」と表示する**。mam の級は次のとおり: 商用の制限なし（`open`）・商用は条件つき（`conditional`）・商用NG（`noncommercial`）・研究用のみ（`research`）・商用不明（`unknown`）。「警告」は級が `noncommercial`・`research`・`unknown` のとき。
+出典: FaceFusion の公式ドキュメント **「Licenses」<https://docs.facefusion.io/introduction/licenses>**（2026-11-03 に確認。FaceFusion 3.9.2）。Issue 本文の列挙は信じず、この表を元にした。**一覧に載っていない・ライセンスが「Unknown」「None」のものは「商用不明」と表示する**。Nefos Video の級は次のとおり: 商用の制限なし（`open`）・商用は条件つき（`conditional`）・商用NG（`noncommercial`）・研究用のみ（`research`）・商用不明（`unknown`）。「警告」は級が `noncommercial`・`research`・`unknown` のとき。
 
 | 種類 | モデル ID | FaceFusion の一覧の表記（Vendor） | 級 | 警告 |
 |---|---|---|---|---|
@@ -99,14 +99,14 @@
 | （選べない） | ArcFace | InsightFace: Non-Commercial | — | 常に注意（§1） |
 
 - モデル名は FaceFusion 3.x のソース（`facefusion/processors/modules/face_swapper/types.py`・`face_enhancer/types.py`・`facefusion/types.py` の `FaceDetectorModel`）から取った。FaceFusion が名前を変えたら、表（`facefusion/models.go`）も合わせて直す（無い名前は FaceFusion が引数エラーにするので、結果が失敗になる）。
-- 一覧の表記は FaceFusion が付けたもので、mam が各モデルの元のリポジトリの条文を読み直したわけではない。GFPGAN は第三者の部品・学習データの条件が議論される（[../local-models.md](../local-models.md) §4.6 の表の指摘）が、ここでは FaceFusion の表記に従った。
+- 一覧の表記は FaceFusion が付けたもので、Nefos Video が各モデルの元のリポジトリの条文を読み直したわけではない。GFPGAN は第三者の部品・学習データの条件が議論される（[../local-models.md](../local-models.md) §4.6 の表の指摘）が、ここでは FaceFusion の表記に従った。
 
 ## 7. 実機が必要な項目（今回確かめていないこと）
 
 - **実際の FaceFusion の起動**: テストは `facefusion.py` と Python の代わりのシェルスクリプト（偽の `python`）で、引数・作業ディレクトリ・出力の取り込み・失敗・時間切れ・取り消しを確かめた。実際の FaceFusion（ONNX Runtime の CUDA・初回のモデル取得・出力ファイルの名前の扱い・`--output-path` が `.png` のファイルを受けるか）は**実機で未確認**。Windows・16GB VRAM の動作確認は別途（Issue の完了条件の 5 つ目）。公式の目安は VRAM 8GB〜（12GB 以上を推奨）。必要なディスクは未確認。
 - GHOST の 3 つの版のどれを既定にするか、復元の強さ・ブレンドを渡すか。
 - macOS での FaceFusion（Apple Silicon の ONNX Runtime の経路）。
-- 「成人向けの結果」を FaceFusion が断るときの終了コードと出力の文言（mam は出力の最後の数行を理由に出すだけで、文言を判別しない）。
+- 「成人向けの結果」を FaceFusion が断るときの終了コードと出力の文言（Nefos Video は出力の最後の数行を理由に出すだけで、文言を判別しない）。
 
 ## 改訂履歴
 
@@ -119,3 +119,4 @@
 | 1.4 | 2026-11-06 | 冒頭に #1106 の追記: FaceFusion の画面（パスの欄・探した結果）を設定からモデルマネージャーの `companion` へ移し、入れる手順と「もう一度探す」を足す。「mam は取得しない」は変えず、取得する案は CTO の判断待ち。状態は仕様のみ（未実装） | Issue #1106 |
 | 1.5 | 2026-11-07 | #1106 の追記を実装した（入口をモデルマネージャーの `companion` へ移し、入れる手順と「もう一度探す」を足した）。「mam は取得しない」は変えておらず、取得ボタン・導入のジョブは作っていない。状態は「実装済み」 | Issue #1106 |
 | 1.6 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |
+| 1.7 | 2026-11-19 | 本文の製品名の表示を「MAM」から「Nefos Video」に改めた（過去の改訂履歴の文は当時のまま） | #1170: 製品名を MAM から Nefos Video に変更（表示名のみ。識別子・パス・実行ファイル名は変更しない） |

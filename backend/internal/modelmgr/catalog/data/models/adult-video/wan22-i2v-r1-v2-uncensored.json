@@ -44,7 +44,7 @@
  ],
  "vram": {
   "min_gb": 16,
-  "source": "wan22-i2v-14b（fp8、高・低ノイズを順に使う）と同じ構成で、拡散モデルは各約 14.8 GB。16 GB は fp8 と ComfyUI のオフロードが前提という mam の推定（Issue #1012 の調査メモも同じ）。作者のカードは VRAM を書かない。mam の実機（16 GB）では未確認",
+  "source": "wan22-i2v-14b（fp8、高・低ノイズを順に使う）と同じ構成で、拡散モデルは各約 14.8 GB。16 GB は fp8 と ComfyUI のオフロードが前提という Nefos Video の推定（Issue #1012 の調査メモも同じ）。作者のカードは VRAM を書かない。Nefos Video の実機（16 GB）では未確認",
   "estimate": true
  },
  "license": {
@@ -75,7 +75,7 @@
     "commercial": "yes"
    }
   ],
-  "notice": "この mam のインストール先に取得するモデルです。ライセンスはモデルカードの宣言（Apache-2.0）だけで、LICENSE の本文と焼き込んだ LoRA の出所を確認できていません。商用には使わないでください。成人向けの表現の公開は、地域の法令と配信先の規約に従ってください。"
+  "notice": "この Nefos Video のインストール先に取得するモデルです。ライセンスはモデルカードの宣言（Apache-2.0）だけで、LICENSE の本文と焼き込んだ LoRA の出所を確認できていません。商用には使わないでください。成人向けの表現の公開は、地域の法令と配信先の規約に従ってください。"
  },
  "consent_required": true,
  "requires_hf_token": false,

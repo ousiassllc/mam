@@ -11,12 +11,12 @@ import (
 )
 
 // noManaged is why the servers of mam are not offered: the app has none.
-const noManaged = "このアプリには、mam が管理するサーバー（llama.cpp・Ollama）がないため、選べるのは「別のサーバー」だけです。下の URL に、起動しているサーバーを指定してください。"
+const noManaged = "このアプリには、Nefos Video が管理するサーバー（llama.cpp・Ollama）がないため、選べるのは「別のサーバー」だけです。下の URL に、起動しているサーバーを指定してください。"
 
 // aboutOf is the line under the name of a server in the radio group.
 var aboutOf = map[llmlocal.Use]string{
-	llmlocal.UseLlamaCpp: "mam が導入・起動する llama.cpp です。下の「ローカルで動かすサーバー」で導入し、使うモデルを選びます。最初の LLM の呼び出しで起動します。",
-	llmlocal.UseOllama:   "mam が導入・起動する Ollama です。下の「ローカルで動かすサーバー」で導入します。最初の LLM の呼び出しで起動します。",
+	llmlocal.UseLlamaCpp: "Nefos Video が導入・起動する llama.cpp です。下の「ローカルで動かすサーバー」で導入し、使うモデルを選びます。最初の LLM の呼び出しで起動します。",
+	llmlocal.UseOllama:   "Nefos Video が導入・起動する Ollama です。下の「ローカルで動かすサーバー」で導入します。最初の LLM の呼び出しで起動します。",
 	llmlocal.UseCustom:   "LM Studio・自分で入れた Ollama・llama-server など。下の URL に呼び出します。",
 }
 

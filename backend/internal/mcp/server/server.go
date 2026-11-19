@@ -56,8 +56,8 @@ func New(o Options) *Server {
 	if o.Port == 0 {
 		o.Port = DefaultPort
 	}
-	mcpServer := mcp.NewServer(&mcp.Implementation{Name: "mam", Title: "mam (AI Video Production Agent)", Version: o.Version}, &mcp.ServerOptions{
-		Instructions: "mam の画面でできる操作を行うツール群。長い操作は job_id を返すので get_job で結果を取る。ファイルは base64 ではなく、create_upload_ticket / *_url が返すトークン付き URL で受け渡す。",
+	mcpServer := mcp.NewServer(&mcp.Implementation{Name: "mam", Title: "Nefos Video (AI Video Production Agent)", Version: o.Version}, &mcp.ServerOptions{
+		Instructions: "Nefos Video の画面でできる操作を行うツール群。長い操作は job_id を返すので get_job で結果を取る。ファイルは base64 ではなく、create_upload_ticket / *_url が返すトークン付き URL で受け渡す。",
 	})
 	var mgr *Manager
 	files := mcpkit.NewFiles(mcpkit.FilesOptions{

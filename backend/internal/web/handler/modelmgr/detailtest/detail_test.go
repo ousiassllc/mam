@@ -46,7 +46,7 @@ func TestCatalog_TheCardShowsKindSizeStateAndCommercialAndTheDetailTheRest(t *te
 	}
 
 	detail := s.Get(paths.ModelManagerPart("models", "m-c", "detail")).Body.String()
-	assert.Contains(t, detail, "8 GB 以上（mam の推定。GPU では未確認）")
+	assert.Contains(t, detail, "8 GB 以上（Nefos Video の推定。GPU では未確認）")
 	assert.Contains(t, detail, `data-testid="mm-commercial"`)
 	assert.Contains(t, detail, "不可（非商用）", "the commercial flag of m-c")
 	assert.Contains(t, detail, "ライセンスの同意が必要")

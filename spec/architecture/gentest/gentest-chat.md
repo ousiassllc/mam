@@ -1,6 +1,6 @@
 # 単発生成: チャットで作る（LLM のエージェントループ）
 
-[gentest.md](gentest.md) の続き（Issue #1138）。単発生成の画面に「チャットで作る」のタブ（`GET /generation-test/chat`）を置き、フォームを埋めずに、**相談 → モデルの提案・比較 → 見積り → 確認のカード → 実行 → 結果の表示**までを対話で進める。最終目標は「mam はチャットだけで全部できる」こと。画面は [../../components/gentest-chat.md](../../components/gentest-chat.md)、ルートは [../../api/endpoints-gentest.md](../../api/endpoints-gentest.md)。
+[gentest.md](gentest.md) の続き（Issue #1138）。単発生成の画面に「チャットで作る」のタブ（`GET /generation-test/chat`）を置き、フォームを埋めずに、**相談 → モデルの提案・比較 → 見積り → 確認のカード → 実行 → 結果の表示**までを対話で進める。最終目標は「Nefos Video はチャットだけで全部できる」こと。画面は [../../components/gentest-chat.md](../../components/gentest-chat.md)、ルートは [../../api/endpoints-gentest.md](../../api/endpoints-gentest.md)。
 
 ## 1. 方針
 
@@ -88,3 +88,4 @@
 | 1.7 | 2026-11-11 | §2 に `list_models` の `commercial`・`inputs`・`providers` を切る長さと語数（`cleanWords`）を足した。§6 の static の行に、選択肢のカードの送信後はフォーカスを入力欄へ戻すことを足した | PR #1141 のレビュー指摘 |
 | 1.8 | 2026-11-11 | §6 の static の行の、選択肢のカードの送信後のフォーカスの規則を実装のとおりに書き直した（フォーカスが `<body>`・どこにも無い・送ったカードのフォームの中のどれかなら入力欄へ戻し、それ以外は触らない。2xx 以外の応答では動かさない） | PR #1141 のレビュー指摘 |
 | 1.9 | 2026-11-14 | モデル一覧の答えに動画の種類（`video_modes`）を足した | Issue #1014 |
+| 1.10 | 2026-11-19 | 本文の製品名の表示を「MAM」から「Nefos Video」に改めた（過去の改訂履歴の文は当時のまま） | #1170: 製品名を MAM から Nefos Video に変更（表示名のみ。識別子・パス・実行ファイル名は変更しない） |

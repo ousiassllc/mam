@@ -13,7 +13,7 @@ import (
 // Register adds the tools of this package.
 func Register(r *mcpkit.Registrar, svc *service.Services) {
 	mcpkit.Read(r, "get_health",
-		"mam 本体とデータベースが使えるか（ヘルスチェック）。使えなくてもエラーにはせず ok=false を返す / Whether mam and its database are usable; ok=false instead of an error when not.",
+		"Nefos Video 本体とデータベースが使えるか（ヘルスチェック）。使えなくてもエラーにはせず ok=false を返す / Whether Nefos Video and its database are usable; ok=false instead of an error when not.",
 		check(svc.Health, r.Settings.Restart))
 }
 

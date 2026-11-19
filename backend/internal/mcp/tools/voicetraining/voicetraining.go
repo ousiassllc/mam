@@ -43,7 +43,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 		"登場人物の声の学習（fine-tune）の状態: 学習に使う音声（clips）と合計の長さ、始められるか（problems に理由）、エポック数の既定と上限、学習済みの声（trained）、いまの学習（current）。series_id か project_id のどちらか一方と character_id を渡す。見込み時間は学習が始まる前には出せない（最初のエポックが終わると get_job の progress に出る）/ Data, limits and state of the voice training of a Character.",
 		h.get)
 	mcpkit.Write(r, "start_character_voice_training",
-		"登場人物の声を GPT-SoVITS で学習（fine-tune）するジョブを始める。job_id を返すので get_job で進み具合（エポック n/m・経過・残り時間）を見る。先に参照音声と、学習用の音声（purpose=character_voice_training_clip で 2〜30 秒の録音と書き起こしを合計 1〜30 分）が要る。同梱の ComfyUI が生成中なら始められない（学習は ComfyUI と同時に動かさない）。数十分かかる。mam を再起動すると学習は途中から再開せず、やり直しになる。学習した声は、その登場人物（Series の正本なら以後に作る Episode）の声の合成に使われる。"+Consent+" / Start the fine-tuning of a Character's voice (a job: poll with get_job).",
+		"登場人物の声を GPT-SoVITS で学習（fine-tune）するジョブを始める。job_id を返すので get_job で進み具合（エポック n/m・経過・残り時間）を見る。先に参照音声と、学習用の音声（purpose=character_voice_training_clip で 2〜30 秒の録音と書き起こしを合計 1〜30 分）が要る。同梱の ComfyUI が生成中なら始められない（学習は ComfyUI と同時に動かさない）。数十分かかる。Nefos Video を再起動すると学習は途中から再開せず、やり直しになる。学習した声は、その登場人物（Series の正本なら以後に作る Episode）の声の合成に使われる。"+Consent+" / Start the fine-tuning of a Character's voice (a job: poll with get_job).",
 		h.start, mcpkit.OpenWorld())
 	mcpkit.Write(r, "cancel_character_voice_training",
 		"動いている声の学習を中止する。子プロセスを止め、途中までの結果は残さない。動いていなければ conflict / Cancel the running voice training; nothing of it is kept.",
@@ -224,7 +224,7 @@ func (h handlers) start(ctx context.Context, in StartInput) (StartOutput, error)
 func (h handlers) probe(_ context.Context, job mcpkit.JobInfo) (mcpkit.Progress, error) {
 	st, ok := h.t.Status(job.Target)
 	if !ok {
-		return mcpkit.Progress{State: mcpkit.JobFailed, Error: "この学習の記録が見つかりません（mam を再起動した可能性があります。学習は再開しません。get_character_voice_training で状態を確かめ、必要ならもう一度始めてください）"}, nil
+		return mcpkit.Progress{State: mcpkit.JobFailed, Error: "この学習の記録が見つかりません（Nefos Video を再起動した可能性があります。学習は再開しません。get_character_voice_training で状態を確かめ、必要ならもう一度始めてください）"}, nil
 	}
 	p := mcpkit.Progress{Message: st.Text, Done: st.Progress.Percent, Total: 100}
 	if st.Running() {

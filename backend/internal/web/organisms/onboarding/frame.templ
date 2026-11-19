@@ -16,7 +16,7 @@ const (
 templ Layout(f Frame) {
 	<main class="mx-auto max-w-4xl p-8">
 		<h1 class="mb-1 text-3xl font-semibold">はじめに</h1>
-		<p class="text-sm text-mute">mam を使い始めるための案内です。途中で「ガイドを閉じる」を押すと、そこでやめてプロジェクト一覧に進めます。</p>
+		<p class="text-sm text-mute">Nefos Video を使い始めるための案内です。途中で「ガイドを閉じる」を押すと、そこでやめてプロジェクト一覧に進めます。</p>
 		@progress(f)
 		<section aria-labelledby="onboarding-step-title" class="mt-6 flex flex-col gap-4" data-testid="onboarding-step" data-step={ f.Current().Slug }>
 			<p class="text-sm text-mute">ステップ { f.Number() } / { f.Total() }（{ Group(f.Current()) }）</p>

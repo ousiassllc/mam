@@ -18,7 +18,7 @@ type ModelInfo struct {
 // ProviderModels is the models of one provider and where they come from.
 type ProviderModels struct {
 	Provider string      `json:"provider"`
-	Source   string      `json:"source" jsonschema:"api（プロバイダーが返した一覧。そのアカウント・API キーで使えるもの）または default（mam が持つ既定候補）"`
+	Source   string      `json:"source" jsonschema:"api（プロバイダーが返した一覧。そのアカウント・API キーで使えるもの）または default（Nefos Video が持つ既定候補）"`
 	Reason   string      `json:"reason,omitempty" jsonschema:"source が default の理由（API キーなし・ログインなし・取得に失敗）"`
 	Models   []ModelInfo `json:"models"`
 	// Availability: false while the provider has no API key or no sign-in (#1013); the models are then mam's candidates, listed so that the
@@ -137,5 +137,5 @@ func unlistedMessage(model string, l llmmodels.List) string {
 	if l.Source == llmmodels.SourceAPI {
 		return fmt.Sprintf("%q は %s の一覧にありません。使えないかもしれません（保存はしました）。list_llm_models で選べる名前を確かめられます", model, l.Provider)
 	}
-	return fmt.Sprintf("%q は mam の既定候補にありません（%s: %s）。新しいモデルなら使えることもありますが、使えないかもしれません（保存はしました）", model, l.Provider, l.Fallback.Message())
+	return fmt.Sprintf("%q は Nefos Video の既定候補にありません（%s: %s）。新しいモデルなら使えることもありますが、使えないかもしれません（保存はしました）", model, l.Provider, l.Fallback.Message())
 }

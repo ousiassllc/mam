@@ -51,7 +51,7 @@ func All() []Category {
 		},
 		{
 			Slug: CustomNodes, Name: "追加ノード", Icon: atoms.IconNetwork,
-			Description: "ComfyUI に機能を足すカスタムノードを、mam が確認して固定したものだけ導入します。",
+			Description: "ComfyUI に機能を足すカスタムノードを、Nefos Video が確認して固定したものだけ導入します。",
 			Sections:    []string{"mm-nodes"}, Cards: true,
 		},
 		{
@@ -76,7 +76,7 @@ func All() []Category {
 		},
 		{
 			Slug: Companion, Name: "付随ソフト", Icon: atoms.IconPackage,
-			Description: "ffmpeg・FaceFusion など、mam とは別に入れるソフトの入れ方と、今の状態です。ffmpeg は mam でダウンロードして入れられます。",
+			Description: "ffmpeg・FaceFusion など、Nefos Video とは別に入れるソフトの入れ方と、今の状態です。ffmpeg は Nefos Video でダウンロードして入れられます。",
 			Sections:    []string{"mm-companion-index", "mm-ffmpeg", "mm-facefusion"},
 		},
 	}

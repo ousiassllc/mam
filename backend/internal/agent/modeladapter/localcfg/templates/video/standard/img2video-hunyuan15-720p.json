@@ -2,7 +2,7 @@
  "id": "img2video-hunyuan15-720p",
  "label": "HunyuanVideo 1.5 720p: 先頭フレームから動画",
  "media": "video",
- "description": "ComfyUI 標準ノードだけの HunyuanVideo 1.5 720p の先頭フレームから動画のワークフロー（cfg 蒸留版 fp8 の hunyuanvideo1.5_720p_i2v_cfg_distilled_fp8_scaled.safetensors、テキストエンコーダー qwen_2.5_vl_7b_fp8_scaled.safetensors と byt5_small_glyphxl_fp16.safetensors、CLIP Vision の sigclip_vision_patch14_384.safetensors、VAE hunyuanvideo15_vae_fp16.safetensors）。ComfyUI の公式テンプレート（video_hunyuan_video_1.5_720p_i2v）のメインの経路に従う: 先頭フレームを CLIPVisionEncode（crop は center）に通し、HunyuanVideo15ImageToVideo（1280×720・121 フレーム）に渡す。公式は cfg 蒸留でない fp16（20 ステップ・cfg 6・shift 7）だが、mam は蒸留版 fp8 を使うので、サンプラーの cfg 1 は既存の 480p の蒸留版（txt2video-hunyuan15-480p）と同じ推定値（シフトは 7、20 ステップ・euler/simple）。公式の 1080p の超解像（SR）の枝は使わない。24fps、フレーム数は 4n+1。GPU では未実行（構造のテストのみ）。",
+ "description": "ComfyUI 標準ノードだけの HunyuanVideo 1.5 720p の先頭フレームから動画のワークフロー（cfg 蒸留版 fp8 の hunyuanvideo1.5_720p_i2v_cfg_distilled_fp8_scaled.safetensors、テキストエンコーダー qwen_2.5_vl_7b_fp8_scaled.safetensors と byt5_small_glyphxl_fp16.safetensors、CLIP Vision の sigclip_vision_patch14_384.safetensors、VAE hunyuanvideo15_vae_fp16.safetensors）。ComfyUI の公式テンプレート（video_hunyuan_video_1.5_720p_i2v）のメインの経路に従う: 先頭フレームを CLIPVisionEncode（crop は center）に通し、HunyuanVideo15ImageToVideo（1280×720・121 フレーム）に渡す。公式は cfg 蒸留でない fp16（20 ステップ・cfg 6・shift 7）だが、Nefos Video は蒸留版 fp8 を使うので、サンプラーの cfg 1 は既存の 480p の蒸留版（txt2video-hunyuan15-480p）と同じ推定値（シフトは 7、20 ステップ・euler/simple）。公式の 1080p の超解像（SR）の枝は使わない。24fps、フレーム数は 4n+1。GPU では未実行（構造のテストのみ）。",
  "model": {
   "media": "video",
   "workflow": {

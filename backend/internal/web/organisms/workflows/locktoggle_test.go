@@ -39,7 +39,7 @@ func TestNodeScreenOfARejectingComfyUIHasNoFrameAndTheWayOut(t *testing.T) {
 	var b strings.Builder
 	d := workflows.NodeData{
 		Endpoint: "gpu", Endpoints: []string{"bundled-comfyui", "gpu"}, State: workflows.NodeRejected,
-		Reason:  "この ComfyUI は、別のサイト（mam）の中に表示されることを拒否しています（403）。--enable-cors-header http://mam.example:8787 を付けるか、ブラウザで開いてください",
+		Reason:  "この ComfyUI は、別のサイト（Nefos Video）の中に表示されることを拒否しています（403）。--enable-cors-header http://mam.example:8787 を付けるか、ブラウザで開いてください",
 		OpenURL: "http://100.64.0.9:8188/", ModelManagerURL: "/model-manager",
 	}
 	assert.NoError(t, pages.NodesPage("tok", d).Render(context.Background(), &b))

@@ -59,7 +59,7 @@ type step struct {
 
 func (h Handlers) steps() []step {
 	all := []step{
-		{Step: view.Step{Slug: paths.OnboardingFlow, Title: "mam でできること"}, body: func(Handlers, *gin.Context) templ.Component { return view.FlowBody() }},
+		{Step: view.Step{Slug: paths.OnboardingFlow, Title: "Nefos Video でできること"}, body: func(Handlers, *gin.Context) templ.Component { return view.FlowBody() }},
 		{Step: view.Step{Slug: paths.OnboardingModes, Title: "2 つの進め方"}, body: func(Handlers, *gin.Context) templ.Component { return view.ModesBody() }},
 		{Step: view.Step{Slug: paths.OnboardingPrepare, Title: "使い始める前に"}, body: func(h Handlers, _ *gin.Context) templ.Component {
 			return view.PrepareBody(h.hasModels(), h.Guide.OS() == svc.OSMac)

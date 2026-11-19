@@ -70,7 +70,7 @@ templ NodeDetail(n Node) {
 			<h3 id="mm-node-review-title" class="text-sm font-semibold">ソースの確認（{ n.ReviewedAt }）</h3>
 			<p class="text-sm text-ink" data-testid="mm-node-review">{ n.Review }</p>
 		</section>
-		<p class="text-sm text-mute">追加ノードは mam とは別のプログラムで、mam には含まれません。固定のコミットの GitHub のアーカイブを実行時に取得し、SHA-256 を確かめてから、モデルと同じ導入先（comfyui\data\custom_nodes）に展開します。pip は実行せず、同梱の Python 環境にあるパッケージだけで動くノードに限ります。</p>
+		<p class="text-sm text-mute">追加ノードは Nefos Video とは別のプログラムで、Nefos Video には含まれません。固定のコミットの GitHub のアーカイブを実行時に取得し、SHA-256 を確かめてから、モデルと同じ導入先（comfyui\data\custom_nodes）に展開します。pip は実行せず、同梱の Python 環境にあるパッケージだけで動くノードに限ります。</p>
 		@modal.Actions() {
 			@atoms.Button(atoms.TonePrimary, "閉じる", templ.Attributes{"type": "button", "data-modal-close": true})
 		}

@@ -24,7 +24,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 	r.Jobs.RegisterKind(KindRunWorkflow, h.runProbe)
 
 	mcpkit.Read(r, "list_workflows",
-		"mam に保存した ComfyUI ワークフローの一覧（識別子 comfy:<id>@v<N>・種類・版・実行できるか・使われている用途）/ List the ComfyUI workflows saved in mam.",
+		"Nefos Video に保存した ComfyUI ワークフローの一覧（識別子 comfy:<id>@v<N>・種類・版・実行できるか・使われている用途）/ List the ComfyUI workflows saved in mam.",
 		h.list)
 	mcpkit.Read(r, "get_workflow",
 		"ワークフローを 1 件取得する（入力の割り当て・出力ノード・版の一覧。include_graph で API 形式のグラフも）/ One workflow with its input assignment and versions.",
@@ -36,7 +36,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 		"ワークフローを削除する（全版）。画像の用途・Quality Policy が使っていれば拒否される。過去の Take には識別子が残る / Delete a workflow; refused while a purpose or policy uses it.",
 		h.delete)
 	mcpkit.Write(r, "update_workflow_assignment",
-		"ワークフローの入力の割り当て（mam の値をどのノードのどの入力に入れるか）・出力ノード・動画の能力を置き換える。実行できた版が変わると版が上がる / Replace the input assignment; a change of a version that could run makes a new version.",
+		"ワークフローの入力の割り当て（Nefos Video の値をどのノードのどの入力に入れるか）・出力ノード・動画の能力を置き換える。実行できた版が変わると版が上がる / Replace the input assignment; a change of a version that could run makes a new version.",
 		h.updateAssignment, mcpkit.Idempotent())
 	mcpkit.Write(r, "import_workflow_json",
 		"ComfyUI の「Save (API Format)」の JSON（文字列）を新しいワークフローとして保存する。assignments を省くと一般的なノードから推測する（結果の problems で足りないものが分かる）/ Save an API-format workflow JSON as a new workflow.",
@@ -45,7 +45,7 @@ func Register(r *mcpkit.Registrar, svc *service.Services) {
 		"ComfyUI サーバーが自分に保存しているワークフローの一覧（import_workflow_from_comfyui の path に使う）。同梱の ComfyUI は止まっていれば起動する / List the workflows the ComfyUI server holds.",
 		h.listRemote, mcpkit.OpenWorld())
 	mcpkit.Write(r, "import_workflow_from_comfyui",
-		"ComfyUI のワークフローを mam に取り込む。画面の形式は保存済みのファイル（path）から、API 形式はその最後の実行（履歴）から読む。path を省くと最後の実行。replace_workflow_id で既存を更新 / Import a workflow of the ComfyUI server (its saved file and the API format of its last run).",
+		"ComfyUI のワークフローを Nefos Video に取り込む。画面の形式は保存済みのファイル（path）から、API 形式はその最後の実行（履歴）から読む。path を省くと最後の実行。replace_workflow_id で既存を更新 / Import a workflow of the ComfyUI server (its saved file and the API format of its last run).",
 		h.importRemote, mcpkit.OpenWorld())
 	mcpkit.Read(r, "check_workflow",
 		"つないでいる ComfyUI に、ワークフローのノードとモデルファイルがあるか確かめる（GET /object_info と /models）。足りないものは warnings で返し、実行は止めない。同梱の ComfyUI は起動しない / Warn about nodes and model files the connected ComfyUI lacks.",

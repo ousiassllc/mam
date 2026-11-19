@@ -86,7 +86,7 @@ func Run(ctx context.Context, opts Options) error {
 	// directories the running instance is writing (startup cleanup) and race it on the database.
 	lock, err := fsutil.LockDir(cfg.DataDir)
 	if errors.Is(err, fsutil.ErrDirLocked) {
-		return fmt.Errorf("another mam is already using the data directory %s; stop it first or choose another with --data-dir", cfg.DataDir)
+		return fmt.Errorf("another Nefos Video is already using the data directory %s; stop it first or choose another with --data-dir", cfg.DataDir)
 	}
 	if err != nil {
 		return err

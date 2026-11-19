@@ -230,5 +230,5 @@ func failure(err error) string {
 	if errors.As(err, &api) {
 		return "LLM の呼び出しに失敗しました"
 	}
-	return "処理できませんでした。mam のログを確認してください"
+	return "処理できませんでした。Nefos Video のログを確認してください"
 }

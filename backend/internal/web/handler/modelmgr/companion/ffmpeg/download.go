@@ -89,12 +89,12 @@ func StartDownload(s Services) gin.HandlerFunc {
 		case errors.Is(err, ffmpegdl.ErrUnsupported):
 			panel(c, s, http.StatusConflict, "", "この環境ではダウンロードできません（できるのは Windows（x64）と macOS（Apple Silicon）だけです）。自分で入れた ffmpeg のパスを指定してください")
 		case errors.Is(err, exeinstall.ErrNotWritable):
-			panel(c, s, http.StatusConflict, "", fmt.Sprintf("ffmpeg の保存先（%s）に書き込めません。書き込み権限を確認してください（Windows 版は mam の実行ファイルの置き場所、macOS 版はデータフォルダの中です）", s.Download.Status().Dir))
+			panel(c, s, http.StatusConflict, "", fmt.Sprintf("ffmpeg の保存先（%s）に書き込めません。書き込み権限を確認してください（Windows 版は Nefos Video の実行ファイルの置き場所、macOS 版はデータフォルダの中です）", s.Download.Status().Dir))
 		case errors.As(err, &noSpace):
 			panel(c, s, http.StatusInsufficientStorage, "", fmt.Sprintf("ディスクの空きが足りません（必要 約 %d MB、空き %d MB）", noSpace.Need>>20, noSpace.Free>>20))
 		default:
 			_ = c.Error(err)
-			panel(c, s, http.StatusInternalServerError, "", "ダウンロードを始められませんでした。mam のログを確認してください")
+			panel(c, s, http.StatusInternalServerError, "", "ダウンロードを始められませんでした。Nefos Video のログを確認してください")
 		}
 	}
 }
@@ -122,7 +122,7 @@ func RemoveDownload(s Services) gin.HandlerFunc {
 			panel(c, s, http.StatusConflict, "", "この環境ではダウンロードした ffmpeg はありません")
 		default:
 			_ = c.Error(err)
-			panel(c, s, http.StatusInternalServerError, "", "削除できませんでした。ffmpeg が使われていないか確認してください（mam のログに理由があります）")
+			panel(c, s, http.StatusInternalServerError, "", "削除できませんでした。ffmpeg が使われていないか確認してください（Nefos Video のログに理由があります）")
 		}
 	}
 }

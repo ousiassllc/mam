@@ -47,7 +47,7 @@
  ],
  "vram": {
   "min_gb": 24,
-  "source": "docs.comfy.org の HunyuanVideo 1.5 のページ（24 GB VRAM の消費者向け GPU）。720p の T2V の拡散モデルは fp16（約 16.7 GB）で、16 GB の GPU では ComfyUI の自動の offload が前提。mam の実機では未検証",
+  "source": "docs.comfy.org の HunyuanVideo 1.5 のページ（24 GB VRAM の消費者向け GPU）。720p の T2V の拡散モデルは fp16（約 16.7 GB）で、16 GB の GPU では ComfyUI の自動の offload が前提。Nefos Video の実機では未検証",
   "estimate": false
  },
  "license": {

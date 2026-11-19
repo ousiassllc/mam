@@ -283,7 +283,7 @@ func EngineDetail(e view.Engine) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</dl><p class=\"text-sm text-mute\">ComfyUI（GPL-3.0）は別のプログラムで、mam には含まれません。公式のリリース ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</dl><p class=\"text-sm text-mute\">ComfyUI（GPL-3.0）は別のプログラムで、Nefos Video には含まれません。公式のリリース ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -389,7 +389,7 @@ func EngineDetail(e view.Engine) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = modal.Frame(view.EngineName, "画像・動画のモデルを動かす ComfyUI を、mam が取得して起動・停止します。インストーラーには含まれず、ここから導入します。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = modal.Frame(view.EngineName, "画像・動画のモデルを動かす ComfyUI を、Nefos Video が取得して起動・停止します。インストーラーには含まれず、ここから導入します。").Render(templ.WithChildren(ctx, templ_7745c5c3_Var2), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

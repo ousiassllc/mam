@@ -19,9 +19,9 @@ type LocalServer struct {
 	DefaultBaseURL         string `json:"default_base_url,omitempty"`
 	KeyConfigured          bool   `json:"key_configured" jsonschema:"API キーを保存しているか（任意のキー。値は返さない）"`
 	UnloadBeforeGeneration bool   `json:"unload_before_generation" jsonschema:"画像・動画を作る前に Ollama のモデルをメモリから降ろすか（keep_alive=0）"`
-	UseManagedRuntime      bool   `json:"use_managed_runtime" jsonschema:"true ならアドレスを使わず、mam が導入・起動する llama.cpp（モデルマネージャーのローカル LLM の llama-cpp）に向かう"`
-	UseManagedOllama       bool   `json:"use_managed_ollama" jsonschema:"true ならアドレスを使わず、mam が導入・起動する Ollama（モデルマネージャーのローカル LLM）に向かう。use_managed_runtime と同時には true にならない"`
-	Use                    string `json:"use,omitempty" jsonschema:"呼び出しの行き先: llama-cpp（mam の llama.cpp）・ollama（mam の Ollama）・custom（base_url のサーバー）"`
+	UseManagedRuntime      bool   `json:"use_managed_runtime" jsonschema:"true ならアドレスを使わず、Nefos Video が導入・起動する llama.cpp（モデルマネージャーのローカル LLM の llama-cpp）に向かう"`
+	UseManagedOllama       bool   `json:"use_managed_ollama" jsonschema:"true ならアドレスを使わず、Nefos Video が導入・起動する Ollama（モデルマネージャーのローカル LLM）に向かう。use_managed_runtime と同時には true にならない"`
+	Use                    string `json:"use,omitempty" jsonschema:"呼び出しの行き先: llama-cpp（Nefos Video の llama.cpp）・ollama（Nefos Video の Ollama）・custom（base_url のサーバー）"`
 	Pinned                 bool   `json:"pinned" jsonschema:"起動オプションで設定ファイルが固定されていて、アドレスとスイッチは変えられない"`
 	Problem                string `json:"problem,omitempty" jsonschema:"設定ファイルを読めない理由"`
 	// ManagedRuntime is where mam's own llama.cpp stands (absent when the app has none).
@@ -57,8 +57,8 @@ type SetLocalServerInput struct {
 	APIKey                 string `json:"api_key,omitempty" jsonschema:"サーバーが API キーを求めるときだけ。OS のセキュアストレージ（プロバイダー local）に保存され、応答には含まれない"`
 	ClearAPIKey            bool   `json:"clear_api_key,omitempty" jsonschema:"true なら保存したキーを削除する"`
 	UnloadBeforeGeneration *bool  `json:"unload_before_generation,omitempty" jsonschema:"画像・動画を作る前に Ollama のモデルを降ろすか。Ollama 以外では何もしない"`
-	UseManagedRuntime      *bool  `json:"use_managed_runtime,omitempty" jsonschema:"true で「この PC の llama.cpp を使う」（mam が導入・起動する llama.cpp。起動中はそのポートを自動で使い、画像・動画を作る前に止める）。false でアドレスに戻す"`
-	UseManagedOllama       *bool  `json:"use_managed_ollama,omitempty" jsonschema:"true で「Ollama を使う」（mam が導入・起動する Ollama。use_managed_runtime と同時に true にはできない）。false でアドレスに戻す"`
+	UseManagedRuntime      *bool  `json:"use_managed_runtime,omitempty" jsonschema:"true で「この PC の llama.cpp を使う」（Nefos Video が導入・起動する llama.cpp。起動中はそのポートを自動で使い、画像・動画を作る前に止める）。false でアドレスに戻す"`
+	UseManagedOllama       *bool  `json:"use_managed_ollama,omitempty" jsonschema:"true で「Ollama を使う」（Nefos Video が導入・起動する Ollama。use_managed_runtime と同時に true にはできない）。false でアドレスに戻す"`
 }
 
 func (h handlers) setLocalServer(_ context.Context, in SetLocalServerInput) (LocalServer, error) {
@@ -78,9 +78,9 @@ func (h handlers) setLocalServer(_ context.Context, in SetLocalServerInput) (Loc
 	case errors.As(err, &invalid):
 		return LocalServer{}, invalidInput(invalid.Field, invalid.Message)
 	case errors.Is(err, llmlocal.ErrManagedUnavailable):
-		return LocalServer{}, invalidInput("use_managed_runtime", "このアプリには、mam が管理する llama.cpp がありません")
+		return LocalServer{}, invalidInput("use_managed_runtime", "このアプリには、Nefos Video が管理する llama.cpp がありません")
 	case errors.Is(err, llmlocal.ErrManagedOllamaUnavailable):
-		return LocalServer{}, invalidInput("use_managed_ollama", "このアプリには、mam が管理する Ollama がありません")
+		return LocalServer{}, invalidInput("use_managed_ollama", "このアプリには、Nefos Video が管理する Ollama がありません")
 	case errors.Is(err, llmlocal.ErrPinned):
 		return LocalServer{}, &service.ConflictError{Message: pinnedMessage}
 	case errors.As(err, &store):

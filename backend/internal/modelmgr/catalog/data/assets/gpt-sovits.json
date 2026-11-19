@@ -118,7 +118,7 @@
    "sha256": "7e69ec5451bc261cc7844e49e4792a85d7f09c06789ec800fc4a44aec362764e",
    "size": 131266198,
    "required": true,
-   "source": {"name": "fastText（Facebook AI Research）の lid.176.bin", "url": "https://fasttext.cc/docs/en/language-identification.html", "source_note": "mam が取得するのは、GPT-SoVITS 公式の install.sh が使う Hugging Face の配布先 XXXXRT/GPT-SoVITS-Pretrained のコピー。原本は https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin で、SHA-256 が一致することを 2026-11-01 に確認した。"},
+   "source": {"name": "fastText（Facebook AI Research）の lid.176.bin", "url": "https://fasttext.cc/docs/en/language-identification.html", "source_note": "Nefos Video が取得するのは、GPT-SoVITS 公式の install.sh が使う Hugging Face の配布先 XXXXRT/GPT-SoVITS-Pretrained のコピー。原本は https://dl.fbaipublicfiles.com/fasttext/supervised-models/lid.176.bin で、SHA-256 が一致することを 2026-11-01 に確認した。"},
    "license": "cc-by-sa-3.0-fasttext"
   },
   {
@@ -129,7 +129,7 @@
    "sha256": "eb3ec26ace3f9ccbb08a6d333e26f0941c47e230ece0717dc992bdb7e99808dd",
    "size": 9924448,
    "required": true,
-   "source": {"name": "NLTK Data（nltk/nltk_data）", "url": "https://github.com/nltk/nltk_data", "source_note": "mam が取得するのは、GPT-SoVITS 公式の install.sh が使う Hugging Face の配布先 XXXXRT/GPT-SoVITS-Pretrained のコピー。その nltk_data.zip の中の cmudict.zip・averaged_perceptron_tagger.zip は、NLTK の配布一覧（gh-pages の index.xml）の SHA-256 と一致することを 2026-11-01 に確認した。"},
+   "source": {"name": "NLTK Data（nltk/nltk_data）", "url": "https://github.com/nltk/nltk_data", "source_note": "Nefos Video が取得するのは、GPT-SoVITS 公式の install.sh が使う Hugging Face の配布先 XXXXRT/GPT-SoVITS-Pretrained のコピー。その nltk_data.zip の中の cmudict.zip・averaged_perceptron_tagger.zip は、NLTK の配布一覧（gh-pages の index.xml）の SHA-256 と一致することを 2026-11-01 に確認した。"},
    "license": "cmudict-unrestricted",
    "members": [
     {"entry": "nltk_data/corpora/cmudict/cmudict", "dest": "runtime/nltk_data/corpora/cmudict/cmudict", "size": 3820830, "sha256": "cad209c39eb87677d64e93d97f8eed10b7e6f9bdd42de8e7ca8efc8e17d62e8a"}
@@ -143,7 +143,7 @@
    "sha256": "eb3ec26ace3f9ccbb08a6d333e26f0941c47e230ece0717dc992bdb7e99808dd",
    "size": 9924448,
    "required": true,
-   "source": {"name": "NLTK Data（nltk/nltk_data）", "url": "https://github.com/nltk/nltk_data", "source_note": "mam が取得するのは、GPT-SoVITS 公式の install.sh が使う Hugging Face の配布先 XXXXRT/GPT-SoVITS-Pretrained のコピー。その nltk_data.zip の中の cmudict.zip・averaged_perceptron_tagger.zip は、NLTK の配布一覧（gh-pages の index.xml）の SHA-256 と一致することを 2026-11-01 に確認した。"},
+   "source": {"name": "NLTK Data（nltk/nltk_data）", "url": "https://github.com/nltk/nltk_data", "source_note": "Nefos Video が取得するのは、GPT-SoVITS 公式の install.sh が使う Hugging Face の配布先 XXXXRT/GPT-SoVITS-Pretrained のコピー。その nltk_data.zip の中の cmudict.zip・averaged_perceptron_tagger.zip は、NLTK の配布一覧（gh-pages の index.xml）の SHA-256 と一致することを 2026-11-01 に確認した。"},
    "license": "mit-averaged-perceptron-tagger",
    "members": [
     {"entry": "nltk_data/taggers/averaged_perceptron_tagger/averaged_perceptron_tagger.pickle", "dest": "runtime/nltk_data/taggers/averaged_perceptron_tagger/averaged_perceptron_tagger.pickle", "size": 6138625, "sha256": "25a5a19c7ced7b2bac3831da5bc0afcc2c34e5dd01cd4f361bb799949a696238"}
@@ -157,7 +157,7 @@
    "sha256": "fe6ba0e43542cef98339abdffd903e062008ea170b04e7e2a35da805902f382a",
    "size": 23646843,
    "required": true,
-   "source": {"name": "Open JTalk の辞書 open_jtalk_dic_utf_8-1.11（pyopenjtalk）", "url": "https://github.com/r9y9/pyopenjtalk", "source_note": "mam が取得するのは、GPT-SoVITS 公式の install.sh が使う Hugging Face の配布先 XXXXRT/GPT-SoVITS-Pretrained のコピー。原本（pyopenjtalk が取得する https://github.com/r9y9/open_jtalk/releases/download/v1.11.1/open_jtalk_dic_utf_8-1.11.tar.gz）と SHA-256 が一致することを 2026-11-01 に確認した。"},
+   "source": {"name": "Open JTalk の辞書 open_jtalk_dic_utf_8-1.11（pyopenjtalk）", "url": "https://github.com/r9y9/pyopenjtalk", "source_note": "Nefos Video が取得するのは、GPT-SoVITS 公式の install.sh が使う Hugging Face の配布先 XXXXRT/GPT-SoVITS-Pretrained のコピー。原本（pyopenjtalk が取得する https://github.com/r9y9/open_jtalk/releases/download/v1.11.1/open_jtalk_dic_utf_8-1.11.tar.gz）と SHA-256 が一致することを 2026-11-01 に確認した。"},
    "license": "bsd-3-open-jtalk-dic",
    "members": [
     {"entry": "open_jtalk_dic_utf_8-1.11/sys.dic", "dest": "runtime/Lib/site-packages/pyopenjtalk/open_jtalk_dic_utf_8-1.11/sys.dic", "size": 103073776, "sha256": "ca57d9029691a70a5dfb99afc2844180256161d7130da65b1a867510e129b9a6"},
@@ -178,7 +178,7 @@
    "sha256": "46292be0374a49308069233cd5c147ae4c41806558e4781a2467a31a4d8099da",
    "size": 588856634,
    "required": true,
-   "source": {"name": "g2pW（GitYCC/g2pW）の ONNX モデル G2PWModel", "url": "https://github.com/GitYCC/g2pW", "source_note": "mam が取得するのは、GPT-SoVITS 公式の install.sh が使う Hugging Face の配布先 XXXXRT/GPT-SoVITS-Pretrained のコピー。公式の Windows パッケージ（GPT_SoVITS/text/G2PWModel）のファイルと SHA-256 が一致することを 2026-11-01 に確認した。g2pW の原本の配布物とは照合していない。"},
+   "source": {"name": "g2pW（GitYCC/g2pW）の ONNX モデル G2PWModel", "url": "https://github.com/GitYCC/g2pW", "source_note": "Nefos Video が取得するのは、GPT-SoVITS 公式の install.sh が使う Hugging Face の配布先 XXXXRT/GPT-SoVITS-Pretrained のコピー。公式の Windows パッケージ（GPT_SoVITS/text/G2PWModel）のファイルと SHA-256 が一致することを 2026-11-01 に確認した。g2pW の原本の配布物とは照合していない。"},
    "license": "g2pw-unconfirmed",
    "members": [
     {"entry": "G2PWModel/g2pW.onnx", "dest": "GPT_SoVITS/text/G2PWModel/g2pW.onnx", "size": 635212732, "sha256": "2eb3c71fd95117b2e1abef8d2d0cd78aae894bbe7f0fac105ddc9c32ce63cbd0"},

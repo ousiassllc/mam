@@ -427,7 +427,7 @@ func workflowFields(f ModelForm) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<fieldset class=\"flex flex-col gap-2\" data-testid=\"local-assignments\"><legend class=\"text-sm\">入力の割り当て</legend><p class=\"text-sm text-mute\">mam の値を、ワークフローのどのノードのどの入力に入れるかを選びます。他のノードがつないでいる入力は選べません。Prompt は必須です。参照画像の枚数と最初・最後のフレームの対応は、ここで選んだ入力から決まります。</p><table class=\"w-full text-sm\"><tbody>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<fieldset class=\"flex flex-col gap-2\" data-testid=\"local-assignments\"><legend class=\"text-sm\">入力の割り当て</legend><p class=\"text-sm text-mute\">Nefos Video の値を、ワークフローのどのノードのどの入力に入れるかを選びます。他のノードがつないでいる入力は選べません。Prompt は必須です。参照画像の枚数と最初・最後のフレームの対応は、ここで選んだ入力から決まります。</p><table class=\"w-full text-sm\"><tbody>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

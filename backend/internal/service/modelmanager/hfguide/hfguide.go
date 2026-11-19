@@ -33,7 +33,7 @@ const InvalidToken = "Hugging Face がトークンを受け付けませんでし
 // noAccess is what Hugging Face's 403 (GatedRepo) means: the token is fine but the model's page was not agreed to, or the request for
 // access is not approved yet (message C). Access is asked for on the page, never through the API.
 func noAccess(repo, page string) string {
-	return fmt.Sprintf("このトークンでは %s を取得できません。Hugging Face のモデルのページ（%s）でライセンスに同意してアクセスを申請し、承認されてからやり直してください（mam からは申請できません）", repo, page)
+	return fmt.Sprintf("このトークンでは %s を取得できません。Hugging Face のモデルのページ（%s）でライセンスに同意してアクセスを申請し、承認されてからやり直してください（Nefos Video からは申請できません）", repo, page)
 }
 
 // Denied is the message for the refusal of a file of repo: 401 is a token that is not accepted (B), 403 and a GatedRepo answer are an

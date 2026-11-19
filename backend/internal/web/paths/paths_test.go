@@ -88,6 +88,7 @@ func TestCollectionRoutes_AreTheFixedPathsOfTheirResources(t *testing.T) {
 	assert.Equal(t, "/static/app.css", paths.StaticCSS)
 	assert.Equal(t, "/static/fonts.css", paths.StaticFontsCSS)
 	assert.Equal(t, "/static/app.js", paths.StaticApp)
+	assert.Equal(t, "/static/brand/", paths.StaticBrand)
 	// The ID routes extend the collections: the same prefix, so a rename moves both.
 	assert.Equal(t, paths.Projects()+"/p1", paths.Project("p1"))
 	assert.Equal(t, paths.Reviews()+"/r1", paths.Review("r1"))

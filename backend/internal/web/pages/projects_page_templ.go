@@ -63,7 +63,7 @@ func ProjectsPage(csrfToken string, projects []domain.Project, form organisms.Ne
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = pagehead.Header("mam", "Autonomous Shot Studio", "").Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = pagehead.Header("Nefos Video", "Autonomous Shot Studio", "").Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

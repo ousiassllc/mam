@@ -18,7 +18,7 @@ func (s *Service) newInstall() *exeinstall.Runner {
 		Kind:        worktrack.KindCodexInstall,
 		Subject:     "Codex",
 		Starting:    exeinstall.Status{Phase: string(engine.PhaseDownload), Message: "Codex をダウンロードしています"},
-		ErrClosed:   errors.New("codex: mam is shutting down"),
+		ErrClosed:   errors.New("codex: Nefos Video is shutting down"),
 		ErrRemoving: ErrEngineRemoving,
 		Preflight: func() error {
 			if err := s.installer.Layout.CheckWritable(); err != nil {

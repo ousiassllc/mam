@@ -116,8 +116,8 @@ func TestTheRowsSayWhatEachInputCanBeAndWhyNot(t *testing.T) {
 	assert.Equal(t, []string{"sd_xl_base_1.0.safetensors"}, ckpt.Options)
 
 	assert.Contains(t, rowOf(t, rows, "3.model").Reason, "つないでいる")
-	assert.Contains(t, rowOf(t, rows, "3.steps").Reason, "mam が値を入れる", "the steps are assigned")
-	assert.Contains(t, rowOf(t, rows, "6.text").Reason, "mam が値を入れる", "the prompt is assigned")
+	assert.Contains(t, rowOf(t, rows, "3.steps").Reason, "Nefos Video が値を入れる", "the steps are assigned")
+	assert.Contains(t, rowOf(t, rows, "6.text").Reason, "Nefos Video が値を入れる", "the prompt is assigned")
 	assert.Equal(t, "CLIPTextEncode", rowOf(t, rows, "6.text").Class)
 	assert.Nil(t, denoise.Chosen)
 }

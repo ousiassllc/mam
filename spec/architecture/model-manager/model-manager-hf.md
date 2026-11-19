@@ -14,7 +14,7 @@
 | 6. NFAA は年齢確認が済むまで隠す | §6 |
 | 7. 利用者が足したモデルは `state.json` に記録 | `State.UserModels`（鍵はパス `models/<folder>/<name>`）・`State.HFConsents` |
 
-範囲外: Civitai、GGUF・pickle の導入、カスタムノード、外部の ComfyUI への導入、任意のワークフローの生成、gated の利用申請を mam から行うこと。
+範囲外: Civitai、GGUF・pickle の導入、カスタムノード、外部の ComfyUI への導入、任意のワークフローの生成、gated の利用申請を Nefos Video から行うこと。
 
 ## 2. 入力と取得元（`hf.ParseInput`・`hf.Client`）
 
@@ -33,7 +33,7 @@
 
 `InstallHFFile` は、画面や MCP が渡す SHA-256 やサイズを**信用しない**。渡されるのは `repo`・`commit`・`path` だけで、Service が `Revision`（コミットが自分自身に解決されること）・`PathsInfo`・`Judge` をやり直し、その結果を固定として使う。ダウンロードは `fetch.Download`（再開・空き容量・SHA-256 とサイズの検証。合わなければファイルを残さない）で、導入のジョブ（`model_install`、`target` は `hf:<repo>@<commit>/<path>`）として動く。
 
-導入できる条件: 同梱エンジンがある（Windows 版）・エンジンが導入済み・`--model-config` で固定されていない。gated のリポジトリはトークンとアクセス権が要り、無ければ（ダウンロードの前に）理由とリポジトリのページを案内する `*InvalidError`（mam からアクセスの申請はしない）。
+導入できる条件: 同梱エンジンがある（Windows 版）・エンジンが導入済み・`--model-config` で固定されていない。gated のリポジトリはトークンとアクセス権が要り、無ければ（ダウンロードの前に）理由とリポジトリのページを案内する `*InvalidError`（Nefos Video からアクセスの申請はしない）。
 
 ## 4. フォルダと名前
 
@@ -56,7 +56,7 @@
 
 ## 7. 注意書き（terms）の確認
 
-導入の前に、利用者が **ライセンス（HF のカードの記載）と取得元を自分で確かめた**ことを確認する（`hfplan.Terms`・`TermsVersion`）。確認は**リポジトリ+コミットごとに一度**で、`State.HFConsents`（版・ライセンスのスナップショット・日時）に残る。確認が無い要求は `ErrConsentRequired`（409）、渡した版が違えば `*InvalidError`。ライセンスの記載が無い（または `other` で名前も無い）リポジトリには `LicenseWarning` を出す。**mam はファイルの中身・安全性・権利関係を確認していない**ことを明記する。
+導入の前に、利用者が **ライセンス（HF のカードの記載）と取得元を自分で確かめた**ことを確認する（`hfplan.Terms`・`TermsVersion`）。確認は**リポジトリ+コミットごとに一度**で、`State.HFConsents`（版・ライセンスのスナップショット・日時）に残る。確認が無い要求は `ErrConsentRequired`（409）、渡した版が違えば `*InvalidError`。ライセンスの記載が無い（または `other` で名前も無い）リポジトリには `LicenseWarning` を出す。**Nefos Video はファイルの中身・安全性・権利関係を確認していない**ことを明記する。
 
 ## 8. 記録・削除・一覧
 

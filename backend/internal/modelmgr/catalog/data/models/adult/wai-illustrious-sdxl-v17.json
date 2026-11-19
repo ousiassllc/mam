@@ -18,7 +18,7 @@
  ],
  "vram": {
   "min_gb": 8,
-  "source": "SDXL 系の 1 ファイルのチェックポイントは sdxl-base と同じ見積もり（出典なし。mam の実機では未検証）",
+  "source": "SDXL 系の 1 ファイルのチェックポイントは sdxl-base と同じ見積もり（出典なし。Nefos Video の実機では未検証）",
   "estimate": true
  },
  "license": {
@@ -29,7 +29,7 @@
   "summary": "Civitai のモデルページにライセンスの文言が無く、配布元のモデルカードにも作者のライセンスの記載が無い。Illustrious 系の上流には Fair AI Public License 1.0-SD の制限があるが、このモデルのページはどのライセンスに従うかを書いていない。Civitai の許可フラグ（allowCommercialUse）は Image・RentCivit だが、これは参考でライセンスの代わりにならない。商用利用の可否は「不明」で、確認できるまで商用には使わない前提で扱う。",
   "commercial": "unknown",
   "checked_at": "2026-11-03",
-  "notice": "この mam のインストール先に取得するモデルです。ライセンスの記載を一次情報で確かめられていないため、商用には使わないでください。成人向けの表現の公開は、地域の法令と配信先の規約に従ってください。"
+  "notice": "この Nefos Video のインストール先に取得するモデルです。ライセンスの記載を一次情報で確かめられていないため、商用には使わないでください。成人向けの表現の公開は、地域の法令と配信先の規約に従ってください。"
  },
  "consent_required": true,
  "requires_hf_token": false,

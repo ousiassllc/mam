@@ -90,7 +90,7 @@ func runningJob(endpoint, id string, reg *live.Registry) QueueJob {
 	p, ok := reg.Lookup(endpoint, id)
 	switch {
 	case !ok:
-		j.ProgressUnavailable = "mam が投入したジョブではない（または mam が再起動した）ため、進み具合を受け取れません。ComfyUI は進み具合を、投入したクライアントにしか送りません"
+		j.ProgressUnavailable = "Nefos Video が投入したジョブではない（または Nefos Video が再起動した）ため、進み具合を受け取れません。ComfyUI は進み具合を、投入したクライアントにしか送りません"
 	case p.MaxStep == 0:
 		j.ProgressUnavailable = "ComfyUI がまだステップを報告していません（モデルの読み込みなどの準備中）"
 	default:

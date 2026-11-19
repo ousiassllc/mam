@@ -84,7 +84,7 @@ func (h Handlers) Export(c *gin.Context) {
 // error status: main.ts), as plain text otherwise.
 func refuse(c *gin.Context, err error, asked bool) {
 	var invalid *gterr.InvalidError
-	status, msg := http.StatusInternalServerError, "処理できませんでした。mam のログを確認してください"
+	status, msg := http.StatusInternalServerError, "処理できませんでした。Nefos Video のログを確認してください"
 	switch {
 	case errors.As(err, &invalid):
 		status, msg = http.StatusUnprocessableEntity, invalid.Message

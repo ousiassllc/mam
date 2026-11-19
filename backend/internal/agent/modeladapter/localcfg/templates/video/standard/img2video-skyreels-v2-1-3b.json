@@ -2,7 +2,7 @@
  "id": "img2video-skyreels-v2-1-3b",
  "label": "SkyReels V2 I2V 1.3B 540P: 画像から動画",
  "media": "video",
- "description": "SkyReels V2 I2V 1.3B 540P（Skywork 製。Wan 2.1 と同じ構造・同じ VAE／T5／CLIP を使う。fp32 の skyreels_v2_i2v_1.3B_540P_fp32.safetensors、テキストエンコーダー umt5_xxl_fp8_e4m3fn_scaled.safetensors、CLIP Vision の clip_vision_h.safetensors、VAE wan_2.1_vae.safetensors）で、最初の 1 枚の画像から動画を作る標準ノードだけのワークフロー。グラフは ComfyUI の公式テンプレート（image_to_video_wan）の Wan 2.1 I2V と同じ: CLIPVisionEncode（crop は none）→WanImageToVideo→1 つの KSampler（uni_pc/simple）。モデルの重みは Wan 2.1 の I2V と同じ形式（ComfyUI 本体が dim 1536・in_dim 36 の Wan 2.1 I2V として読む）。値は SkyReels-V2 の公式の説明（モデルカードと generate_video.py）に従う: 544×960（mam の 540p）・97 フレーム・24fps、I2V の推奨は cfg（guidance_scale）5.0・shift 3.0、ステップ数の既定は 30。公式のスケジューラーは Wan と同じ FlowUniPC。GPU では未実行（構造のテストのみ）。",
+ "description": "SkyReels V2 I2V 1.3B 540P（Skywork 製。Wan 2.1 と同じ構造・同じ VAE／T5／CLIP を使う。fp32 の skyreels_v2_i2v_1.3B_540P_fp32.safetensors、テキストエンコーダー umt5_xxl_fp8_e4m3fn_scaled.safetensors、CLIP Vision の clip_vision_h.safetensors、VAE wan_2.1_vae.safetensors）で、最初の 1 枚の画像から動画を作る標準ノードだけのワークフロー。グラフは ComfyUI の公式テンプレート（image_to_video_wan）の Wan 2.1 I2V と同じ: CLIPVisionEncode（crop は none）→WanImageToVideo→1 つの KSampler（uni_pc/simple）。モデルの重みは Wan 2.1 の I2V と同じ形式（ComfyUI 本体が dim 1536・in_dim 36 の Wan 2.1 I2V として読む）。値は SkyReels-V2 の公式の説明（モデルカードと generate_video.py）に従う: 544×960（Nefos Video の 540p）・97 フレーム・24fps、I2V の推奨は cfg（guidance_scale）5.0・shift 3.0、ステップ数の既定は 30。公式のスケジューラーは Wan と同じ FlowUniPC。GPU では未実行（構造のテストのみ）。",
  "model": {
   "media": "video",
   "video": {"durations": [2, 3, 4], "resolutions": ["540p"]},

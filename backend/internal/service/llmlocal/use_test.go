@@ -136,7 +136,7 @@ func TestStatus_SaysWhereTheCallsGoAndWhyNot(t *testing.T) {
 	assert.Equal(t, llmlocal.UseOllama, st.Use)
 	assert.True(t, st.Unavailable)
 	assert.Equal(t, "今は Ollama に呼び出します", st.Line())
-	assert.Contains(t, st.Problem(), "mam が管理する Ollama がありません")
+	assert.Contains(t, st.Problem(), "Nefos Video が管理する Ollama がありません")
 	assert.False(t, svc.InUse(), "no server: the calls are not sent anywhere that is not there")
 
 	svc.SetManagedOllama(&stateStub{info: llmlocal.ManagedInfo{State: llmlocal.ManagedNotInstalled, Reason: "未導入です"}})

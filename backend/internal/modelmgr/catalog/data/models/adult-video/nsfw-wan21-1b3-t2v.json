@@ -37,7 +37,7 @@
  ],
  "vram": {
   "min_gb": 8,
-  "source": "Wan 2.1 公式（Wan-Video/Wan2.1 の README）は T2V-1.3B を「VRAM 8.19 GB で動く」と書く。同じ README は RTX 4090 で 5 秒の 480p を約 4 分（量子化なし）と書く（2026-11-03 に確認）。ファイルのテンソルは BF16 の 825 個・約 14.2 億個で 1.3B 級であることを safetensors のヘッダーで確認（2026-11-03）。mam の実機（16 GB）では未確認",
+  "source": "Wan 2.1 公式（Wan-Video/Wan2.1 の README）は T2V-1.3B を「VRAM 8.19 GB で動く」と書く。同じ README は RTX 4090 で 5 秒の 480p を約 4 分（量子化なし）と書く（2026-11-03 に確認）。ファイルのテンソルは BF16 の 825 個・約 14.2 億個で 1.3B 級であることを safetensors のヘッダーで確認（2026-11-03）。Nefos Video の実機（16 GB）では未確認",
   "estimate": true
  },
  "license": {
@@ -68,7 +68,7 @@
     "commercial": "yes"
    }
   ],
-  "notice": "この mam のインストール先に取得するモデルです。ライセンスはモデルカードの宣言（CreativeML OpenRAIL-M）だけで本文が無く、学習データ（Reddit の成人向け投稿）の権利も確認できていません。商用には使わないでください（OpenRAIL-M の使用制限〔Attachment A〕と学習データの権利を自分で確認できるまで）。成人向けの表現の公開は、地域の法令と配信先の規約に従ってください。"
+  "notice": "この Nefos Video のインストール先に取得するモデルです。ライセンスはモデルカードの宣言（CreativeML OpenRAIL-M）だけで本文が無く、学習データ（Reddit の成人向け投稿）の権利も確認できていません。商用には使わないでください（OpenRAIL-M の使用制限〔Attachment A〕と学習データの権利を自分で確認できるまで）。成人向けの表現の公開は、地域の法令と配信先の規約に従ってください。"
  },
  "consent_required": true,
  "requires_hf_token": false,

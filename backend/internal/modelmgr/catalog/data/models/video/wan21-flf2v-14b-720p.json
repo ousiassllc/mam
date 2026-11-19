@@ -12,7 +12,7 @@
   "quality": "high",
   "video_modes": ["flf2v"]
  },
- "description": "【中ティア・非検閲ではない標準モデル】先頭フレームと最後のフレームの 2 枚から、その間の動きを作る Wan 2.1 の FLF2V（First-Last-Frame to Video。14B・720P 専用）。ストーリーボードの 2 枚をつなぐ橋渡し向き。拡散モデル（fp8、約 16.4 GB）・テキストエンコーダー（他の Wan と共有）・CLIP Vision（約 1.3 GB）・VAE（共有）の合計約 24.7 GB。16fps・音声なし。得意: 2 枚の絵の間を滑らかにつなぐ。注意: 公式は 720P 専用で、プロンプトは中国語の方が良いと書く。2 枚の画像は同じ縦横比にする。テキストだけから作る・先頭 1 枚だけから作るモデルではない（それは wan22-t2v-14b・wan22-i2v-14b）。14B で 720p なので重く、VRAM 16 GB は fp8 と ComfyUI の自動の offload が前提でぎりぎり。公式は fp16（約 32.8 GB）だが、mam は Comfy-Org の fp8 を使う（品質は fp16 より少し落ちる）。macOS（Apple Silicon）は fp8 が動かないため非対応。ライセンス: Apache-2.0 で商用を含めて自由に使える。",
+ "description": "【中ティア・非検閲ではない標準モデル】先頭フレームと最後のフレームの 2 枚から、その間の動きを作る Wan 2.1 の FLF2V（First-Last-Frame to Video。14B・720P 専用）。ストーリーボードの 2 枚をつなぐ橋渡し向き。拡散モデル（fp8、約 16.4 GB）・テキストエンコーダー（他の Wan と共有）・CLIP Vision（約 1.3 GB）・VAE（共有）の合計約 24.7 GB。16fps・音声なし。得意: 2 枚の絵の間を滑らかにつなぐ。注意: 公式は 720P 専用で、プロンプトは中国語の方が良いと書く。2 枚の画像は同じ縦横比にする。テキストだけから作る・先頭 1 枚だけから作るモデルではない（それは wan22-t2v-14b・wan22-i2v-14b）。14B で 720p なので重く、VRAM 16 GB は fp8 と ComfyUI の自動の offload が前提でぎりぎり。公式は fp16（約 32.8 GB）だが、Nefos Video は Comfy-Org の fp8 を使う（品質は fp16 より少し落ちる）。macOS（Apple Silicon）は fp8 が動かないため非対応。ライセンス: Apache-2.0 で商用を含めて自由に使える。",
  "files": [
   {
    "name": "wan2.1_flf2v_720p_14B_fp8_e4m3fn.safetensors",
@@ -45,7 +45,7 @@
  ],
  "vram": {
   "min_gb": 16,
-  "source": "Wan 14B の fp8（16.4 GB）を 720p で 1 つ使う。公式（fp16・720P）はこれより大きく、ComfyUI の自動の offload が前提。ComfyUI の公式テンプレートは 720×1280・33 フレームの例。Wan 14B fp8 は 16〜24 GB 以上の目安。mam の実機では未検証",
+  "source": "Wan 14B の fp8（16.4 GB）を 720p で 1 つ使う。公式（fp16・720P）はこれより大きく、ComfyUI の自動の offload が前提。ComfyUI の公式テンプレートは 720×1280・33 フレームの例。Wan 14B fp8 は 16〜24 GB 以上の目安。Nefos Video の実機では未検証",
   "estimate": true
  },
  "license": {

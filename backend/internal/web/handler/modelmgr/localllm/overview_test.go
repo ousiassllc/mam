@@ -30,7 +30,7 @@ func TestOverview_TheLocalLLMLineSaysWhichServerIsInUseAndHowItStands(t *testing
 	s := llmScreen(t, llama, nil)
 
 	text, state := summaryOf(t, s, paths.MMLocalLLM)
-	assert.Equal(t, "使うサーバー: 未設定", text, "the address is the default and no server of mam is chosen")
+	assert.Equal(t, "使うサーバー: 未設定", text, "the address is the default and no server of Nefos Video is chosen")
 	assert.Equal(t, "empty", state)
 
 	require.Equal(t, http.StatusOK, s.Do(http.MethodPut, paths.ModelManagerLocalLLMConnection(), url.Values{"base_url": {"http://localhost:1234"}, "api_key": {"sk-secret-key-9999"}}).Code)

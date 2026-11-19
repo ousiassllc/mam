@@ -36,7 +36,7 @@ func registerRuntimes(r *mcpkit.Registrar, h handlers) {
 		"ローカルの実行環境を削除する（環境・取得した重み・キャッシュ。設定は残る）。導入中は拒否される / Delete an installed runtime with its weights.",
 		h.removeRuntime, mcpkit.Idempotent())
 	mcpkit.Write(r, "set_local_runtime_autostart",
-		"mam の起動時にローカルの実行環境を起動するか（既定はオフ: 最初に使うときに起動）/ Start the runtime when mam starts.",
+		"Nefos Video の起動時にローカルの実行環境を起動するか（既定はオフ: 最初に使うときに起動）/ Start the runtime when Nefos Video starts.",
 		h.setRuntimeAutoStart, mcpkit.Idempotent())
 }
 
@@ -166,7 +166,7 @@ func (h handlers) removeRuntime(ctx context.Context, in RuntimeInput) (RuntimeRe
 // RuntimeAutoStartInput is the setting.
 type RuntimeAutoStartInput struct {
 	RuntimeID string `json:"runtime_id" jsonschema:"list_local_runtimes の id"`
-	On        bool   `json:"on" jsonschema:"true: mam の起動時に起動する / false: 最初に使うときに起動する"`
+	On        bool   `json:"on" jsonschema:"true: Nefos Video の起動時に起動する / false: 最初に使うときに起動する"`
 }
 
 // RuntimeAutoStartOutput is the setting after the change.

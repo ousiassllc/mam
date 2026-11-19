@@ -2,7 +2,7 @@
  {
   "name": "gemma4:12b",
   "display_name": "Gemma 4 12B（純正）",
-  "description": "Google の Gemma 4 の 12B（純正。画像の入力に使う projector と、推測デコード用の draft の層を含む）。mam の企画・脚本・Shot 計画などのローカル LLM の標準の選択肢です。",
+  "description": "Google の Gemma 4 の 12B（純正。画像の入力に使う projector と、推測デコード用の draft の層を含む）。Nefos Video の企画・脚本・Shot 計画などのローカル LLM の標準の選択肢です。",
   "layers": [
    {
     "kind": "projector",

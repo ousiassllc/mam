@@ -545,7 +545,7 @@ func DetectBlock(d Detect) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "\">設定</a>の「ローカル・代替モデル」に接続先として登録すると使えます。mam はこの ComfyUI を起動も停止もしません。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "\">設定</a>の「ローカル・代替モデル」に接続先として登録すると使えます。Nefos Video はこの ComfyUI を起動も停止もしません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

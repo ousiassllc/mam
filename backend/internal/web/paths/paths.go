@@ -132,11 +132,13 @@ func ReviewImport() string { return Reviews() + "/import" }
 const StaticPrefix = "/static"
 
 // The files the layout loads (the CSP of middleware.SecurityHeaders allows only this script). StaticFontsCSS is the
-// @font-face rules of Sora, Noto Sans JP and JetBrains Mono; the font files are under StaticPrefix + "/fonts/".
+// @font-face rules of Sora, Noto Sans JP and JetBrains Mono; the font files are under StaticPrefix + "/fonts/". The logo, the
+// favicon and the app icons of Nefos Video (static/brand) are under StaticBrand.
 const (
 	StaticCSS      = StaticPrefix + "/app.css"
 	StaticFontsCSS = StaticPrefix + "/fonts.css"
 	StaticApp      = StaticPrefix + "/app.js"
+	StaticBrand    = StaticPrefix + "/brand/"
 )
 
 // WithBranch scopes the URL p to a Branch: p followed by "?branch_id=<id>", the query the Branch

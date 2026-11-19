@@ -18,7 +18,7 @@
  ],
  "vram": {
   "min_gb": 8,
-  "source": "SDXL 系の 1 ファイルのチェックポイントは sdxl-base と同じ見積もり（出典なし。mam の実機では未検証）",
+  "source": "SDXL 系の 1 ファイルのチェックポイントは sdxl-base と同じ見積もり（出典なし。Nefos Video の実機では未検証）",
   "estimate": true
  },
  "license": {

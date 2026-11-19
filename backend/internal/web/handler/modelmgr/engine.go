@@ -106,7 +106,7 @@ func (h Handlers) SetAutoStart(c *gin.Context) {
 	if err != nil {
 		status, e.Error = refuse(c, err)
 	} else if on {
-		e.Notice = "mam の起動時に ComfyUI を起動します"
+		e.Notice = "Nefos Video の起動時に ComfyUI を起動します"
 	} else {
 		e.Notice = "ComfyUI は、モデルを最初に使うときに起動します"
 	}

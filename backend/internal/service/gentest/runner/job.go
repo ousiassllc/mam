@@ -30,7 +30,7 @@ const (
 	// ReasonCancelled is the reason of a result the user cancelled before it started.
 	ReasonCancelled = "キャンセルされました"
 	// ReasonInterrupted is the reason of a result that was running or waiting when mam stopped.
-	ReasonInterrupted = "mam が停止したため中断されました（課金される生成は再開しません）"
+	ReasonInterrupted = "Nefos Video が停止したため中断されました（課金される生成は再開しません）"
 	// ReasonHidden is the reason of a queued result whose model was hidden before it started (the age gate of the model manager
 	// was closed): the call is not made.
 	ReasonHidden = "年齢確認が無効になったため、このモデルでは生成しませんでした"

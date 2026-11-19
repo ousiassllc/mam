@@ -5,7 +5,7 @@
 import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
+import { cpSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import * as esbuild from 'esbuild';
 import { buildFonts } from './fonts.mjs';
@@ -26,6 +26,9 @@ for (const name of readdirSync(outdir)) {
 
 // The fonts of the UI guide: dist/fonts.css and dist/fonts/ (fonts.mjs).
 buildFonts(outdir);
+
+// The logo, the favicon and the app icons (static/brand, Nefos Video's own files, copied as they are): dist/brand/.
+cpSync(join(root, 'brand'), join(outdir, 'brand'), { recursive: true });
 
 const jsOptions = {
   entryPoints: [join(root, 'src', 'main.ts')],

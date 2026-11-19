@@ -23,7 +23,7 @@
 | Method | Path | 内容 | 状態コード |
 |--------|------|------|-----------|
 | POST | `/onboarding/finish` | ガイドを終える（最後まで進んだ・スキップした）。CSRF 必須。`onboarding.json` に `{"completed": true}` を書く（ほかのキーは残す。すでに立っていても同じ）。本文なし。ヘッダー `HX-Redirect: /`。ファイルが壊れていて（JSON として読めない・オブジェクトでない）読めないときは、中身を捨てて `{"completed": true}` で上書きし、成功とする。壊れたファイルのせいで終われない状態にしない。権限など別の理由で読めない・書けなかったときは 500 とエラーのトースト（`HX-Redirect` なし。フラグは立たない） | 200 / 500 |
-| PUT | `/onboarding/codex-path` | **macOS のときだけ**（ほかは 404。ChatGPT のサービスが無い構成でも 404）。Mac のステップの「Codex のパス」。フォーム `path`（空なら指定を解除）。CSRF 必須。保存は設定画面の `PUT /settings/chatgpt/codex/path` と同じ `chatgpt.Service.Codex().SetCustomPath`。応答は結果の 1 文の断片（`#onboarding-codex-result`）: 成功は `role="status"`（「パスを設定しました。mam は実行して確かめません」/「パスの指定を解除しました」）、実在するファイルの絶対パスでなければ **422** で `role="alert"`（`swapsErrorResponse` が 4xx の HTML を swap する）、保存できなかったときは **500**（入力の誤りではないので 422 にしない。エラーはログ）。成功・解除・422・500 の判定と文言は設定画面の `PUT /settings/chatgpt/codex/path` と同じ関数（`chatgptsettings.SetCodexPath`）で決める | 200 / 422 / 500 / 404 |
+| PUT | `/onboarding/codex-path` | **macOS のときだけ**（ほかは 404。ChatGPT のサービスが無い構成でも 404）。Mac のステップの「Codex のパス」。フォーム `path`（空なら指定を解除）。CSRF 必須。保存は設定画面の `PUT /settings/chatgpt/codex/path` と同じ `chatgpt.Service.Codex().SetCustomPath`。応答は結果の 1 文の断片（`#onboarding-codex-result`）: 成功は `role="status"`（「パスを設定しました。Nefos Video は実行して確かめません」/「パスの指定を解除しました」）、実在するファイルの絶対パスでなければ **422** で `role="alert"`（`swapsErrorResponse` が 4xx の HTML を swap する）、保存できなかったときは **500**（入力の誤りではないので 422 にしない。エラーはログ）。成功・解除・422・500 の判定と文言は設定画面の `PUT /settings/chatgpt/codex/path` と同じ関数（`chatgptsettings.SetCodexPath`）で決める | 200 / 422 / 500 / 404 |
 
 ## 3. 初回かどうかのフラグ
 
@@ -33,7 +33,7 @@
 
 ## 4. ffmpeg の確認
 
-- `GET /onboarding/ffmpeg` の本文のために、`service/onboarding.Service.FFmpeg` が `ffmpegsettings.Service.Find`（設定したパス → `PATH` → macOS の Homebrew の場所 → mam がダウンロードして入れたもの。`internal/media` の起動時の探し方と同じ。[../architecture/ffmpeg-lookup.md](../architecture/ffmpeg-lookup.md)。実行はしない）を呼ぶ。結果は 2 つのパス（見つからないものは空）。
+- `GET /onboarding/ffmpeg` の本文のために、`service/onboarding.Service.FFmpeg` が `ffmpegsettings.Service.Find`（設定したパス → `PATH` → macOS の Homebrew の場所 → Nefos Video がダウンロードして入れたもの。`internal/media` の起動時の探し方と同じ。[../architecture/ffmpeg-lookup.md](../architecture/ffmpeg-lookup.md)。実行はしない）を呼ぶ。結果は 2 つのパス（見つからないものは空）。
 - 見つからず、ダウンロードできる環境（Windows x64・macOS arm64）で、ダウンロードのサービスがあるとき、本文に設定画面と同じ `DownloadPanel`（`#ffmpeg-download`）を含める。ボタンと進み具合と中断と削除は**設定画面のルート**（`POST` / `GET` / `DELETE /settings/ffmpeg/download`、`POST /settings/ffmpeg/download/cancel`。[endpoints-settings.md](endpoints-settings.md) §5.2）を使い、ガイド専用のルートは増やさない。
 - OS は `runtime.GOOS`（`windows` → winget、`darwin` → brew、ほか → 汎用の文）。画面の文言は [../components/onboarding-screen.md](../components/onboarding-screen.md) §4.3。
 

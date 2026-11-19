@@ -23,7 +23,7 @@ func (e *StoreError) Unwrap() error { return e.Err }
 // storage of the OS user that runs mam, under one service name for the whole app: a data directory (--data-dir) has no keys of
 // its own, and another OS user (or a mam started as another user) sees a different store.
 const notStoredMessage = "API キーを書き込みましたが、OS のセキュアストレージ（Windows の資格情報マネージャー・macOS のキーチェーン・Secret Service）から読み戻せませんでした。保存されていません。" +
-	"キーは mam を動かしている OS ユーザーのストレージに入ります（データディレクトリごとには分かれません）。別の OS ユーザーで動かしていないか、ストレージが使えるかを確認してください"
+	"キーは Nefos Video を動かしている OS ユーザーのストレージに入ります（データディレクトリごとには分かれません）。別の OS ユーザーで動かしていないか、ストレージが使えるかを確認してください"
 
 // SetChecked is store.Set and then a read of the key back: a store that took the write and does not return the key is a *StoreError,
 // never a silent success that shows as "not configured" later (#1006). ErrTooLarge is returned as it is (the caller words it).

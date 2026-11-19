@@ -80,7 +80,7 @@ func TestPages_EveryCategoryHasItsURLTitleHeadingAndCurrentLinkInTheNavigation(t
 			require.Equal(t, http.StatusOK, rec.Code)
 			body := rec.Body.String()
 
-			assert.Equal(t, tc.title+" | mam", titleRe.FindStringSubmatch(body)[1])
+			assert.Equal(t, tc.title+" | Nefos Video", titleRe.FindStringSubmatch(body)[1])
 			assert.Equal(t, tc.h2, h2Re.FindStringSubmatch(body)[1])
 			assert.Equal(t, 1, strings.Count(body, "<h1 "))
 			nav := navRe.FindString(body)
@@ -187,7 +187,7 @@ func TestAudioCategory_HasItsPageNavigationLinkAndOverviewCard(t *testing.T) {
 	rec := s.get(paths.SettingsCategory(paths.SettingsAudio))
 	require.Equal(t, http.StatusOK, rec.Code)
 	body := rec.Body.String()
-	assert.Equal(t, "設定: 音声・口パク | mam", titleRe.FindStringSubmatch(body)[1])
+	assert.Equal(t, "設定: 音声・口パク | Nefos Video", titleRe.FindStringSubmatch(body)[1])
 	assert.Equal(t, "音声・口パク", h2Re.FindStringSubmatch(body)[1])
 	nav := navRe.FindString(body)
 	assert.Equal(t, []string{paths.SettingsCategory(paths.SettingsAudio), "音声・口パク"}, currentRe.FindStringSubmatch(nav)[1:])

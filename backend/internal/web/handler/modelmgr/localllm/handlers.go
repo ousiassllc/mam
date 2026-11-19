@@ -65,7 +65,7 @@ func (h Handlers) SaveUse(c *gin.Context) {
 	case errors.Is(err, llmlocal.ErrPinned):
 		h.answerUse(c, http.StatusConflict, "", pinned)
 	case errors.Is(err, llmlocal.ErrManagedUnavailable), errors.Is(err, llmlocal.ErrManagedOllamaUnavailable):
-		h.answerUse(c, http.StatusConflict, "", "このアプリには、mam が管理するそのサーバーがありません。「別のサーバー」を選んでください")
+		h.answerUse(c, http.StatusConflict, "", "このアプリには、Nefos Video が管理するそのサーバーがありません。「別のサーバー」を選んでください")
 	default:
 		_ = c.Error(err)
 		status, msg := failure.Save(err)

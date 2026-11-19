@@ -11,7 +11,12 @@
     !define INFO_COMPANYNAME "ousiassllc"
 !endif
 !ifndef INFO_PRODUCTNAME
-    !define INFO_PRODUCTNAME "MAM"
+    !define INFO_PRODUCTNAME "Nefos Video"
+!endif
+# The display name above is what the user sees (installer title, shortcuts, the Apps list). The install folder and the uninstall
+# registry key keep the old name "MAM": a rename would leave the installed copy and its auto update behind (Issue #1170).
+!ifndef INSTALL_DIRNAME
+    !define INSTALL_DIRNAME "MAM"
 !endif
 !ifndef INFO_PRODUCTVERSION
     !define INFO_PRODUCTVERSION "0.0.0"
@@ -23,7 +28,7 @@
     !define PRODUCT_EXECUTABLE "${INFO_PROJECTNAME}.exe"
 !endif
 !ifndef UNINST_KEY_NAME
-    !define UNINST_KEY_NAME "${INFO_COMPANYNAME}${INFO_PRODUCTNAME}"
+    !define UNINST_KEY_NAME "${INFO_COMPANYNAME}${INSTALL_DIRNAME}"
 !endif
 !define UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${UNINST_KEY_NAME}"
 

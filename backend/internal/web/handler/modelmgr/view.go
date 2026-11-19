@@ -89,7 +89,7 @@ func gpuData(ctx context.Context, svc *modelmanager.Service) view.GPU {
 func blockedText(ctx context.Context, svc *modelmanager.Service) string {
 	st, err := svc.Status(ctx)
 	if err != nil {
-		return "導入できる状態か確かめられませんでした。mam のログを確認してください"
+		return "導入できる状態か確かめられませんでした。Nefos Video のログを確認してください"
 	}
 	switch {
 	case !st.Engine.Supported:

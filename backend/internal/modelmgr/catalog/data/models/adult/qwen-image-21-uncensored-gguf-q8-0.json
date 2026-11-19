@@ -35,7 +35,7 @@
  ],
  "vram": {
   "min_gb": 16,
-  "source": "mam の見積もり（出典なし・実機未検証）。拡散モデル（約 7.6 GB）とテキストエンコーダー（約 9.4 GB）で 16 GB 前後。",
+  "source": "Nefos Video の見積もり（出典なし・実機未検証）。拡散モデル（約 7.6 GB）とテキストエンコーダー（約 9.4 GB）で 16 GB 前後。",
   "estimate": true
  },
  "license": {
@@ -66,7 +66,7 @@
     "commercial": "no"
    }
   ],
-  "notice": "この mam のインストール先に取得するモデルのライセンスです。研究・評価などの非商用の用途にだけ使ってください。"
+  "notice": "この Nefos Video のインストール先に取得するモデルのライセンスです。研究・評価などの非商用の用途にだけ使ってください。"
  },
  "consent_required": true,
  "requires_hf_token": false,

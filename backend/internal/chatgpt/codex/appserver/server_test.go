@@ -84,7 +84,7 @@ func TestEnsureStartsOnFirstUseAndHandshakesOnce(t *testing.T) {
 	if err := json.Unmarshal(calls[0].Params, &init); err != nil {
 		t.Fatal(err)
 	}
-	if init.ClientInfo != (protocol.ClientInfo{Name: "mam", Title: "MAM", Version: "v1.2.3"}) {
+	if init.ClientInfo != (protocol.ClientInfo{Name: "mam", Title: "Nefos Video", Version: "v1.2.3"}) {
 		t.Fatalf("clientInfo = %+v", init.ClientInfo)
 	}
 	if r.srv.Status().State != appserver.StateRunning {

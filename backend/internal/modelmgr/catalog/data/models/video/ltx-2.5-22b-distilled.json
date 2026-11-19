@@ -60,7 +60,7 @@
   "min_gb": 16,
   "recommended_gb": 32,
   "limits": "INT8（ConvRot）の拡散モデルとテキストエンコーダー・タイル VAE・ComfyUI のオフロード（重みを一時的にメインメモリへ退避）が前提で、生成は遅くなります。解像度は低め（480p〜720p）・長さは短めにしてください。メインメモリも多く使います。",
-  "source": "Lightricks の公式ドキュメント（docs.ltx.io の ComfyUI の前提条件。2026-11-02 に確認）の推奨は 32 GB 以上。最小の 16 GB は、INT8 ConvRot・タイル VAE・オフロードで動くというコミュニティの報告（Issue #927）。mam の実機（RTX 4070 Ti SUPER）では未検証",
+  "source": "Lightricks の公式ドキュメント（docs.ltx.io の ComfyUI の前提条件。2026-11-02 に確認）の推奨は 32 GB 以上。最小の 16 GB は、INT8 ConvRot・タイル VAE・オフロードで動くというコミュニティの報告（Issue #927）。Nefos Video の実機（RTX 4070 Ti SUPER）では未検証",
   "estimate": true
  },
  "license": {

@@ -80,7 +80,7 @@ func (s *Service) NodeTarget(ctx context.Context, requestHost, endpoint string) 
 
 func (s *Service) bundledTarget(requestHost string, t NodeTarget) NodeTarget {
 	if s.Engine == nil {
-		t.State, t.Reason = NodeUnsupported, "この mam には同梱の ComfyUI がありません。外部の ComfyUI を接続先に登録してください"
+		t.State, t.Reason = NodeUnsupported, "この Nefos Video には同梱の ComfyUI がありません。外部の ComfyUI を接続先に登録してください"
 		return t
 	}
 	e := s.Engine.Engine()
@@ -145,7 +145,7 @@ func (s *Service) externalTarget(ctx context.Context, requestHost string, t Node
 		}, nil, 1<<20)
 		if status := statusOf(err); status == http.StatusForbidden {
 			t.State = NodeRejected
-			t.Reason = "この ComfyUI は、別のサイト（mam）の中に表示されることを拒否しています（403）。ComfyUI を起動するときに --enable-cors-header " +
+			t.Reason = "この ComfyUI は、別のサイト（Nefos Video）の中に表示されることを拒否しています（403）。ComfyUI を起動するときに --enable-cors-header " +
 				t.MamOrigin + " を付けるか、下のリンクからブラウザで開いてください"
 			return t.withURLs()
 		}
@@ -157,7 +157,7 @@ func (s *Service) externalTarget(ctx context.Context, requestHost string, t Node
 // Start starts the bundled ComfyUI (a no-op when it runs) and returns when it answers.
 func (s *Service) Start(ctx context.Context) error {
 	if s.Engine == nil {
-		return invalid("この mam には同梱の ComfyUI がありません")
+		return invalid("この Nefos Video には同梱の ComfyUI がありません")
 	}
 	_, err := s.client(ctx, BundledEndpoint, true)
 	return err

@@ -3,7 +3,7 @@ package modellicense
 import "strings"
 
 // userDeclared is the condition of a file whose license the user typed in: mam read nothing of it.
-const userDeclared = "利用者が入力した自己申告です。mam はライセンスの本文を確かめていません。申告どおりで、元のモデル（ベース・学習に使った素材）のライセンスにも反しない場合に限ります"
+const userDeclared = "利用者が入力した自己申告です。Nefos Video はライセンスの本文を確かめていません。申告どおりで、元のモデル（ベース・学習に使った素材）のライセンスにも反しない場合に限ります"
 
 // FromUser is the license of a file the user added from their own PC (a LoRA, #1119), from what they entered: the name of the license (optional) and
 // their answer to "commercial use?". The file's own metadata never decides it, and an answer that is not given is Unknown, not 商用OK: a declaration

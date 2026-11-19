@@ -25,7 +25,7 @@ type JobHistory interface {
 }
 
 // lostMessage is what a job says when mam restarted while it ran and nothing recorded its end.
-const lostMessage = "mam が再起動したため、この操作の結果を確かめられません（途中で終わった可能性があります）。対象の状態を画面か該当の get_* ツールで確認してください"
+const lostMessage = "Nefos Video が再起動したため、この操作の結果を確かめられません（途中で終わった可能性があります）。対象の状態を画面か該当の get_* ツールで確認してください"
 
 // maxRefresh bounds how many unfinished jobs one listing looks at again.
 const maxRefresh = 200

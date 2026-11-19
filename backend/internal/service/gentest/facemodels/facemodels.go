@@ -116,7 +116,7 @@ func (s *Service) Remove() error {
 		err = remove()
 	}
 	if err != nil {
-		return gterr.Invalid("顔チェック用モデルのファイルを削除できませんでした（使用中の可能性があります。mam を再起動してからやり直してください）: %v", err)
+		return gterr.Invalid("顔チェック用モデルのファイルを削除できませんでした（使用中の可能性があります。Nefos Video を再起動してからやり直してください）: %v", err)
 	}
 	return nil
 }
@@ -132,7 +132,7 @@ func userError(ctx context.Context, err error) error {
 	case errors.As(err, &ns):
 		return gterr.Invalid("空き容量が足りません（必要 %s、空き %s、場所 %s）", fetch.HumanBytes(ns.Need), fetch.HumanBytes(ns.Free), ns.Path)
 	case errors.Is(err, fetch.ErrChecksum):
-		return gterr.Invalid("ダウンロードしたファイルの SHA-256 が、固定した値と一致しません。ダウンロードを破棄しました（取得元の更新か転送の破損です。MAM の更新を待つか、もう一度試してください）")
+		return gterr.Invalid("ダウンロードしたファイルの SHA-256 が、固定した値と一致しません。ダウンロードを破棄しました（取得元の更新か転送の破損です。Nefos Video の更新を待つか、もう一度試してください）")
 	case errors.Is(err, fetch.ErrSize):
 		return gterr.Invalid("ダウンロードしたファイルの大きさが固定した値と違います。ダウンロードを破棄しました")
 	case errors.As(err, &he) && he.Definitive():

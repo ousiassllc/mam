@@ -82,7 +82,7 @@ func Reason(mgr *nodes.Manager, ids []string) string {
 		}
 	}
 	if len(blocked) > 0 {
-		return fmt.Sprintf("追加ノードが今の mam では導入できないため使えません（モデルマネージャーの「追加ノード」の節 %s に理由があります）。%s", Section, strings.Join(blocked, " "))
+		return fmt.Sprintf("追加ノードが今の Nefos Video では導入できないため使えません（モデルマネージャーの「追加ノード」の節 %s に理由があります）。%s", Section, strings.Join(blocked, " "))
 	}
 	return message(names)
 }

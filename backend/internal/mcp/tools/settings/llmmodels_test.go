@@ -94,7 +94,7 @@ func TestSetLLMAssignment_WarnsOfAModelThatIsInNoListButSavesIt(t *testing.T) {
 	assert.Equal(t, settings.ModelWarning{Kind: "unlisted_model", Agent: name, Role: "primary", Provider: "openai", Model: "gpt-typo", Message: bad.Warnings[0].Message}, bad.Warnings[0])
 	assert.Contains(t, bad.Warnings[0].Message, "list_llm_models")
 	assert.Equal(t, "fallback", bad.Warnings[1].Role)
-	assert.Contains(t, bad.Warnings[1].Message, "既定候補", "anthropic has no key: the warning says the list is mam's")
+	assert.Contains(t, bad.Warnings[1].Message, "既定候補", "anthropic has no key: the warning says the list is Nefos Video's")
 	assert.NotContains(t, bad.Warnings[0].Message+bad.Warnings[1].Message, apiKey)
 }
 

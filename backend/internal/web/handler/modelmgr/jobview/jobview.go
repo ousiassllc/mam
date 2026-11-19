@@ -32,7 +32,7 @@ func BytesText(n int64) string {
 // VRAMText is the guideline of the video memory with where it comes from.
 func VRAMText(minGB int, source string, estimate bool) string {
 	if estimate {
-		return fmt.Sprintf("%d GB 以上（mam の推定。GPU では未確認）", minGB)
+		return fmt.Sprintf("%d GB 以上（Nefos Video の推定。GPU では未確認）", minGB)
 	}
 	return fmt.Sprintf("%d GB 以上（出典: %s）", minGB, source)
 }
@@ -84,7 +84,7 @@ func Ending(state domain.JobStatus, reason string, common *apperr.View, done, ti
 		return done, failbox.Item{}
 	case domain.JobFailed:
 		if reason = strings.TrimSpace(reason); reason == "" {
-			reason = "原因は mam のログを確認してください"
+			reason = "原因は Nefos Video のログを確認してください"
 		}
 		return "", failbox.Item{Title: title, Reason: reason, View: common}
 	}

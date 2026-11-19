@@ -65,7 +65,7 @@ func ReviewsPage(csrfToken string, project domain.Project, d reviewlist.Data) te
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = pagehead.Header("レビュー", project.Name, "完成した動画をメンバーに見てもらい、コメントと承認をもらいます。やり取りはファイルの受け渡しだけで、アカウントもサーバーも使いません。レビュアーは自分の mam に Review Package を読み込み、応答ファイルを返します。").Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = pagehead.Header("レビュー", project.Name, "完成した動画をメンバーに見てもらい、コメントと承認をもらいます。やり取りはファイルの受け渡しだけで、アカウントもサーバーも使いません。レビュアーは自分の Nefos Video に Review Package を読み込み、応答ファイルを返します。").Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

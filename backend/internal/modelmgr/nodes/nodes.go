@@ -152,11 +152,11 @@ func (m *Manager) status(n nodecat.Node, rec Record) Status {
 	case !recorded:
 		st.State = StateNotInstalled
 		if _, err := os.Lstat(m.Folder(n)); err == nil {
-			st.Detail = "記録のないフォルダ " + n.Folder + " があります。mam が導入したものではないため、読み込みません"
+			st.Detail = "記録のないフォルダ " + n.Folder + " があります。Nefos Video が導入したものではないため、読み込みません"
 		}
 	case inst.Commit != n.Commit || inst.ArchiveSHA256 != n.ArchiveSHA256:
 		st.State, st.Installed = StateOutdated, &inst
-		st.Detail = "導入したコミット " + short(inst.Commit) + " は、この mam が許可するコミット " + short(n.Commit) + " と違います。導入し直すまで読み込みません"
+		st.Detail = "導入したコミット " + short(inst.Commit) + " は、この Nefos Video が許可するコミット " + short(n.Commit) + " と違います。導入し直すまで読み込みません"
 	default:
 		st.Installed = &inst
 		if sum, err := TreeDigest(m.Folder(n)); err != nil || sum != inst.TreeSHA256 {

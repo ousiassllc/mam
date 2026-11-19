@@ -1,6 +1,6 @@
 {
  "id": "flf2v-ltx-2-3", "label": "LTX-2.3: 最初と最後のフレームから動画（音声つき）", "media": "video",
- "description": "Lightricks の LTX-2.3（蒸留版 22B。fp8 の 1 ファイル ltx-2.3-22b-distilled-fp8.safetensors）の、先頭フレームと最後のフレームの 2 枚から、その間の動きを音声つきで作るワークフロー（FLF2V）。Comfy 公式のテンプレート（video_ltx2_3_flf2v）を API 形式に展開したもので、ComfyUI 標準ノードだけを使う（CheckpointLoaderSimple が映像の VAE、LTXVAudioVAELoader が音声の VAE、LTXAVTextEncoderLoader が Gemma 3 12B の fp4 のテキストエンコーダーを読む）。拡大モデルは使わず、指定した解像度のまま 1 段で作る。8 ステップ・cfg 1・euler_ancestral、先頭と最後の guide の強さは 0.7（公式の値）。2 枚の画像は同じ縦横比にする。25fps、フレーム数は 8n+1、幅と高さは 32 の倍数。デコードのタイルは mam の LTX-2.5 のテンプレートと同じ控えめな値（公式は 768）。GPU では未実行（構造のテストのみ）。",
+ "description": "Lightricks の LTX-2.3（蒸留版 22B。fp8 の 1 ファイル ltx-2.3-22b-distilled-fp8.safetensors）の、先頭フレームと最後のフレームの 2 枚から、その間の動きを音声つきで作るワークフロー（FLF2V）。Comfy 公式のテンプレート（video_ltx2_3_flf2v）を API 形式に展開したもので、ComfyUI 標準ノードだけを使う（CheckpointLoaderSimple が映像の VAE、LTXVAudioVAELoader が音声の VAE、LTXAVTextEncoderLoader が Gemma 3 12B の fp4 のテキストエンコーダーを読む）。拡大モデルは使わず、指定した解像度のまま 1 段で作る。8 ステップ・cfg 1・euler_ancestral、先頭と最後の guide の強さは 0.7（公式の値）。2 枚の画像は同じ縦横比にする。25fps、フレーム数は 8n+1、幅と高さは 32 の倍数。デコードのタイルは Nefos Video の LTX-2.5 のテンプレートと同じ控えめな値（公式は 768）。GPU では未実行（構造のテストのみ）。",
  "model": {"media": "video", "video": {"durations": [3, 4, 5, 6], "resolutions": ["480p", "720p"], "native_audio": true}, "workflow": {
   "prompt_weight": "unsupported",
   "graph": {

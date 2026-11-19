@@ -121,7 +121,7 @@ func Refuse(c *gin.Context, err error) (status int, msg string) {
 		return http.StatusServiceUnavailable, "単発生成はこのアプリでは使えません"
 	}
 	_ = c.Error(err)
-	return http.StatusInternalServerError, "処理できませんでした。mam のログを確認してください"
+	return http.StatusInternalServerError, "処理できませんでした。Nefos Video のログを確認してください"
 }
 
 // ConfirmFailure draws the answer of an estimate that could not be made: the error box (cause, fix, detail) when the request was stopped as the common
