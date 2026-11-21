@@ -59,7 +59,7 @@
 | ホバー・フォーカス（M1） | 色・背景だけ、`--motion-base` 180ms（フォーカスは即時〜`--motion-fast` 120ms）。`transition-colors` が既定でこの値を取る。光彩・拡大はしない |
 | 処理中表示（M3） | スピナー（`atoms.Spinner`）と更新ボタンの回る矢印は、`prefers-reduced-motion: reduce` でも回す（`motion-reduce:animate-none` を付けない）。移動・スライドの飾りだけを止める（`motion-reduce:transition-none`）。オーバーレイのフェードは reduce で 100ms 以内 |
 | リップル（M4） | `data-ripple` の付いたボタン（`atoms.Button` / `SmallButton` / `ButtonLink` / `…For` / `IconButton`・モーダルとトーストの閉じる・左メニューのボタン）の押下で、押した点から円が広がって消える（`--motion-slow` 280ms・`--ease-out`。円は `currentColor` の 20%）。無効なボタンと reduced-motion では出ない |
-| 出現・退出（M5） | `<dialog>`・popover・トーストは、出現がフェードイン `--motion-fade-in` 320ms（`--ease-out`）、退出がフェードアウト `--motion-fade-out` 240ms（`--ease-in`）。スクラム（`dialog::backdrop`）は `--scrim` を同じ時間でフェードする。移動は付けない。インラインアラートも同じで、閉じるボタンで `data-leaving` が付き、フェードアウトしてから取り除く。確認モーダル（`confirm.ts`）の取り除きと、モーダル・モデル選択・インラインダイアログの中身の消去は、このフェードが終わってから行う（待つのは `getAnimations()` の transition。固定時間のタイマーは使わない。`components/lib/fade.ts`）。reduced-motion では 100ms 以内 |
+| 出現・退出（M5） | `<dialog>`・popover・トーストは、出現がフェードイン `--motion-fade-in` 320ms（`--ease-out`）、退出がフェードアウト `--motion-fade-out` 240ms（`--ease-in`）。スクラム（`dialog::backdrop`）は `--scrim` を同じ時間でフェードする。移動は付けない。インラインアラートも同じで、閉じるボタンで `data-leaving` が付き、フェードアウトしてから取り除く。接続断の通知（`atoms.ConnectionNotice`。`[data-connection-lost]`）も同じで、つながり直すと `connection-notice.ts` の `hide()` が `data-leaving` を付け、フェードが終わってから取り除く。確認モーダル（`confirm.ts`）の取り除きと、モーダル・モデル選択・インラインダイアログの中身の消去は、このフェードが終わってから行う（待つのは `getAnimations()` の transition。固定時間のタイマーは使わない。`components/lib/fade.ts`）。reduced-motion では 100ms 以内 |
 
 ### 部品・オーバーレイ（Issue #1041）
 
@@ -298,6 +298,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.28 | 2026-11-22 | §1 の文字の行を、表の本体・一覧・警告・入力欄・リンク型ボタンの文字は 14px 以上（`text-xs` は注記・バッジ・表の見出し・`dt` のラベルだけ）、行の見出しと `<legend>` は Regular に改めた。`a11y/typography_test` に、`<th scope="row">`・`<legend>` に `font-semibold` を付けない検査を足した | #1185: タイポグラフィ（T）の指摘 |
 | 0.29 | 2026-11-22 | §1 の余白の行に、リストのインデントは `pl-5` でなく `pl-4` か `pl-6` と書いた。`a11y/shape_test` の 20px 検査を `pl`・`pr`・`ml`・`mr` に広げ、`<main>` の `p-8` も落とす | #1186: 形・余白・線（S）の指摘 |
 | 0.30 | 2026-11-22 | §2 のアイコン一覧の `IconStar` を、塗らない輪郭のままに改めた（状態は線の色と `aria-pressed`）。文字グリフ ⚠ ● ▼ ★ をやめ、⚠ は `icon('warning')`、▼ は `icon('arrow-down')`、● ★ は文言だけにした | #1187: アイコン（I）の指摘 |
+| 0.31 | 2026-11-22 | §M5 の出現・退出に接続断の通知（`[data-connection-lost]`）を足した（`motion.css`。`hide()` はフェードアウトのあとで取り除く）。サムネイルの × ↑ ↓ ・お気に入りの星・LOCK の 3 値ボタンに `data-ripple` を付けた（M4） | #1188: モーション（M）の指摘 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 

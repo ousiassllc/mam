@@ -1,4 +1,4 @@
-import { expect } from '@open-wc/testing';
+import { expect, waitUntil } from '@open-wc/testing';
 import { createConnectionNotice } from './connection-notice';
 import { installConnectionNoticeTemplate } from '../testdata/fakes';
 
@@ -7,7 +7,7 @@ describe('connection notice', () => {
   beforeEach(() => (removeTemplate = installConnectionNoticeTemplate()));
   afterEach(() => removeTemplate());
 
-  const notices = () => document.querySelectorAll<HTMLElement>('[data-connection-lost]');
+  const notices = () => document.querySelectorAll<HTMLElement>('[data-connection-lost]:not([data-leaving])');
 
   it('tells the user what stopped updating and lets them reconnect', () => {
     let retries = 0;
@@ -51,5 +51,27 @@ describe('connection notice', () => {
     expect(notices()[0]!.dataset.connectionLost).to.equal('生成の進捗');
     chat.show(() => {});
     expect(notices().length).to.equal(2);
+  });
+
+  it('fades out when the connection is back: it stays until the transition is over (M5)', async () => {
+    const style = document.createElement('style');
+    style.textContent =
+      '[data-connection-lost]{opacity:1;transition:opacity 200ms linear}[data-connection-lost][data-leaving]{opacity:0}';
+    document.head.append(style);
+    try {
+      const notice = createConnectionNotice('チャット');
+      notice.show(() => {});
+      const shown = document.querySelector<HTMLElement>('[data-connection-lost]')!;
+      expect(getComputedStyle(shown).opacity).to.equal('1'); // the style the fade starts from
+
+      notice.hide();
+
+      expect(shown.hasAttribute('data-leaving')).to.equal(true);
+      expect(shown.isConnected).to.equal(true);
+      expect(notices().length).to.equal(0);
+      await waitUntil(() => !shown.isConnected, 'the notice was not removed after the fade');
+    } finally {
+      style.remove();
+    }
   });
 });

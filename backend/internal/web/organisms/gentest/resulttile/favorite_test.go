@@ -34,3 +34,9 @@ func TestFavoriteButton_StarIsAnOutlineAndTheStateIsItsColourAndAriaPressed(t *t
 		assert.NotContains(t, html, "fill-")
 	}
 }
+
+// The favorite button is an icon button: a press gives the ripple (M4).
+func TestFavoriteButton_Ripples(t *testing.T) {
+	assert.Contains(t, renderFavorite(t, true), "data-ripple")
+	assert.Contains(t, renderFavorite(t, false), "data-ripple")
+}

@@ -39,6 +39,15 @@ func TestLockToggle_MarksTheCurrentModeAndPutsToTheURL(t *testing.T) {
 	assert.NotContains(t, html, "<select")
 }
 
+// A mode button is a button of the UI: a press gives the ripple (M4).
+func TestLockToggle_EveryModeButtonRipples(t *testing.T) {
+	html := render(t, locktoggle.Toggle(locktoggle.Data{
+		DOMID: "lock-s1-camera", URL: "/shots/s1/locks", Parameter: domain.ParamCamera, Mode: domain.LockAuto,
+	}))
+
+	assert.Equal(t, 3, strings.Count(html, "data-ripple"))
+}
+
 func TestLockToggle_OffersTheVideoModelOfManualAndLockInTheSharedFieldLook(t *testing.T) {
 	for _, mode := range []domain.LockMode{domain.LockManual, domain.LockLocked} {
 		html := render(t, locktoggle.Toggle(locktoggle.Data{

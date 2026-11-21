@@ -95,6 +95,7 @@ templ FavoriteButton(id string, on bool) {
 		aria-pressed={ boolText(on) }
 		aria-label={ favoriteLabel(on) }
 		data-testid="gt-favorite"
+		data-ripple
 		data-on={ boolText(on) }
 	>
 		@atoms.Icon(atoms.IconStar, "h-5 w-5")

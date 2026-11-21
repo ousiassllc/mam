@@ -248,7 +248,7 @@ describe('mam-video-player: generation placeholder', () => {
       (ms ?? 0) >= 400 ? setTimeoutOriginal(fn, 0) : setTimeoutOriginal(fn, ms, ...args)) as typeof window.setTimeout;
     try {
       const el = await player({ ws: '/ws/shots/s1' });
-      const notice = () => document.querySelector('[data-connection-lost]');
+      const notice = () => document.querySelector('[data-connection-lost]:not([data-leaving])'); // one that fades out is already gone
       expect(notice()).to.equal(null);
 
       // Every attempt fails until the retries are used up (waitUntil's own timer is slowed down as well: poll by hand).
