@@ -46,6 +46,7 @@ func renderedScreens(t *testing.T) map[string]string {
 	maps.Copy(pages, posePickerScreens(t, s))
 	maps.Copy(pages, chatScreens(t))
 	maps.Copy(pages, localEditorScreens(t))
+	maps.Copy(pages, workflowScreens(t))
 	// The dialogs the model manager opens (the detail of a model, an asset, a runtime, a node): each is a fragment the page links to.
 	detail := regexp.MustCompile(`hx-get="(/model-manager/[^"?]*/detail)"`)
 	for name, page := range maps.Clone(pages) {

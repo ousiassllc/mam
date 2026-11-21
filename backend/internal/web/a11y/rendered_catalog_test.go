@@ -5,6 +5,8 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/local"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/workflows"
+	"github.com/ousiassllc/mam/backend/internal/web/pages"
 )
 
 // localEditorScreens is the first step of a ComfyUI model (the choice of a built-in workflow) over the real catalog of templates: the description of each is a
@@ -17,4 +19,12 @@ func localEditorScreens(t *testing.T) map[string]string {
 	}
 	d.Editor.Start = &local.ModelStart{Endpoint: "gpu-box", Media: local.MediaImage, TemplateID: d.Templates[0].ID}
 	return map[string]string{"settings/local-models/endpoint/models/new": render(t, local.EditorBody(d))}
+}
+
+// workflowScreens is the workflows screen with a workflow open in its editor: the sections under the h1 (the editor, the two imports) are what the heading levels of the
+// screen are checked on (T7).
+func workflowScreens(t *testing.T) map[string]string {
+	t.Helper()
+	d := workflows.Data{Editor: &workflows.Editor{ID: "wf1", Name: "portrait", Kind: workflows.KindImage, Version: 1}}
+	return map[string]string{"workflows": render(t, pages.WorkflowsPage("tok", d))}
 }

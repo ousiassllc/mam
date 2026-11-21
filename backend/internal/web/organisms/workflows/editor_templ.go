@@ -92,7 +92,7 @@ func editor(e Editor) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\" autocomplete=\"off\" data-testid=\"workflow-editor-form\"><h3 class=\"text-sm font-semibold\">ワークフロー「")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\" autocomplete=\"off\" data-testid=\"workflow-editor-form\"><h2 class=\"text-sm font-semibold\">ワークフロー「")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -118,7 +118,7 @@ func editor(e Editor) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "）</h3><p class=\"text-sm text-ink\">グラフか入力の割り当てを変えて保存すると、版が上がります（v")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "）</h2><p class=\"text-sm text-ink\">グラフか入力の割り当てを変えて保存すると、版が上がります（v")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

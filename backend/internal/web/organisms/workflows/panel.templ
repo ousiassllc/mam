@@ -123,7 +123,7 @@ templ importJSON(d Data) {
 		autocomplete="off"
 		data-testid="workflow-import-json"
 	>
-		<h3 class="text-sm font-semibold">API 形式の JSON から取り込む</h3>
+		<h2 class="text-sm font-semibold">API 形式の JSON から取り込む</h2>
 		<p class="text-sm text-ink">ComfyUI の「Save (API Format)」で書き出した JSON（ファイルか貼り付け）を保存します。入力の割り当ては一般的なノードから推測するので、保存後に「編集」で確かめてください。</p>
 		<div class="flex flex-wrap items-end gap-3">
 			<label class="flex flex-col gap-1 text-xs text-mute" for="workflow-import-name">
@@ -149,7 +149,7 @@ templ importJSON(d Data) {
 
 templ importRemote(d Data) {
 	<div class="flex flex-col gap-3 rounded-lg border border-border p-4" data-testid="workflow-import-remote">
-		<h3 class="text-sm font-semibold">ComfyUI から取り込む</h3>
+		<h2 class="text-sm font-semibold">ComfyUI から取り込む</h2>
 		<p class="text-sm text-ink">ノード画面で作ったワークフローを、ComfyUI に保存してから一度実行してください。ここで ComfyUI の保存済みワークフローを選ぶと、画面の形式と、最後の実行の API 形式を取り込みます。</p>
 		<form
 			class="flex flex-wrap items-end gap-3"
