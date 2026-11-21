@@ -71,7 +71,7 @@ templ BatchBox(b Batch) {
 		if !b.Finished {
 			<progress class="h-1.5 w-full" max="100" value={ itoa(b.Percent) } aria-label="生成の進み具合" data-testid="gt-progress"></progress>
 		}
-		<div class="overflow-x-auto" data-keep-scroll="gt-grid">
+		<div class="overflow-x-auto focus-visible:focus-ring" data-keep-scroll="gt-grid" tabindex="0" role="region" aria-label="生成結果の比較表">
 			<table class="w-full min-w-max border-collapse text-sm" data-testid="gt-grid">
 				<thead>
 					<tr>

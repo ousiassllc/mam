@@ -17,7 +17,7 @@ type Column struct {
 // the hidden headers) are absolutely placed, and an absolutely placed element is cut by the scroll box only when the box is
 // its containing block; otherwise it sits out at the table's far edge and widens the page.
 templ SettingsTable(bodyID, caption string, cols []Column) {
-	<div class="relative overflow-x-auto rounded-lg border border-border">
+	<div class="relative overflow-x-auto rounded-lg border border-border focus-visible:focus-ring" tabindex="0" role="region" aria-label={ caption }>
 		<table class="w-full text-left text-sm">
 			<caption class="sr-only">{ caption }</caption>
 			<thead class="bg-surface text-xs text-mute">

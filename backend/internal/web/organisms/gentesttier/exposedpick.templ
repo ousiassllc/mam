@@ -50,7 +50,7 @@ templ pickerForm(d PickerData) {
 		if len(d.Choosable()) == 0 {
 			<p class="text-sm text-mute">このグラフに、画面に出せる入力（ほかのノードがつないでいない数値・文字・選択肢）がありません。</p>
 		} else {
-			<div class="overflow-x-auto">
+			<div class="overflow-x-auto focus-visible:focus-ring" tabindex="0" role="region" aria-label="画面に出せる入力">
 				<table class="w-full min-w-[40rem] text-left text-sm text-ink" data-testid="gt-picker-table">
 					<caption class="sr-only">画面に出せる入力</caption>
 					<thead>

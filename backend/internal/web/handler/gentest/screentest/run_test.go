@@ -59,6 +59,7 @@ func TestRunRunsEveryCombinationAndTheGridComparesModelsAgainstPrompts(t *testin
 	rec, id := s.start(form)
 	assert.Contains(t, rec.Body.String(), "生成を始めました")
 	assert.Contains(t, rec.Body.String(), `data-testid="gt-grid"`)
+	assert.Regexp(t, `<div class="overflow-x-auto[^"]*"[^>]* tabindex="0" role="region" aria-label="生成結果の比較表">`, rec.Body.String(), "a grid that scrolls sideways is reached by the keyboard (B6)")
 	body := s.settled(id)
 
 	assert.Equal(t, 2, strings.Count(body, `data-testid="gt-row"`), "a row per model")

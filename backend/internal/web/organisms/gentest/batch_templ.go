@@ -396,7 +396,7 @@ func BatchBox(b Batch) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<div class=\"overflow-x-auto\" data-keep-scroll=\"gt-grid\"><table class=\"w-full min-w-max border-collapse text-sm\" data-testid=\"gt-grid\"><thead><tr><th class=\"p-2 text-left text-xs font-normal text-mute\">モデル ＼ プロンプト</th>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "<div class=\"overflow-x-auto focus-visible:focus-ring\" data-keep-scroll=\"gt-grid\" tabindex=\"0\" role=\"region\" aria-label=\"生成結果の比較表\"><table class=\"w-full min-w-max border-collapse text-sm\" data-testid=\"gt-grid\"><thead><tr><th class=\"p-2 text-left text-xs font-normal text-mute\">モデル ＼ プロンプト</th>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

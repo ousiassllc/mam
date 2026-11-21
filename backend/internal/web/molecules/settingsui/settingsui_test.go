@@ -130,6 +130,7 @@ func TestSettingsTable_HasACaptionColumnHeadersRowHeadsAndRowsThatReplaceThemsel
 	html := sb.String()
 
 	assert.Contains(t, html, `<caption class="sr-only">Agent ごとの割り当て</caption>`)
+	assert.Regexp(t, `<div class="relative overflow-x-auto[^"]*" tabindex="0" role="region" aria-label="Agent ごとの割り当て">`, html, "the box that scrolls sideways is a region of its name, reached by the keyboard (B6)")
 	assert.Equal(t, 3, strings.Count(html, `<th scope="col"`))
 	assert.Contains(t, html, `<tbody id="llm-table"`)
 	assert.Contains(t, html, `hidden lg:table-cell`)

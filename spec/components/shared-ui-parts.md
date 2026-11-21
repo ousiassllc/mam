@@ -74,6 +74,7 @@
 | 接続の通知（O3） | 接続が切れた通知（`atoms.ConnectionNotice`）は、警告のアイコン＋文言＋ `border-warning/40` の枠と `bg-warning/10` の地（スナックバー。影なし）。トーストではない |
 | ボタン（O7） | `font-semibold`・`rounded-md`・無効は不透明度 .4（`disabled:opacity-40`・`disabled:cursor-not-allowed`。リンク型ボタン `LinkButton` / `LinkButtonFor`・Lit の行のボタン・`modelpick` の入力風のボタンも）・小は高さ 32（`min-h-8`）・標準は 40（`min-h-10`）。種類は主（`TonePrimary`）・サブ（`ToneNeutral`。透明＋ `border-border`）・ゴースト（`ToneGhost`）・危険（`ToneDanger`）。`<label>` でファイル選択を開くものなど、ボタンに見える `<button>` でない要素は `atoms.ButtonClass` / `SmallButtonClass` の class を使う |
 | アコーディオン（O8） | native の `<details>`。見出し `<summary>` は SemiBold・`text-sm text-ink`・フォーカスの輪の 1 つの class（`atoms.SummaryClass`）。`<summary>` は配置の class だけを足し、太さ・色は足さない（`a11y/typography_test` が、`<summary>` が `atoms.SummaryClass` を使うかを見る） |
+| スクロール領域（B1〜B6） | スクロールバーは `static/src/css/scrollbar.css` の 1 つの規則（幅・高さ 8px・矢印なし・丸い `--mute` のつまみ。強制カラー時は OS の標準）。スクロールする領域に、フォーカスできる要素が中に無い（読み取り専用・ボタンが出ない・文字だけ）ことがありうるときは、`tabindex="0"`・名前（`role="region"` と `aria-label`。ログは `role="log"`）・`focus-visible:focus-ring` を付ける。キーボードの ↑ ↓ PageUp PageDown Space Home End で動かせるようにするため（`SettingsTable` の囲み・`#chat-thread`・結果の比較表・Take の比較表・値の選択表・コマンドの `<pre>`） |
 | 独自ウィジェット（Lit。P3） | `mam-timeline-editor`・`mam-take-comparator`・`mam-mask-paint` は共通ガイドに無い独自ウィジェットで、見た目・状態表示・操作・文言は案件ガイド [lit-widgets-guide.md](lit-widgets-guide.md) が決める（ボタン・入力・バッジ・通知・数値は上の表と同じ部品を使う） |
 
 ### 商用利用の可否（Issue #928）
@@ -301,6 +302,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.30 | 2026-11-22 | §2 のアイコン一覧の `IconStar` を、塗らない輪郭のままに改めた（状態は線の色と `aria-pressed`）。文字グリフ ⚠ ● ▼ ★ をやめ、⚠ は `icon('warning')`、▼ は `icon('arrow-down')`、● ★ は文言だけにした | #1187: アイコン（I）の指摘 |
 | 0.31 | 2026-11-22 | §M5 の出現・退出に接続断の通知（`[data-connection-lost]`）を足した（`motion.css`。`hide()` はフェードアウトのあとで取り除く）。サムネイルの × ↑ ↓ ・お気に入りの星・LOCK の 3 値ボタンに `data-ripple` を付けた（M4） | #1188: モーション（M）の指摘 |
 | 0.32 | 2026-11-22 | §O1 の入力保護の確認を、保存するフォームの欄だけに限った（検索・フィルタ・ピッカーは外側クリックで即閉じる）。§O2 に、非破壊の確認を `data-confirm-tone` / `data-confirm-label` で主ボタン・具体的な言葉にすることを足した。§O7 に、リンク型ボタンなどの無効の見た目と、ボタンに見える `<label>` の class（`ButtonClass` / `SmallButtonClass`）を足した。§O8 に、`<summary>` を 1 つの class（`atoms.SummaryClass`）にそろえることを足した | #1189: 部品・オーバーレイ（O）の指摘 |
+| 0.33 | 2026-11-22 | スクロール領域（B1〜B6）の行を足した。中にフォーカスできる要素が無いことがありうるスクロール領域（設定テーブルの囲み・チャットスレッド・結果の比較表・Take の比較表・値の選択表・コマンドの `<pre>`）に `tabindex="0"`・名前・`focus-visible:focus-ring` を付けた | #1190: スクロールバー（B）の指摘 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 

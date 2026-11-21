@@ -157,5 +157,5 @@ templ installSteps(d Data) {
 
 // command is one command to copy: a block of its own that can be reached by the keyboard and read by its name.
 templ command(text string) {
-	<pre class="overflow-x-auto rounded-md bg-surface px-3 py-2 text-xs" tabindex="0" aria-label={ "コマンド: " + text } data-testid="mm-facefusion-cmd"><code>{ text }</code></pre>
+	<pre class="overflow-x-auto rounded-md bg-surface px-3 py-2 text-xs focus-visible:focus-ring" tabindex="0" role="region" aria-label={ "コマンド: " + text } data-testid="mm-facefusion-cmd"><code>{ text }</code></pre>
 }
