@@ -104,7 +104,7 @@ func Toggle(id, subject string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" class=\"inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-[50%] border border-border text-ink transition-colors hover:border-mute hover:text-ink focus-visible:focus-ring motion-reduce:transition-none\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" class=\"inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-ink transition-colors hover:border-mute hover:text-ink focus-visible:focus-ring motion-reduce:transition-none\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

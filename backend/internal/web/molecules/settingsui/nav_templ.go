@@ -60,7 +60,7 @@ func Nav(items []NavItem) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<nav aria-label=\"設定\" data-testid=\"settings-nav\" class=\"w-full shrink-0 lg:sticky lg:top-8 lg:w-56 lg:self-start\"><ul role=\"list\" class=\"flex flex-wrap gap-1 lg:flex-col\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<nav aria-label=\"設定\" data-testid=\"settings-nav\" class=\"w-full shrink-0 lg:sticky lg:top-8 lg:w-56 lg:self-start\"><ul role=\"list\" class=\"flex flex-wrap gap-2 lg:flex-col\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

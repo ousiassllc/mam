@@ -30,7 +30,7 @@ func navClass(current bool) string {
 // a border. Narrow windows put it above the page, the links wrapping.
 templ Nav(items []NavItem) {
 	<nav aria-label="設定" data-testid="settings-nav" class="w-full shrink-0 lg:sticky lg:top-8 lg:w-56 lg:self-start">
-		<ul role="list" class="flex flex-wrap gap-1 lg:flex-col">
+		<ul role="list" class="flex flex-wrap gap-2 lg:flex-col">
 			for _, it := range items {
 				<li>
 					<a
