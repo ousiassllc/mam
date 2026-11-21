@@ -83,7 +83,7 @@ templ Created(d Data) {
 templ noteAddForm(d Data, oob bool) {
 	<form
 		id="note-add-form"
-		class="flex flex-col gap-2 rounded-md border border-border p-3"
+		class="flex flex-col gap-2 rounded-lg border border-border p-3"
 		hx-post={ d.BasePath }
 		hx-target="#note-list"
 		hx-swap="outerHTML"

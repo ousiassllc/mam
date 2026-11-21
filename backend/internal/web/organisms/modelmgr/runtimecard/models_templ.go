@@ -441,7 +441,7 @@ func runtimeModel(r Runtime, m Model) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(m.Cautions) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<ul class=\"list-disc pl-5 text-sm text-warning\" data-testid=\"mm-runtime-model-cautions\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<ul class=\"list-disc pl-6 text-sm text-warning\" data-testid=\"mm-runtime-model-cautions\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

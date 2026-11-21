@@ -113,7 +113,7 @@ templ row(w Row) {
 
 templ importJSON(d Data) {
 	<form
-		class="flex flex-col gap-3 rounded-md border border-border p-4"
+		class="flex flex-col gap-3 rounded-lg border border-border p-4"
 		hx-post={ paths.WorkflowsPart("import") }
 		hx-encoding="multipart/form-data"
 		hx-target={ "#" + PanelID }

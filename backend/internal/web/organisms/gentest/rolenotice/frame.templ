@@ -14,7 +14,7 @@ import (
 templ Frame(notes []Note, fields []Field) {
 	@modal.Frame("参照画像が全体の参照になるモデルがあります", "実行すると、次のように参照画像が使われます。") {
 		<div class={ "flex flex-col gap-2", modal.StartClass } tabindex="-1" autofocus data-testid="gt-role-notice">
-			<ul class="list-disc space-y-1 pl-5 text-sm" data-testid="gt-role-notes">
+			<ul class="list-disc space-y-1 pl-6 text-sm" data-testid="gt-role-notes">
 				for _, note := range notes {
 					<li data-testid="gt-role-note"><strong>{ note.Model }</strong> は「{ strings.Join(note.Roles, "」「") }」に対応していないので、全体の参照として使います。構図や服も寄ります</li>
 				}

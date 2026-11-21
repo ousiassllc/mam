@@ -68,7 +68,7 @@ templ ConfirmBox(c Confirm) {
 			@inputnotice.Warnings(c.InputWarnings, "gt-confirm-input-warnings")
 		}
 		if len(c.Warnings) > 0 {
-			<ul class="list-disc pl-5 text-sm text-warning" data-testid="gt-confirm-warnings">
+			<ul class="list-disc pl-6 text-sm text-warning" data-testid="gt-confirm-warnings">
 				for _, w := range c.Warnings {
 					<li>{ w }</li>
 				}

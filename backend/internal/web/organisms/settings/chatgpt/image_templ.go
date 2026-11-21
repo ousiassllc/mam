@@ -224,7 +224,7 @@ func imageDetail(d Data) templ.Component {
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"flex flex-col gap-3\" data-testid=\"chatgpt-image-detail\"><div class=\"flex flex-col gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2\" data-testid=\"chatgpt-risks\"><p class=\"text-sm text-warning\">オンにする前に、次のリスクを確認してください。</p><ul class=\"list-disc pl-5 text-sm\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"flex flex-col gap-3\" data-testid=\"chatgpt-image-detail\"><div class=\"flex flex-col gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2\" data-testid=\"chatgpt-risks\"><p class=\"text-sm text-warning\">オンにする前に、次のリスクを確認してください。</p><ul class=\"list-disc pl-6 text-sm\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -14,7 +14,7 @@ templ EditorBody(e Editor) {
 
 templ editor(e Editor) {
 	<form
-		class="flex flex-col gap-4 rounded-md border border-border p-4"
+		class="flex flex-col gap-4 rounded-lg border border-border p-4"
 		hx-put={ paths.Workflow(e.ID) }
 		hx-target={ "#" + PanelID }
 		hx-swap="outerHTML"

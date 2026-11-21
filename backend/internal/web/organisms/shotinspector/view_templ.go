@@ -645,7 +645,7 @@ func View(d Data) templ.Component {
 						return templ_7745c5c3_Err
 					}
 					if len(res.Issues) > 0 {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<ul class=\"list-disc pl-5 text-xs text-ink\">")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<ul class=\"list-disc pl-6 text-xs text-ink\">")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}

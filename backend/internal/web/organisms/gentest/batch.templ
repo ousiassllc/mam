@@ -22,7 +22,7 @@ templ BatchBox(b Batch) {
 			id={ BatchBlockID(b.ID) }
 			data-batch={ b.ID }
 		}
-		class="flex flex-col gap-3 rounded-md border border-border p-4"
+		class="flex flex-col gap-3 rounded-lg border border-border p-4"
 		data-testid="gt-batch"
 		data-state={ b.StateTone }
 		if !b.Finished {

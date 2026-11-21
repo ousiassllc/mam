@@ -375,7 +375,7 @@ func matchRound(r MatchRound, target int) templ.Component {
 			}
 		}
 		if len(r.Differences) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<ul class=\"list-disc pl-5 text-xs text-ink\" data-testid=\"gt-match-differences\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<ul class=\"list-disc pl-6 text-xs text-ink\" data-testid=\"gt-match-differences\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

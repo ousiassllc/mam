@@ -246,7 +246,7 @@ func Panel(d Data) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if len(d.Busy) > 0 {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<ul class=\"list-disc pl-5 text-sm text-ink\" data-testid=\"restart-busy\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<ul class=\"list-disc pl-6 text-sm text-ink\" data-testid=\"restart-busy\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}

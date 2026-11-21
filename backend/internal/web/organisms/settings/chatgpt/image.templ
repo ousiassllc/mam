@@ -78,7 +78,7 @@ templ imageDetail(d Data) {
 	<div class="flex flex-col gap-3" data-testid="chatgpt-image-detail">
 		<div class="flex flex-col gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2" data-testid="chatgpt-risks">
 			<p class="text-sm text-warning">オンにする前に、次のリスクを確認してください。</p>
-			<ul class="list-disc pl-5 text-sm">
+			<ul class="list-disc pl-6 text-sm">
 				for _, r := range d.Risks {
 					<li>{ r }</li>
 				}

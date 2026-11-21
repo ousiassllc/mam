@@ -230,7 +230,7 @@ func brandConstraintForm(d BrandConstraintListData, oob bool) templ.Component {
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<form id=\"brand-constraint-form\" class=\"flex flex-col gap-3 rounded-md border border-border p-3\" hx-post=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<form id=\"brand-constraint-form\" class=\"flex flex-col gap-3 rounded-lg border border-border p-3\" hx-post=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

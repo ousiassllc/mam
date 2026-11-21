@@ -86,7 +86,7 @@ templ Confirm(c Box) {
 		<h2 class="text-sm font-semibold">実行の確認</h2>
 		<p class="text-sm">全部で <strong>{ strconv.Itoa(c.Items) }</strong> 件。見積り合計は <strong>{ c.Total }</strong> です。結果は元の画像とは別のファイルになり、元の結果へのリンクが残ります。</p>
 		if len(c.Warnings) > 0 {
-			<ul class="list-disc pl-5 text-sm text-warning">
+			<ul class="list-disc pl-6 text-sm text-warning">
 				for _, w := range c.Warnings {
 					<li>{ w }</li>
 				}

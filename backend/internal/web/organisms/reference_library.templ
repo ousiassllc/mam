@@ -128,7 +128,7 @@ templ ReferenceLibraryList(d ReferenceLibraryData) {
 templ referenceUploadForm(d ReferenceLibraryData, oob bool) {
 	<form
 		id="reference-upload-form"
-		class="flex flex-col gap-2 rounded-md border border-border p-3"
+		class="flex flex-col gap-2 rounded-lg border border-border p-3"
 		hx-post={ paths.Project(d.Project.ID, "references") }
 		hx-encoding="multipart/form-data"
 		hx-target="#reference-library"

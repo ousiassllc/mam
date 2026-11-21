@@ -41,7 +41,7 @@ templ formError(msg string) {
 
 templ startForm(s ModelStart, templates []TemplateOption, errMsg string) {
 	<form
-		class="flex flex-col gap-3 rounded-md border border-border p-4"
+		class="flex flex-col gap-3 rounded-lg border border-border p-4"
 		hx-post={ paths.LocalEndpoint(s.Endpoint, "models", "start") }
 		hx-target={ "#" + EditorID }
 		hx-swap="innerHTML"

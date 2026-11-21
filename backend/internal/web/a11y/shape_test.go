@@ -34,11 +34,11 @@ var (
 	numericZ    = regexp.MustCompile(`(?:^|[^\w.-])(?:[a-z0-9\[\]-]+:)*-?z-(?:\d+|\[[^\]]*\]|auto)(?:[^\w-]|$)`)
 	plainMotion = regexp.MustCompile(`(?:\s|class=")(?:[a-z0-9\[\]-]+:)*transition(?:-all|-shadow|-transform)?[ "'}]`)
 	halfSteps   = regexp.MustCompile(`(?:^|[^\w.-])(?:[a-z0-9\[\]-]+:)*-?(?:p|px|py|pt|pb|pl|pr|m|mx|my|mt|mb|ml|mr|gap|gap-x|gap-y|space-x|space-y|inset|inset-x|inset-y|top|right|bottom|left|start|end)-\d+\.5(?:[^\w.-]|$)`)
-	// 20px is not a step of the guide's scale (4 / 8 / 12 / 16 / 24 ...): a card, a dialog and a stack are p-4 / p-6 and gap-4 / gap-6. The list indent
-	// (pl-5 on a list-disc) is the bullet's, not a padding of a part.
-	twentyStep = regexp.MustCompile(`(?:^|[^\w.-])(?:[a-z0-9\[\]-]+:)*(?:p|px|py|pt|pb|gap|gap-x|gap-y|space-x|space-y)-5(?:[^\w.-]|$)`)
-	// The gutter of a screen is 16 on a phone and 24 from md up (S5), not 32.
-	wideGutter = regexp.MustCompile(`(?:^|[^\w.-])md:(?:p|px)-8(?:[^\w.-]|$)`)
+	// 20px is not a step of the guide's scale (4 / 8 / 12 / 16 / 24 ...): a card, a dialog and a stack are p-4 / p-6 and gap-4 / gap-6, and the indent
+	// of a list is pl-4 or pl-6 (the margins and the paddings of one side too).
+	twentyStep = regexp.MustCompile(`(?:^|[^\w.-])(?:[a-z0-9\[\]-]+:)*(?:p|px|py|pt|pb|pl|pr|ml|mr|gap|gap-x|gap-y|space-x|space-y)-5(?:[^\w.-]|$)`)
+	// The gutter of a screen is 16 on a phone and 24 from md up (S5), not 32: neither md:p-8 nor a <main> with a bare p-8.
+	wideGutter = regexp.MustCompile(`(?:^|[^\w.-])md:(?:p|px)-8(?:[^\w.-]|$)|<main\b[^>]*[ "]p-8[ "]`)
 )
 
 // A corner, a shadow, a layer, a transition and a gap that the guide has no name for do not come back: the radii are 4 / 8 / 12 / 16 (rounded-sm to

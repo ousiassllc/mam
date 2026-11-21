@@ -115,7 +115,7 @@ templ ReviewComments(i domain.ReviewInbox) {
 templ ReviewCommentForm(i domain.ReviewInbox, oob bool) {
 	<form
 		id="review-comment-form"
-		class="flex flex-col gap-2 rounded-md border border-border p-3"
+		class="flex flex-col gap-2 rounded-lg border border-border p-3"
 		hx-post={ paths.Review(i.ID, "comments") }
 		hx-target="#review-comments"
 		hx-swap="outerHTML"

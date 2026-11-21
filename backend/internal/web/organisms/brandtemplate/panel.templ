@@ -68,7 +68,7 @@ templ Items(d Data) {
 						<div class="min-w-0 flex-1">
 							<span class="">{ t.Name }</span>
 							<span class="ml-2 text-xs text-mute">{ strconv.Itoa(len(t.Constraints)) } 件の制約</span>
-							<ul class="mt-1 list-disc pl-5 text-xs text-mute">
+							<ul class="mt-1 list-disc pl-6 text-xs text-mute">
 								for _, c := range t.Constraints {
 									<li class="flex flex-wrap items-center gap-2">
 										<span>{ c.Type.Label() }</span> @molecules.ConstraintLevelBadge(c.Level)
@@ -104,7 +104,7 @@ templ Items(d Data) {
 templ brandTemplateForm(d Data, oob bool) {
 	<form
 		id="brand-template-form"
-		class="flex flex-col gap-2 rounded-md border border-border p-3"
+		class="flex flex-col gap-2 rounded-lg border border-border p-3"
 		hx-post={ paths.Project(d.ProjectID, "brand-templates") }
 		hx-target="#brand-template-list"
 		hx-swap="outerHTML"

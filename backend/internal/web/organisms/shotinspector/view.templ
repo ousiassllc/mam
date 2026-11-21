@@ -177,7 +177,7 @@ templ View(d Data) {
 									{{ tone, label := judgeSummary(res) }}
 									@atoms.Badge(tone, label)
 									if len(res.Issues) > 0 {
-										<ul class="list-disc pl-5 text-xs text-ink">
+										<ul class="list-disc pl-6 text-xs text-ink">
 											for _, is := range res.Issues {
 												<li>{ issueLine(is) }</li>
 											}

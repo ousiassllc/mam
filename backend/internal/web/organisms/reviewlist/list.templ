@@ -164,7 +164,7 @@ templ Card(projectID string, it Item) {
 templ reviewCard(projectID string, it Item, oob bool) {
 	<article
 		id={ "review-" + it.Item.Request.ID }
-		class="flex flex-col gap-3 rounded-md border border-border p-3"
+		class="flex flex-col gap-3 rounded-lg border border-border p-3"
 		aria-label={ "レビュー依頼 " + it.Item.Request.CreatedAt.Local().Format("2006-01-02 15:04") }
 		if oob {
 			hx-swap-oob="true"

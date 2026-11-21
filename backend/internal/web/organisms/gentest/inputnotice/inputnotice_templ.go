@@ -129,7 +129,7 @@ func Warnings(list []string, testid string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\"><p class=\"text-warning\">使われない入力画像があります</p><ul class=\"list-disc pl-5 text-warning\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\"><p class=\"text-warning\">使われない入力画像があります</p><ul class=\"list-disc pl-6 text-warning\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

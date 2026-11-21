@@ -14,7 +14,7 @@ const (
 // Layout is the frame of one step: the h1, the progress, the step (its h2 and body, the children) and the buttons that go
 // on. Every page of the guide is a whole page; the links are plain links.
 templ Layout(f Frame) {
-	<main class="mx-auto max-w-4xl p-8">
+	<main class="mx-auto max-w-4xl p-4 md:p-6">
 		<h1 class="mb-1 text-3xl font-semibold">はじめに</h1>
 		<p class="text-sm text-mute">Nefos Video を使い始めるための案内です。途中で「ガイドを閉じる」を押すと、そこでやめてプロジェクト一覧に進めます。</p>
 		@progress(f)

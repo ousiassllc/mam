@@ -69,7 +69,7 @@ templ BrandConstraintItems(d BrandConstraintListData) {
 templ brandConstraintForm(d BrandConstraintListData, oob bool) {
 	<form
 		id="brand-constraint-form"
-		class="flex flex-col gap-3 rounded-md border border-border p-3"
+		class="flex flex-col gap-3 rounded-lg border border-border p-3"
 		hx-post={ paths.Project(d.ProjectID, "brand-constraints") }
 		hx-target="#brand-constraint-list"
 		hx-swap="outerHTML"
