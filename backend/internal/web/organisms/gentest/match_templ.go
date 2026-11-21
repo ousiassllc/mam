@@ -325,14 +325,14 @@ func MatchForm(c MatchCompose) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "><label class=\"flex flex-col gap-1 text-sm\" for=\"gt-match-target\"><span class=\"flex items-baseline justify-between text-ink\"><span>目標の似てる度</span> <output class=\"text-xl tabular-nums text-ink\" for=\"gt-match-target\" data-gt-match-target-output data-testid=\"gt-match-target-output\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "><label class=\"flex flex-col gap-1 text-sm\" for=\"gt-match-target\"><span class=\"flex items-baseline justify-between text-ink\"><span>目標の似てる度</span> <output class=\"text-xl font-mono tabular-nums text-ink\" for=\"gt-match-target\" data-gt-match-target-output data-testid=\"gt-match-target-output\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var17 string
 		templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(c.Target)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/match.templ`, Line: 84, Col: 148}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/match.templ`, Line: 84, Col: 158}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 		if templ_7745c5c3_Err != nil {
@@ -671,7 +671,7 @@ func MatchBox(b MatchBatch) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "<div class=\"flex flex-col\"><span class=\"text-xs text-mute\">いちばん似ている</span> <span class=\"text-3xl tabular-nums text-ink\" data-testid=\"gt-match-best\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 57, "<div class=\"flex flex-col\"><span class=\"text-xs text-mute\">いちばん似ている</span> <span class=\"text-3xl font-mono tabular-nums text-ink\" data-testid=\"gt-match-best\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -81,7 +81,7 @@ templ MatchForm(c MatchCompose) {
 			<label class="flex flex-col gap-1 text-sm" for="gt-match-target">
 				<span class="flex items-baseline justify-between text-ink">
 					<span>目標の似てる度</span>
-					<output class="text-xl tabular-nums text-ink" for="gt-match-target" data-gt-match-target-output data-testid="gt-match-target-output">{ c.Target }%</output>
+					<output class="text-xl font-mono tabular-nums text-ink" for="gt-match-target" data-gt-match-target-output data-testid="gt-match-target-output">{ c.Target }%</output>
 				</span>
 				<input id="gt-match-target" type="range" name={ FieldMatchTarget } min="50" max="100" step="1" value={ c.Target } class="w-full" data-gt-match-target data-testid="gt-match-target"/>
 			</label>
@@ -152,7 +152,7 @@ templ MatchBox(b MatchBatch) {
 			}
 			<div class="flex flex-col">
 				<span class="text-xs text-mute">いちばん似ている</span>
-				<span class="text-3xl tabular-nums text-ink" data-testid="gt-match-best">
+				<span class="text-3xl font-mono tabular-nums text-ink" data-testid="gt-match-best">
 					if b.Best != "" {
 						{ b.Best }
 					} else {

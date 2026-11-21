@@ -76,6 +76,6 @@ templ strengthSlider(name, label string, value *float64, def float64, marker str
 			data-touched?={ value != nil }
 			{ templ.Attributes{marker: ""}... }
 		/>
-		<output class="w-9 text-right tabular-nums" data-gt-strength-out>{ strengthText(strengthOrDefault(value, def)) }</output>
+		<output class="w-10 text-right font-mono tabular-nums" data-gt-strength-out>{ strengthText(strengthOrDefault(value, def)) }</output>
 	</label>
 }
