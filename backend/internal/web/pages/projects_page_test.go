@@ -46,6 +46,6 @@ func TestProjectsPage_ListsTheProjects(t *testing.T) {
 func TestProjectsPage_IsOneWideColumn(t *testing.T) {
 	html := renderProjectsPage(t, domain.Project{ID: "p1", Name: "作品"})
 
-	assert.Contains(t, html, `<main class="mx-auto flex w-full flex-col gap-6 p-4 md:p-8 max-w-5xl">`)
+	assert.Contains(t, html, `<main class="mx-auto flex w-full flex-col gap-6 p-4 md:p-6 max-w-5xl">`)
 	assert.NotContains(t, html, "max-w-3xl", "the heading, the forms and the list are not in a narrower wrapper")
 }

@@ -22,13 +22,13 @@ func TestModelManagerPages_AreWideOnlyWhereThereIsAListOfCards(t *testing.T) {
 			var sb strings.Builder
 			require.NoError(t, pages.ModelManagerCategoryPage("tok", c, mmcat.All(), modelmgr.Data{}).Render(context.Background(), &sb))
 			if wide[c.Slug] {
-				assert.Contains(t, sb.String(), "p-4 md:p-8 max-w-5xl")
+				assert.Contains(t, sb.String(), "p-4 md:p-6 max-w-5xl")
 			} else {
-				assert.Contains(t, sb.String(), "p-4 md:p-8 max-w-4xl")
+				assert.Contains(t, sb.String(), "p-4 md:p-6 max-w-4xl")
 			}
 		})
 	}
 	var sb strings.Builder
 	require.NoError(t, pages.ModelManagerPage("tok", modelmgr.Overview{}).Render(context.Background(), &sb))
-	assert.Contains(t, sb.String(), "p-4 md:p-8 max-w-4xl", "the overview has no list of cards")
+	assert.Contains(t, sb.String(), "p-4 md:p-6 max-w-4xl", "the overview has no list of cards")
 }
