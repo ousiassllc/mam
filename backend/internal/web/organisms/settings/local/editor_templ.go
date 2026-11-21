@@ -287,14 +287,14 @@ func startForm(s ModelStart, templates []TemplateOption, errMsg string) templ.Co
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "）</span></span> <span class=\"text-xs text-mute\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "）</span></span> <span class=\"text-sm text-ink\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var14 string
 				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(t.Description)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/local/editor.templ`, Line: 63, Col: 52}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/local/editor.templ`, Line: 63, Col: 51}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 				if templ_7745c5c3_Err != nil {
@@ -381,17 +381,17 @@ func startForm(s ModelStart, templates []TemplateOption, errMsg string) templ.Co
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</div></fieldset><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"local-workflow-json\"><span>ワークフローの JSON（ComfyUI の「Save (API Format)」で保存したもの。エディタ形式は取り込めません）</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</div></fieldset><div class=\"flex flex-col gap-1\"><label class=\"text-xs text-mute\" for=\"local-workflow-json\">ワークフローの JSON</label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		templ_7745c5c3_Err = atoms.Textarea(atoms.FieldMd, "h-40 w-full font-mono text-sm", templ.Attributes{
-			"id": "local-workflow-json", "name": FieldWorkflowText, "spellcheck": "false",
+			"id": "local-workflow-json", "name": FieldWorkflowText, "spellcheck": "false", "aria-describedby": "local-workflow-json-help",
 		}, s.WorkflowText).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</label><div class=\"flex flex-wrap items-center gap-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<p id=\"local-workflow-json-help\" class=\"text-sm text-ink\">ComfyUI の「Save (API Format)」で保存したものを貼り付けます。エディタ形式は取り込めません。</p></div><div class=\"flex flex-wrap items-center gap-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

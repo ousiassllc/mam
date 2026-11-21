@@ -1,6 +1,7 @@
 package a11y_test
 
 import (
+	"fmt"
 	"html"
 	"maps"
 	"net/http"
@@ -44,6 +45,7 @@ func renderedScreens(t *testing.T) map[string]string {
 	}
 	maps.Copy(pages, posePickerScreens(t, s))
 	maps.Copy(pages, chatScreens(t))
+	maps.Copy(pages, localEditorScreens(t))
 	// The dialogs the model manager opens (the detail of a model, an asset, a runtime, a node): each is a fragment the page links to.
 	detail := regexp.MustCompile(`hx-get="(/model-manager/[^"?]*/detail)"`)
 	for name, page := range maps.Clone(pages) {
@@ -70,6 +72,40 @@ func TestRendered_TextOfSeveralSentencesIsNotMute(t *testing.T) {
 		require.NoError(t, err)
 		for _, found := range mutedSentences(root) {
 			t.Errorf("%s: %s is text-mute: a text to read is text-ink (C6)", name, found)
+		}
+	}
+}
+
+// smallSentences lists the elements of the tags that say their own size in text-xs (12px) and whose own text is two sentences or more: 12px is for a note of one
+// sentence, a badge or a label (T3), and a text of two sentences is read as a text (14px). The text comes from a catalog JSON, a constant or a value, so only the HTML
+// a screen renders shows it.
+func smallSentences(root *muteNode, tags map[string]bool) []string {
+	var found []string
+	var walk func(n *muteNode)
+	walk = func(n *muteNode) {
+		if tags[n.tag] && n.classes["text-xs"] {
+			if count := sentences(n.ownText()); count >= 2 {
+				found = append(found, fmt.Sprintf("<%s>: %d sentences: %q", n.tag, count, short(n.ownText())))
+			}
+		}
+		for _, k := range n.kids {
+			walk(k)
+		}
+	}
+	walk(root)
+	return found
+}
+
+// TestRendered_SpanOfSeveralSentencesIsNotText12 is the T3 check of a text that comes from data: a <span class="text-xs"> that holds a description of two sentences or
+// more (the description of a built-in template, a label with a long hint) is text-sm, or its second sentence is a <p> under the field.
+func TestRendered_SpanOfSeveralSentencesIsNotText12(t *testing.T) {
+	screens := renderedScreens(t)
+	require.Greater(t, len(screens), 40, "the screens and the dialogs they open are rendered")
+	for name, page := range screens {
+		root, err := parseRendered(page)
+		require.NoError(t, err)
+		for _, found := range smallSentences(root, map[string]bool{"span": true}) {
+			t.Errorf("%s: %s is text-xs: two sentences or more are text-sm (T3)", name, found)
 		}
 	}
 }
