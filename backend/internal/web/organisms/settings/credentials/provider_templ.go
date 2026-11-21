@@ -39,7 +39,7 @@ func providerChoice(p *ProviderData) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section class=\"flex flex-col gap-3 rounded-lg border border-border bg-surface p-4\" aria-labelledby=\"api-provider-title\" data-testid=\"api-provider\"><div class=\"flex flex-col gap-1\"><h4 id=\"api-provider-title\" class=\"text-sm font-semibold text-ink\">動画モデルの API プロバイダー</h4><p class=\"text-sm text-mute\">Kling などのクラウド動画モデルを、どこの API で呼ぶかを選びます。公式のほか、OpenRouter・fal.ai・Replicate は使った分だけ払えます（見積りと費用は選んだ先の単価で出ます）。選ぶと、その先のキー欄が下に出ます。</p></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<section class=\"flex flex-col gap-3 rounded-lg border border-border bg-surface p-4\" aria-labelledby=\"api-provider-title\" data-testid=\"api-provider\"><div class=\"flex flex-col gap-1\"><h4 id=\"api-provider-title\" class=\"text-sm font-semibold text-ink\">動画モデルの API プロバイダー</h4><p class=\"text-sm text-ink\">Kling などのクラウド動画モデルを、どこの API で呼ぶかを選びます。公式のほか、OpenRouter・fal.ai・Replicate は使った分だけ払えます（見積りと費用は選んだ先の単価で出ます）。選ぶと、その先のキー欄が下に出ます。</p></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

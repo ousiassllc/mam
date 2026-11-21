@@ -506,7 +506,7 @@ func NodeDetail(n Node) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</p></section><p class=\"text-sm text-mute\">追加ノードは Nefos Video とは別のプログラムで、Nefos Video には含まれません。固定のコミットの GitHub のアーカイブを実行時に取得し、SHA-256 を確かめてから、モデルと同じ導入先（comfyui\\data\\custom_nodes）に展開します。pip は実行せず、同梱の Python 環境にあるパッケージだけで動くノードに限ります。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "</p></section><p class=\"text-sm text-ink\">追加ノードは Nefos Video とは別のプログラムで、Nefos Video には含まれません。固定のコミットの GitHub のアーカイブを実行時に取得し、SHA-256 を確かめてから、モデルと同じ導入先（comfyui\\data\\custom_nodes）に展開します。pip は実行せず、同梱の Python 環境にあるパッケージだけで動くノードに限ります。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
