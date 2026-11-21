@@ -144,6 +144,9 @@
 | `IconPanelClose` | `panel-left-close` | 〃 たたむボタン | #915 |
 | `IconPanelOpen` | `panel-left-open` | 〃 開くボタン | #915 |
 | `IconJobs` | `list-checks` | 左メニュー: ジョブ | #980 |
+| `IconPlay`・`IconPause`・`IconSkipPrev`・`IconSkipNext` | `play`・`pause`・`skip-prev`・`skip-next`（Iconoir） | プレーヤーの操作（`atoms/icon_player.templ`） | #1179 |
+| `IconArrowUp`・`IconArrowDown`・`IconChevronLeft` | `arrow-up`・`arrow-down`・`nav-arrow-left` | 並べ替え・戻る | #1179 |
+| `IconStar` | `star`（輪郭。塗りは呼び出し側が Tailwind の `fill-*` をクラスで付ける。`<svg>` の `fill="none"` は属性なのでクラスが勝つ） | お気に入り | #1179 |
 | （`IconMedia`・`IconReview`・`IconChart`・`IconSettings` などは左メニューでも再利用） | | Scene / Shot・レビュー・制作指標・設定 | #915 |
 
 - 16 個で、#846 の 8 個 + #847 の 8 個。Issue の「10 個前後」より多いのは、#847 が概要のカードにもアイコンを付けるため（§8 の質問 1。付けないなら #847 は `x` と `copy` の 2 個）。`IconClose`（`x`）はモーダルの部品が使うので、どちらの Issue が持つかはモーダルの担当（§8 の質問 7）に従う。表の「#847」は決定のとおり。

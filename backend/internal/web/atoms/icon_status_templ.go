@@ -10,7 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 // Icons of the four states (Iconoir v7.12.2, copied as in icon.templ) and of the theme button. A state is told by an icon, a word and a
 // colour together, never by the colour alone (the UI guide, C4): the toast, the connection notice and the inline alerts draw the icon of their
-// state before the words. iconModel hands every name it does not know to iconStatus.
+// state before the words. iconModel hands every name it does not know to iconStatus, which hands the rest to iconPlayer (icon_player.templ).
 
 // Icons of the states and of the theme button.
 const (
@@ -176,6 +176,11 @@ func iconStatus(name IconName, class string) templ.Component {
 				return nil
 			})
 			templ_7745c5c3_Err = iconSVG(class).Render(templ.WithChildren(ctx, templ_7745c5c3_Var6), templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		default:
+			templ_7745c5c3_Err = iconPlayer(name, class).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

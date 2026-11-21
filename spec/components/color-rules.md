@@ -43,14 +43,16 @@
 | 主アクション（実ボタン） | `bg-accent` / `hover:bg-accent/85` / `text-bone` | `TonePrimary` |
 | リンク・アイコン強調 | `text-accent` / `decoration-mute`（リンクは `underline` を添える） | §1・`Icon` 周り |
 | 選択・現在地 | `border-accent` / `has-[:checked]:border-accent` / `peer-checked:border-accent` / `peer-checked:bg-accent-soft` / `hover:border-accent` / `border-t-accent` | 選ぶカード・ナビ・スピナーの回る弧 |
-| 危険 | 文字 `text-danger`、枠/面 `border-danger/60`・`bg-danger/10`・`bg-danger/20`（Badge）・`hover:bg-danger/10`（`ToneDanger` のホバー） | `ToneDanger`・`BadgeError` |
-| 警告 | 文字 `text-warning`、枠/面 `border-warning/60`・`bg-warning/10`・`bg-warning/20`（Badge） | `BadgeWarn` |
-| 成功 | 文字 `text-success`、枠/面 `border-success/60`・`bg-success/10`・`bg-success/20`（Badge） | `BadgeOK` |
-| 情報・進行中 | 文字 `text-info`、枠/面 `border-info/60`・`bg-info/10`・`bg-info/20`（Badge） | `BadgeInfo` |
+| 危険 | 文字 `text-danger`、枠/面 `border-danger/60`・`border-danger/40`・`bg-danger/10`・`bg-danger/20`（Badge）・`hover:bg-danger/10`（`ToneDanger` のホバー） | `ToneDanger`・`BadgeError` |
+| 警告 | 文字 `text-warning`、枠/面 `border-warning/60`・`border-warning/40`・`bg-warning/10`・`bg-warning/20`（Badge） | `BadgeWarn` |
+| 成功 | 文字 `text-success`、枠/面 `border-success/60`・`border-success/40`・`bg-success/10`・`bg-success/20`（Badge） | `BadgeOK` |
+| 情報・進行中 | 文字 `text-info`、枠/面 `border-info/60`・`border-info/40`・`bg-info/10`・`bg-info/20`（Badge） | `BadgeInfo` |
 
 ### 3.1 意味の色の枠・薄い面
 
-警告・成功・情報・危険は、**枠は `-/60`、薄い面は `/10`、バッジのような塗りは `/20`**（表の読み。新しい色・不透明度は足さない）。注意書きの箱（枠だけ）・トースト・接続の通知・ステータスの帯がこれを使う。
+警告・成功・情報・危険は、**枠は `-/60`、薄い面は `/10`、バッジのような塗りは `/20`**（表の読み。新しい色・不透明度は足さない）。
+
+**ガイド（brand-guide `5d816f8`）の枠は 40%・地は 10%** なので、状態色の枠に `border-{danger,warning,success,info}/40` を許可に足した（2026-11-22）。`/60` と `/20` は呼び出し側を `/40` へ直し終えるまでの移行中として残し、直し終えたら表と `color_allowlist_test.go` から消す。注意書きの箱（枠だけ）・トースト・接続の通知・ステータスの帯がこれを使う。
 
 <!-- color-allowlist:end -->
 
@@ -138,3 +140,4 @@
 | 2.3 | 2026-11-12 | §4.2 を足した（写真の上の重ね塗りの専用トークン `--overlay-deep`・`--overlay-pale`。`tokens.css` に追加。`--danger` の .55 は写真の上で弱いため）。§1 に一文を足した。許可クラスの表（§3・§4）は変えていない | Issue #1093（MP-3） |
 | 2.4 | 2026-11-16 | ライトの `--mute` を `#8b8b8e` から共通ガイドの `#6b6b6e` に改めた（`text-mute` の補足の文字が白の面で 3.40:1 → 5.31:1、bone の面で 3.11:1 → 4.87:1）。ダークは `#8b8b8e` のまま（`tokens.css` の 2 つのダークのブロックに明示した。これまでは `:root` の値を引き継いでいた）。許可クラスの表（§3・§4）は変えていない。`a11y/contrast_test.go` に、ライト・ダークの値と 4.5:1 の検査を足した | Issue #1159 |
 | 2.5 | 2026-11-19 | 本文の製品名の表示を「MAM」から「Nefos Video」に改めた（過去の改訂履歴の文は当時のまま） | #1170: 製品名を MAM から Nefos Video に変更（表示名のみ。識別子・パス・実行ファイル名は変更しない） |
+| 2.6 | 2026-11-22 | §3・§3.1 に状態色の枠 `border-{danger,warning,success,info}/40`（ガイド brand-guide `5d816f8` の枠 40%・地 10%）を足した。`/60`・`/20` は移行中として残す | #1179 #1176: 状態色をガイドに合わせる下準備 |
