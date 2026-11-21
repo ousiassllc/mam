@@ -20,7 +20,7 @@ const (
 
 // Main is the <main> of a screen: centred at most Width wide, the blocks of the screen one under the other with the same gap.
 templ Main(w Width) {
-	<main class={ "mx-auto flex w-full flex-col gap-6 p-4 md:p-8", string(w) }>
+	<main class={ "mx-auto flex w-full flex-col gap-6 p-4 md:p-6", string(w) }>
 		{ children... }
 	</main>
 }

@@ -11,7 +11,7 @@ import (
 // ErrorPage is shown for failed page loads (for example, an unknown Project).
 templ ErrorPage(csrfToken string, status int, message string) {
 	@layout.AppLayout(strconv.Itoa(status), csrfToken, sidenav.At(sidenav.None)) {
-		<main class="mx-auto max-w-xl p-4 text-center md:p-8">
+		<main class="mx-auto max-w-xl p-4 text-center md:p-6">
 			<h1 class="text-3xl font-semibold">{ strconv.Itoa(status) }</h1>
 			<p class="mt-2 text-mute">{ message }</p>
 			<a href={ templ.SafeURL(paths.Projects()) } class="mt-6 inline-block text-accent underline decoration-mute">プロジェクト一覧へ</a>
