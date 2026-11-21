@@ -486,7 +486,7 @@ func HistoryCard(c resulttile.Card) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		var templ_7745c5c3_Var19 = []any{"overflow-hidden rounded-lg border border-border", pick.Glow}
+		var templ_7745c5c3_Var19 = []any{"rounded-lg border border-border", pick.Glow}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var19...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err

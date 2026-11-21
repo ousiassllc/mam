@@ -52,14 +52,14 @@ func Tile(c Card, pick bool) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<article class=\"relative aspect-square overflow-hidden rounded-lg bg-surface\" data-testid=\"gt-card\" data-status=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<article class=\"relative aspect-square rounded-lg bg-surface\" data-testid=\"gt-card\" data-status=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(c.Status)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/resulttile/tile.templ`, Line: 27, Col: 123}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/resulttile/tile.templ`, Line: 27, Col: 107}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -72,13 +72,13 @@ func Tile(c Card, pick bool) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(c.ID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/resulttile/tile.templ`, Line: 27, Col: 144}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/resulttile/tile.templ`, Line: 27, Col: 128}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\"><a class=\"block h-full w-full focus-visible:focus-ring focus-visible:-outline-offset-2\" title=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\"><a class=\"block h-full w-full overflow-hidden rounded-lg focus-visible:focus-ring\" title=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

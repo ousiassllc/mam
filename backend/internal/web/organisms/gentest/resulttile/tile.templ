@@ -24,9 +24,9 @@ func tileOpenAttrs(c Card, pick bool) templ.Attributes {
 // (waiting, running, failed, cancelled), a badge of its state; a heart when it is a favorite. A tap opens the detail in the modal: the model, the state, the
 // time, the whole prompt, the settings, the large picture (a video plays there), and what can be done with it. The title is the prompt, for a hover.
 templ Tile(c Card, pick bool) {
-	<article class="relative aspect-square overflow-hidden rounded-lg bg-surface" data-testid="gt-card" data-status={ c.Status } data-result={ c.ID }>
+	<article class="relative aspect-square rounded-lg bg-surface" data-testid="gt-card" data-status={ c.Status } data-result={ c.ID }>
 		<a
-			class="block h-full w-full focus-visible:focus-ring focus-visible:-outline-offset-2"
+			class="block h-full w-full overflow-hidden rounded-lg focus-visible:focus-ring"
 			title={ c.Prompt }
 			aria-label={ c.Model + "・" + c.StatusText + "・詳細を開く" }
 			aria-haspopup="dialog"

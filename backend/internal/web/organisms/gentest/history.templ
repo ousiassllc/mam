@@ -106,7 +106,7 @@ templ HistoryCard(c resulttile.Card) {
 		if c.FileURL != "" {
 			<input type="checkbox" id={ "gt-pick-" + c.ID } class="peer sr-only" aria-label="書き出しに選ぶ" data-gt-pick-input data-testid="gt-pick"/>
 		}
-		<div class={ "overflow-hidden rounded-lg border border-border", pick.Glow }>
+		<div class={ "rounded-lg border border-border", pick.Glow }>
 			@resulttile.Tile(c, true)
 		</div>
 		if c.FileURL != "" {
