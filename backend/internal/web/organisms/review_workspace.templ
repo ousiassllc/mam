@@ -20,7 +20,7 @@ templ ReviewInboxList(d ReviewInboxData) {
 	<div id="review-inbox" class="flex flex-col gap-6">
 		<section class="flex flex-col gap-2 rounded-lg border border-border p-3">
 			<h2 class="text-sm font-semibold">レビューパッケージを読み込む</h2>
-			<p class="text-sm text-mute">オーナーから受け取った ZIP（Review Package）を選びます。中身は動画 1 本とオーナーのメモだけです。</p>
+			<p class="text-sm text-ink">オーナーから受け取った ZIP（Review Package）を選びます。中身は動画 1 本とオーナーのメモだけです。</p>
 			<form class="flex flex-wrap items-center gap-2" hx-post={ paths.ReviewImport() } hx-encoding="multipart/form-data" hx-target="#review-inbox" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
 				<input id="review-package-file" type="file" name="package" required accept=".zip,application/zip" aria-label="レビューパッケージ" class="text-xs"/>
 				@atoms.Button(atoms.TonePrimary, "読み込む", templ.Attributes{"type": "submit"})
@@ -144,7 +144,7 @@ templ ReviewCommentForm(i domain.ReviewInbox, oob bool) {
 templ ReviewDecision(i domain.ReviewInbox) {
 	<section id="review-decision" class="flex flex-col gap-2 rounded-lg border border-border p-3" aria-label="判定">
 		<h2 class="text-sm font-semibold">判定</h2>
-		<p class="text-sm text-mute">応答ファイルに入るのは、表示名・判定・全体コメント・上のコメントだけです。表示名は自己申告で、確認はされません。</p>
+		<p class="text-sm text-ink">応答ファイルに入るのは、表示名・判定・全体コメント・上のコメントだけです。表示名は自己申告で、確認はされません。</p>
 		<form class="flex flex-col gap-2" hx-put={ paths.Review(i.ID, "decision") } hx-target="#review-decision" hx-swap="outerHTML">
 			<label class="flex flex-col gap-1 text-xs text-mute" for="review-reviewer-name">
 				表示名（1〜50 文字）

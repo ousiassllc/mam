@@ -141,7 +141,7 @@ func View(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</div></details><p class=\"text-sm text-mute\">参照音声は、ローカルの声（GPT-SoVITS）が同じ声を毎回作るための音声です。正本に付けると次の Episode にコピーされ、作成済みの Episode は変わりません。</p><div id=\"series-characters\" class=\"flex flex-col gap-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</div></details><p class=\"text-sm text-ink\">参照音声は、ローカルの声（GPT-SoVITS）が同じ声を毎回作るための音声です。正本に付けると次の Episode にコピーされ、作成済みの Episode は変わりません。</p><div id=\"series-characters\" class=\"flex flex-col gap-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -378,7 +378,7 @@ func seriesVersionLine(d Data, oob bool) templ.Component {
 			templ_7745c5c3_Var14 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<p id=\"series-version\" class=\"text-xs text-mute\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<p id=\"series-version\" class=\"text-xs text-ink\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

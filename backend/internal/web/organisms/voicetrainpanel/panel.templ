@@ -52,7 +52,7 @@ templ Panel(d Data) {
 			<div class="flex flex-col gap-1" data-testid="voice-train-progress">
 				<progress class="h-1.5 w-full" max="100" value={ d.percent() } aria-label={ d.Name + " の学習の進み具合" }></progress>
 				<p class="break-words text-sm text-ink">{ d.percent() }%<span class="text-mute">· { d.Text }</span></p>
-				<p class="text-sm text-mute">学習は Nefos Video を再起動すると途中から再開せず、やり直しになります。中止すると途中までの結果は残りません。</p>
+				<p class="text-sm text-ink">学習は Nefos Video を再起動すると途中から再開せず、やり直しになります。中止すると途中までの結果は残りません。</p>
 			</div>
 			@atoms.Button(atoms.ToneDanger, "学習を中止", templ.Attributes{
 				"type": "button", "hx-post": d.URL + "/cancel", "hx-target": "#" + d.DOMID, "hx-swap": "outerHTML",
@@ -67,11 +67,11 @@ templ Panel(d Data) {
 		}
 		if d.Trained != nil {
 			<p class="text-sm text-ink" data-testid="voice-train-trained">学習済みの声: { trained(d.Trained) }</p>
-			<p class="text-sm text-mute">プロジェクトの書き出し（バンドル）には学習した重みは入りません。取り込んだ先では、参照音声のゼロショットの声になります。</p>
+			<p class="text-sm text-ink">プロジェクトの書き出し（バンドル）には学習した重みは入りません。取り込んだ先では、参照音声のゼロショットの声になります。</p>
 		}
 		<div class="flex flex-col gap-1">
 			<p class="text-sm text-ink">学習に使う音声（{ itoa(len(d.Clips)) } 個・合計 { seconds(d.DataSeconds) }）</p>
-			<p class="text-sm text-mute">{ limits(d.Limits) }。話している人が 1 人だけの、ノイズの少ない録音と、その書き起こしを入れてください。</p>
+			<p class="text-sm text-ink">{ limits(d.Limits) }。話している人が 1 人だけの、ノイズの少ない録音と、その書き起こしを入れてください。</p>
 			if len(d.Clips) > 0 {
 				<ul class="flex flex-col gap-1" data-testid="voice-train-clips">
 					for _, c := range d.Clips {

@@ -95,7 +95,7 @@ func ExposedPicker(d PickerData) templ.Component {
 			}
 		}
 		if len(d.Models) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<p class=\"text-sm text-mute\" data-testid=\"gt-picker-nomodel\">選べるモデルがありません。モデルマネージャーでモデルを導入するか、ワークフローを取り込んでください。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<p class=\"text-sm text-ink\" data-testid=\"gt-picker-nomodel\">選べるモデルがありません。モデルマネージャーでモデルを導入するか、ワークフローを取り込んでください。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

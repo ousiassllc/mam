@@ -73,7 +73,7 @@ templ View(d Data) {
 					@molecules.CharacterCreate(seriesCharacterCreate(d))
 				</div>
 			</details>
-			<p class="text-sm text-mute">参照音声は、ローカルの声（GPT-SoVITS）が同じ声を毎回作るための音声です。正本に付けると次の Episode にコピーされ、作成済みの Episode は変わりません。</p>
+			<p class="text-sm text-ink">参照音声は、ローカルの声（GPT-SoVITS）が同じ声を毎回作るための音声です。正本に付けると次の Episode にコピーされ、作成済みの Episode は変わりません。</p>
 			<div id="series-characters" class="flex flex-col gap-2">
 				for _, c := range d.Canon.Characters {
 					@seriesCharacterBlock(d, c)
@@ -128,7 +128,7 @@ templ View(d Data) {
 templ seriesVersionLine(d Data, oob bool) {
 	<p
 		id="series-version"
-		class="text-xs text-mute"
+		class="text-xs text-ink"
 		if oob {
 			hx-swap-oob="true"
 		}

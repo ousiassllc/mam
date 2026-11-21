@@ -47,7 +47,7 @@ func editorEditStage(d Data, oob bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "><section class=\"flex flex-col gap-2\" aria-label=\"Rough Cut\"><h3 class=\"text-sm font-semibold\">1. Rough Cut</h3><p class=\"text-sm text-mute\">各 Shot の採用 Take（Selected Take）を Scene 順に並べます。作り直すと、手動編集は新しい版に置き換わります。</p><div class=\"flex items-center gap-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "><section class=\"flex flex-col gap-2\" aria-label=\"Rough Cut\"><h3 class=\"text-sm font-semibold\">1. Rough Cut</h3><p class=\"text-sm text-ink\">各 Shot の採用 Take（Selected Take）を Scene 順に並べます。作り直すと、手動編集は新しい版に置き換わります。</p><div class=\"flex items-center gap-3\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

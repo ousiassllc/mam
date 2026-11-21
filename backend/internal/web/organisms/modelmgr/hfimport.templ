@@ -192,7 +192,7 @@ templ hfInstallForm(r HFRepo, f HFFile) {
 		if f.Family == "sdxl" {
 			<p class="text-success" data-testid="mm-hfi-sdxl">SDXL 系の一体型チェックポイントです。導入すると、画像モデル（テキストから画像・参照画像から画像）として単発生成で選べます。</p>
 		} else {
-			<p class="text-mute">このファイルは置くだけです（ワークフローは作りません）。ノード画面や自分で書いたワークフローから使います。</p>
+			<p class="text-ink">このファイルは置くだけです（ワークフローは作りません）。ノード画面や自分で書いたワークフローから使います。</p>
 		}
 		if !r.Consented {
 			<label class="flex items-start gap-2">

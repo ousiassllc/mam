@@ -321,7 +321,7 @@ func BudgetForm(d PolicyFormData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</div><p class=\"text-sm text-mute\">空欄は上限なし。上限を超える見込みの生成は実行前に拒否されます（402）。Shot の上限は Repair / Retake の Max cost per Shot も兼ねます。</p><div class=\"flex items-center gap-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</div><p class=\"text-sm text-ink\">空欄は上限なし。上限を超える見込みの生成は実行前に拒否されます（402）。Shot の上限は Repair / Retake の Max cost per Shot も兼ねます。</p><div class=\"flex items-center gap-3\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

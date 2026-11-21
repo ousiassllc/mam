@@ -213,7 +213,7 @@ func Section(l List) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else if len(l.Rows) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<p class=\"text-sm text-mute\" data-testid=\"jobs-empty\">ジョブはまだありません。モデルの導入や単発生成、Shot の生成を始めると、ここに出ます。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<p class=\"text-sm text-ink\" data-testid=\"jobs-empty\">ジョブはまだありません。モデルの導入や単発生成、Shot の生成を始めると、ここに出ます。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

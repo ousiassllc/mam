@@ -160,7 +160,7 @@ func ModelsBody(text llm.Data, images media.Data) templ.Component {
 			templ_7745c5c3_Var5 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<p class=\"text-sm text-ink\">既定の割り当てのままでも進めます。変えたいときだけ開いてください。たとえば ChatGPT のログインだけで使うときは、テキスト生成のプロバイダーに「chatgpt-subscription」を選ぶと、そのログインが使われます。</p><p class=\"text-sm text-mute\">保存した内容は、設定画面と同じく、テキスト生成は llm.json、画像・動画は models.json に書かれます。</p><details class=\"rounded-lg border border-border px-3 py-2\" data-testid=\"onboarding-llm\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<p class=\"text-sm text-ink\">既定の割り当てのままでも進めます。変えたいときだけ開いてください。たとえば ChatGPT のログインだけで使うときは、テキスト生成のプロバイダーに「chatgpt-subscription」を選ぶと、そのログインが使われます。</p><p class=\"text-sm text-ink\">保存した内容は、設定画面と同じく、テキスト生成は llm.json、画像・動画は models.json に書かれます。</p><details class=\"rounded-lg border border-border px-3 py-2\" data-testid=\"onboarding-llm\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -772,7 +772,7 @@ func MacBody(m Mac) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "\" data-testid=\"onboarding-local-models-link\">ローカル・代替モデル</a> で接続先を追加します。種類は ComfyUI、URL は 2 で確かめた値です。</li></ol><p class=\"text-sm text-mute\">これは今すぐでなくても構いません。ガイドを閉じたあとでも、設定画面から入れられます。</p></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "\" data-testid=\"onboarding-local-models-link\">ローカル・代替モデル</a> で接続先を追加します。種類は ComfyUI、URL は 2 で確かめた値です。</li></ol><p class=\"text-sm text-ink\">これは今すぐでなくても構いません。ガイドを閉じたあとでも、設定画面から入れられます。</p></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -448,7 +448,7 @@ func codexEngine(c Codex) templ.Component {
 			}
 		}
 		if !c.Engine.Supported {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<p class=\"text-sm text-mute\" data-testid=\"chatgpt-codex-unsupported-note\">この環境では取得できません（取得できるのは Windows 版と macOS 版（Apple Silicon）だけです）。自分で入れた codex の実行ファイルのパスを指定してください。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<p class=\"text-sm text-ink\" data-testid=\"chatgpt-codex-unsupported-note\">この環境では取得できません（取得できるのは Windows 版と macOS 版（Apple Silicon）だけです）。自分で入れた codex の実行ファイルのパスを指定してください。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

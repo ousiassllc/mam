@@ -84,7 +84,7 @@ templ DownloadPanel(d Download) {
 						置き場所は { d.Dir } です。ボタンを押したときだけ通信します（自動の更新確認はしません）。
 					</p>
 					if d.Found && !d.Managed {
-						<p class="mb-2 text-sm text-mute" data-testid="ffmpeg-download-found-elsewhere">すでに別の場所の ffmpeg が見つかっています。そちらが優先されるので、ダウンロードは要りません。</p>
+						<p class="mb-2 text-sm text-ink" data-testid="ffmpeg-download-found-elsewhere">すでに別の場所の ffmpeg が見つかっています。そちらが優先されるので、ダウンロードは要りません。</p>
 					}
 					if d.UpdateAvailable {
 						@atoms.SmallButtonFor(atoms.TonePrimary, "新しい版をダウンロード", "ffmpeg のダウンロード", templ.Attributes{"type": "submit", "data-testid": "ffmpeg-download-button"})

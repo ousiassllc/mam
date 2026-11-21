@@ -130,7 +130,7 @@ func ModelNotes(n Notes) templ.Component {
 		}
 		switch {
 		case n.Ticked == 0:
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"text-mute\" data-testid=\"gt-pose-models-none\">モデルを選ぶと、そのモデルがポーズを読めるか・商用で使えるかをここに出します。 ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"text-ink\" data-testid=\"gt-pose-models-none\">モデルを選ぶと、そのモデルがポーズを読めるか・商用で使えるかをここに出します。 ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -942,7 +942,7 @@ func adultSection(w Wire, a AdultOffer) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if a.Installed {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 82, "<p class=\"text-mute\" data-testid=\"gt-pose-adult-installed\">成人向けのポーズを導入済みです。モデル管理の年齢確認をオフにすると、一覧にも出なくなります（ファイルは残ります）。</p><div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 82, "<p class=\"text-ink\" data-testid=\"gt-pose-adult-installed\">成人向けのポーズを導入済みです。モデル管理の年齢確認をオフにすると、一覧にも出なくなります（ファイルは残ります）。</p><div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -1283,7 +1283,7 @@ func ResultsList(w Wire, r Results) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(r.Cards) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 111, "<p class=\"text-sm text-mute\" data-testid=\"gt-pose-empty\">条件に合うポーズがありません。検索の言葉や分類を変えてください。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 111, "<p class=\"text-sm text-ink\" data-testid=\"gt-pose-empty\">条件に合うポーズがありません。検索の言葉や分類を変えてください。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

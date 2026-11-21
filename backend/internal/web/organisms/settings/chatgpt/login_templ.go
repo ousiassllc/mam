@@ -407,7 +407,7 @@ func loginProgress(l *Login) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</code><p class=\"text-sm text-mute\">自分で始めたログインのときだけ続けてください。人やサイトに教えられたコードは入力しないでください。完了すると、この表示は自動で閉じます。</p></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</code><p class=\"text-sm text-ink\">自分で始めたログインのときだけ続けてください。人やサイトに教えられたコードは入力しないでください。完了すると、この表示は自動で閉じます。</p></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

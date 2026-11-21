@@ -21,7 +21,7 @@ templ SpecSection(d Data) {
 	<section id="shot-spec" aria-label="Canonical Shot Spec" class="flex flex-col gap-2">
 		<h3 class="text-sm font-semibold">Canonical Shot Spec</h3>
 		if d.Spec == nil {
-			<p class="text-sm text-mute">Shot Spec はまだありません。生成を始めると AI が作成します。</p>
+			<p class="text-sm text-ink">Shot Spec はまだありません。生成を始めると AI が作成します。</p>
 		} else {
 			<dl class="grid gap-x-4 gap-y-1 text-sm md:grid-cols-[10rem_1fr]">
 				for _, r := range specRows(*d.Spec) {
@@ -46,7 +46,7 @@ templ SpecSection(d Data) {
 				</div>
 			</form>
 		} else {
-			<p class="text-sm text-mute" data-spec-edit-blocked>生成・Repair 中は Shot Spec を編集できません。終わってから開き直してください。</p>
+			<p class="text-sm text-ink" data-spec-edit-blocked>生成・Repair 中は Shot Spec を編集できません。終わってから開き直してください。</p>
 		}
 	</section>
 }
@@ -80,7 +80,7 @@ templ ReferencePackSection(d Data) {
 			</ul>
 		}
 		if !d.Shot.State.CanPinReference() {
-			<p class="text-sm text-mute" data-pin-reference-blocked>生成・Repair・Judge 中は Reference Pack に追加できません。終わってから開き直してください。</p>
+			<p class="text-sm text-ink" data-pin-reference-blocked>生成・Repair・Judge 中は Reference Pack に追加できません。終わってから開き直してください。</p>
 		} else if len(d.Library) > 0 {
 			<form hx-post={ paths.Shot(d.Shot.ID, "references") } hx-target="#reference-pack" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]" class="flex flex-wrap items-center gap-2">
 				<label for="pin-reference" class="text-xs text-mute">ライブラリの参照画像を追加</label>

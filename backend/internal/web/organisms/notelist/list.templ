@@ -148,7 +148,7 @@ templ Groups(d Data) {
 	{{ groups, archived := groupNotes(d.Notes) }}
 	<div id="note-list" class="flex flex-col gap-6" hx-include={ "#note-list input[name='" + OnPageField + "']" }>
 		if len(groups) == 0 {
-			<p class="text-sm text-mute">メモはまだありません。チャットで「覚えておいて」と伝えても追加できます。</p>
+			<p class="text-sm text-ink">メモはまだありません。チャットで「覚えておいて」と伝えても追加できます。</p>
 		}
 		for _, g := range groups {
 			<section aria-label={ g.Title } class="flex flex-col gap-2">

@@ -701,14 +701,14 @@ func ResultBlock(r Result) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "</ul><p class=\"text-xs text-mute\">タップすると詳細（プロンプト・設定・取り込み）が開きます。<a class=\"underline focus-visible:focus-ring\" href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "</ul><p class=\"text-xs text-ink\">タップすると詳細（プロンプト・設定・取り込み）が開きます。<a class=\"underline focus-visible:focus-ring\" href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var38 templ.SafeURL
 		templ_7745c5c3_Var38, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(paths.GenerationTestHistory()))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/chat/proposal.templ`, Line: 143, Col: 215}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/chat/proposal.templ`, Line: 143, Col: 214}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var38))
 		if templ_7745c5c3_Err != nil {

@@ -366,7 +366,7 @@ func Groups(d Data) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(groups) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<p class=\"text-sm text-mute\">メモはまだありません。チャットで「覚えておいて」と伝えても追加できます。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<p class=\"text-sm text-ink\">メモはまだありません。チャットで「覚えておいて」と伝えても追加できます。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

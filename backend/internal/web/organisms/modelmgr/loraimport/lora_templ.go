@@ -700,7 +700,7 @@ func metaFields(s Staged) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if s.FromFile {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "<p class=\"text-sm text-mute\" data-testid=\"mm-lora-base-note\">ファイルの情報から読み取りました。違うときは直してください。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 60, "<p class=\"text-sm text-ink\" data-testid=\"mm-lora-base-note\">ファイルの情報から読み取りました。違うときは直してください。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

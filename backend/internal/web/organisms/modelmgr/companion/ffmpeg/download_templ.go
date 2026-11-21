@@ -491,7 +491,7 @@ func DownloadPanel(d Download) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if d.Found && !d.Managed {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<p class=\"mb-2 text-sm text-mute\" data-testid=\"ffmpeg-download-found-elsewhere\">すでに別の場所の ffmpeg が見つかっています。そちらが優先されるので、ダウンロードは要りません。</p>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<p class=\"mb-2 text-sm text-ink\" data-testid=\"ffmpeg-download-found-elsewhere\">すでに別の場所の ffmpeg が見つかっています。そちらが優先されるので、ダウンロードは要りません。</p>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}

@@ -51,7 +51,7 @@ func SpecSection(d Data) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.Spec == nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<p class=\"text-sm text-mute\">Shot Spec はまだありません。生成を始めると AI が作成します。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<p class=\"text-sm text-ink\">Shot Spec はまだありません。生成を始めると AI が作成します。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -155,7 +155,7 @@ func SpecSection(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<p class=\"text-sm text-mute\" data-spec-edit-blocked>生成・Repair 中は Shot Spec を編集できません。終わってから開き直してください。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<p class=\"text-sm text-ink\" data-spec-edit-blocked>生成・Repair 中は Shot Spec を編集できません。終わってから開き直してください。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -284,7 +284,7 @@ func ReferencePackSection(d Data) templ.Component {
 			}
 		}
 		if !d.Shot.State.CanPinReference() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<p class=\"text-sm text-mute\" data-pin-reference-blocked>生成・Repair・Judge 中は Reference Pack に追加できません。終わってから開き直してください。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<p class=\"text-sm text-ink\" data-pin-reference-blocked>生成・Repair・Judge 中は Reference Pack に追加できません。終わってから開き直してください。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
