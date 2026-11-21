@@ -197,7 +197,7 @@ func startForm(s ModelStart, templates []TemplateOption, errMsg string) templ.Co
 			templ_7745c5c3_Var7 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<form class=\"flex flex-col gap-3 rounded-md border border-border p-4\" hx-post=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<form class=\"flex flex-col gap-3 rounded-lg border border-border p-4\" hx-post=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -385,7 +385,7 @@ func startForm(s ModelStart, templates []TemplateOption, errMsg string) templ.Co
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = atoms.Textarea(atoms.FieldMd, "h-40 w-full font-mono text-xs", templ.Attributes{
+		templ_7745c5c3_Err = atoms.Textarea(atoms.FieldMd, "h-40 w-full font-mono text-sm", templ.Attributes{
 			"id": "local-workflow-json", "name": FieldWorkflowText, "spellcheck": "false",
 		}, s.WorkflowText).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {

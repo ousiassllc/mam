@@ -24,7 +24,7 @@ func fieldClass(size FieldSize, layout string) string {
 	base := "rounded-md border border-mute bg-bone text-ink focus-visible:focus-ring "
 	switch size {
 	case FieldSm:
-		base += "px-2 py-1 text-xs"
+		base += "px-2 py-1 text-sm"
 	case FieldLg:
 		base += "px-3 py-2 text-sm"
 	default:

@@ -35,7 +35,7 @@ templ Box(p Props) {
 			</ul>
 		}
 		<details class="text-xs text-ink" data-testid="error-detail">
-			<summary class="cursor-pointer text-mute">{ apperr.Text(p.Lang, "ui.detail", nil) }</summary>
+			<summary class={ atoms.SummaryClass }>{ apperr.Text(p.Lang, "ui.detail", nil) }</summary>
 			<textarea id={ fieldID(p) } readonly rows="4" class="mt-2 w-full resize-y rounded-md border border-border bg-surface p-2 font-mono text-xs text-ink focus-visible:focus-ring" aria-label={ apperr.Text(p.Lang, "ui.detail", nil) }>{ p.View.Report(p.Lang) }</textarea>
 		</details>
 		<div class="flex items-center gap-2">

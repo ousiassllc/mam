@@ -27,7 +27,7 @@ templ row(r Row) {
 			href={ templ.SafeURL(r.Href) }
 			data-testid="mm-companion-open"
 			aria-label={ r.Name + "を入れる" }
-			class="flex h-full min-h-28 flex-col gap-2 rounded-lg border border-border bg-surface p-4 transition-colors hover:border-mute hover:bg-accent-soft/60 focus-visible:focus-ring motion-reduce:transition-none"
+			class="flex h-full min-h-28 flex-col gap-2 rounded-lg border border-border bg-surface p-4 transition-colors hover:border-mute hover:bg-accent-soft focus-visible:focus-ring motion-reduce:transition-none"
 		>
 			<h3 class="text-base font-semibold text-ink">{ r.Name }</h3>
 			<span class="text-pretty text-sm text-mute">{ r.Purpose }</span>

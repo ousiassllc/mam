@@ -52,12 +52,12 @@ templ Section(d Data) {
 				</div>
 			</form>
 			if len(d.SearchDirs) > 0 {
-				<p class="text-sm text-mute" data-testid="facefusion-search-dirs">フォルダを空にしたときの探し方: { joinDirs(d.SearchDirs) }（この順）。Python は、FaceFusion の公式手順の conda 環境 facefusion、次に PATH の python3 / python を探します。</p>
+				<p class="text-sm text-ink" data-testid="facefusion-search-dirs">フォルダを空にしたときの探し方: { joinDirs(d.SearchDirs) }（この順）。Python は、FaceFusion の公式手順の conda 環境 facefusion、次に PATH の python3 / python を探します。</p>
 			}
 			for _, g := range d.Groups {
 				<section class="flex flex-col gap-1" data-testid={ "facefusion-models-" + g.Title }>
 					<h3 class="text-sm font-semibold text-ink">{ g.Title }</h3>
-					<ul class="flex flex-col gap-1 text-xs">
+					<ul class="flex flex-col gap-1 text-sm">
 						for _, m := range g.Models {
 							<li class="flex flex-wrap items-center gap-2" data-testid={ "facefusion-model-" + m.ID }>
 								<code>{ m.ID }</code>
@@ -74,7 +74,7 @@ templ Section(d Data) {
 					</ul>
 				</section>
 			}
-			<ul class="flex list-disc flex-col gap-1 pl-5 text-xs text-warning" data-testid="facefusion-notes">
+			<ul class="flex list-disc flex-col gap-1 pl-6 text-sm text-warning" data-testid="facefusion-notes">
 				for _, n := range d.Notes {
 					<li>{ n }</li>
 				}
@@ -113,13 +113,13 @@ templ partField(p Part) {
 // own. It is open while FaceFusion is not found. mam fetches nothing: it says so before the steps.
 templ installSteps(d Data) {
 	<details id={ StepsID } class="rounded-lg border border-border px-3 py-2" data-testid="mm-facefusion-steps" open?={ !d.Ready }>
-		<summary class="cursor-pointer text-sm font-semibold text-ink">FaceFusion の入れ方</summary>
+		<summary class={ atoms.SummaryClass }>FaceFusion の入れ方</summary>
 		<div class="mt-2 flex flex-col gap-3 text-sm">
-			<p class="text-mute">
+			<p class="text-ink">
 				Nefos Video は FaceFusion を取得しません（OpenRAIL-AS。条文は利用者が読みます）。公式の手順を、ここに写しています。Windows・Linux・macOS のアクセラレーターの準備は、
 				<a class="underline" href="https://docs.facefusion.io/installation" target="_blank" rel="noopener noreferrer">公式のページ</a>の手順に従ってください。
 			</p>
-			<ol class="flex list-decimal flex-col gap-3 pl-5">
+			<ol class="flex list-decimal flex-col gap-3 pl-6">
 				<li class="flex flex-col gap-1">
 					<span>conda を入れて、端末で使えるようにします。</span>
 					@command("conda init --all")
@@ -150,12 +150,12 @@ templ installSteps(d Data) {
 					@command("conda activate facefusion")
 				</li>
 			</ol>
-			<p class="text-mute">入れたら、上の「もう一度探す」を押してください。Python の欄の例は conda の環境 <code>facefusion</code> の <code>python</code>、フォルダの欄の例は <code>git clone</code> したフォルダです。</p>
+			<p class="text-ink">入れたら、上の「もう一度探す」を押してください。Python の欄の例は conda の環境 <code>facefusion</code> の <code>python</code>、フォルダの欄の例は <code>git clone</code> したフォルダです。</p>
 		</div>
 	</details>
 }
 
 // command is one command to copy: a block of its own that can be reached by the keyboard and read by its name.
 templ command(text string) {
-	<pre class="overflow-x-auto rounded-md bg-surface px-3 py-2 text-xs" tabindex="0" aria-label={ "コマンド: " + text } data-testid="mm-facefusion-cmd"><code>{ text }</code></pre>
+	<pre class="overflow-x-auto rounded-md bg-surface px-3 py-2 text-xs focus-visible:focus-ring" tabindex="0" role="region" aria-label={ "コマンド: " + text } data-testid="mm-facefusion-cmd"><code>{ text }</code></pre>
 }

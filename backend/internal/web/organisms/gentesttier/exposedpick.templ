@@ -50,17 +50,17 @@ templ pickerForm(d PickerData) {
 		if len(d.Choosable()) == 0 {
 			<p class="text-sm text-mute">このグラフに、画面に出せる入力（ほかのノードがつないでいない数値・文字・選択肢）がありません。</p>
 		} else {
-			<div class="overflow-x-auto">
-				<table class="w-full min-w-[40rem] text-left text-xs text-ink" data-testid="gt-picker-table">
+			<div class="overflow-x-auto focus-visible:focus-ring" tabindex="0" role="region" aria-label="画面に出せる入力">
+				<table class="w-full min-w-[40rem] text-left text-sm text-ink" data-testid="gt-picker-table">
 					<caption class="sr-only">画面に出せる入力</caption>
 					<thead>
-						<tr class="text-mute">
-							<th scope="col" class="py-1 pr-2 font-normal">出す</th>
-							<th scope="col" class="py-1 pr-2 font-normal">ノード・入力</th>
-							<th scope="col" class="py-1 pr-2 font-normal">今の値</th>
-							<th scope="col" class="py-1 pr-2 font-normal">型</th>
-							<th scope="col" class="py-1 pr-2 font-normal">画面での名前</th>
-							<th scope="col" class="py-1 font-normal">範囲・選択肢</th>
+						<tr class="text-xs text-mute">
+							<th scope="col" class="py-1 pr-2 font-semibold">出す</th>
+							<th scope="col" class="py-1 pr-2 font-semibold">ノード・入力</th>
+							<th scope="col" class="py-1 pr-2 font-semibold">今の値</th>
+							<th scope="col" class="py-1 pr-2 font-semibold">型</th>
+							<th scope="col" class="py-1 pr-2 font-semibold">画面での名前</th>
+							<th scope="col" class="py-1 font-semibold">範囲・選択肢</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -81,7 +81,7 @@ templ pickerForm(d PickerData) {
 		}
 		if len(d.Others()) > 0 {
 			<details class="text-xs text-mute" data-testid="gt-picker-others">
-				<summary class="cursor-pointer">選べない入力（{ strconv.Itoa(len(d.Others())) } 件）と、その理由</summary>
+				<summary class={ atoms.SummaryClass }>選べない入力（{ strconv.Itoa(len(d.Others())) } 件）と、その理由</summary>
 				<ul class="mt-2 flex flex-col gap-1">
 					for _, r := range d.Others() {
 						<li><span class="text-ink">{ r.Node } { r.Class }.{ r.Input }</span>: { r.Reason }</li>

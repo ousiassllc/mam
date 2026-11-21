@@ -50,7 +50,7 @@ templ CostSummaryPanel(projectID string, s domain.CostSummary) {
 				<tbody>
 					for _, sc := range s.Scenes {
 						<tr class="border-t border-border">
-							<th scope="row" class="py-1 pr-2 text-left font-semibold">{ sceneCostLabel(sc) }</th>
+							<th scope="row" class="py-1 pr-2 text-left font-normal">{ sceneCostLabel(sc) }</th>
 							<td class="py-1 pr-2 text-right font-mono tabular-nums">{ usd(sc.Totals.Estimated) }</td>
 							<td class="py-1 text-right font-mono tabular-nums">{ actualText(sc.Totals) }</td>
 						</tr>

@@ -60,7 +60,7 @@ templ ProposalCard(p Proposal) {
 			<p class="text-sm text-warning" data-testid="gtc-unknown">{ p.Unknown }</p>
 		}
 		if len(p.Warnings) > 0 {
-			<ul class="list-disc pl-5 text-xs text-warning" data-testid="gtc-warnings">
+			<ul class="list-disc pl-6 text-sm text-warning" data-testid="gtc-warnings">
 				for _, w := range p.Warnings {
 					<li>{ w }</li>
 				}

@@ -68,3 +68,44 @@ func TestSources_UseOnlyTheGuidesSizesAndWeights(t *testing.T) {
 func TestTokens_StrongIsSemiBold(t *testing.T) {
 	assert.Regexp(t, `(?s)@layer base \{.*\bstrong \{\s*font-weight: 600;`, readTokens(t))
 }
+
+// A <th scope="row"> and a <legend> are Regular (T2): SemiBold is for headings, buttons and the header row of a table, and the first column
+// of a table is a name in the middle of the body text. The class check above cannot tell which element carries font-semibold.
+func TestSources_RowHeadsAndLegendsAreRegular(t *testing.T) {
+	semibold := regexp.MustCompile(`(?:^|[^\w-])font-semibold(?:[^\w-]|$)`)
+	element := regexp.MustCompile(`<(?:th\b[^>]*scope="row"|legend\b)[^>]*>`)
+	for _, path := range colorSources(t) {
+		if strings.HasSuffix(path, ".css") {
+			continue
+		}
+		src, err := os.ReadFile(path)
+		require.NoError(t, err)
+		for n, line := range strings.Split(string(src), "\n") {
+			for _, tag := range element.FindAllString(line, -1) {
+				if semibold.MatchString(tag) {
+					t.Errorf("%s:%d: %s is SemiBold: a row head and a legend are Regular (T2)", path, n+1, tag)
+				}
+			}
+		}
+	}
+}
+
+// Every <summary> is written with atoms.SummaryClass (O8: the heading of an accordion is SemiBold, text-sm text-ink, with the focus ring): a <summary> with
+// a class of its own is the same part reading two ways.
+func TestSources_EverySummaryTakesTheSummaryClass(t *testing.T) {
+	summary := regexp.MustCompile(`<summary\b[^>]*>`)
+	for _, path := range colorSources(t) {
+		if strings.HasSuffix(path, ".css") {
+			continue
+		}
+		src, err := os.ReadFile(path)
+		require.NoError(t, err)
+		for n, line := range strings.Split(string(src), "\n") {
+			for _, tag := range summary.FindAllString(line, -1) {
+				if !strings.Contains(tag, "atoms.SummaryClass") {
+					t.Errorf("%s:%d: %s: a <summary> takes class={ atoms.SummaryClass } (O8)", path, n+1, tag)
+				}
+			}
+		}
+	}
+}

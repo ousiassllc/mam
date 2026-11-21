@@ -224,7 +224,7 @@ func imageDetail(d Data) templ.Component {
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"flex flex-col gap-3\" data-testid=\"chatgpt-image-detail\"><div class=\"flex flex-col gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2\" data-testid=\"chatgpt-risks\"><p class=\"text-sm text-warning\">オンにする前に、次のリスクを確認してください。</p><ul class=\"list-disc pl-5 text-sm\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"flex flex-col gap-3\" data-testid=\"chatgpt-image-detail\"><div class=\"flex flex-col gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2\" data-testid=\"chatgpt-risks\"><p class=\"text-sm text-warning\">オンにする前に、次のリスクを確認してください。</p><ul class=\"list-disc pl-6 text-sm\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -304,7 +304,7 @@ func imageDetail(d Data) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" hx-swap=\"innerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\" hx-confirm=\"非公式の経路で画像を生成します。予告なく使えなくなることがあり、公式のプレビューでは画像生成はサポート外で、ChatGPT のプランの利用上限を消費します。オンにしますか？\"><input type=\"hidden\" name=\"enabled\" value=\"true\"> <label class=\"flex items-center gap-2 text-sm\"><input type=\"checkbox\" name=\"acknowledge_risks\" value=\"true\" required data-testid=\"chatgpt-image-ack\"> 上のリスクを理解したうえで、オンにします</label><div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" hx-swap=\"innerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\" hx-confirm=\"非公式の経路で画像を生成します。予告なく使えなくなることがあり、公式のプレビューでは画像生成はサポート外で、ChatGPT のプランの利用上限を消費します。オンにしますか？\" data-confirm-tone=\"primary\" data-confirm-label=\"オンにする\"><input type=\"hidden\" name=\"enabled\" value=\"true\"> <label class=\"flex items-center gap-2 text-sm\"><input type=\"checkbox\" name=\"acknowledge_risks\" value=\"true\" required data-testid=\"chatgpt-image-ack\"> 上のリスクを理解したうえで、オンにします</label><div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

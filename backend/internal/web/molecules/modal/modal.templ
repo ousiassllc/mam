@@ -141,7 +141,9 @@ templ Notice(title, reason string) {
 // Confirm is the confirmation modal (the UI guide, O2: a deletion, a removal and an irreversible step are asked in a centred modal, not in the browser's
 // own confirm() box): a <dialog> with the question, "キャンセル" and the danger button that goes on. A request whose element
 // has hx-confirm raises it (static/src/components/confirm); the page shell embeds one as <template id="confirm-template">, which the script clones,
-// fills with the question and opens. Esc, the scrim and "キャンセル" answer no.
+// fills with the question and opens. Esc, the scrim and "キャンセル" answer no. The button that goes on is the danger button; a question that is not
+// about a destruction says so on the asking element (data-confirm-tone="primary", data-confirm-label="コピーする"), and the script keeps the primary
+// button instead, with that word (confirm.ts).
 templ Confirm() {
 	<dialog data-confirm aria-modal="true" aria-labelledby="mam-confirm-title" aria-describedby="mam-confirm-message" class={ confirmClass }>
 		<div class="flex flex-col gap-4 p-6">
@@ -149,7 +151,8 @@ templ Confirm() {
 			<p id="mam-confirm-message" class="whitespace-pre-line break-words text-sm text-ink" data-confirm-message></p>
 			<div class="flex flex-wrap items-center justify-end gap-2 pt-2">
 				@atoms.Button(atoms.ToneNeutral, "キャンセル", templ.Attributes{"type": "button", "data-confirm-cancel": true, "autofocus": true})
-				@atoms.Button(atoms.ToneDanger, "実行する", templ.Attributes{"type": "button", "data-confirm-ok": true})
+				@atoms.Button(atoms.ToneDanger, "実行する", templ.Attributes{"type": "button", "data-confirm-ok": true, "data-confirm-tone": "danger"})
+				@atoms.Button(atoms.TonePrimary, "実行する", templ.Attributes{"type": "button", "data-confirm-ok": true, "data-confirm-tone": "primary", "hidden": true})
 			</div>
 		</div>
 	</dialog>

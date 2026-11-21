@@ -56,13 +56,13 @@ templ ModelsBody(text llm.Data, images media.Data) {
 	</p>
 	<p class="text-sm text-mute">保存した内容は、設定画面と同じく、テキスト生成は llm.json、画像・動画は models.json に書かれます。</p>
 	<details class="rounded-lg border border-border px-3 py-2" data-testid="onboarding-llm">
-		<summary class="cursor-pointer text-sm font-semibold">テキスト生成（LLM）の割り当て</summary>
+		<summary class={ atoms.SummaryClass }>テキスト生成（LLM）の割り当て</summary>
 		<div class="mt-3">
 			@llm.Section(text)
 		</div>
 	</details>
 	<details class="rounded-lg border border-border px-3 py-2" data-testid="onboarding-media">
-		<summary class="cursor-pointer text-sm font-semibold">画像・動画モデルの割り当て</summary>
+		<summary class={ atoms.SummaryClass }>画像・動画モデルの割り当て</summary>
 		<div class="mt-3">
 			@media.Section(images)
 		</div>
@@ -146,7 +146,7 @@ templ installGuide(os OS) {
 			<div class="flex flex-col gap-1" data-testid="onboarding-ffmpeg-macos">
 				<p class="text-sm text-ink">Mac では、ターミナルで Homebrew を使って次のコマンドを実行します（ffprobe も一緒に入ります）。Homebrew が無いときは、先に <a class={ linkClass } href="https://brew.sh" target="_blank" rel="noopener noreferrer">brew.sh</a> の手順で入れてください。</p>
 				<p><code class={ codeClass }>brew install ffmpeg</code></p>
-				<p class="text-sm text-mute">Homebrew の /opt/homebrew/bin（Apple Silicon）と /usr/local/bin（Intel）は自動で探します。ほかの場所に入れたときは、モデルマネージャーの「付随ソフト」でパスを指定してください。</p>
+				<p class="text-sm text-ink">Homebrew の /opt/homebrew/bin（Apple Silicon）と /usr/local/bin（Intel）は自動で探します。ほかの場所に入れたときは、モデルマネージャーの「付随ソフト」でパスを指定してください。</p>
 			</div>
 		default:
 			<div class="flex flex-col gap-1" data-testid="onboarding-ffmpeg-other">

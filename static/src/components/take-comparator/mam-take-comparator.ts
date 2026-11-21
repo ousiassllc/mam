@@ -208,15 +208,19 @@ export class MamTakeComparator extends LitElement {
     const canMerge = this.selection.length >= 2 && !this.busy;
     return html`
       <div class="flex flex-col gap-4">
-        <div class="overflow-x-auto">${renderTakeTable(this.takes, this.limits?.min_axis_score ?? 0, {
-          busy: this.busy,
-          select: (take) =>
-            void this.act(
-              () => post(take.select_url!),
-              () => rowTargets(this, take.id, 'select'),
-            ),
-          reject: (take) => this.reject(take),
-        })}</div>
+        <div class="overflow-x-auto focus-visible:focus-ring" tabindex="0" role="region" aria-label="Take の比較表">${renderTakeTable(
+          this.takes,
+          this.limits?.min_axis_score ?? 0,
+          {
+            busy: this.busy,
+            select: (take) =>
+              void this.act(
+                () => post(take.select_url!),
+                () => rowTargets(this, take.id, 'select'),
+              ),
+            reject: (take) => this.reject(take),
+          },
+        )}</div>
         ${
           this.partialUrl
             ? html`<section class="flex flex-col gap-3" aria-label="区間指定">

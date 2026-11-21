@@ -5,7 +5,8 @@ import { BADGE } from '../lib/badge';
 import { STATUS_CLASS } from './take-status';
 
 /** A button of a row: the text of `atoms.LinkButton` (W3), with the focus ring. */
-const ROW_BUTTON = 'text-xs text-mute underline hover:text-ink focus-visible:focus-ring';
+const ROW_BUTTON =
+  'text-sm text-mute underline hover:text-ink focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-40';
 /** A number of the table (W7): right-aligned, digits of one width. */
 const NUMBER = 'px-2 py-2 text-right font-mono tabular-nums';
 
@@ -37,7 +38,7 @@ export function renderTakeTable(takes: TakeScore[], minAxis: number, actions: Ta
 
 function renderRow(t: TakeScore, minAxis: number, actions: TakeActions) {
   return html`<tr class="border-t border-border ${t.status === 'rejected' ? 'text-mute' : ''}" data-take=${t.id}>
-    <th scope="row" class="px-2 py-2 font-semibold">
+    <th scope="row" class="px-2 py-2 font-normal">
       Take ${t.label}${t.adopted ? html` <span class="${BADGE} ${STATUS_CLASS.selected} font-normal" data-adopted>使用中</span>` : nothing}
       <div class="text-xs font-normal text-mute">${describeTake(t)}</div>
     </th>

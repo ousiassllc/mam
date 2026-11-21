@@ -23,7 +23,7 @@ templ Box(f Form) {
 				if f.Error != "" {
 					<p class="text-sm text-danger" role="alert" data-testid="gt-faceswap-error">{ f.Error }</p>
 				}
-				<ul class="flex list-disc flex-col gap-1 pl-5 text-xs text-warning" data-testid="gt-faceswap-notes">
+				<ul class="flex list-disc flex-col gap-1 pl-6 text-sm text-warning" data-testid="gt-faceswap-notes">
 					for _, n := range f.Notes {
 						<li>{ n }</li>
 					}

@@ -39,7 +39,7 @@ templ section(f Form, o Op) {
 	<section id={ o.SectionID() } class="flex flex-col gap-2 border-t border-border pt-3" data-testid={ "gt-venh-" + o.Name }>
 		<h4 class="text-sm font-semibold">{ o.Title() }</h4>
 		if !o.HasLocal {
-			<p class="text-sm text-mute" data-testid={ "gt-venh-none-" + o.Name }>
+			<p class="text-sm text-ink" data-testid={ "gt-venh-none-" + o.Name }>
 				この PC で使うモデルが入っていません。
 				<a class="underline" href={ templ.SafeURL(f.ModelsURL) }>モデルマネージャー</a>でモデルを入れてください。
 			</p>
@@ -112,7 +112,7 @@ templ sizeFields(o Op, topaz bool) {
 				@atoms.Input(atoms.FieldMd, "w-28", templ.Attributes{"type": "number", "name": FieldFPS, "min": "15", "max": "240", "step": "any", "inputmode": "decimal"})
 			</label>
 		} else {
-			<p class="max-w-xs text-sm text-mute" data-testid="gt-venh-fps-note">
+			<p class="max-w-xs text-sm text-ink" data-testid="gt-venh-fps-note">
 				この PC のモデルは、元の fps の 2 倍か 4 倍（整数倍）にしかできず、出力は 120 fps までです。fps を自分で決めたいときや 120 fps を超えるときは Topaz のモデルを使ってください。
 			</p>
 		}

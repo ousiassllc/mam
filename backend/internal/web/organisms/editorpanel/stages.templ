@@ -26,6 +26,7 @@ templ editorEditStage(d Data, oob bool) {
 						"type": "button", "hx-post": paths.Project(d.Project.ID, "edit", "rough-cut"), "hx-vals": branchVals(d.BranchID),
 						"hx-disabled-elt": "this",
 						"hx-confirm":      "Rough Cut を作り直します。手動の編集は新しい版に置き換わります。よろしいですか？", "disabled": !d.CanRoughCut(),
+						"data-confirm-tone": "primary", "data-confirm-label": "作り直す",
 					})
 					<span class="text-xs text-mute">{ fmt.Sprintf("%d クリップ / %.1f 秒", d.Clips, d.Duration) }</span>
 				}
@@ -91,7 +92,7 @@ templ editorAudioStage(d Data, oob bool) {
 			</ul>
 		}
 		if d.Audio != nil && len(d.Audio.Timeline.Skipped) > 0 {
-			<ul class="flex flex-col gap-1 text-xs text-warning" data-audio-skipped>
+			<ul class="flex flex-col gap-1 text-sm text-warning" data-audio-skipped>
 				for _, s := range d.Audio.Timeline.Skipped {
 					<li>{ audioSkippedText(s) }</li>
 				}

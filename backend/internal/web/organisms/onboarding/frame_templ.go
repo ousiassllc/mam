@@ -42,7 +42,7 @@ func Layout(f Frame) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<main class=\"mx-auto max-w-4xl p-8\"><h1 class=\"mb-1 text-3xl font-semibold\">はじめに</h1><p class=\"text-sm text-mute\">Nefos Video を使い始めるための案内です。途中で「ガイドを閉じる」を押すと、そこでやめてプロジェクト一覧に進めます。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<main class=\"mx-auto max-w-4xl p-4 md:p-6\"><h1 class=\"mb-1 text-3xl font-semibold\">はじめに</h1><p class=\"text-sm text-mute\">Nefos Video を使い始めるための案内です。途中で「ガイドを閉じる」を押すと、そこでやめてプロジェクト一覧に進めます。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -221,7 +221,7 @@ func progress(f Frame) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" class=\"inline-block rounded-md border border-transparent px-2 py-1 text-ink hover:bg-accent-soft/60 hover:text-ink focus-visible:focus-ring\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" class=\"inline-block rounded-md border border-transparent px-2 py-1 text-ink hover:bg-accent-soft hover:text-ink focus-visible:focus-ring\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

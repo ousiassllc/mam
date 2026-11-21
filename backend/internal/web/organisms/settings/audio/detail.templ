@@ -84,7 +84,7 @@ templ localState(p Provider) {
 		if len(p.Local.Cautions) > 0 {
 			<div class="flex flex-col gap-1 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning" role="note" data-testid={ "audio-cautions-" + p.Field }>
 				<p class="">使うときの制限（モデルカードより）</p>
-				<ul class="list-disc pl-5">
+				<ul class="list-disc pl-6">
 					for _, c := range p.Local.Cautions {
 						<li class="break-words">{ c }</li>
 					}

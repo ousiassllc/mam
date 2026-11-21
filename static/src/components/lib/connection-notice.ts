@@ -1,5 +1,6 @@
 /** The notice shown when a WebSocket has given up reconnecting: what stopped updating and how to get it back. */
 
+import { whenFaded } from './fade';
 import { createLogger } from './logger';
 import { CONNECTION_LOST_MESSAGE, type Connection } from './ws';
 
@@ -10,7 +11,7 @@ const log = createLogger('connection-notice');
 export interface ConnectionNotice {
   /** Shows the notice; "再接続" calls `retry`. */
   show(retry: () => void): void;
-  /** Removes it (the connection is back). */
+  /** Takes it away with the fade-out (the connection is back). */
   hide(): void;
 }
 
@@ -51,8 +52,12 @@ export function createConnectionNotice(what: string): ConnectionNotice {
       region().append(notice);
     },
     hide() {
-      notice?.remove();
+      const leaving = notice;
       notice = null;
+      if (!leaving) return;
+      // It fades out (data-leaving, motion.css; M5) and is removed when the fade is over, like an alert that is closed.
+      leaving.setAttribute('data-leaving', '');
+      void whenFaded(leaving).then(() => leaving.remove());
     },
   };
 }

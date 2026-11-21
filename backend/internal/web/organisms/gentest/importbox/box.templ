@@ -35,7 +35,7 @@ type Form struct {
 templ Box(f Form) {
 	<form
 		id={ ID }
-		class="flex flex-col gap-3 rounded-md border border-border p-4"
+		class="flex flex-col gap-3 rounded-lg border border-border p-4"
 		hx-post={ paths.GenerationTestPart("results", f.ResultID, "import") }
 		hx-target={ "#" + ID }
 		hx-swap="outerHTML"

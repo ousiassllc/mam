@@ -2,6 +2,7 @@ package modelpick_test
 
 import (
 	"context"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -23,11 +24,13 @@ func TestFieldInputsWithoutANameAreNotPostedAndADisabledFieldIsClosed(t *testing
 	html := fieldHTML(t, f)
 	assert.Contains(t, html, `<input type="hidden" name="lora" value="a" data-mp-from="value">`)
 	assert.Contains(t, html, `<input type="hidden" value="true" data-mp-from="known">`, "no name attribute at all")
-	assert.NotContains(t, html, "disabled")
+	assert.NotRegexp(t, `\sdisabled[\s>=]`, html, "the disabled: classes of the button are not the attribute")
 
 	f.Disabled = true
 	html = fieldHTML(t, f)
-	assert.Equal(t, 3, strings.Count(html, "disabled"), "both inputs and the button")
+	assert.Len(t, regexp.MustCompile(`\sdisabled[\s>=]`).FindAllString(html, -1), 3, "both inputs and the button")
+	assert.Contains(t, html, "disabled:opacity-40", "it looks closed (O7)")
+	assert.Contains(t, html, "disabled:cursor-not-allowed", "and it is not the pointer over it")
 }
 
 // The button that opens the picker is pressed like any button: it starts the ripple (the UI guide, M4).

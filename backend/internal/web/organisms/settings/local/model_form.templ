@@ -9,7 +9,7 @@ import (
 // when defining: a model keeps its name for good (it is in the identifiers of Takes and the Cost Ledger).
 templ ModelFormView(f ModelForm, errMsg string) {
 	<form
-		class="flex flex-col gap-4 rounded-md border border-border p-4"
+		class="flex flex-col gap-4 rounded-lg border border-border p-4"
 		if f.Edit {
 			hx-put={ paths.LocalEndpoint(f.Endpoint, "models", f.Name) }
 		} else {

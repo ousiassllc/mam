@@ -139,7 +139,7 @@ func Box(f Form) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if !f.HasModel {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<p class=\"text-sm text-mute\" data-testid=\"gt-upscale-none\">アップスケール用のモデルが入っていません。 <a class=\"underline\" href=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<p class=\"text-sm text-ink\" data-testid=\"gt-upscale-none\">アップスケール用のモデルが入っていません。 <a class=\"underline\" href=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}

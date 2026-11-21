@@ -1,5 +1,5 @@
 /*
- * The design tokens of the Ousiass UI guide (brand-guide 622ea73; the rules are spec/components/color-rules.md). This is the one
+ * The design tokens of the Ousiass UI guide (brand-guide 5d816f8; the rules are spec/components/color-rules.md). This is the one
  * place where a colour is written as a value: every other source names a token (bg-surface, text-mute, border-border, ...), and
  * a Tailwind palette class or a raw colour anywhere else fails backend/internal/web/a11y/color_allowlist_test.go.
  *
@@ -176,6 +176,14 @@
   /* Emphasis inside a text (T2): Tailwind's preflight sets strong to `bolder` (700); the guide has only Regular and SemiBold. */
   strong {
     font-weight: 600;
+  }
+
+  /* The focus ring of a control that says nothing about it (C3): the same 2px solid --focus, offset 2 as the `focus-ring` utility below, not the
+     browser's own ring. :where() adds no specificity and the utilities layer wins over this one, so `focus-visible:outline-none` and
+     `focus-visible:focus-ring` on a control still decide its ring. */
+  :where(a, button, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
   }
 }
 

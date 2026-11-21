@@ -54,4 +54,42 @@ describe('scrim', () => {
     await aTimeout(20);
     expect(dialog.open).to.equal(true);
   });
+
+  describe('what is not input to a form that the dialog saves', () => {
+    const typeInto = (selector: string) => {
+      (dialog.querySelector(selector) as HTMLElement).dispatchEvent(new Event('input', { bubbles: true }));
+      const box = dialog.getBoundingClientRect();
+      clickAt(box.left - 5, box.top - 5);
+    };
+
+    it('closes at once after a search box, a field of no form and a GET form (the filters of a picker)', () => {
+      for (const field of [
+        '<input type="search" name="q">',
+        '<input name="q" form="model-pick-no-form">',
+        '<input type="checkbox" name="origins" form="model-pick-no-form">',
+      ]) {
+        dialog.close();
+        dialog.innerHTML = `<form>${field}</form><form hx-get="/list"><input name="x"></form>`;
+        dialog.showModal();
+        typeInto('input');
+        expect(dialog.open, field).to.equal(false);
+      }
+      dialog.showModal();
+      dialog.innerHTML = '<form hx-get="/list"><input name="x"></form>';
+      typeInto('input');
+      expect(dialog.open).to.equal(false);
+    });
+
+    it('closes at once for a picker that sits in the form of the page (the form is outside the dialog)', () => {
+      dialog.close();
+      host.innerHTML = `<template id="confirm-template">${CONFIRM}</template>
+        <form><dialog id="d2" style="padding:20px"><select name="project"><option>a</option></select></dialog></form>`;
+      const picker = host.querySelector('#d2') as HTMLDialogElement;
+      picker.showModal();
+      (picker.querySelector('select') as HTMLElement).dispatchEvent(new Event('input', { bubbles: true }));
+      const box = picker.getBoundingClientRect();
+      picker.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: box.left - 5, clientY: box.top - 5 }));
+      expect(picker.open).to.equal(false);
+    });
+  });
 });

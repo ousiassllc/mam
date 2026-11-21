@@ -273,7 +273,7 @@ templ ShotCard(d ShotCardData) {
 				}
 			</ul>
 			if len(d.Takes) > 1 {
-				<a href={ templ.SafeURL(takeComparisonURL(d.Shot.ID)) } class="mt-1 inline-block text-xs text-mute underline hover:text-ink">Take 比較</a>
+				<a href={ templ.SafeURL(takeComparisonURL(d.Shot.ID)) } class="mt-1 inline-block text-sm text-mute underline hover:text-ink">Take 比較</a>
 			}
 		} else if d.Selected {
 			<p class="mt-2 text-sm text-mute">Take はまだありません。</p>

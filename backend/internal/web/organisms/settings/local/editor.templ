@@ -41,7 +41,7 @@ templ formError(msg string) {
 
 templ startForm(s ModelStart, templates []TemplateOption, errMsg string) {
 	<form
-		class="flex flex-col gap-3 rounded-md border border-border p-4"
+		class="flex flex-col gap-3 rounded-lg border border-border p-4"
 		hx-post={ paths.LocalEndpoint(s.Endpoint, "models", "start") }
 		hx-target={ "#" + EditorID }
 		hx-swap="innerHTML"
@@ -80,7 +80,7 @@ templ startForm(s ModelStart, templates []TemplateOption, errMsg string) {
 		</fieldset>
 		<label class="flex flex-col gap-1 text-xs text-mute" for="local-workflow-json">
 			<span>ワークフローの JSON（ComfyUI の「Save (API Format)」で保存したもの。エディタ形式は取り込めません）</span>
-			@atoms.Textarea(atoms.FieldMd, "h-40 w-full font-mono text-xs", templ.Attributes{
+			@atoms.Textarea(atoms.FieldMd, "h-40 w-full font-mono text-sm", templ.Attributes{
 				"id": "local-workflow-json", "name": FieldWorkflowText, "spellcheck": "false",
 			}, s.WorkflowText)
 		</label>

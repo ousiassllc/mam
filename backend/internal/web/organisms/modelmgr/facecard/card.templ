@@ -33,27 +33,27 @@ templ Section(c Card) {
 			}
 		</p>
 		if c.OffReason == "runtime_unavailable" {
-			<div class="flex flex-col gap-1 rounded-lg border border-warning/40 bg-warning/10 p-2 text-xs text-warning" role="note" data-testid="mm-face-models-runtime">
+			<div class="flex flex-col gap-1 rounded-lg border border-warning/40 bg-warning/10 p-2 text-sm text-warning" role="note" data-testid="mm-face-models-runtime">
 				<p class="">モデルは入っていますが、顔の類似度はオフです（ONNX Runtime のライブラリが使えません）</p>
 				<p>{ c.OffCause }</p>
 				<p>{ c.OffFix }</p>
 			</div>
 		}
 		<p class="break-all text-sm text-mute" data-testid="mm-face-models-dir">導入先: <code>{ c.ModelDir }</code>（起動オプション --face-model-dir で変えられます）</p>
-		<ul class="flex flex-col gap-2 text-xs" data-testid="mm-face-models-files">
+		<ul class="flex flex-col gap-2 text-sm" data-testid="mm-face-models-files">
 			for _, f := range c.Files {
 				<li class="flex flex-col gap-1 rounded-lg border border-border p-2" data-testid="mm-face-models-file" data-file={ f.Name } data-state={ f.State }>
 					<p class="flex flex-wrap items-center gap-2 text-ink">
 						<span class="">{ f.Title }</span>
 						<code class="text-mute">{ f.Name }</code>
-						<span class="text-mute">・{ f.Size }・{ f.StateText }</span>
+						<span class="text-mute">・<span class="font-mono tabular-nums">{ f.Size }</span>・{ f.StateText }</span>
 					</p>
 					<p class="text-mute">{ f.Description }</p>
 					<p class="break-all text-mute">取得元: <a class="underline" href={ templ.SafeURL(f.SourceURL) } target="_blank" rel="noopener noreferrer">{ f.SourceName }</a></p>
 				</li>
 			}
 		</ul>
-		<ul class="flex flex-col gap-2 text-xs" data-testid="mm-face-models-licenses">
+		<ul class="flex flex-col gap-2 text-sm" data-testid="mm-face-models-licenses">
 			for _, l := range c.Licenses {
 				<li class="flex flex-col gap-1 rounded-lg border border-border p-2">
 					<p class="flex flex-wrap items-center gap-2 text-ink">
@@ -70,7 +70,7 @@ templ Section(c Card) {
 			}
 		</ul>
 		if c.State != StateInstalled {
-			<label class="flex items-start gap-2 text-xs text-ink">
+			<label class="flex items-start gap-2 text-sm text-ink">
 				@atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": FieldAccept, "value": "on", acceptClass: "", "data-testid": "mm-face-models-accept"})
 				<span>上のライセンスと取得元を確認しました。ダウンロードに同意します。</span>
 			</label>

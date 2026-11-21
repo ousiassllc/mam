@@ -40,7 +40,7 @@ templ MatchForm(c MatchCompose) {
 				<input id="gt-match-file" type="file" name={ FieldUpload } accept="image/png,image/jpeg,image/webp" class="peer sr-only" data-gt-match-file data-testid="gt-match-file"/>
 				<label
 					for="gt-match-file"
-					class="flex min-h-48 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border p-4 text-center text-sm text-ink transition-colors hover:border-mute hover:bg-accent-soft/60 peer-focus-visible:focus-ring motion-reduce:transition-none"
+					class="flex min-h-48 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border p-4 text-center text-sm text-ink transition-colors hover:border-mute hover:bg-accent-soft peer-focus-visible:focus-ring motion-reduce:transition-none"
 					data-gt-match-zone
 				>
 					<img
@@ -181,6 +181,8 @@ templ MatchBox(b MatchBatch) {
 					hx-sync="this:drop"
 					hx-disabled-elt="find button[type=submit]"
 					hx-confirm="まだ始めていない回を取り消しますか？（作っている途中の絵は終わるまで待ちます）"
+					data-confirm-tone="primary"
+					data-confirm-label="取り消す"
 				>
 					@atoms.SmallButtonFor(atoms.ToneDanger, "取り消す", "プロンプトマッチ", templ.Attributes{"type": "submit", "data-testid": "gt-match-cancel"})
 				</form>

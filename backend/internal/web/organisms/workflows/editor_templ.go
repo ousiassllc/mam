@@ -66,7 +66,7 @@ func editor(e Editor) templ.Component {
 			templ_7745c5c3_Var2 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<form class=\"flex flex-col gap-4 rounded-md border border-border p-4\" hx-put=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<form class=\"flex flex-col gap-4 rounded-lg border border-border p-4\" hx-put=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -118,14 +118,14 @@ func editor(e Editor) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "）</h3><p class=\"text-sm text-mute\">グラフか入力の割り当てを変えて保存すると、版が上がります（v")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "）</h3><p class=\"text-sm text-ink\">グラフか入力の割り当てを変えて保存すると、版が上がります（v")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(itoa(e.Version + 1))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/editor.templ`, Line: 27, Col: 140}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/workflows/editor.templ`, Line: 27, Col: 139}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -215,7 +215,7 @@ func editor(e Editor) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</div><fieldset class=\"flex flex-col gap-2\" data-testid=\"workflow-assignments\"><legend class=\"text-sm\">入力の割り当て</legend><p class=\"text-sm text-mute\">Nefos Video の値を、ワークフローのどのノードのどの入力に入れるかを選びます（ノードの一覧は、このワークフローの API 形式のグラフから作っています）。他のノードがつないでいる入力は選べません。Prompt は必須です。</p><table class=\"w-full text-sm\"><tbody>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "</div><fieldset class=\"flex flex-col gap-2\" data-testid=\"workflow-assignments\"><legend class=\"text-sm\">入力の割り当て</legend><p class=\"text-sm text-ink\">Nefos Video の値を、ワークフローのどのノードのどの入力に入れるかを選びます（ノードの一覧は、このワークフローの API 形式のグラフから作っています）。他のノードがつないでいる入力は選べません。Prompt は必須です。</p><table class=\"w-full text-sm\"><tbody>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

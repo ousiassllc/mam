@@ -69,3 +69,12 @@ func TestStoragePanel_ArchiveButtonsAreNamedAfterTheirTake(t *testing.T) {
 		assert.True(t, strings.HasPrefix(n, "アーカイブ: Scene 1 · Shot "), n)
 	}
 }
+
+// A chat thread that scrolls is reached by the keyboard even when it holds nothing but text (B6): it takes the focus (tabindex="0"), shows it, and
+// has the name it is read by.
+func TestChatThread_ScrollsAndTakesTheKeyboardFocus(t *testing.T) {
+	html := render(t, organisms.ChatThread(nil))
+
+	assert.Regexp(t, `<div id="chat-thread"[^>]*\boverflow-y-auto\b[^>]*\bfocus-visible:focus-ring\b[^>]* tabindex="0"`, html)
+	assert.Contains(t, html, `aria-label="チャットスレッド"`)
+}

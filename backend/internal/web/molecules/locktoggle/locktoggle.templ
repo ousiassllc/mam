@@ -67,7 +67,7 @@ templ Toggle(d Data) {
 		<span class="w-40 shrink-0 text-ink">{ d.label() }</span>
 		<span role="group" aria-label={ d.label() + " の制御" } class="inline-flex overflow-hidden rounded-md border border-border">
 			for _, m := range d.modes() {
-				<button type="submit" name="mode" value={ string(m) } aria-pressed={ boolText(d.Mode == m) } class={ lockModeClass(d.Mode == m) }>{ m.Label() }</button>
+				<button type="submit" name="mode" value={ string(m) } aria-pressed={ boolText(d.Mode == m) } class={ lockModeClass(d.Mode == m) } data-ripple>{ m.Label() }</button>
 			}
 		</span>
 		if d.Model.ID != "" {

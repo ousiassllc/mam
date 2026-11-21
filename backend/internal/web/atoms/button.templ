@@ -31,6 +31,12 @@ func buttonClass(tone ButtonTone, small bool) string {
 	return base + "border border-border text-ink hover:bg-accent-soft"
 }
 
+// ButtonClass and SmallButtonClass are the look of a Button and a SmallButton, for an element that is not a <button> but must read as one (a <label> that
+// opens a file chooser): the same SemiBold, the same height, the same frame (O7).
+func ButtonClass(tone ButtonTone) string { return buttonClass(tone, false) }
+
+func SmallButtonClass(tone ButtonTone) string { return buttonClass(tone, true) }
+
 // Button is a button element. attrs carry the HTMX attributes, type, name and value.
 templ Button(tone ButtonTone, label string, attrs templ.Attributes) {
 	<button class={ buttonClass(tone, false) } data-ripple { attrs... }>{ label }</button>
@@ -51,9 +57,9 @@ templ ButtonLink(tone ButtonTone, label string, href templ.SafeURL, attrs templ.
 // colours it as an accent; any other tone is the muted default.
 templ LinkButton(tone ButtonTone, label string, attrs templ.Attributes) {
 	if tone == TonePrimary {
-		<button class="text-xs text-accent underline decoration-mute" { attrs... }>{ label }</button>
+		<button class="text-sm text-accent underline decoration-mute disabled:cursor-not-allowed disabled:opacity-40" { attrs... }>{ label }</button>
 	} else {
-		<button class="text-xs text-mute underline hover:text-ink" { attrs... }>{ label }</button>
+		<button class="text-sm text-mute underline hover:text-ink disabled:cursor-not-allowed disabled:opacity-40" { attrs... }>{ label }</button>
 	}
 }
 
@@ -79,7 +85,7 @@ templ SmallButtonFor(tone ButtonTone, label, subject string, attrs templ.Attribu
 
 // LinkButtonFor is the LinkButton of one row of a list, named after the row like SmallButtonFor.
 templ LinkButtonFor(label, subject string, attrs templ.Attributes) {
-	<button class="text-xs text-mute underline hover:text-ink" aria-label={ RowLabel(label, subject) } { attrs... }>{ label }</button>
+	<button class="text-sm text-mute underline hover:text-ink disabled:cursor-not-allowed disabled:opacity-40" aria-label={ RowLabel(label, subject) } { attrs... }>{ label }</button>
 }
 
 // SmallButtonLinkFor is a link that looks like the SmallButtonFor of one row of a list (the page the row opens): its

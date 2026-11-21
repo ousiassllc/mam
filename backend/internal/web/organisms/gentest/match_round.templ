@@ -39,10 +39,10 @@ templ matchRound(r MatchRound, target int) {
 				}
 				<span class="ml-auto flex items-center gap-3">
 					if r.UseURL != "" {
-						<a class="text-xs text-accent underline decoration-mute" href={ templ.SafeURL(r.UseURL) } aria-label={ "第 " + itoa(r.N) + " 回のプロンプトで比べる" } data-testid="gt-match-round-use">プロンプトで比べる</a>
+						<a class="text-sm text-accent underline decoration-mute" href={ templ.SafeURL(r.UseURL) } aria-label={ "第 " + itoa(r.N) + " 回のプロンプトで比べる" } data-testid="gt-match-round-use">プロンプトで比べる</a>
 					}
 					if r.DetailURL != "" {
-						<a class="text-xs text-accent underline decoration-mute" href={ templ.SafeURL(r.DetailURL) } aria-label={ "第 " + itoa(r.N) + " 回の詳細" }>詳細</a>
+						<a class="text-sm text-accent underline decoration-mute" href={ templ.SafeURL(r.DetailURL) } aria-label={ "第 " + itoa(r.N) + " 回の詳細" }>詳細</a>
 					}
 				</span>
 			</div>
@@ -67,7 +67,7 @@ templ matchRound(r MatchRound, target int) {
 				<p class="break-words text-sm text-ink" data-testid="gt-match-change"><span class="text-xs text-mute">直したところ</span> { r.Change }</p>
 			}
 			if len(r.Differences) > 0 {
-				<ul class="list-disc pl-5 text-xs text-ink" data-testid="gt-match-differences">
+				<ul class="list-disc pl-6 text-xs text-ink" data-testid="gt-match-differences">
 					for _, d := range r.Differences {
 						<li class="break-words">{ d }</li>
 					}
@@ -75,7 +75,7 @@ templ matchRound(r MatchRound, target int) {
 			}
 			if r.Prompt != "" {
 				<details class="text-xs" data-testid="gt-match-prompt">
-					<summary class="cursor-pointer text-mute">プロンプト</summary>
+					<summary class={ atoms.SummaryClass }>プロンプト</summary>
 					<p class="mt-1 whitespace-pre-wrap break-words rounded-md border border-border p-2 text-ink" data-testid="gt-match-prompt-text">{ r.Prompt }</p>
 					if r.BasePrompt != "" {
 						<p class="mt-2 text-mute">直す前（第 { itoa(r.BasedOn) } 回）</p>

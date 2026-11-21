@@ -5,6 +5,8 @@
  * sets. The listeners are on the document: the form may arrive in a swapped body.
  */
 
+import { html, nothing, render } from 'lit';
+import { icon } from '../lib/icon';
 import { syncSliders } from '../slider/slider';
 import {
   commercialOf,
@@ -67,9 +69,10 @@ function draw(note: HTMLElement, lines: NoteLine[]): void {
   note.replaceChildren(
     ...lines.map((line) => {
       const li = document.createElement('li');
-      li.textContent = (line.tone === 'warn' ? '⚠ ' : '') + line.text;
-      li.className = line.tone === 'warn' ? 'text-warning' : 'text-mute';
-      if (line.tone === 'warn') li.setAttribute('role', 'alert');
+      const warn = line.tone === 'warn';
+      li.className = warn ? 'flex items-start gap-1 text-warning' : 'text-mute';
+      if (warn) li.setAttribute('role', 'alert');
+      render(html`${warn ? icon('warning') : nothing}<span>${line.text}</span>`, li);
       return li;
     }),
   );

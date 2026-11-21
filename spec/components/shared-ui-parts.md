@@ -18,7 +18,7 @@
 | 主要な文字 | `text-ink` | |
 | アイコンの色 | `text-accent`（インク色） | 飾りなので 1.4.11 の対象外だが、見える色にしておく |
 | フォーカスの輪 | `focus-visible:focus-ring`（`tokens.css` の `@utility`。`outline: 2px solid var(--focus)` + `outline-offset: 2px`。`--focus` はライト `#4a72d0`・ダーク `#60a5fa`） | `peer-focus-visible:focus-ring`（チャットの添付）も同じ。輪は `outline` なので Windows のハイコントラスト（`forced-colors`）でも描かれ、`ring-*` の影の輪は使わない。輪を出さない見出しなどは `focus-visible:outline-none` |
-| ホバー | `hover:border-mute hover:bg-accent-soft/60` | 見た目の補助。ホバーだけに意味を持たせない |
+| ホバー | `hover:border-mute hover:bg-accent-soft` | 見た目の補助。ホバーだけに意味を持たせない |
 | 動き | 色・背景の `transition-colors`（`--motion-base` 180ms・`--ease-out`）と `motion-reduce:transition-none`。拡大・移動・アニメーションは使わない。例外は下の「動き（#1040）」 | #797（`prefers-reduced-motion`）。スピナーは処理中表示なので、reduced-motion でも回す（#1040） |
 | 主ボタンの `bg-accent` | `atoms.TonePrimary` の実ボタン専用 | カードの見た目に使わない（カードはリンクであってボタンではない） |
 | 状態 | `atoms.Badge`（neutral / info / warn / ok / error）と文字。**色だけで伝えない**（#790・#795） | §2 の対応表 |
@@ -33,10 +33,10 @@
 | 項目 | 決まり |
 |------|--------|
 | フォント（T1） | 英字・UI・日本語は `font-sans`（Sora → Noto Sans JP）、コードと桁を揃える数値は `font-mono`（JetBrains Mono）。いずれも SIL OFL。`static/fonts.mjs` が `@fontsource-variable/*` から `dist/fonts.css` と `dist/fonts/*.woff2` を作り、レイアウトが `paths.StaticFontsCSS` を読む（ネットワークからは取らない）。ライセンス全文は `THIRD_PARTY_NOTICES.md` |
-| サイズ（T3） | `text-xs` 12 · `text-sm` 14 · `text-base` 16 · `text-lg` 18 · `text-xl` 24（h3）· `text-2xl` 32（h2）· `text-3xl` 40（h1）。Tailwind の既定の大きさ（20・30・36）は無効。本文（文章として読ませる `<p>`）は `text-sm` 以上、`text-xs` は注記・バッジ・表の見出し |
+| サイズ（T3） | `text-xs` 12 · `text-sm` 14 · `text-base` 16 · `text-lg` 18 · `text-xl` 24（h3）· `text-2xl` 32（h2）· `text-3xl` 40（h1）。Tailwind の既定の大きさ（20・30・36）は無効。本文（文章として読ませる `<p>`・表の本体・一覧・警告・入力欄・リンク型ボタンの文字）は `text-sm` 以上、`text-xs` は注記・バッジ・表の見出し・`dt` のラベルだけ |
 | 行間（T4） | サイズごとに `xs` 1.6 · `sm` 1.7 · `base` 1.8 · `lg` 1.7 · `xl` 1.5 · `2xl` 1.4 · `3xl` 1.3。`body` は 16px・1.8 |
 | ウェイト（T2） | Regular（400）と SemiBold（600）の 2 段だけ。SemiBold は見出し（`h1`〜`h4`）・ボタン・`<summary>`・表の見出し行だけ。ナビ・リンク・ラベル・数値には付けない（現在地は色と背景で示す）。`font-medium` は使わない |
-| 数値（T5） | 桁を揃える数値（金額・容量）は `font-mono tabular-nums`、表の数値列は右寄せ。表の見出し行は `text-xs font-semibold text-mute` |
+| 数値（T5） | 桁を揃える数値（金額・容量）は `font-mono tabular-nums`、表の数値列は右寄せ。表の見出し行は `text-xs font-semibold text-mute`、行の見出し（`<th scope="row">`）と `<legend>` は Regular（`font-normal`） |
 
 ### 形・余白・線（Issue #1038）
 
@@ -45,7 +45,7 @@
 | 項目 | 決まり |
 |------|--------|
 | 角丸（S1） | `rounded-sm` 4（タグ・チェック・バッジの角）· `rounded-md` 8（入力・ボタン・カードの中の入れ子の面）· `rounded-lg` 12（カード）· `rounded-xl` 16（モーダル `<dialog>`）· `rounded-full`（ピル・アバター）。素の `rounded` は使わない |
-| 余白（S2） | 4px 基準（`1`=4・`2`=8・`3`=12・`4`=16・`6`=24 …）。`.5` の値（`gap-1.5` ・ `bottom-1.5` など。上下左右の位置も）と、20 の値（`p-5`・`gap-5`・`px-5` など）は使わない（カード・ダイアログの内側は `p-4` か `p-6`、間は `gap-4` か `gap-6`）。メニュー項目は高さ 40（`min-h-10`）・項目間 8（`gap-2`。左側メニューも設定のナビも同じ）、ボタンは小 32（`min-h-8`）・標準 40（`min-h-10`）。画面のガターは 16、`md` 以上で 24（`p-4 md:p-6`） |
+| 余白（S2） | 4px 基準（`1`=4・`2`=8・`3`=12・`4`=16・`6`=24 …）。`.5` の値（`gap-1.5` ・ `bottom-1.5` など。上下左右の位置も）と、20 の値（`p-5`・`gap-5`・`px-5`・`pl-5` など。リストのインデントは `pl-4` か `pl-6`）は使わない（カード・ダイアログの内側は `p-4` か `p-6`、間は `gap-4` か `gap-6`）。メニュー項目は高さ 40（`min-h-10`）・項目間 8（`gap-2`。左側メニューも設定のナビも同じ）、ボタンは小 32（`min-h-8`）・標準 40（`min-h-10`）。画面のガターは 16、`md` 以上で 24（`p-4 md:p-6`） |
 | 影（S3） | 影はモーダルの `<dialog>` の `shadow-modal`（`0 1px 2px rgba(0,0,0,.06)`）だけ。カード・パネル・トースト・通知は影なしで、`border border-border` で区切る。ホバーの光る縁取りは使わない（色・背景・枠の色だけ） |
 | レイヤー（O4） | `z-dropdown` 100 · `z-sticky` 200 · `z-drawer` 300 · `z-modal` 400 · `z-toast` 500。カードの中で、全面を覆うクリック領域の上に出す部品だけ `z-raised`（部品の中の積み順で、ページのレイヤーではない）。`z-10` などの数字は使わない |
 | 動き（M1） | `transition-colors`（既定で `--motion-base` 180ms・`--ease-out`）と `motion-reduce:transition-none`。`transition`（すべての値）・`transition-shadow`・`transition-transform` は使わない |
@@ -59,7 +59,7 @@
 | ホバー・フォーカス（M1） | 色・背景だけ、`--motion-base` 180ms（フォーカスは即時〜`--motion-fast` 120ms）。`transition-colors` が既定でこの値を取る。光彩・拡大はしない |
 | 処理中表示（M3） | スピナー（`atoms.Spinner`）と更新ボタンの回る矢印は、`prefers-reduced-motion: reduce` でも回す（`motion-reduce:animate-none` を付けない）。移動・スライドの飾りだけを止める（`motion-reduce:transition-none`）。オーバーレイのフェードは reduce で 100ms 以内 |
 | リップル（M4） | `data-ripple` の付いたボタン（`atoms.Button` / `SmallButton` / `ButtonLink` / `…For` / `IconButton`・モーダルとトーストの閉じる・左メニューのボタン）の押下で、押した点から円が広がって消える（`--motion-slow` 280ms・`--ease-out`。円は `currentColor` の 20%）。無効なボタンと reduced-motion では出ない |
-| 出現・退出（M5） | `<dialog>`・popover・トーストは、出現がフェードイン `--motion-fade-in` 320ms（`--ease-out`）、退出がフェードアウト `--motion-fade-out` 240ms（`--ease-in`）。スクラム（`dialog::backdrop`）は `--scrim` を同じ時間でフェードする。移動は付けない。インラインアラートも同じで、閉じるボタンで `data-leaving` が付き、フェードアウトしてから取り除く。確認モーダル（`confirm.ts`）の取り除きと、モーダル・モデル選択・インラインダイアログの中身の消去は、このフェードが終わってから行う（待つのは `getAnimations()` の transition。固定時間のタイマーは使わない。`components/lib/fade.ts`）。reduced-motion では 100ms 以内 |
+| 出現・退出（M5） | `<dialog>`・popover・トーストは、出現がフェードイン `--motion-fade-in` 320ms（`--ease-out`）、退出がフェードアウト `--motion-fade-out` 240ms（`--ease-in`）。スクラム（`dialog::backdrop`）は `--scrim` を同じ時間でフェードする。移動は付けない。インラインアラートも同じで、閉じるボタンで `data-leaving` が付き、フェードアウトしてから取り除く。接続断の通知（`atoms.ConnectionNotice`。`[data-connection-lost]`）も同じで、つながり直すと `connection-notice.ts` の `hide()` が `data-leaving` を付け、フェードが終わってから取り除く。確認モーダル（`confirm.ts`）の取り除きと、モーダル・モデル選択・インラインダイアログの中身の消去は、このフェードが終わってから行う（待つのは `getAnimations()` の transition。固定時間のタイマーは使わない。`components/lib/fade.ts`）。reduced-motion では 100ms 以内 |
 
 ### 部品・オーバーレイ（Issue #1041）
 
@@ -67,12 +67,14 @@
 
 | 項目 | 決まり |
 |------|--------|
-| スクラムで閉じる（O1） | モーダルの `<dialog>` は、外側（スクラム）のクリックで閉じる（`static/src/components/scrim`。Esc・閉じるボタンも）。欄を変更した（`input` が起きた）ダイアログは、先に確認のモーダル「入力した内容は保存されません。閉じますか？」を出し、入力途中の内容を巻き込んで消さない。スクラムはダイアログと一緒にフェードする（M5） |
-| 確認・破壊的操作（O2） | 確認は OS 標準の `confirm()` でなく、中央のモーダル（`modal.Confirm`。`--r-xl`・`shadow-modal`・危険ボタン「実行する」と「キャンセル」）。`hx-confirm` の要素は `htmx:confirm` をこのモーダルが受けてから送る（`static/src/components/confirm`）。`AppLayout` が `#confirm-template` を埋め込む。モデルマネージャーの年齢確認・ライセンス確認もページ内の枠でなく同じ `<dialog>`（`modal.InlineHost`。`showModal()` で開く） |
+| スクラムで閉じる（O1） | モーダルの `<dialog>` は、外側（スクラム）のクリックで閉じる（`static/src/components/scrim`。Esc・閉じるボタンも）。**保存するフォーム**の欄（ダイアログの中の `<form>` の `input` / `select` / `textarea`。検索欄（`type=search`）、`form` が存在しない名前の欄、`hx-get` のフォーム、ページ側のフォームに属する欄は除く）を変更したダイアログだけ、先に確認のモーダル「入力した内容は保存されません。閉じますか？」を出し、入力途中の内容を巻き込んで消さない。モデルピッカー・画像ピッカー・ポーズ選択のような「選ぶだけ」のダイアログは、絞り込みを触っても外側のクリックで 1 回で閉じる。スクラムはダイアログと一緒にフェードする（M5） |
+| 確認・破壊的操作（O2） | 確認は OS 標準の `confirm()` でなく、中央のモーダル（`modal.Confirm`。`--r-xl`・`shadow-modal`・危険ボタン「実行する」と「キャンセル」）。`hx-confirm` の要素は `htmx:confirm` をこのモーダルが受けてから送る（`static/src/components/confirm`）。破壊的でない確認（コピー・作り直し・取り消し・オンにする・ダウンロード・復元・学習を始める）は、その要素の `data-confirm-tone="primary"` と `data-confirm-label="コピーする"` を `confirm.ts` が読み、危険ボタンでなく主ボタンと具体的な言葉で出す（`modal.Confirm` は両方のボタンを持ち、使わないほうを取り除く）。`AppLayout` が `#confirm-template` を埋め込む。モデルマネージャーの年齢確認・ライセンス確認もページ内の枠でなく同じ `<dialog>`（`modal.InlineHost`。`showModal()` で開く） |
 | トースト（O3） | 「保存しました」のような **1 行の短い成功の文だけ**。画面下中央（下から 24）・高さ 40・ピル・`bg-ink text-bone`・同時に 1 つ（新しいものが前を置き換える）・3 秒で自動消去。閉じるボタンも持たない。サーバーが返す成功は `atoms.ToastOOB`（`#toast-region` の中身を置き換える） |
 | インラインアラート（O3） | エラー・業務エラー（403 / 409 / 423・予算超過・LOCK 違反など）・エラー詳細は、ページ上部（`#content` の先頭の `#alert-region`）に `atoms.Alert`（お知らせ / 成功 / 注意 / エラーの 4 種。アイコン＋見出し＋本文）で出す。閉じるまで残る（長い文を読み終えるため。WCAG 2.2.1）。同じ文は重ねない。サーバーは `atoms.ErrorAlertOOB`（`beforeend`）、スクリプトは `lib/alert.ts`（エラーは `#alert-template`、注意は `#alert-warning-template`） |
 | 接続の通知（O3） | 接続が切れた通知（`atoms.ConnectionNotice`）は、警告のアイコン＋文言＋ `border-warning/40` の枠と `bg-warning/10` の地（スナックバー。影なし）。トーストではない |
-| ボタン（O7） | `font-semibold`・`rounded-md`・無効は不透明度 .4・小は高さ 32（`min-h-8`）・標準は 40（`min-h-10`）。種類は主（`TonePrimary`）・サブ（`ToneNeutral`。透明＋ `border-border`）・ゴースト（`ToneGhost`）・危険（`ToneDanger`） |
+| ボタン（O7） | `font-semibold`・`rounded-md`・無効は不透明度 .4（`disabled:opacity-40`・`disabled:cursor-not-allowed`。リンク型ボタン `LinkButton` / `LinkButtonFor`・Lit の行のボタン・`modelpick` の入力風のボタンも）・小は高さ 32（`min-h-8`）・標準は 40（`min-h-10`）。種類は主（`TonePrimary`）・サブ（`ToneNeutral`。透明＋ `border-border`）・ゴースト（`ToneGhost`）・危険（`ToneDanger`）。`<label>` でファイル選択を開くものなど、ボタンに見える `<button>` でない要素は `atoms.ButtonClass` / `SmallButtonClass` の class を使う |
+| アコーディオン（O8） | native の `<details>`。見出し `<summary>` は SemiBold・`text-sm text-ink`・フォーカスの輪の 1 つの class（`atoms.SummaryClass`）。`<summary>` は配置の class だけを足し、太さ・色は足さない（`a11y/typography_test` が、`<summary>` が `atoms.SummaryClass` を使うかを見る） |
+| スクロール領域（B1〜B6） | スクロールバーは `static/src/css/scrollbar.css` の 1 つの規則（幅・高さ 8px・矢印なし・丸い `--mute` のつまみ。強制カラー時は OS の標準）。スクロールする領域に、フォーカスできる要素が中に無い（読み取り専用・ボタンが出ない・文字だけ）ことがありうるときは、`tabindex="0"`・名前（`role="region"` と `aria-label`。ログは `role="log"`）・`focus-visible:focus-ring` を付ける。キーボードの ↑ ↓ PageUp PageDown Space Home End で動かせるようにするため（`SettingsTable` の囲み・`#chat-thread`・結果の比較表・Take の比較表・値の選択表・コマンドの `<pre>`） |
 | 独自ウィジェット（Lit。P3） | `mam-timeline-editor`・`mam-take-comparator`・`mam-mask-paint` は共通ガイドに無い独自ウィジェットで、見た目・状態表示・操作・文言は案件ガイド [lit-widgets-guide.md](lit-widgets-guide.md) が決める（ボタン・入力・バッジ・通知・数値は上の表と同じ部品を使う） |
 
 ### 商用利用の可否（Issue #928）
@@ -147,7 +149,7 @@
 | `IconJobs` | `list-checks` | 左メニュー: ジョブ | #980 |
 | `IconPlay`・`IconPause`・`IconSkipPrev`・`IconSkipNext` | `play`・`pause`・`skip-prev`・`skip-next`（Iconoir） | プレーヤーの操作（`atoms/icon_player.templ`） | #1179 |
 | `IconArrowUp`・`IconArrowDown`・`IconChevronLeft` | `arrow-up`・`arrow-down`・`nav-arrow-left` | 並べ替え・戻る | #1179 |
-| `IconStar` | `star`（輪郭。塗りは呼び出し側が Tailwind の `fill-*` をクラスで付ける。`<svg>` の `fill="none"` は属性なのでクラスが勝つ） | お気に入り | #1179 |
+| `IconStar` | `star`（輪郭のまま。塗らない。状態は線の色（`text-ink` ↔ `text-mute`）と `aria-pressed` で示す） | お気に入り | #1179 |
 | （`IconMedia`・`IconReview`・`IconChart`・`IconSettings` などは左メニューでも再利用） | | Scene / Shot・レビュー・制作指標・設定 | #915 |
 
 - 16 個で、#846 の 8 個 + #847 の 8 個。Issue の「10 個前後」より多いのは、#847 が概要のカードにもアイコンを付けるため（§8 の質問 1。付けないなら #847 は `x` と `copy` の 2 個）。`IconClose`（`x`）はモーダルの部品が使うので、どちらの Issue が持つかはモーダルの担当（§8 の質問 7）に従う。表の「#847」は決定のとおり。
@@ -295,6 +297,12 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.25 | 2026-11-12 | §1「プロンプトの重み調整」の「実装との差分」6 件を解消済みにした（差分の表を外し、直った点とそれを確かめるテストの記述に置き換えた）。W7 の「バーの中の `Esc`」は、押したあとにフォーカスが戻るプロンプト欄をバーが作用している欄と書いた（実装: `onKey`）。W8 の注の領域は、バーを描くときに常に置き、中身だけを更新する（実装: `render`） | Issues #1094・#1095 |
 | 0.26 | 2026-11-22 | §2 のアイコン一覧の注に、グリフをアイコンの代わりにしないことと、Lit 側の `icon()` を足した。`IconButton` は子に `Icon` を置く形（引数は `attrs` だけ）に改めた。✓・★・☆・×・‹・› の文字を `Icon` に置き換えた | #1179: アイコン（I）の指摘 |
 | 0.27 | 2026-11-22 | §1 のスライダーの行から、ホバー・ドラッグ中のつまみの塗り替えを外し、つまみの縁を `--border` 1px にした。進捗バー（`progress.css`）の行を足した | #1181: 部品・オーバーレイ（O）の指摘 |
+| 0.28 | 2026-11-22 | §1 の文字の行を、表の本体・一覧・警告・入力欄・リンク型ボタンの文字は 14px 以上（`text-xs` は注記・バッジ・表の見出し・`dt` のラベルだけ）、行の見出しと `<legend>` は Regular に改めた。`a11y/typography_test` に、`<th scope="row">`・`<legend>` に `font-semibold` を付けない検査を足した | #1185: タイポグラフィ（T）の指摘 |
+| 0.29 | 2026-11-22 | §1 の余白の行に、リストのインデントは `pl-5` でなく `pl-4` か `pl-6` と書いた。`a11y/shape_test` の 20px 検査を `pl`・`pr`・`ml`・`mr` に広げ、`<main>` の `p-8` も落とす | #1186: 形・余白・線（S）の指摘 |
+| 0.30 | 2026-11-22 | §2 のアイコン一覧の `IconStar` を、塗らない輪郭のままに改めた（状態は線の色と `aria-pressed`）。文字グリフ ⚠ ● ▼ ★ をやめ、⚠ は `icon('warning')`、▼ は `icon('arrow-down')`、● ★ は文言だけにした | #1187: アイコン（I）の指摘 |
+| 0.31 | 2026-11-22 | §M5 の出現・退出に接続断の通知（`[data-connection-lost]`）を足した（`motion.css`。`hide()` はフェードアウトのあとで取り除く）。サムネイルの × ↑ ↓ ・お気に入りの星・LOCK の 3 値ボタンに `data-ripple` を付けた（M4） | #1188: モーション（M）の指摘 |
+| 0.32 | 2026-11-22 | §O1 の入力保護の確認を、保存するフォームの欄だけに限った（検索・フィルタ・ピッカーは外側クリックで即閉じる）。§O2 に、非破壊の確認を `data-confirm-tone` / `data-confirm-label` で主ボタン・具体的な言葉にすることを足した。§O7 に、リンク型ボタンなどの無効の見た目と、ボタンに見える `<label>` の class（`ButtonClass` / `SmallButtonClass`）を足した。§O8 に、`<summary>` を 1 つの class（`atoms.SummaryClass`）にそろえることを足した | #1189: 部品・オーバーレイ（O）の指摘 |
+| 0.33 | 2026-11-22 | スクロール領域（B1〜B6）の行を足した。中にフォーカスできる要素が無いことがありうるスクロール領域（設定テーブルの囲み・チャットスレッド・結果の比較表・Take の比較表・値の選択表・コマンドの `<pre>`）に `tabindex="0"`・名前・`focus-visible:focus-ring` を付けた | #1190: スクロールバー（B）の指摘 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 

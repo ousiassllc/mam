@@ -111,7 +111,7 @@ templ externalResult(r ExternalResult) {
 			}
 		</ul>
 		<details class="text-xs text-ink">
-			<summary class="cursor-pointer text-mute">フォルダごとのファイル</summary>
+			<summary class={ atoms.SummaryClass }>フォルダごとのファイル</summary>
 			for _, f := range r.Folders {
 				<p class="mt-1 break-all"><code>{ f.Name }</code>（{ itoa(len(f.Files)) }）</p>
 				if len(f.Files) > 0 {
@@ -123,7 +123,7 @@ templ externalResult(r ExternalResult) {
 				}
 			}
 		</details>
-		<p class="text-sm text-mute">外部の ComfyUI へのモデルの導入は、その ComfyUI の側で行ってください（Nefos Video は読むだけです）。そろっているモデルは、接続先にワークフローを登録すると使えます。</p>
+		<p class="text-sm text-ink">外部の ComfyUI へのモデルの導入は、その ComfyUI の側で行ってください（Nefos Video は読むだけです）。そろっているモデルは、接続先にワークフローを登録すると使えます。</p>
 	</div>
 }
 

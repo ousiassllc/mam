@@ -1,6 +1,10 @@
 package licenses
 
-import "strconv"
+import (
+	"strconv"
+
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
 
 // Section is the groups of the entries. An entry is closed; opening it reads its text once (hx-trigger="toggle once": the
 // <details> element's own toggle event), so the page holds the titles only, not the 13000 lines of the notices.
@@ -29,7 +33,7 @@ templ item(it Item) {
 			hx-target="find [data-license-text]"
 			hx-swap="innerHTML"
 		>
-			<summary class="cursor-pointer break-words rounded-lg px-3 py-2 text-sm text-ink hover:bg-accent-soft/60 focus-visible:focus-ring motion-reduce:transition-none">{ it.Title }</summary>
+			<summary class={ atoms.SummaryClass, "break-words rounded-lg px-3 py-2 hover:bg-accent-soft motion-reduce:transition-none" }>{ it.Title }</summary>
 			<div class="min-w-0 border-t border-border p-3" data-license-text aria-live="polite">
 				<p class="text-sm text-mute">読み込み中…</p>
 			</div>

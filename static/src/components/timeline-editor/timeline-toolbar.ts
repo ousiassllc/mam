@@ -30,7 +30,7 @@ export function renderToolbar(view: ToolbarView) {
     <button
       type="button"
       data-action="revert"
-      class="text-xs text-mute underline transition-colors hover:text-ink disabled:opacity-40 motion-reduce:transition-none focus-visible:focus-ring"
+      class="text-sm text-mute underline transition-colors hover:text-ink disabled:opacity-40 motion-reduce:transition-none focus-visible:focus-ring"
       ?disabled=${view.busy || !dirty}
       @click=${() => view.revert()}
     >

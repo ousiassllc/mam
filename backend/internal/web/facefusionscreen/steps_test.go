@@ -52,7 +52,9 @@ func TestSteps_AreOpenWhileFaceFusionIsNotFoundAndHoldTheFiveStepsOfTheOfficialG
 	require.Len(t, blocks, 11)
 	for _, b := range blocks {
 		assert.Contains(t, b, `tabindex="0"`, "the keyboard reaches the block")
+		assert.Contains(t, b, `role="region"`, "a name is read for a region, not for a bare <pre>")
 		assert.Contains(t, b, `aria-label="コマンド: `, "and the reader names it")
+		assert.Contains(t, b, "focus-visible:focus-ring", "and it shows where the focus is")
 	}
 }
 

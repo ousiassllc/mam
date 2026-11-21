@@ -26,7 +26,7 @@ type NavItem struct {
 const (
 	navLinkClass    = "block rounded-md border-l-2 px-3 py-2 text-sm focus-visible:focus-ring motion-reduce:transition-none"
 	navCurrentClass = "border-accent bg-accent-soft text-ink"
-	navOtherClass   = "border-transparent text-ink transition-colors hover:bg-accent-soft/60 hover:text-ink"
+	navOtherClass   = "border-transparent text-ink transition-colors hover:bg-accent-soft hover:text-ink"
 )
 
 func navClass(current bool) string {

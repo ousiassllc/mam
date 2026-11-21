@@ -65,7 +65,7 @@ templ Panel(d Data) {
 					<p class="text-sm text-danger" role="alert" data-testid="restart-error">{ d.Error }</p>
 				}
 				if len(d.Busy) > 0 {
-					<ul class="list-disc pl-5 text-sm text-ink" data-testid="restart-busy">
+					<ul class="list-disc pl-6 text-sm text-ink" data-testid="restart-busy">
 						for _, b := range d.Busy {
 							<li>{ b }</li>
 						}

@@ -33,6 +33,36 @@ func TestLinkButton_PrimaryToneIsTheAccentColour(t *testing.T) {
 	assert.Contains(t, render(atoms.ToneNeutral), "text-mute")
 }
 
+// A button that is a link in look still shows that it is closed (O7): the same opacity and cursor as the others.
+func TestLinkButton_ShowsThatItIsDisabled(t *testing.T) {
+	for name, c := range map[string]templ.Component{
+		"neutral": atoms.LinkButton(atoms.ToneNeutral, "開く", templ.Attributes{"type": "button"}),
+		"primary": atoms.LinkButton(atoms.TonePrimary, "開く", templ.Attributes{"type": "button"}),
+		"for":     atoms.LinkButtonFor("除外", "Take A", templ.Attributes{"type": "button"}),
+	} {
+		var sb strings.Builder
+		require.NoError(t, c.Render(context.Background(), &sb))
+		assert.Contains(t, sb.String(), "disabled:opacity-40", name)
+		assert.Contains(t, sb.String(), "disabled:cursor-not-allowed", name)
+	}
+}
+
+// What is not a <button> but reads as one (a label that opens the file chooser) takes the class of the button: SemiBold, the height, the frame (O7).
+func TestButtonClass_IsTheClassOfTheButtons(t *testing.T) {
+	render := func(c templ.Component) string {
+		var sb strings.Builder
+		require.NoError(t, c.Render(context.Background(), &sb))
+		return sb.String()
+	}
+	small := render(atoms.SmallButton(atoms.ToneNeutral, "x", nil))
+	normal := render(atoms.Button(atoms.TonePrimary, "x", nil))
+
+	assert.Contains(t, small, `class="`+atoms.SmallButtonClass(atoms.ToneNeutral)+`"`)
+	assert.Contains(t, normal, `class="`+atoms.ButtonClass(atoms.TonePrimary)+`"`)
+	assert.Contains(t, atoms.SmallButtonClass(atoms.ToneNeutral), "font-semibold")
+	assert.Contains(t, atoms.SmallButtonClass(atoms.ToneNeutral), "min-h-8")
+}
+
 // A button repeated down a list names the row it acts on, starting with its visible text (#783).
 func TestRowLabel_VisibleLabelFirstThenTheRow(t *testing.T) {
 	assert.Equal(t, "削除: 夜の街", atoms.RowLabel("削除", "夜の街"))
@@ -70,4 +100,10 @@ func TestButtons_AreMarkedForTheRipple(t *testing.T) {
 		require.NoError(t, c.Render(context.Background(), &sb))
 		assert.Contains(t, sb.String(), "data-ripple", name)
 	}
+}
+
+// The class of every <summary> is SemiBold with the focus ring (O8); a11y/typography_test checks that each <summary> takes it.
+func TestSummaryClass_IsSemiBoldWithTheFocusRing(t *testing.T) {
+	assert.Contains(t, atoms.SummaryClass, "font-semibold")
+	assert.Contains(t, atoms.SummaryClass, "focus-visible:focus-ring")
 }
