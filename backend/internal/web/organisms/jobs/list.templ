@@ -96,7 +96,7 @@ templ Section(l List) {
 		if l.Error != "" {
 			<p class="text-sm text-danger" role="alert" data-testid="jobs-error">{ l.Error }</p>
 		} else if len(l.Rows) == 0 {
-			<p class="text-sm text-mute" data-testid="jobs-empty">ジョブはまだありません。モデルの導入や単発生成、Shot の生成を始めると、ここに出ます。</p>
+			<p class="text-sm text-ink" data-testid="jobs-empty">ジョブはまだありません。モデルの導入や単発生成、Shot の生成を始めると、ここに出ます。</p>
 		}
 		if len(l.Rows) > 0 {
 			<ul class="flex flex-col gap-3">

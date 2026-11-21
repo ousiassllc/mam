@@ -20,7 +20,8 @@ function region(): HTMLElement {
   if (!el) {
     el = document.createElement('div');
     el.id = REGION_ID;
-    el.className = 'pointer-events-none fixed bottom-4 left-4 z-toast flex flex-col gap-2';
+    // Above the toast (bottom-6, one line of min-h-10) so that the two never cover each other, and never wider than the window.
+    el.className = 'pointer-events-none fixed bottom-20 left-4 z-toast flex max-w-[calc(100vw-2rem)] flex-col gap-2';
     document.body.append(el);
   }
   return el;

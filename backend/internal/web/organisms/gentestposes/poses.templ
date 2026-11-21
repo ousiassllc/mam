@@ -41,7 +41,7 @@ templ ModelNotes(n Notes) {
 	<div class="flex flex-col gap-2 text-xs" data-testid="gt-pose-models">
 		switch  {
 			case n.Ticked == 0:
-				<p class="text-mute" data-testid="gt-pose-models-none">
+				<p class="text-ink" data-testid="gt-pose-models-none">
 					モデルを選ぶと、そのモデルがポーズを読めるか・商用で使えるかをここに出します。
 					if len(n.Capable) > 0 {
 						ポーズを読めるモデル: { joinNames(n.Capable) }
@@ -82,7 +82,7 @@ templ InstallPanel(w Wire, in Install) {
 				</span>
 			}
 		</p>
-		<ul class="flex flex-col gap-2 text-xs" data-testid="gt-pose-licenses">
+		<ul class="flex flex-col gap-2 text-sm" data-testid="gt-pose-licenses">
 			for _, l := range in.Licenses {
 				<li class="flex flex-col gap-1 rounded-lg border border-border p-2">
 					<p class="flex flex-wrap items-center gap-2 text-ink">
@@ -105,7 +105,7 @@ templ InstallPanel(w Wire, in Install) {
 		<div>
 			<button
 				type="button"
-				class="group inline-flex min-h-10 items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-semibold text-bone transition-colors hover:bg-accent/85 focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none"
+				class={ atoms.ButtonClass(atoms.TonePrimary) + " group" }
 				data-testid="gt-pose-install-button"
 				data-ripple
 				hx-post={ w.InstallURL }
@@ -224,7 +224,7 @@ templ adultSection(w Wire, a AdultOffer) {
 	<section class="flex flex-col gap-2 rounded-lg border border-border p-3 text-xs" data-testid="gt-pose-adult">
 		<h3 class="text-sm font-semibold text-ink">成人向けのポーズ（sexy・二人）</h3>
 		if a.Installed {
-			<p class="text-mute" data-testid="gt-pose-adult-installed">
+			<p class="text-ink" data-testid="gt-pose-adult-installed">
 				成人向けのポーズを導入済みです。モデル管理の年齢確認をオフにすると、一覧にも出なくなります（ファイルは残ります）。
 			</p>
 			<div>
@@ -263,7 +263,7 @@ templ adultSection(w Wire, a AdultOffer) {
 			<div>
 				<button
 					type="button"
-					class="group inline-flex min-h-10 items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-semibold text-bone transition-colors hover:bg-accent/85 focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none"
+					class={ atoms.ButtonClass(atoms.TonePrimary) + " group" }
 					data-testid="gt-pose-adult-install-button"
 					data-ripple
 					hx-post={ w.InstallAdultURL }
@@ -292,7 +292,7 @@ templ ResultsList(w Wire, r Results) {
 	<div id={ ResultsID } data-testid="gt-pose-results" class="flex flex-col gap-2">
 		<p class="text-sm text-mute" role="status" aria-live="polite" data-testid="gt-pose-count">{ strconv.Itoa(len(r.Cards)) } / { strconv.Itoa(r.Total) } 種類</p>
 		if len(r.Cards) == 0 {
-			<p class="text-sm text-mute" data-testid="gt-pose-empty">条件に合うポーズがありません。検索の言葉や分類を変えてください。</p>
+			<p class="text-sm text-ink" data-testid="gt-pose-empty">条件に合うポーズがありません。検索の言葉や分類を変えてください。</p>
 		}
 		<ul class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
 			for _, c := range r.Cards {
@@ -303,7 +303,7 @@ templ ResultsList(w Wire, r Results) {
 }
 
 templ card(w Wire, c Card) {
-	<li class="flex flex-col gap-1 rounded-lg border border-border p-2 text-xs" data-testid="gt-pick" data-pose-card>
+	<li class="flex flex-col gap-1 rounded-lg border border-border p-2 text-sm" data-testid="gt-pick" data-pose-card>
 		<img
 			class="aspect-[3/4] w-full rounded-md bg-surface object-contain"
 			src={ c.Image }

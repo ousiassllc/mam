@@ -33,6 +33,15 @@ describe('connection notice', () => {
     expect(shown.outerHTML).to.equal(template.content.firstElementChild!.outerHTML);
   });
 
+  it('sits above the toast and is never wider than the window (O3)', () => {
+    createConnectionNotice('チャット').show(() => {});
+    const region = document.getElementById('connection-lost-region')!;
+    const classes = region.className.split(' ');
+    expect(classes).to.include('max-w-[calc(100vw-2rem)]');
+    expect(classes).to.include('bottom-20'); // the toast is bottom-6 and one line (min-h-10) high
+    expect(classes).to.not.include('bottom-4');
+  });
+
   it('shows nothing when the page has no template', () => {
     removeTemplate();
     createConnectionNotice('チャット').show(() => {});

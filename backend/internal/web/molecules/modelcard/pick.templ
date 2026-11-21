@@ -44,7 +44,7 @@ templ Summary(c Card) {
 		}
 	</span>
 	if c.Note != "" {
-		<span class={ "break-words text-xs text-warning", templ.KV("opacity-60", c.Reason != nil) } data-testid="model-note">{ c.Note }</span>
+		<span class={ "break-words text-sm text-warning", templ.KV("opacity-60", c.Reason != nil) } data-testid="model-note">{ c.Note }</span>
 	}
 }
 

@@ -36,7 +36,7 @@ templ Box(p Props) {
 		}
 		<details class="text-xs text-ink" data-testid="error-detail">
 			<summary class={ atoms.SummaryClass }>{ apperr.Text(p.Lang, "ui.detail", nil) }</summary>
-			<textarea id={ fieldID(p) } readonly rows="4" class="mt-2 w-full resize-y rounded-md border border-border bg-surface p-2 font-mono text-xs text-ink focus-visible:focus-ring" aria-label={ apperr.Text(p.Lang, "ui.detail", nil) }>{ p.View.Report(p.Lang) }</textarea>
+			<textarea id={ fieldID(p) } readonly rows="4" class="mt-2 w-full resize-y rounded-md border border-border bg-surface p-2 font-mono text-sm text-ink focus-visible:focus-ring" aria-label={ apperr.Text(p.Lang, "ui.detail", nil) }>{ p.View.Report(p.Lang) }</textarea>
 		</details>
 		<div class="flex items-center gap-2">
 			@atoms.SmallButton(atoms.ToneNeutral, apperr.Text(p.Lang, "ui.copy", nil), templ.Attributes{

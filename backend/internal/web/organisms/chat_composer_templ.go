@@ -94,7 +94,7 @@ func ChatComposer(p domain.Project) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</div><input type=\"hidden\" name=\"reply_to_message_id\" id=\"reply-to\" value=\"\"><ul id=\"attachment-names\" class=\"mb-2 flex flex-wrap gap-2 text-xs text-ink\"></ul><div class=\"flex items-end gap-2\"><input id=\"composer-files\" type=\"file\" name=\"attachments\" multiple accept=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</div><input type=\"hidden\" name=\"reply_to_message_id\" id=\"reply-to\" value=\"\"><ul id=\"attachment-names\" class=\"mb-2 flex flex-wrap gap-2 text-sm text-ink\"></ul><div class=\"flex items-end gap-2\"><input id=\"composer-files\" type=\"file\" name=\"attachments\" multiple accept=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

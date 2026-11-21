@@ -82,7 +82,7 @@ templ BudgetForm(d PolicyFormData) {
 			@budgetField(d, "project_budget", "Project budget ceiling（USD）", ceilingValue(d.Policy.ProjectBudgetCeiling))
 			@budgetField(d, "shot_budget", "Shot budget ceiling（USD）", ceilingValue(d.Policy.ShotBudgetCeiling))
 		</div>
-		<p class="text-sm text-mute">空欄は上限なし。上限を超える見込みの生成は実行前に拒否されます（402）。Shot の上限は Repair / Retake の Max cost per Shot も兼ねます。</p>
+		<p class="text-sm text-ink">空欄は上限なし。上限を超える見込みの生成は実行前に拒否されます（402）。Shot の上限は Repair / Retake の Max cost per Shot も兼ねます。</p>
 		<div class="flex items-center gap-3">
 			@atoms.Button(atoms.TonePrimary, "保存", templ.Attributes{
 				"type": "submit",

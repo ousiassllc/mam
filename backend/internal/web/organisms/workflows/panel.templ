@@ -32,7 +32,7 @@ templ Panel(d Data) {
 
 templ list(d Data) {
 	if len(d.Workflows) == 0 {
-		<p class="text-sm text-mute" data-testid="workflows-empty">保存したワークフローはまだありません。ノード画面で作って「ComfyUI から取り込む」か、API 形式の JSON を取り込んでください。</p>
+		<p class="text-sm text-ink" data-testid="workflows-empty">保存したワークフローはまだありません。ノード画面で作って「ComfyUI から取り込む」か、API 形式の JSON を取り込んでください。</p>
 	} else {
 		<ul class="flex flex-col divide-y divide-border text-sm" data-testid="workflow-list">
 			for _, w := range d.Workflows {

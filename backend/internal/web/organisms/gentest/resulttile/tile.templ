@@ -58,7 +58,7 @@ templ Tile(c Card, pick bool) {
 templ favoriteMark(id string, on bool, oob bool) {
 	<span
 		id={ "gt-fav-mark-" + id }
-		class="pointer-events-none absolute right-2 top-2 text-warning"
+		class="pointer-events-none absolute right-2 top-2 text-ink"
 		hidden?={ !on }
 		data-testid="gt-fav-mark"
 		if oob {

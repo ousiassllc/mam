@@ -86,10 +86,10 @@ templ TokenRowItem(t TokenRow, oob bool) {
 			{ t.Name }
 			<code class="block text-xs font-normal text-mute">mam_mcp_{ t.Prefix }…</code>
 		}
-		@settingsui.Cell("whitespace-nowrap") {
+		@settingsui.Cell("whitespace-nowrap font-mono tabular-nums") {
 			{ formatTime(t.CreatedAt) }
 		}
-		@settingsui.Cell("whitespace-nowrap") {
+		@settingsui.Cell("whitespace-nowrap font-mono tabular-nums") {
 			if t.LastUsedAt != nil {
 				{ formatTime(*t.LastUsedAt) }
 			} else {

@@ -104,7 +104,7 @@ func imageColumns(pinned bool) []settingsui.Column {
 }
 
 func policyColumns(pinned bool) []settingsui.Column {
-	cols := []settingsui.Column{{Header: "Quality Policy"}, {Header: "主モデル"}, {Header: "代替モデル"}, {Header: "テイク数"}}
+	cols := []settingsui.Column{{Header: "Quality Policy"}, {Header: "主モデル"}, {Header: "代替モデル"}, {Header: "テイク数", Class: "text-right"}}
 	if !pinned {
 		cols = append(cols, settingsui.Column{Header: "操作", SROnly: true, Class: editColumn})
 	}
@@ -128,7 +128,7 @@ templ imageRow(r ImageRow, pinned, oob bool) {
 			{ r.Label }
 			<span class="mt-1 block text-xs font-normal text-mute">{ r.Hint }</span>
 			if r.ReferenceNote != "" {
-				<span class="mt-1 block text-xs font-normal text-warning" role="status" data-testid="model-assignment-reference-note">{ r.ReferenceNote }</span>
+				<span class="mt-1 block text-sm font-normal text-warning" role="status" data-testid="model-assignment-reference-note">{ r.ReferenceNote }</span>
 			}
 		}
 		@settingsui.Cell(modelCell) {
@@ -166,7 +166,7 @@ templ policyRow(r PolicyRow, pinned, oob bool) {
 		@settingsui.Cell(modelCell) {
 			@policyTarget(r.Fallback, r.FallbackUnusable)
 		}
-		@settingsui.Cell("") {
+		@settingsui.Cell("text-right font-mono tabular-nums") {
 			{ strconv.Itoa(r.Takes) }
 		}
 		if !pinned {

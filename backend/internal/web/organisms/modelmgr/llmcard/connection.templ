@@ -113,7 +113,7 @@ templ Result(r TestResult) {
 		<div class="flex flex-col gap-1 rounded-lg border border-success/40 bg-success/10 p-3 text-sm text-ink" role="status" data-testid="mm-llm-test-ok">
 			<p>{ r.Message }</p>
 			if len(r.Models) > 0 {
-				<ul class="list-inside list-disc text-xs text-ink" data-testid="mm-llm-models">
+				<ul class="list-inside list-disc text-sm text-ink" data-testid="mm-llm-models">
 					for _, m := range r.Models {
 						<li class="break-all">{ m }</li>
 					}

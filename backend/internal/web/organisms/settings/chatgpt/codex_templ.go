@@ -309,7 +309,7 @@ func codexEngine(c Codex) templ.Component {
 			templ_7745c5c3_Var7 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<div class=\"flex flex-col gap-2 rounded-md border border-border px-3 py-2\" data-testid=\"chatgpt-codex-engine\"><p class=\"text-sm\"><span class=\"\">エンジン（Codex app-server）</span> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<div class=\"flex flex-col gap-2 rounded-lg border border-border px-3 py-2\" data-testid=\"chatgpt-codex-engine\"><p class=\"text-sm\"><span class=\"\">エンジン（Codex app-server）</span> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -378,7 +378,7 @@ func codexEngine(c Codex) templ.Component {
 			}
 		}
 		if c.Engine.Error != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<pre class=\"whitespace-pre-wrap break-words text-xs text-danger\" role=\"alert\" data-testid=\"chatgpt-codex-engine-error\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<pre class=\"whitespace-pre-wrap break-words text-sm text-danger\" role=\"alert\" data-testid=\"chatgpt-codex-engine-error\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -448,7 +448,7 @@ func codexEngine(c Codex) templ.Component {
 			}
 		}
 		if !c.Engine.Supported {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<p class=\"text-sm text-mute\" data-testid=\"chatgpt-codex-unsupported-note\">この環境では取得できません（取得できるのは Windows 版と macOS 版（Apple Silicon）だけです）。自分で入れた codex の実行ファイルのパスを指定してください。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<p class=\"text-sm text-ink\" data-testid=\"chatgpt-codex-unsupported-note\">この環境では取得できません（取得できるのは Windows 版と macOS 版（Apple Silicon）だけです）。自分で入れた codex の実行ファイルのパスを指定してください。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -815,7 +815,7 @@ func codexWho(c Codex) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if len(c.Limits) > 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "<ul class=\"flex flex-col gap-1 text-xs\" data-testid=\"chatgpt-codex-limits\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "<ul class=\"flex flex-col gap-1 text-sm\" data-testid=\"chatgpt-codex-limits\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

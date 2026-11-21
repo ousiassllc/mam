@@ -13,7 +13,7 @@
 - プリズム（`--prism-*`）はロゴ・ヒーロー・キービジュアル専用で、UI のクラスに使わない。フォーカスだけが `--focus`（プリズムの blue を薄く借りる）を使う。
 - コントラストは `a11y/contrast_test.go`（補助の文字に `text-neutral-500` を使わない）と `a11y/field_border_test.go`（入力欄の枠は、ライト・ダークのどちらでも面に対して 3:1 以上）が守る。
 - 共通部品が表の正: 色は `atoms.Badge`（`BadgeNeutral`・`BadgeInfo`・`BadgeWarn`・`BadgeOK`・`BadgeError`）と `atoms.Button`（`TonePrimary`・`ToneDanger`・`ToneNeutral`）から決まる。画面・molecules・organisms・Lit は、同じ意味ならこれと同じクラスを使う。
-- **フォーカスの輪**は色のクラスでなく、`focus-ring`（`tokens.css` の `@utility`。`outline: 2px solid var(--focus)` + `outline-offset: 2px`）を `focus-visible:focus-ring`・`peer-focus-visible:focus-ring` のように付ける。`ring-*` / `ring-offset-*` の影の輪は使わない。クラスを付けないリンク・ボタン・`<summary>`・`tabindex` のある要素も、`tokens.css` の `@layer base` の `:where(a, button, summary, [tabindex]):focus-visible` が同じ輪（2px solid `--focus`・offset 2）を出す（ブラウザ既定の輪に任せない）。詳細度が 0 で `utilities` より前の層なので、`focus-visible:outline-none`・`focus-visible:focus-ring` を付けた要素はそちらが勝つ。
+- **フォーカスの輪**は色のクラスでなく、`focus-ring`（`tokens.css` の `@utility`。`outline: 2px solid var(--focus)` + `outline-offset: 2px`）を `focus-visible:focus-ring`・`peer-focus-visible:focus-ring` のように付ける。`ring-*` / `ring-offset-*` の影の輪は使わない。クラスを付けないリンク・ボタン・`<summary>`・`tabindex` のある要素・`<input type="checkbox|radio|file">`・`<video controls>` も、`tokens.css` の `@layer base` の `:where(a, button, summary, [tabindex], input:is([type="checkbox"], [type="radio"], [type="file"]), video[controls]):focus-visible` が同じ輪（2px solid `--focus`・offset 2）を出す（ブラウザ既定の輪に任せない）。詳細度が 0 で `utilities` より前の層なので、`focus-visible:outline-none`・`focus-visible:focus-ring` を付けた要素はそちらが勝つ。チェックボックス・ラジオの塗りは、同じ層の `:root { accent-color: var(--accent) }` が `--accent` にする（ブラウザ既定の青にしない）。
 
 ## 2. 検査の範囲
 
@@ -35,13 +35,13 @@
 | ページ背景・本文 | `bg-bone` / `text-ink` | §1・`AppLayout` |
 | トースト | `bg-ink` / `text-bone` | O3（インク地にボーン字のピル。`atoms.Toast`） |
 | カード・モーダルの面 | `bg-surface` / `border-border` | §1 |
-| 補助・説明の文字 | `text-mute`（本文の長文には使わない） | §1・`contrast_test` |
+| 補助・説明の文字 | `text-mute`（1 行の補足・キャプションだけ。2 文以上の説明・注意・手順・空状態の案内は `text-ink`） | §1・`contrast_test`・`a11y/mute_text_test.go` |
 | 枠・区切り | `border-border` / `divide-border` | §1・一覧 |
 | 据え置きの面（現在地・コード欄・チップ） | `bg-accent-soft` | ガイドの `--accent-soft` |
 | ホバー面 | `hover:bg-accent-soft` / `hover:border-mute` / `peer-not-checked:hover:border-mute` | §1・`peer-not-checked:` は選ぶカード（選んだカードの枠をホバーで灰色に戻さない）。`/60` の薄めはガイドに無いので使わない |
 | ホバーの文字 | `hover:text-ink` | §1 |
 | 主アクション（実ボタン） | `bg-accent` / `hover:bg-accent/85` / `text-bone` | `TonePrimary` |
-| リンク・アイコン強調 | `text-accent` / `decoration-mute`（リンクは `underline` を添える） | §1・`Icon` 周り |
+| リンク・アイコン強調 | `text-accent` / `decoration-mute`（リンクは `underline` を添える。下線の色は `tokens.css` の `:where(a, button).underline` が `--mute` にするので、`underline` だけでも `decoration-mute` と同じ） | §1・`Icon` 周り |
 | 選択・現在地 | `border-accent` / `has-[:checked]:border-accent` / `peer-checked:border-accent` / `peer-checked:bg-accent-soft` / `hover:border-accent` / `border-t-accent` / `border-accent-soft` | 選ぶカード・ナビ・スピナーの回る弧（`border-t-accent`）と、スピナーの輪の残り（`border-accent-soft`。共通ガイド O12） |
 | 危険 | 文字 `text-danger`、枠/面 `border-danger/40`・`bg-danger/10`・`hover:bg-danger/10`（`ToneDanger` のホバー） | `ToneDanger`・`BadgeError` |
 | 警告 | 文字 `text-warning`、枠/面 `border-warning/40`・`bg-warning/10` | `BadgeWarn` |
@@ -144,3 +144,5 @@
 | 2.9 | 2026-11-22 | §4.1 のスライダーのつまみを、面 `--surface`・縁 `--border` 1px に改めた（共通ガイド O11）。ホバー・ドラッグ中のつまみの塗り替えは外した。新しい色は足していない。スピナーの輪の残りに `border-accent-soft` を許可した（O12）。§4 の `accent-*` の行は、予算の `<progress>` だけの例外と明記した（共通の進捗バー `progress.css` が塗りを描く） | #1181: 部品・オーバーレイ（O）の指摘 |
 | 2.10 | 2026-11-22 | §3 の「ホバー面」から `hover:bg-accent-soft/60` を外し、`hover:bg-accent-soft` だけにした（ガイドに無い薄め方）。§1 のフォーカスの輪に、クラスを付けない要素向けの `tokens.css` の `@layer base` の規則を足した。トークンの出典を `5d816f8` に改めた | #1184: 色（C）の指摘 |
 | 2.11 | 2026-11-22 | §3 の「リンク・アイコン強調」から `fill-current` を外した（2.8 を戻す）。お気に入りの星は輪郭のままで、状態は線の色（`text-ink` ↔ `text-mute`）と `aria-pressed` で示す（ガイド I2: 塗りのアイコンは逸脱） | #1187: アイコン（I）の指摘 |
+| 2.12 | 2026-11-22 | §1 のフォーカスの輪の `:where()` に `input` の checkbox / radio / file と `video[controls]` を足し、`:root { accent-color: var(--accent) }` を足した。§3 の「補助・説明の文字」を、2 文以上の説明は `text-ink` と明記した（`a11y/mute_text_test.go` が検査）。新しいクラスは足していない | #1191: 色（C）の指摘 |
+| 2.13 | 2026-11-22 | §3 の「リンク・アイコン強調」に、下線の色は `tokens.css` の `:where(a, button).underline` が `--mute` にすることを書いた。動画のプレースホルダの進捗の塗りを `bg-info/70` から `bg-accent` にした（§4 の重ね塗りの例外は、動画の上・レーンの上だけ） | #1194: 部品・オーバーレイ（O）の指摘 |

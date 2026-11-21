@@ -72,17 +72,19 @@ templ Host() {
 		aria-labelledby={ TitleID }
 		class="m-auto max-h-[calc(100vh-4rem)] w-[min(56rem,calc(100vw-2rem))] overflow-y-auto rounded-xl shadow-modal border border-border bg-surface p-0 text-ink"
 	>
+		<div class="sticky top-0 z-sticky h-0">
+			<button
+				type="button"
+				data-mp-close
+				data-ripple
+				aria-label="閉じる"
+				class="absolute right-3 top-3 rounded-md p-1 text-ink hover:bg-accent-soft hover:text-ink focus-visible:focus-ring"
+			>
+				@atoms.Icon(atoms.IconClose, "h-5 w-5")
+			</button>
+		</div>
 		<div id={ BodyID }></div>
 		<p id={ FailureID } role="alert" class="px-6 pb-4 text-sm text-danger" hidden></p>
-		<button
-			type="button"
-			data-mp-close
-			data-ripple
-			aria-label="閉じる"
-			class="absolute right-3 top-3 rounded-md p-1 text-ink hover:bg-accent-soft hover:text-ink focus-visible:focus-ring"
-		>
-			@atoms.Icon(atoms.IconClose, "h-5 w-5")
-		</button>
 	</dialog>
 }
 

@@ -37,7 +37,7 @@ func navClass(current bool) string {
 }
 
 // Nav is the side navigation of the settings screen: one plain link per category (a navigation is a page load, so back,
-// reload and bookmarks work), the current one marked with aria-current and, not by colour alone, a heavier weight and
+// reload and bookmarks work), the current one marked with aria-current and, not by colour alone, a background and
 // a border. Narrow windows put it above the page, the links wrapping.
 func Nav(items []NavItem) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {

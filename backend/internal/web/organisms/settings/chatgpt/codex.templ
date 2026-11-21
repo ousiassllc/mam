@@ -108,7 +108,7 @@ templ codexDetail(d Data) {
 
 // codexEngine is the Codex app-server on this machine: its state, where it came from and what to know before downloading it.
 templ codexEngine(c Codex) {
-	<div class="flex flex-col gap-2 rounded-md border border-border px-3 py-2" data-testid="chatgpt-codex-engine">
+	<div class="flex flex-col gap-2 rounded-lg border border-border px-3 py-2" data-testid="chatgpt-codex-engine">
 		<p class="text-sm">
 			<span class="">エンジン（Codex app-server）</span>
 			switch c.Engine.State {
@@ -129,7 +129,7 @@ templ codexEngine(c Codex) {
 			<p class="text-sm text-mute">{ s }</p>
 		}
 		if c.Engine.Error != "" {
-			<pre class="whitespace-pre-wrap break-words text-xs text-danger" role="alert" data-testid="chatgpt-codex-engine-error">{ c.Engine.Error }</pre>
+			<pre class="whitespace-pre-wrap break-words text-sm text-danger" role="alert" data-testid="chatgpt-codex-engine-error">{ c.Engine.Error }</pre>
 		}
 		if c.Engine.UpdateAvailable {
 			<p class="text-sm text-warning" data-testid="chatgpt-codex-update">この Nefos Video が確かめた版は { c.Engine.PinnedVersion } です。取得済みの { c.Engine.Version } は使いません。もう一度取得してください。</p>
@@ -138,7 +138,7 @@ templ codexEngine(c Codex) {
 			<p class="text-sm text-mute" data-testid="chatgpt-codex-download-notice">{ downloadConfirm(c.Engine) }カードの「Codex をダウンロード」で始めます。</p>
 		}
 		if !c.Engine.Supported {
-			<p class="text-sm text-mute" data-testid="chatgpt-codex-unsupported-note">この環境では取得できません（取得できるのは Windows 版と macOS 版（Apple Silicon）だけです）。自分で入れた codex の実行ファイルのパスを指定してください。</p>
+			<p class="text-sm text-ink" data-testid="chatgpt-codex-unsupported-note">この環境では取得できません（取得できるのは Windows 版と macOS 版（Apple Silicon）だけです）。自分で入れた codex の実行ファイルのパスを指定してください。</p>
 		}
 	</div>
 }
@@ -187,7 +187,7 @@ templ codexWho(c Codex) {
 				}
 			</p>
 			if len(c.Limits) > 0 {
-				<ul class="flex flex-col gap-1 text-xs" data-testid="chatgpt-codex-limits">
+				<ul class="flex flex-col gap-1 text-sm" data-testid="chatgpt-codex-limits">
 					for _, l := range c.Limits {
 						<li>{ limitText(l) }</li>
 					}

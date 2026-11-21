@@ -282,7 +282,7 @@ func Picker(rows []Ref, empty string) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		for _, r := range rows {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<li class=\"flex flex-col gap-1 rounded-lg border border-border p-2 text-xs\" data-testid=\"gt-pick\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<li class=\"flex flex-col gap-1 rounded-lg border border-border p-2 text-sm\" data-testid=\"gt-pick\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

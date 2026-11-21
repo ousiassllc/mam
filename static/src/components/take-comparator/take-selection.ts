@@ -1,4 +1,5 @@
 import { html } from 'lit';
+import { BUTTON, BUTTON_TONE } from '../lib/button';
 import { icon } from '../lib/icon';
 import { describeSegments, totalSeconds, type Clip, type Segment } from '../lib/timeline-model';
 
@@ -23,7 +24,7 @@ export function renderSelection(view: SelectionView) {
     ${
       selection.length === 0
         ? html`<p class="text-xs text-mute">Take の帯をドラッグして区間を選ぶと、選んだ順につなぎます。</p>`
-        : html`<ol class="flex flex-wrap gap-2 text-xs">
+        : html`<ol class="flex flex-wrap gap-2 text-sm">
             ${selection.map(
               (s, i) => html`<li class="flex items-center gap-1 rounded-sm bg-accent-soft px-2 py-1" data-segment>
                 <span>${describeSegments([s], view.clips)}</span>
@@ -34,7 +35,7 @@ export function renderSelection(view: SelectionView) {
           <p class="text-xs text-mute">合計 <span class="font-mono tabular-nums">${totalSeconds(selection).toFixed(1)}</span> 秒（つなぎ目はクロスフェード）</p>`
     }
     <div class="flex flex-wrap items-center gap-2">
-      <button type="button" data-action="confirm-partial" class="min-h-8 rounded-md bg-accent px-3 py-1 text-sm font-semibold text-bone transition-colors hover:bg-accent/85 focus-visible:focus-ring disabled:opacity-40 motion-reduce:transition-none" data-ripple ?disabled=${!view.canMerge} @click=${() => view.merge()}>
+      <button type="button" data-action="confirm-partial" class="${BUTTON} ${BUTTON_TONE.primary}" data-ripple ?disabled=${!view.canMerge} @click=${() => view.merge()}>
         この区間で合成
       </button>
       <button type="button" data-action="clear-selection" class="text-sm text-mute underline hover:text-ink focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-40" ?disabled=${selection.length === 0} @click=${() => view.clear()}>選び直す</button>
@@ -43,13 +44,13 @@ export function renderSelection(view: SelectionView) {
       <input
         type="text"
         name="instruction"
-        class="min-w-64 flex-1 rounded-md border border-mute bg-surface px-2 py-1 text-xs text-ink focus-visible:focus-ring"
+        class="min-w-64 flex-1 rounded-md border border-mute bg-surface px-2 py-1 text-sm text-ink focus-visible:focus-ring"
         placeholder="Take A の 0-2秒 + Take B の 2-4秒"
         aria-label="区間を言葉で指定"
         .value=${view.instruction}
         @input=${(e: Event) => view.setInstruction((e.target as HTMLInputElement).value)}
       />
-      <button type="submit" data-action="confirm-instruction" class="min-h-8 rounded-md border border-border px-3 py-1 text-sm font-semibold text-ink transition-colors hover:bg-accent-soft focus-visible:focus-ring disabled:opacity-40 motion-reduce:transition-none" data-ripple ?disabled=${view.busy || view.instruction.trim() === ''}>
+      <button type="submit" data-action="confirm-instruction" class="${BUTTON} ${BUTTON_TONE.neutral}" data-ripple ?disabled=${view.busy || view.instruction.trim() === ''}>
         言葉で合成
       </button>
     </form>

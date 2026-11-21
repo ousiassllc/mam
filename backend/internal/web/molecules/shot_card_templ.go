@@ -258,7 +258,7 @@ func TakeRow(t domain.Take, n int, selected bool, repairable bool, judgeable boo
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<li class=\"flex items-center justify-between gap-2 text-xs text-ink\"><span class=\"flex min-w-0 items-center gap-1\"><span class=\"truncate\" title=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<li class=\"flex items-center justify-between gap-2 text-sm text-ink\"><span class=\"flex min-w-0 items-center gap-1\"><span class=\"truncate\" title=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

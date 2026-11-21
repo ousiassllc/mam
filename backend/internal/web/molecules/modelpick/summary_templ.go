@@ -144,7 +144,7 @@ func Summary(b Filter) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<li><button type=\"button\" class=\"cursor-pointer rounded-md px-2 py-1 text-xs text-ink underline hover:text-ink focus-visible:focus-ring\" hx-get=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<li><button type=\"button\" class=\"cursor-pointer rounded-md px-2 py-1 text-sm text-ink underline hover:text-ink focus-visible:focus-ring\" hx-get=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

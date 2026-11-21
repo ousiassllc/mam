@@ -13,5 +13,5 @@ templ Field(f modelpick.FieldData) {
 
 // Note is the place of the note under the field: the browser fills it. commercialOnly says the setting "商用OKのモデルだけを使う" is on.
 templ Note(commercialOnly bool) {
-	<ul class="flex w-full flex-col gap-1 text-xs" data-gt-lora-note data-commercial-only?={ commercialOnly } data-testid="gt-lora-note" aria-live="polite" hidden></ul>
+	<ul class="flex w-full flex-col gap-1 text-sm" data-gt-lora-note data-commercial-only?={ commercialOnly } data-testid="gt-lora-note" aria-live="polite" hidden></ul>
 }

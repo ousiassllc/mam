@@ -31,7 +31,10 @@ func TestBar_IsANamedButtonThatSwapsItsTargetAndReplacesAPollOfIt(t *testing.T) 
 	assert.Contains(t, html, `aria-label="更新"`)
 	assert.Contains(t, html, `title="更新"`)
 	assert.Contains(t, html, `aria-hidden="true"`, "the icon is decoration")
-	assert.Contains(t, html, `group-[.htmx-request]:animate-spin`, "the icon turns while the request runs")
+	assert.Contains(t, html, `group-[.htmx-request]:hidden`, "the icon gives way while the request runs")
+	assert.Contains(t, html, `group-[.htmx-request]:inline-flex`, "the spinner shows only while the request runs")
+	assert.Contains(t, html, `border-t-accent`, "the guide's spinner (atoms.Spinner, O12), not a turning icon")
+	assert.NotContains(t, html, `group-[.htmx-request]:animate-spin`, "the icon itself does not turn")
 	assert.NotContains(t, html, `motion-reduce:animate-none`, "that it is working is not a decoration: it turns for a reader who asked for less motion too")
 }
 

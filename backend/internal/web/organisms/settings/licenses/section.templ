@@ -46,5 +46,5 @@ func groupID(i int) string { return "license-group-" + strconv.Itoa(i) }
 // Text is the text of one entry: plain text in a <pre> (wrapped, so that a narrow window needs no sideways scroll). The text is
 // escaped as every { } of templ is; it is never read as HTML.
 templ Text(title, body string) {
-	<pre tabindex="0" role="region" aria-label={ title + "のライセンス文" } data-testid="license-text" class="max-h-[60vh] overflow-y-auto whitespace-pre-wrap break-words font-mono text-xs text-ink focus-visible:focus-ring">{ body }</pre>
+	<pre tabindex="0" role="region" aria-label={ title + "のライセンス文" } data-testid="license-text" class="max-h-[60vh] overflow-y-auto whitespace-pre-wrap break-words font-mono text-sm text-ink focus-visible:focus-ring">{ body }</pre>
 }

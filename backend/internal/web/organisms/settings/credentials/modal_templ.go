@@ -203,7 +203,7 @@ func Modal(f Form, maxKeyBytes int) templ.Component {
 						return templ_7745c5c3_Err
 					}
 				} else if !f.Provider.CanTest {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<p class=\"mr-auto text-sm text-mute\" data-testid=\"credential-no-test\">接続テストはありません。保存したあと、最初の生成で確かめられます。</p>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<p class=\"mr-auto text-sm text-ink\" data-testid=\"credential-no-test\">接続テストはありません。保存したあと、最初の生成で確かめられます。</p>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}

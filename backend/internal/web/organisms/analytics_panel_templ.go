@@ -34,7 +34,7 @@ func AnalyticsPanel(m domain.ProductionMetrics) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"analytics-panel\" class=\"flex flex-col gap-6\"><section class=\"rounded-lg border border-success/40 bg-success/10 p-4\" data-testid=\"north-star\"><h2 class=\"text-xs text-mute\">North Star: 人間の細かな生成操作なしで、採用可能な完成動画に到達した割合</h2><p class=\"text-2xl font-mono tabular-nums\" data-testid=\"metric-north-star\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"analytics-panel\" class=\"flex flex-col gap-6\"><section class=\"rounded-lg border border-border bg-surface p-4\" data-testid=\"north-star\"><h2 class=\"text-sm font-semibold text-ink\">North Star: 人間の細かな生成操作なしで、採用可能な完成動画に到達した割合</h2><p class=\"text-2xl font-mono tabular-nums\" data-testid=\"metric-north-star\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -408,7 +408,7 @@ func imageColumns(pinned bool) []settingsui.Column {
 }
 
 func policyColumns(pinned bool) []settingsui.Column {
-	cols := []settingsui.Column{{Header: "Quality Policy"}, {Header: "主モデル"}, {Header: "代替モデル"}, {Header: "テイク数"}}
+	cols := []settingsui.Column{{Header: "Quality Policy"}, {Header: "主モデル"}, {Header: "代替モデル"}, {Header: "テイク数", Class: "text-right"}}
 	if !pinned {
 		cols = append(cols, settingsui.Column{Header: "操作", SROnly: true, Class: editColumn})
 	}
@@ -548,7 +548,7 @@ func imageRow(r ImageRow, pinned, oob bool) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if r.ReferenceNote != "" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<span class=\"mt-1 block text-xs font-normal text-warning\" role=\"status\" data-testid=\"model-assignment-reference-note\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<span class=\"mt-1 block text-sm font-normal text-warning\" role=\"status\" data-testid=\"model-assignment-reference-note\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -840,7 +840,7 @@ func policyRow(r PolicyRow, pinned, oob bool) templ.Component {
 				}
 				return nil
 			})
-			templ_7745c5c3_Err = settingsui.Cell("").Render(templ.WithChildren(ctx, templ_7745c5c3_Var36), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = settingsui.Cell("text-right font-mono tabular-nums").Render(templ.WithChildren(ctx, templ_7745c5c3_Var36), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

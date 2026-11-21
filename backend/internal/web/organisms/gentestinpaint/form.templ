@@ -63,7 +63,7 @@ templ Form(p Page) {
 		<fieldset class="flex flex-col gap-2">
 			<legend class="text-sm">モデル</legend>
 			if !p.HasModel {
-				<p class="text-sm text-mute" data-testid="gt-inpaint-none">一部だけ描き直せるモデルがありません。SDXL か FLUX.1 dev のインペイントを導入してください。</p>
+				<p class="text-sm text-ink" data-testid="gt-inpaint-none">一部だけ描き直せるモデルがありません。SDXL か FLUX.1 dev のインペイントを導入してください。</p>
 			}
 			if p.HasModel {
 				@modelpick.Field(p.Model)

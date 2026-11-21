@@ -35,7 +35,7 @@ templ ModelFormView(f ModelForm, errMsg string) {
 			<p class="text-sm" data-testid="local-model-fixed">
 				<span class="text-mute">名前:</span> <code>{ f.Name }</code>
 			</p>
-			<p class="text-sm text-mute">名前は変えられません（Take とコスト台帳に残る識別子が名前でできているため）。変えたいときは、削除して作り直してください。</p>
+			<p class="text-sm text-ink">名前は変えられません（Take とコスト台帳に残る識別子が名前でできているため）。変えたいときは、削除して作り直してください。</p>
 		} else {
 			<label class="flex flex-col gap-1 text-xs text-mute" for="local-model-name">
 				<span>名前（英小文字・数字・. _ -。識別子は「{ f.EndpointKind }:{ f.Endpoint }/名前」になります）</span>

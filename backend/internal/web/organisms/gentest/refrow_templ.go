@@ -39,7 +39,7 @@ func RefRow(r Ref, media string, ui RefUI) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<li class=\"flex flex-col gap-2 rounded-md border border-border bg-surface p-2 text-xs data-[dragging]:opacity-50\" data-testid=\"gt-ref\" data-gt-ref data-ref=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<li class=\"flex flex-col gap-2 rounded-md border border-border bg-surface p-2 text-sm data-[dragging]:opacity-50\" data-testid=\"gt-ref\" data-gt-ref data-ref=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

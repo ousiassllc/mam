@@ -133,7 +133,7 @@ templ HFDetail(m view.HFModel) {
 			<p class="text-sm text-warning">成人向け（NFAA）のリポジトリです。</p>
 		}
 		if len(m.Shared) > 0 {
-			<p class="text-sm text-mute">{ joinNames(m.Shared) } と共有しています。使うモデルが残る間は、ファイルは消えません。</p>
+			<p class="text-sm text-ink">{ joinNames(m.Shared) } と共有しています。使うモデルが残る間は、ファイルは消えません。</p>
 		}
 		@modal.Actions() {
 			@atoms.Button(atoms.TonePrimary, "閉じる", templ.Attributes{"type": "button", "data-modal-close": true})

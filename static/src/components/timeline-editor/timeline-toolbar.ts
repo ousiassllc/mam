@@ -1,5 +1,6 @@
 import { html, nothing } from 'lit';
 import { BADGE, BADGE_TONE } from '../lib/badge';
+import { BUTTON, BUTTON_TONE } from '../lib/button';
 import { isDirty, timelineSeconds, type EditClip } from '../lib/edit-model';
 
 /** What the toolbar under the clips shows and does: the editor owns the save, the reload and their focus. */
@@ -21,7 +22,7 @@ export function renderToolbar(view: ToolbarView) {
       type="button"
       data-action="save"
       data-ripple
-      class="min-h-8 rounded-md bg-accent px-3 py-1 text-sm font-semibold text-bone transition-colors hover:bg-accent/85 disabled:opacity-40 motion-reduce:transition-none focus-visible:focus-ring"
+      class="${BUTTON} ${BUTTON_TONE.primary}"
       ?disabled=${view.busy || view.readonly || !dirty}
       @click=${() => view.save()}
     >

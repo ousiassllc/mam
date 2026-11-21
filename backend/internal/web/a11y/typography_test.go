@@ -109,3 +109,66 @@ func TestSources_EverySummaryTakesTheSummaryClass(t *testing.T) {
 		}
 	}
 }
+
+var (
+	smallText = regexp.MustCompile(`(?:^|[^\w:-])text-xs(?:[^\w-]|$)`)
+	// A tag is read up to its first `>`, which is where a class list and the attributes before it end.
+	openTag  = regexp.MustCompile(`(?s)<(ul|ol|li|input|select|textarea|button|p|pre|dd|a)\b([^<>]*)>`)
+	alerting = regexp.MustCompile(`(?:^|[^\w:-])text-(?:warning|danger)(?:[^\w-]|$)`)
+)
+
+// 14px is the least a text to read is set in (T3). text-xs (12px) is for a note, a badge, a header of a table and the label of a dt: not for a list
+// (ul / ol / li), a field the user types or picks into (input / select / textarea), a button, a warning or an error (text-warning / text-danger on a
+// p / pre / li / dd), nor a paragraph of two sentences or more.
+func TestSources_TextToReadIsAtLeast14px(t *testing.T) {
+	for _, path := range colorSources(t) {
+		if strings.HasSuffix(path, ".css") {
+			continue
+		}
+		raw, err := os.ReadFile(path)
+		require.NoError(t, err)
+		src := string(raw)
+		for _, m := range openTag.FindAllStringSubmatchIndex(src, -1) {
+			tag, attrs := src[m[2]:m[3]], src[m[4]:m[5]]
+			if !smallText.MatchString(attrs) || strings.Contains(attrs, `type="hidden"`) {
+				continue
+			}
+			line := strings.Count(src[:m[0]], "\n") + 1
+			switch {
+			case tag == "ul" || tag == "ol" || tag == "li" || tag == "input" || tag == "select" || tag == "textarea" || tag == "button":
+				t.Errorf("%s:%d: <%s> is text-xs: a list, a field and a button are text-sm or larger (T3)", path, line, tag)
+			case alerting.MatchString(attrs):
+				t.Errorf("%s:%d: <%s> is a warning or an error in text-xs: text-sm or larger (T3)", path, line, tag)
+			case tag == "p":
+				end := strings.Index(src[m[1]:], "</p>")
+				if end < 0 {
+					continue
+				}
+				text := markup.ReplaceAllString(interpolated.ReplaceAllString(src[m[1]:m[1]+end], ""), "")
+				if n := strings.Count(text, "。"); n >= 2 {
+					t.Errorf("%s:%d: a paragraph of %d sentences is text-xs: a note of one sentence is text-xs, a text to read is text-sm (T3)", path, line, n)
+				}
+			}
+		}
+	}
+}
+
+// The header of a column of a table is SemiBold (T2), the same in every table; only a row head (<th scope="row">) is Regular, and
+// TestSources_RowHeadsAndLegendsAreRegular holds that one.
+func TestSources_HeaderRowOfATableIsSemiBold(t *testing.T) {
+	normal := regexp.MustCompile(`<th\b[^>]*\bfont-normal\b[^>]*>`)
+	for _, path := range colorSources(t) {
+		if strings.HasSuffix(path, ".css") {
+			continue
+		}
+		src, err := os.ReadFile(path)
+		require.NoError(t, err)
+		for n, line := range strings.Split(string(src), "\n") {
+			for _, tag := range normal.FindAllString(line, -1) {
+				if !strings.Contains(tag, `scope="row"`) && !strings.Contains(tag, "scope=\\\"row\\\"") {
+					t.Errorf("%s:%d: %s: a header of a column is font-semibold (T2); only a row head (scope=\"row\") is Regular", path, n+1, tag)
+				}
+			}
+		}
+	}
+}

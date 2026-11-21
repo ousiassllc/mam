@@ -316,7 +316,7 @@ func Result(r TestResult) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if len(r.Models) > 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<ul class=\"list-inside list-disc text-xs text-ink\" data-testid=\"mm-llm-models\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<ul class=\"list-inside list-disc text-sm text-ink\" data-testid=\"mm-llm-models\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

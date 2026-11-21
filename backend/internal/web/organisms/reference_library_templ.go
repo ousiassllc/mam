@@ -484,7 +484,7 @@ func referenceUploadForm(d ReferenceLibraryData, oob bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</div><div><label for=\"ref-new-name\" class=\"mb-1 block text-xs text-mute\">名前（100 文字以内。Character / Product / Location は登場する名前と揃える）</label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</div><div><label for=\"ref-new-name\" class=\"mb-1 block text-sm text-mute\">名前（100 文字以内。Character / Product / Location は登場する名前と揃える）</label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

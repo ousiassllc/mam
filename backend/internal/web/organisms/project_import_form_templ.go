@@ -40,7 +40,7 @@ func ProjectImportForm(d ProjectImportFormData) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<form id=\"project-import-form\" class=\"mt-4 flex flex-wrap items-center gap-2 rounded-md border border-border p-3 text-sm\" hx-post=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<form id=\"project-import-form\" class=\"mt-4 flex flex-wrap items-center gap-2 rounded-lg border border-border p-3 text-sm\" hx-post=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -53,7 +53,7 @@ func ProjectImportForm(d ProjectImportFormData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" hx-encoding=\"multipart/form-data\" hx-target=\"this\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\"><label for=\"project-import-file\" class=\"text-ink\">プロジェクトバンドルを読み込む</label> <input id=\"project-import-file\" type=\"file\" name=\"bundle\" required accept=\".zip,application/zip\" class=\"text-xs\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" hx-encoding=\"multipart/form-data\" hx-target=\"this\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\"><label for=\"project-import-file\" class=\"text-ink\">プロジェクトバンドルを読み込む</label> <input id=\"project-import-file\" type=\"file\" name=\"bundle\" required accept=\".zip,application/zip\" class=\"text-sm\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

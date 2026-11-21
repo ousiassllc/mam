@@ -271,7 +271,7 @@ export class MamTimelineEditor extends LitElement {
     if (!body) {
       // A failed first load says why in #alert-region; here is the way on. Only a 404 means "no Rough Cut yet".
       if (this.loadFailed) return renderLoadFailed(this.retrying, () => void this.retry());
-      return html`<p class="rounded-lg border border-dashed border-border p-6 text-sm text-mute" data-empty>
+      return html`<p class="rounded-lg border border-dashed border-border p-6 text-sm text-ink" data-empty>
           Rough Cut がまだありません。各 Shot の採用 Take を選んでから「Rough Cut を作成」を押してください。
         </p>`;
     }

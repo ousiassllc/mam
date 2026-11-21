@@ -188,7 +188,7 @@ func list(d Data) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if len(d.Workflows) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<p class=\"text-sm text-mute\" data-testid=\"workflows-empty\">保存したワークフローはまだありません。ノード画面で作って「ComfyUI から取り込む」か、API 形式の JSON を取り込んでください。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<p class=\"text-sm text-ink\" data-testid=\"workflows-empty\">保存したワークフローはまだありません。ノード画面で作って「ComfyUI から取り込む」か、API 形式の JSON を取り込んでください。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

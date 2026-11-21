@@ -1,16 +1,13 @@
 import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { confirmDialog } from '../confirm/confirm';
+import { BUTTON, BUTTON_TONE } from '../lib/button';
 import { sliderStyle } from '../slider/slider-model';
 import { meanLuminance, overlayToken, overlayWhite, strokeLine, type Point } from './mask-draw';
 import { canvasSize } from './mask-size';
 
-/** A small sub button of the guide (W3): 32px high, 14px text, a ripple on press (`data-ripple` in the markup). */
-const BUTTON =
-  'inline-flex min-h-8 items-center justify-center rounded-md border px-3 py-1 text-sm font-semibold text-ink transition-colors hover:bg-accent-soft ' +
-  'focus-visible:focus-ring motion-reduce:transition-none';
-const PLAIN = 'border-border';
-const SELECTED = 'border-accent bg-accent-soft';
+/** The selected tool is the sub button with an --accent edge and an --accent-soft face (the selection of a segment, W3). */
+const SELECTED = 'border border-accent bg-accent-soft text-ink';
 /** The question before the mask is wiped: it cannot be taken back (W10). */
 const CLEAR_CONFIRM = '塗った部分をすべて消しますか？';
 const MAX_SIZE = 128;
@@ -273,7 +270,7 @@ export class MamMaskPaint extends LitElement {
 
   private toolButton(label: string, tool: 'brush' | 'eraser', key: string) {
     const on = this.tool === tool;
-    return html`<button type="button" class="${BUTTON} ${on ? SELECTED : PLAIN}" aria-pressed=${String(on)} aria-keyshortcuts=${key} data-ripple @click=${() => this.setTool(tool)}>${label}</button>`;
+    return html`<button type="button" class="${BUTTON} ${on ? SELECTED : BUTTON_TONE.neutral}" aria-pressed=${String(on)} aria-keyshortcuts=${key} data-ripple @click=${() => this.setTool(tool)}>${label}</button>`;
   }
 
   protected override render() {
@@ -281,7 +278,7 @@ export class MamMaskPaint extends LitElement {
       <div class="flex flex-col gap-2" data-testid="gt-mask-paint">
         <div role="group" aria-label="描き方" class="flex flex-wrap items-center gap-2">
           ${this.toolButton('筆', 'brush', 'B')} ${this.toolButton('消しゴム', 'eraser', 'E')}
-          <button type="button" class="${BUTTON} ${PLAIN} disabled:cursor-not-allowed disabled:opacity-40" data-ripple ?disabled=${!this.src} @click=${() => this.askClear()}>全部消す</button>
+          <button type="button" class="${BUTTON} ${BUTTON_TONE.neutral}" data-ripple ?disabled=${!this.src} @click=${() => this.askClear()}>全部消す</button>
         </div>
         <label class="flex items-center gap-2 text-xs text-mute">
           太さ

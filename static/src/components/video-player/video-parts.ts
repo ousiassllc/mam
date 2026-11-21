@@ -117,7 +117,7 @@ export function renderPlaceholder(progress: ShotProgress | null) {
           aria-valuemax="100"
           aria-valuenow=${Math.round(fraction * 100)}
         >
-          <div class="h-full bg-info/70" style="width:${fraction * 100}%" data-progress-bar></div>
+          <div class="h-full bg-accent" style="width:${fraction * 100}%" data-progress-bar></div>
         </div>`
     }
   </div>`;
