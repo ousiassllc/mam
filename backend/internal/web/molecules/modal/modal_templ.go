@@ -78,7 +78,7 @@ func Host() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\"></div><p id=\"mam-modal-failure\" role=\"alert\" class=\"px-5 pb-4 text-sm text-danger\" hidden></p></dialog>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\"></div><p id=\"mam-modal-failure\" role=\"alert\" class=\"px-6 pb-4 text-sm text-danger\" hidden></p></dialog>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -295,7 +295,7 @@ func Frame(title, description string) templ.Component {
 			templ_7745c5c3_Var13 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<div id=\"mam-modal-content\" class=\"flex flex-col\"><h2 id=\"mam-modal-title\" class=\"sticky top-0 z-raised bg-surface pb-4 pl-5 pr-12 pt-5 text-lg font-semibold\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<div id=\"mam-modal-content\" class=\"flex flex-col\"><h2 id=\"mam-modal-title\" class=\"sticky top-0 z-raised bg-surface pb-4 pl-6 pr-12 pt-6 text-lg font-semibold\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -308,7 +308,7 @@ func Frame(title, description string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</h2><div class=\"flex flex-col gap-4 px-5 pb-5\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</h2><div class=\"flex flex-col gap-4 px-6 pb-6\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -568,7 +568,7 @@ func Confirm() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\"><div class=\"flex flex-col gap-4 p-5\"><p id=\"mam-confirm-title\" class=\"text-lg font-semibold\">確認</p><p id=\"mam-confirm-message\" class=\"whitespace-pre-line break-words text-sm text-ink\" data-confirm-message></p><div class=\"flex flex-wrap items-center justify-end gap-2 pt-2\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\"><div class=\"flex flex-col gap-4 p-6\"><p id=\"mam-confirm-title\" class=\"text-lg font-semibold\">確認</p><p id=\"mam-confirm-message\" class=\"whitespace-pre-line break-words text-sm text-ink\" data-confirm-message></p><div class=\"flex flex-wrap items-center justify-end gap-2 pt-2\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

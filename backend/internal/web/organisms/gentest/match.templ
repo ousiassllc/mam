@@ -21,7 +21,7 @@ const (
 templ MatchForm(c MatchCompose) {
 	<form
 		id={ ComposeID }
-		class="flex flex-col gap-5 rounded-lg border border-border bg-surface p-5"
+		class="flex flex-col gap-6 rounded-lg border border-border bg-surface p-6"
 		hx-post={ paths.GenerationTestPart("match", "estimate") }
 		hx-encoding="multipart/form-data"
 		hx-target={ "#" + ConfirmID }
@@ -60,7 +60,7 @@ templ MatchForm(c MatchCompose) {
 			</div>
 			<p class="text-sm text-danger" role="alert" data-gt-match-error data-testid="gt-match-error" hidden></p>
 		</fieldset>
-		<div class="grid gap-5 sm:grid-cols-2">
+		<div class="grid gap-6 sm:grid-cols-2">
 			<div class="flex flex-col gap-1 text-sm">
 				<span class="text-ink" id="gt-match-model-label">モデル</span>
 				@modelpick.Field(c.Model)
@@ -77,7 +77,7 @@ templ MatchForm(c MatchCompose) {
 				</div>
 			</fieldset>
 		</div>
-		<div class="grid gap-5 sm:grid-cols-2" data-gt-match-auto hidden?={ c.Mode != MatchAuto }>
+		<div class="grid gap-6 sm:grid-cols-2" data-gt-match-auto hidden?={ c.Mode != MatchAuto }>
 			<label class="flex flex-col gap-1 text-sm" for="gt-match-target">
 				<span class="flex items-baseline justify-between text-ink">
 					<span>目標の似てる度</span>
@@ -136,7 +136,7 @@ templ MatchConfirmCleared() {
 templ MatchBox(b MatchBatch) {
 	<section
 		id={ MatchSlotID }
-		class="flex flex-col gap-5 rounded-lg border border-border bg-surface p-5"
+		class="flex flex-col gap-6 rounded-lg border border-border bg-surface p-6"
 		data-testid="gt-match"
 		data-state={ b.StateTone }
 		if !b.Finished {
@@ -228,7 +228,7 @@ templ MatchWords(f MatchWordsForm) {
 	<div id={ AdjustID } data-testid="gt-match-adjust" hx-swap-oob?={ f.OOB }>
 		if f.BatchID != "" {
 			<form
-				class="flex flex-col gap-2 rounded-lg border border-border bg-surface p-5"
+				class="flex flex-col gap-2 rounded-lg border border-border bg-surface p-6"
 				hx-post={ paths.GenerationTestPart("match", "batches", f.BatchID, "adjust") }
 				hx-target={ "#" + ConfirmID }
 				hx-swap="outerHTML"

@@ -60,7 +60,7 @@ func MatchForm(c MatchCompose) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" class=\"flex flex-col gap-5 rounded-lg border border-border bg-surface p-5\" hx-post=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" class=\"flex flex-col gap-6 rounded-lg border border-border bg-surface p-6\" hx-post=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -192,7 +192,7 @@ func MatchForm(c MatchCompose) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" data-gt-match-ref></div><p class=\"text-sm text-danger\" role=\"alert\" data-gt-match-error data-testid=\"gt-match-error\" hidden></p></fieldset><div class=\"grid gap-5 sm:grid-cols-2\"><div class=\"flex flex-col gap-1 text-sm\"><span class=\"text-ink\" id=\"gt-match-model-label\">モデル</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" data-gt-match-ref></div><p class=\"text-sm text-danger\" role=\"alert\" data-gt-match-error data-testid=\"gt-match-error\" hidden></p></fieldset><div class=\"grid gap-6 sm:grid-cols-2\"><div class=\"flex flex-col gap-1 text-sm\"><span class=\"text-ink\" id=\"gt-match-model-label\">モデル</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -315,7 +315,7 @@ func MatchForm(c MatchCompose) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</div></fieldset></div><div class=\"grid gap-5 sm:grid-cols-2\" data-gt-match-auto")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</div></fieldset></div><div class=\"grid gap-6 sm:grid-cols-2\" data-gt-match-auto")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -591,7 +591,7 @@ func MatchBox(b MatchBatch) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "\" class=\"flex flex-col gap-5 rounded-lg border border-border bg-surface p-5\" data-testid=\"gt-match\" data-state=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "\" class=\"flex flex-col gap-6 rounded-lg border border-border bg-surface p-6\" data-testid=\"gt-match\" data-state=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1017,7 +1017,7 @@ func MatchWords(f MatchWordsForm) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if f.BatchID != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 88, "<form class=\"flex flex-col gap-2 rounded-lg border border-border bg-surface p-5\" hx-post=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 88, "<form class=\"flex flex-col gap-2 rounded-lg border border-border bg-surface p-6\" hx-post=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
