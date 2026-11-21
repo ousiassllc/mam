@@ -81,32 +81,30 @@ func TestLockToggle_CarriesTheHiddenFieldsOfAWorldStateSwitchAndReplacesOnlyItse
 	assert.NotContains(t, html, `value="manual"`)
 }
 
-// The current mode is not only aria-pressed: it is the one that looks set (a tinted face, --accent-soft for every mode: the selection
-// of a segment is not a state colour), and the modes that are not current look like plain buttons. The page then shows what is stored
-// in both the tree and the eye.
+// The current mode is not only aria-pressed: it is the one that looks set. The segmented control is the guide's (§4): the track is --accent-soft and the
+// selected segment is a --surface face with --ink text (the same for every mode: the selection of a segment is not a state colour); the segments that are not
+// selected have no face of their own. The page then shows what is stored in both the tree and the eye.
 func TestLockToggle_OnlyTheCurrentModeLooksSet(t *testing.T) {
-	for mode, tint := range map[domain.LockMode]string{
-		domain.LockAuto:   "bg-accent-soft text-accent",
-		domain.LockManual: "bg-accent-soft text-accent",
-		domain.LockLocked: "bg-accent-soft text-accent",
-	} {
+	for _, mode := range []domain.LockMode{domain.LockAuto, domain.LockManual, domain.LockLocked} {
 		html := render(t, locktoggle.Toggle(locktoggle.Data{
 			DOMID: "lock-s1-camera", URL: "/shots/s1/locks", Parameter: domain.ParamCamera, Mode: mode,
 		}))
+		assert.Contains(t, html, `class="inline-flex gap-1 rounded-md bg-accent-soft p-1"`, "%s: the track of the segments is --accent-soft", mode)
 
 		buttons := lockButton.FindAllStringSubmatch(html, -1)
 		require.Len(t, buttons, 3, mode)
 		for _, b := range buttons {
 			value, pressed, class := b[1], b[2], b[3]
+			assert.Contains(t, strings.Fields(class), "text-ink", "%s: %s is --ink text", mode, value)
+			assert.NotContains(t, strings.Fields(class), "text-accent", "%s: %s is not tinted text", mode, value)
 			if value == string(mode) {
 				assert.Equal(t, "true", pressed, "%s: %s is pressed", mode, value)
-				assert.Contains(t, class, tint, "%s: the current mode is tinted", mode)
-				assert.NotContains(t, class, "hover:bg-accent-soft", "%s: the current mode is not a plain button", mode)
+				assert.Contains(t, strings.Fields(class), "bg-surface", "%s: the current mode is the --surface face", mode)
 				continue
 			}
 			assert.Equal(t, "false", pressed, "%s: %s is not pressed", mode, value)
-			assert.Contains(t, class, "text-ink hover:bg-accent-soft", "%s: %s is a plain button", mode, value)
-			assert.NotContains(t, strings.Fields(class), "bg-accent-soft", "%s: %s is not tinted (the hover is not the tint)", mode, value)
+			assert.NotContains(t, strings.Fields(class), "bg-surface", "%s: %s has no face of its own", mode, value)
+			assert.NotContains(t, strings.Fields(class), "bg-accent-soft", "%s: %s is the track, not a second tint", mode, value)
 		}
 	}
 }

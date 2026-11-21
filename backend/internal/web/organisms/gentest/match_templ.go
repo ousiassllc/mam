@@ -128,7 +128,7 @@ func MatchForm(c MatchCompose) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" accept=\"image/png,image/jpeg,image/webp\" class=\"peer sr-only\" data-gt-match-file data-testid=\"gt-match-file\"> <label for=\"gt-match-file\" class=\"flex min-h-48 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border p-4 text-center text-sm text-ink transition-colors hover:border-mute hover:bg-accent-soft peer-focus-visible:focus-ring motion-reduce:transition-none\" data-gt-match-zone><img alt=\"参考の画像\" class=\"max-h-64 max-w-full rounded-md bg-black object-contain\" data-gt-match-preview data-testid=\"gt-match-preview\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" accept=\"image/png,image/jpeg,image/webp\" class=\"peer sr-only\" data-gt-match-file data-testid=\"gt-match-file\"> <label for=\"gt-match-file\" class=\"flex min-h-48 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border p-6 text-center text-sm text-ink transition-colors hover:border-mute hover:bg-accent-soft peer-focus-visible:focus-ring motion-reduce:transition-none\" data-gt-match-zone><img alt=\"参考の画像\" class=\"max-h-64 max-w-full rounded-md bg-black object-contain\" data-gt-match-preview data-testid=\"gt-match-preview\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

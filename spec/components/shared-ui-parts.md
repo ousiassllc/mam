@@ -49,6 +49,8 @@
 | 影（S3） | 影はモーダルの `<dialog>` の `shadow-modal`（`0 1px 2px rgba(0,0,0,.06)`）だけ。カード・パネル・トースト・通知は影なしで、`border border-border` で区切る。ホバーの光る縁取りは使わない（色・背景・枠の色だけ） |
 | レイヤー（O4） | `z-dropdown` 100 · `z-sticky` 200 · `z-drawer` 300 · `z-modal` 400 · `z-toast` 500。カードの中で、全面を覆うクリック領域の上に出す部品だけ `z-raised`（部品の中の積み順で、ページのレイヤーではない）。`z-10` などの数字は使わない |
 | 動き（M1） | `transition-colors`（既定で `--motion-base` 180ms・`--ease-out`）と `motion-reduce:transition-none`。`transition`（すべての値）・`transition-shadow`・`transition-transform` は使わない |
+| ドロップ領域（O8） | 破線の `border-border`・`rounded-lg`・`p-6`（24px。ガイド §7 P1 の 24–28）。ファイルをドラッグしている間は `border-border` を外してから `border-accent bg-accent-soft` を付ける（`lib/dropzone.ts` の `highlightZone`。Tailwind の出力では `border-border` が後ろにあり、外さないと枠が変わらない）。ドロップ・ドラッグ終了で戻す。入力画像（`gentest/inputs`）・プロンプトマッチ（`gentest/match`）・LoRA の取り込み（`loraimport`）の 3 つが同じ形 |
+| 切替のセグメント（O8） | 地（トラック）が `bg-accent-soft`（`p-1`・`gap-1`・`rounded-md`）、選択中の面が `bg-surface text-ink`（`rounded-sm`）。選ばれていない側は地が見える（面を持たない）。文字は `font-semibold`。`molecules/locktoggle` の AUTO / MANUAL / LOCK |
 
 ### 動き（Issue #1040）
 
@@ -313,6 +315,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.40 | 2026-11-22 | §1 のリップルの行に、ボタンの外見の `<label>`・`<a>`（ファイル選択・ページ送り）にも `data-ripple` を付けると書いた。LOCK 切替・左メニューの `transition-colors` に `motion-reduce:transition-none` を揃え、検査 `TestSources_ButtonLookedElementsHaveTheRipple`・`TestSources_TransitionsStopForReducedMotion` を足した | #1199: モーション（M）の指摘 |
 | 0.41 | 2026-11-22 | §1 のスライダーの行のレールを 6px から 4px に直した（`slider.css` の `--rail: 0.25rem` とガイド O11 が正で、6px は進捗バー O12 の値）。テキストだけのボタン（`atoms.LinkButton`）の見た目を `linkButtonClass`（atoms）と `LINK_BUTTON`（`lib/button.ts`）の 1 か所にし、Lit の複製 4 か所と絞り込みボタンを置き換えた。検査 `TestSources_LinkButtonLookIsWrittenOnce`（`a11y/shape_test.go`）を足し、`TestSources_ButtonLookIsWrittenOnce` の手書きサブボタンの検出を `hover:` 抜きに広げた | #1200: 部品・オーバーレイ（O）の指摘 |
 | 0.42 | 2026-11-22 | §1 の文字の行に、JS が組み立てる一覧の行・コピーして使うコマンドの `pre`・カードや表の主たる値の `code` を 14px 以上と書いた。`a11y/typography_test` に、`.ts` の `className` / `classList.add` の文字列を見る検査と `pre` の `text-xs` の検査を足した | #1202: タイポグラフィ（T）の指摘 |
+| 0.43 | 2026-11-22 | §1 に、ドロップ領域（`p-6`・ドラッグ中は `border-border` を外して `border-accent bg-accent-soft`。3 か所が `lib/dropzone.ts` を使う）と切替のセグメント（地 `bg-accent-soft`・選択面 `bg-surface text-ink`）の行を足した | #1203: 部品・オーバーレイ（O）の指摘 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 

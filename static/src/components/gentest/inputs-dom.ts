@@ -1,13 +1,8 @@
+import { highlight } from '../lib/dropzone';
 import { dropSide } from './inputs-model';
 
-// The DOM parts of the input images that do not depend on the rest of the state (inputs.ts keeps that): the drop highlight, the
+// The DOM parts of the input images that do not depend on the rest of the state (inputs.ts keeps that): the
 // reordering of the thumbnails by dragging, and the buttons of the picker dialog.
-
-/** Swaps the colour classes of a drop target (the highlights are classes of the colour table, spec/components/color-rules.md). */
-export function highlight(el: Element, on: boolean, rest: string, active: string[]): void {
-  el.classList.toggle(rest, !on);
-  for (const c of active) el.classList.toggle(c, on);
-}
 
 const ROW_REST = 'border-border';
 const ROW_ACTIVE = 'border-accent';

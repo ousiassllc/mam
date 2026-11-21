@@ -49,14 +49,15 @@ func (d Data) modes() []domain.LockMode {
 	return domain.LockModes()
 }
 
-// lockModeClass is the face of a mode button: the selected one is --accent-soft (the selection of a segment, brand guide), whatever the mode;
-// the words (LOCK / 手動 / 自動) and aria-pressed say which it is, not a state colour.
+// lockModeClass is the face of a mode button in the segmented control of the brand guide (§4): the track (the group) is --accent-soft and the selected
+// segment is a --surface face with --ink text on it; the segments that are not selected are the track showing through. Whatever the mode: the words
+// (LOCK / 手動 / 自動) and aria-pressed say which it is, not a state colour.
 func lockModeClass(active bool) string {
-	base := "min-h-8 px-2 py-1 text-sm font-semibold transition-colors motion-reduce:transition-none "
+	base := "min-h-8 rounded-sm px-2 py-1 text-sm font-semibold text-ink transition-colors motion-reduce:transition-none"
 	if !active {
-		return base + "text-ink hover:bg-accent-soft"
+		return base
 	}
-	return base + "bg-accent-soft text-accent"
+	return base + " bg-surface"
 }
 
 // Toggle is the three-value switch of a parameter. Each button saves at once (no save button):
@@ -89,7 +90,7 @@ func Toggle(d Data) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(d.DOMID)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/locktoggle/locktoggle.templ`, Line: 57, Col: 14}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/locktoggle/locktoggle.templ`, Line: 58, Col: 14}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -102,7 +103,7 @@ func Toggle(d Data) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.ResolveAttributeValue(d.URL)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/locktoggle/locktoggle.templ`, Line: 59, Col: 16}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/locktoggle/locktoggle.templ`, Line: 60, Col: 16}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var3)
 		if templ_7745c5c3_Err != nil {
@@ -115,7 +116,7 @@ func Toggle(d Data) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(string(d.Parameter))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/locktoggle/locktoggle.templ`, Line: 63, Col: 67}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/locktoggle/locktoggle.templ`, Line: 64, Col: 67}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
@@ -133,7 +134,7 @@ func Toggle(d Data) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(h.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/locktoggle/locktoggle.templ`, Line: 65, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/locktoggle/locktoggle.templ`, Line: 66, Col: 37}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 			if templ_7745c5c3_Err != nil {
@@ -146,7 +147,7 @@ func Toggle(d Data) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(h.Value)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/locktoggle/locktoggle.templ`, Line: 65, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/locktoggle/locktoggle.templ`, Line: 66, Col: 55}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 			if templ_7745c5c3_Err != nil {
@@ -164,7 +165,7 @@ func Toggle(d Data) templ.Component {
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(d.label())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/locktoggle/locktoggle.templ`, Line: 67, Col: 50}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/locktoggle/locktoggle.templ`, Line: 68, Col: 50}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -177,13 +178,13 @@ func Toggle(d Data) templ.Component {
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue(d.label() + " の制御")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/locktoggle/locktoggle.templ`, Line: 68, Col: 58}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/locktoggle/locktoggle.templ`, Line: 69, Col: 58}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" class=\"inline-flex overflow-hidden rounded-md border border-border\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" class=\"inline-flex gap-1 rounded-md bg-accent-soft p-1\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -200,7 +201,7 @@ func Toggle(d Data) templ.Component {
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(string(m))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/locktoggle/locktoggle.templ`, Line: 70, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/locktoggle/locktoggle.templ`, Line: 71, Col: 55}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 			if templ_7745c5c3_Err != nil {
@@ -213,7 +214,7 @@ func Toggle(d Data) templ.Component {
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(boolText(d.Mode == m))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/locktoggle/locktoggle.templ`, Line: 70, Col: 94}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/locktoggle/locktoggle.templ`, Line: 71, Col: 94}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 			if templ_7745c5c3_Err != nil {
@@ -239,7 +240,7 @@ func Toggle(d Data) templ.Component {
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(m.Label())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/locktoggle/locktoggle.templ`, Line: 70, Col: 157}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/locktoggle/locktoggle.templ`, Line: 71, Col: 157}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {

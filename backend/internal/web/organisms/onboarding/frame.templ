@@ -37,7 +37,7 @@ templ progress(f Frame) {
 			for i, s := range f.Steps {
 				<li>
 					if i == f.Index {
-						<span aria-current="step" class="inline-block rounded-md border border-accent bg-accent-soft px-2 py-1 text-ink">
+						<span aria-current="step" class="inline-block rounded-md border border-accent bg-accent-soft px-2 py-1 font-semibold text-ink">
 							{ num(i) }. { s.Title }
 						</span>
 					} else {

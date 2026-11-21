@@ -290,7 +290,7 @@ func pickForm(p Panel) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" accept=\".safetensors\" class=\"peer sr-only\" data-lora-file data-testid=\"mm-lora-file\"><div class=\"flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border p-4 text-center text-sm text-ink transition-colors peer-focus-visible:focus-ring motion-reduce:transition-none\" data-lora-zone data-testid=\"mm-lora-zone\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" accept=\".safetensors\" class=\"peer sr-only\" data-lora-file data-testid=\"mm-lora-file\"><div class=\"flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border p-6 text-center text-sm text-ink transition-colors peer-focus-visible:focus-ring motion-reduce:transition-none\" data-lora-zone data-testid=\"mm-lora-zone\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
