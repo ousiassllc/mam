@@ -6,7 +6,7 @@ import { syncSliders } from '../slider/slider';
 /**
  * The input images of the generation test (spec/components/gentest-screen.md): one drop zone (drop or click, plus a dialog that
  * lists the images of a Project or of the history, which HTMX fills), the chosen images as numbered thumbnails that can be
- * removed, reordered (drag, or the ‹ › buttons), enlarged (a dialog), and given a role and a strength.
+ * removed, reordered (drag, or the chevron buttons), enlarged (a dialog), and given a role and a strength.
  *
  * The images chosen in the browser are not uploaded until the estimate: each is a File that this keeps, shows through an object
  * URL, and puts into the input `upload` in the order of the thumbnails; its thumbnail posts `ref=upload::#<n>` for the n-th file

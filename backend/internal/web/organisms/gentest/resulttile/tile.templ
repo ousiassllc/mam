@@ -58,7 +58,7 @@ templ Tile(c Card, pick bool) {
 templ favoriteMark(id string, on bool, oob bool) {
 	<span
 		id={ "gt-fav-mark-" + id }
-		class="pointer-events-none absolute right-2 top-2 text-base leading-none text-warning"
+		class="pointer-events-none absolute right-2 top-2 text-warning"
 		hidden?={ !on }
 		data-testid="gt-fav-mark"
 		if oob {
@@ -67,7 +67,7 @@ templ favoriteMark(id string, on bool, oob bool) {
 	>
 		if on {
 			<span class="sr-only">お気に入り</span>
-			<span aria-hidden="true">★</span>
+			@atoms.Icon(atoms.IconStar, "block h-5 w-5 fill-current")
 		}
 	</span>
 }
@@ -88,7 +88,7 @@ templ FavoriteButton(id string, on bool) {
 	<button
 		type="button"
 		id={ "gt-favorite-" + id }
-		class="rounded-md px-1 text-base leading-none hover:bg-accent-soft"
+		class="inline-flex items-center justify-center rounded-md p-1 hover:bg-accent-soft"
 		hx-post={ paths.GenerationTestPart("results", id, "favorite") }
 		hx-vals={ favoriteVals(!on) }
 		hx-swap="outerHTML"
@@ -98,9 +98,9 @@ templ FavoriteButton(id string, on bool) {
 		data-on={ boolText(on) }
 	>
 		if on {
-			<span aria-hidden="true">★</span>
+			@atoms.Icon(atoms.IconStar, "h-5 w-5 fill-current")
 		} else {
-			<span aria-hidden="true">☆</span>
+			@atoms.Icon(atoms.IconStar, "h-5 w-5")
 		}
 	</button>
 }

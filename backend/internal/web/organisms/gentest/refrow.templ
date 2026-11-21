@@ -5,7 +5,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/facelock"
 )
 
-const thumbButton = "rounded-md bg-surface px-2 text-xs leading-5 text-ink hover:text-ink focus-visible:focus-ring"
+const thumbButton = "inline-flex items-center rounded-md bg-surface px-2 py-1 text-ink hover:text-ink focus-visible:focus-ring"
 
 // RefRow is a chosen input image as a thumbnail: its number (the order the models get the images in), a × to take it out, buttons
 // to move it, and (for an image) a role and a strength. The hidden field ref is what posts it; the images chosen in the browser
@@ -27,10 +27,16 @@ templ RefRow(r Ref, media string, ui RefUI) {
 				}
 			</button>
 			<span class="pointer-events-none absolute left-1 top-1 min-w-5 rounded-sm bg-accent px-2 text-center text-xs leading-5 text-bone" data-gt-badge></span>
-			<button type="button" class={ thumbButton + " absolute right-1 top-1" } data-gt-remove aria-label={ "取り除く: " + r.Label } title="取り除く">×</button>
+			<button type="button" class={ thumbButton + " absolute right-1 top-1" } data-gt-remove aria-label={ "取り除く: " + r.Label } title="取り除く">
+				@atoms.Icon(atoms.IconClose, "h-4 w-4")
+			</button>
 			<span class="absolute bottom-1 right-1 flex gap-1">
-				<button type="button" class={ thumbButton } data-gt-move="-1" aria-label={ "前へ: " + r.Label } title="前へ">‹</button>
-				<button type="button" class={ thumbButton } data-gt-move="1" aria-label={ "後ろへ: " + r.Label } title="後ろへ">›</button>
+				<button type="button" class={ thumbButton } data-gt-move="-1" aria-label={ "前へ: " + r.Label } title="前へ">
+					@atoms.Icon(atoms.IconChevronLeft, "h-4 w-4")
+				</button>
+				<button type="button" class={ thumbButton } data-gt-move="1" aria-label={ "後ろへ: " + r.Label } title="後ろへ">
+					@atoms.Icon(atoms.IconChevronRight, "h-4 w-4")
+				</button>
 			</span>
 		</div>
 		@refControls(r, media, ui)

@@ -41,7 +41,7 @@
 | ホバー面 | `hover:bg-accent-soft` / `hover:border-mute` / `peer-not-checked:hover:border-mute` / `hover:bg-accent-soft/60` | §1・`peer-not-checked:` は選ぶカード（選んだカードの枠をホバーで灰色に戻さない） |
 | ホバーの文字 | `hover:text-ink` | §1 |
 | 主アクション（実ボタン） | `bg-accent` / `hover:bg-accent/85` / `text-bone` | `TonePrimary` |
-| リンク・アイコン強調 | `text-accent` / `decoration-mute`（リンクは `underline` を添える） | §1・`Icon` 周り |
+| リンク・アイコン強調 | `text-accent` / `decoration-mute`（リンクは `underline` を添える）/ `fill-current`（輪郭のアイコン `IconStar` を、オンのとき文字色で塗る） | §1・`Icon` 周り・お気に入りの星 |
 | 選択・現在地 | `border-accent` / `has-[:checked]:border-accent` / `peer-checked:border-accent` / `peer-checked:bg-accent-soft` / `hover:border-accent` / `border-t-accent` | 選ぶカード・ナビ・スピナーの回る弧 |
 | 危険 | 文字 `text-danger`、枠/面 `border-danger/40`・`bg-danger/10`・`hover:bg-danger/10`（`ToneDanger` のホバー） | `ToneDanger`・`BadgeError` |
 | 警告 | 文字 `text-warning`、枠/面 `border-warning/40`・`bg-warning/10` | `BadgeWarn` |
@@ -142,3 +142,4 @@
 | 2.5 | 2026-11-19 | 本文の製品名の表示を「MAM」から「Nefos Video」に改めた（過去の改訂履歴の文は当時のまま） | #1170: 製品名を MAM から Nefos Video に変更（表示名のみ。識別子・パス・実行ファイル名は変更しない） |
 | 2.6 | 2026-11-22 | §3・§3.1 に状態色の枠 `border-{danger,warning,success,info}/40`（ガイド brand-guide `5d816f8` の枠 40%・地 10%）を足した。`/60`・`/20` は移行中として残す | #1179 #1176: 状態色をガイドに合わせる下準備 |
 | 2.7 | 2026-11-22 | §3・§3.1 から状態色の `/60`（枠）・`/20`（バッジの地）を外し、枠 `/40`・地 `/10` だけにした。バッジに 1px の枠 `/40` を足し、LOCK の選択面は `bg-accent-soft text-accent` にした | #1176: 色（C）の指摘 |
+| 2.8 | 2026-11-22 | §3 の「リンク・アイコン強調」に `fill-current` を足した（輪郭のアイコン `IconStar` を、お気に入りがオンのとき文字色で塗る。`Icon` は `fill="none"` なので、塗りはクラスで上書きする）。新しい色は足していない | #1179: アイコン（I）の指摘（★ ☆ の文字を Iconoir の star に） |

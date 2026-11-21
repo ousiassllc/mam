@@ -96,7 +96,10 @@ templ chooser(p Provider, value, title string, checked, disabled bool, testID st
 				<span>選べません</span>
 			} else {
 				<span class="group-has-[:checked]:hidden">選ぶ</span>
-				<span class="hidden group-has-[:checked]:inline">✓ 選択中</span>
+				<span class="hidden items-center gap-1 group-has-[:checked]:inline-flex">
+					@atoms.Icon(atoms.IconCheck, "h-4 w-4")
+					選択中
+				</span>
 			}
 		</span>
 	</label>

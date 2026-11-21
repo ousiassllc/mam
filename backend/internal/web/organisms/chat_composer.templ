@@ -35,11 +35,13 @@ templ ChatComposer(p domain.Project) {
 			<div id="reply-chip" class="mb-2 hidden items-center gap-2 text-xs text-ink">
 				<span>返信先:</span>
 				<span id="reply-label" class="truncate"></span>
-				@atoms.IconButton("×", templ.Attributes{
+				@atoms.IconButton(templ.Attributes{
 					"type":       "button",
 					"id":         "reply-cancel",
 					"aria-label": "返信を取り消す",
-				})
+				}) {
+					@atoms.Icon(atoms.IconClose, "h-4 w-4")
+				}
 			</div>
 			<input type="hidden" name="reply_to_message_id" id="reply-to" value=""/>
 			<ul id="attachment-names" class="mb-2 flex flex-wrap gap-2 text-xs text-ink"></ul>
