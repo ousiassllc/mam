@@ -121,8 +121,8 @@ var (
 )
 
 // 14px is the least a text to read is set in (T3). text-xs (12px) is for a note, a badge, a header of a table and the label of a dt: not for a list
-// (ul / ol / li), a field the user types or picks into (input / select / textarea), a button, a warning or an error (text-warning / text-danger on a
-// p / pre / li / dd), nor a paragraph of two sentences or more.
+// (ul / ol / li), a field the user types or picks into (input / select / textarea), a button, a block of commands to copy (pre), a warning or an error
+// (text-warning / text-danger on a p / pre / li / dd), nor a paragraph of two sentences or more.
 func TestSources_TextToReadIsAtLeast14px(t *testing.T) {
 	for _, path := range colorSources(t) {
 		if strings.HasSuffix(path, ".css") {
@@ -138,8 +138,8 @@ func TestSources_TextToReadIsAtLeast14px(t *testing.T) {
 			}
 			line := strings.Count(src[:m[0]], "\n") + 1
 			switch {
-			case tag == "ul" || tag == "ol" || tag == "li" || tag == "input" || tag == "select" || tag == "textarea" || tag == "button":
-				t.Errorf("%s:%d: <%s> is text-xs: a list, a field and a button are text-sm or larger (T3)", path, line, tag)
+			case tag == "ul" || tag == "ol" || tag == "li" || tag == "input" || tag == "select" || tag == "textarea" || tag == "button" || tag == "pre":
+				t.Errorf("%s:%d: <%s> is text-xs: a list, a field, a button and a command to copy are text-sm or larger (T3)", path, line, tag)
 			case alerting.MatchString(attrs):
 				t.Errorf("%s:%d: <%s> is a warning or an error in text-xs: text-sm or larger (T3)", path, line, tag)
 			case tag == "p":
@@ -188,8 +188,8 @@ func smallInherited(root *muteNode) []string {
 			switch {
 			case n.tag == "button" && !n.hasLetters():
 				// an icon-only button has no text to set in a size
-			case n.tag == "ul" || n.tag == "ol" || n.tag == "li" || n.tag == "select" || n.tag == "textarea" || n.tag == "button":
-				found = append(found, fmt.Sprintf("line %s <%s> is 12px (text-xs, own or inherited): a list, a field and a button are text-sm or larger (T3)", at, n.tag))
+			case n.tag == "ul" || n.tag == "ol" || n.tag == "li" || n.tag == "select" || n.tag == "textarea" || n.tag == "button" || n.tag == "pre":
+				found = append(found, fmt.Sprintf("line %s <%s> is 12px (text-xs, own or inherited): a list, a field, a button and a command to copy are text-sm or larger (T3)", at, n.tag))
 			case n.tag == "input" && n.typesText():
 				found = append(found, fmt.Sprintf("line %s <input> is 12px (text-xs, own or inherited): a field is text-sm or larger (T3)", at))
 			case (n.tag == "p" || n.tag == "pre" || n.tag == "dd") && n.alert():
@@ -229,4 +229,64 @@ func TestRendered_TextToReadIsNot12px(t *testing.T) {
 			t.Errorf("%s: %s", name, found)
 		}
 	}
+}
+
+var (
+	// A class a script gives an element it builds: `li.className = '...'`, `` li.className = `...` `` and `li.classList.add('...', '...')`.
+	scriptClassName = regexp.MustCompile("(?s)\\b(\\w+)\\.className\\s*=\\s*(?:'([^']*)'|\"([^\"]*)\"|`([^`]*)`)")
+	scriptClassAdd  = regexp.MustCompile(`\b(\w+)\.classList\.add\(([^)]*)\)`)
+	createdElement  = regexp.MustCompile(`\b(?:const|let|var)\s+(\w+)(?:\s*:\s*[\w<>]+)?\s*=\s*(?:document\.)?createElement\(\s*['"](\w+)['"]`)
+)
+
+// A script that builds an element (document.createElement, then className / classList.add) is not a <li class="..."> in a template, so the checks of the tags above
+// do not see it: a list item, a list, a field, a button or a warning in text-xs that a script puts on the page is 12px all the same (T3, #1202). The tag of the
+// element is the one the variable was created with (or its own name: li, ul, button...).
+func TestSources_ScriptBuiltTextToReadIsAtLeast14px(t *testing.T) {
+	tagOf := func(created map[string]string, name string) string {
+		if tag, ok := created[name]; ok {
+			return tag
+		}
+		return name
+	}
+	check := func(path, src string, at int, name, classes string, created map[string]string) {
+		if !smallText.MatchString(" " + classes + " ") {
+			return
+		}
+		tag := tagOf(created, name)
+		line := strings.Count(src[:at], "\n") + 1
+		switch {
+		case tag == "ul" || tag == "ol" || tag == "li" || tag == "input" || tag == "select" || tag == "textarea" || tag == "button":
+			t.Errorf("%s:%d: the script builds a <%s> in text-xs: a list, a field and a button are text-sm or larger (T3)", path, line, tag)
+		case (tag == "p" || tag == "pre" || tag == "dd") && alerting.MatchString(" "+classes+" "):
+			t.Errorf("%s:%d: the script builds a <%s> that is a warning or an error in text-xs: text-sm or larger (T3)", path, line, tag)
+		}
+	}
+	scanned := 0
+	for _, path := range colorSources(t) {
+		if !strings.HasSuffix(path, ".ts") {
+			continue
+		}
+		raw, err := os.ReadFile(path)
+		require.NoError(t, err)
+		src := string(raw)
+		created := map[string]string{}
+		for _, m := range createdElement.FindAllStringSubmatch(src, -1) {
+			created[m[1]] = m[2]
+		}
+		for _, m := range scriptClassName.FindAllStringSubmatchIndex(src, -1) {
+			scanned++
+			classes := ""
+			for g := 4; g < 10; g += 2 {
+				if m[g] >= 0 {
+					classes = src[m[g]:m[g+1]]
+				}
+			}
+			check(path, src, m[0], src[m[2]:m[3]], classes, created)
+		}
+		for _, m := range scriptClassAdd.FindAllStringSubmatchIndex(src, -1) {
+			scanned++
+			check(path, src, m[0], src[m[2]:m[3]], strings.NewReplacer("'", " ", `"`, " ", "`", " ", ",", " ").Replace(src[m[4]:m[5]]), created)
+		}
+	}
+	require.Greater(t, scanned, 5, "the walk found the classes a script gives")
 }

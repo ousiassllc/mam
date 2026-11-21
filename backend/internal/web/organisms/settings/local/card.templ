@@ -41,7 +41,7 @@ func (e Endpoint) card(kind cardKind, oob bool) settingsui.Card {
 // endpointDetails is what the card says besides its name: the address, the state of the connection (not tried until the
 // button is pressed), the API key and, for the name that has no page, why the models cannot be opened.
 templ endpointDetails(e Endpoint) {
-	<code class="break-all text-xs text-ink" data-testid="local-endpoint-url">{ e.BaseURL }</code>
+	<code class="break-all text-sm text-ink" data-testid="local-endpoint-url">{ e.BaseURL }</code>
 	<div class="flex items-baseline gap-2 text-sm">
 		<span class="shrink-0 text-mute">接続:</span>
 		<div id={ testID(e.Name) } role="status" aria-live="polite" class="min-w-0 flex-1" data-testid="local-endpoint-test">

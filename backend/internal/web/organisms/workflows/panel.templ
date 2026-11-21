@@ -54,7 +54,7 @@ templ row(w Row) {
 						@atoms.Badge(atoms.BadgeWarn, "実行できません")
 					}
 				</span>
-				<code class="break-all text-xs text-ink" data-testid="workflow-model-id">{ w.ModelID }</code>
+				<code class="break-all text-sm text-ink" data-testid="workflow-model-id">{ w.ModelID }</code>
 				<span class="text-xs text-mute">接続先 { w.Endpoint } ／ 更新 { w.Updated }</span>
 				if len(w.UsedBy) > 0 {
 					<span class="text-xs text-mute" data-testid="workflow-used-by">使用中: { joinList(w.UsedBy) }</span>

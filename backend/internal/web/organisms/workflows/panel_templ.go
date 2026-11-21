@@ -290,7 +290,7 @@ func row(w Row) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</span> <code class=\"break-all text-xs text-ink\" data-testid=\"workflow-model-id\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</span> <code class=\"break-all text-sm text-ink\" data-testid=\"workflow-model-id\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
