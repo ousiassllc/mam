@@ -70,18 +70,18 @@ templ runtimeModel(r Runtime, m Model) {
 						@atoms.Badge(atoms.BadgeWarn, "成人向け相当（非検閲）")
 					}
 				</span>
-				<span class="text-xs text-ink">{ m.Description }</span>
+				<span class="text-sm text-ink">{ m.Description }</span>
 			</span>
 		</label>
-		<dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-ink">
-			<div><dt class="text-mute">ダウンロード</dt><dd>{ m.Size }</dd></div>
-			<div><dt class="text-mute">言語</dt><dd>{ m.Languages }</dd></div>
-			<div class="col-span-2"><dt class="text-mute">VRAM の目安</dt><dd data-testid="mm-runtime-model-vram">{ m.VRAM }</dd></div>
+		<dl class="grid grid-cols-2 gap-x-4 gap-y-1 text-sm text-ink">
+			<div><dt class="text-xs text-mute">ダウンロード</dt><dd class="font-mono tabular-nums">{ m.Size }</dd></div>
+			<div><dt class="text-xs text-mute">言語</dt><dd>{ m.Languages }</dd></div>
+			<div class="col-span-2"><dt class="text-xs text-mute">VRAM の目安</dt><dd class="font-mono tabular-nums" data-testid="mm-runtime-model-vram">{ m.VRAM }</dd></div>
 			if m.VRAMFit != "" {
 				<div class="col-span-2 text-warning"><dt>この PC の GPU</dt><dd>{ m.VRAMFit }</dd></div>
 			}
 			<div class="col-span-2">
-				<dt class="text-mute">ライセンス</dt>
+				<dt class="text-xs text-mute">ライセンス</dt>
 				<dd>
 					if m.LicenseURL != "" {
 						<a class="underline" href={ templ.SafeURL(m.LicenseURL) } target="_blank" rel="noopener noreferrer">{ m.License }</a>
@@ -93,14 +93,14 @@ templ runtimeModel(r Runtime, m Model) {
 			</div>
 		</dl>
 		if len(m.Cautions) > 0 {
-			<ul class="list-disc pl-5 text-xs text-warning" data-testid="mm-runtime-model-cautions">
+			<ul class="list-disc pl-5 text-sm text-warning" data-testid="mm-runtime-model-cautions">
 				for _, c := range m.Cautions {
 					<li class="break-words">{ c }</li>
 				}
 			</ul>
 		}
 		if m.Consent != nil {
-			<div class="flex flex-col gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs" data-testid="mm-runtime-model-consent">
+			<div class="flex flex-col gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm" data-testid="mm-runtime-model-consent">
 				<p class="text-ink">{ m.Consent.Text }</p>
 				if m.Consent.Accepted {
 					<p class="text-ink">同意済みです（{ m.Consent.Version }）</p>

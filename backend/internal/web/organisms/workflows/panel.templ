@@ -102,7 +102,7 @@ templ row(w Row) {
 			<p class="text-sm text-success" role="status" data-testid="workflow-check-ok">{ w.CheckedOn } にノードもモデルもそろっています。</p>
 		}
 		if len(w.Warnings) > 0 {
-			<ul class="flex flex-col gap-1 text-xs text-warning" role="status" data-testid="workflow-warnings">
+			<ul class="flex flex-col gap-1 text-sm text-warning" role="status" data-testid="workflow-warnings">
 				for _, x := range w.Warnings {
 					<li data-kind={ x.Kind }>{ x.Message }</li>
 				}

@@ -489,7 +489,7 @@ func BatchBox(b Batch) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		for _, r := range b.Rows {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "<tr class=\"border-t border-border\" data-testid=\"gt-row\"><th class=\"p-2 text-left align-top text-xs font-semibold text-ink\" scope=\"row\"><span class=\"flex flex-col items-start gap-1\"><span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "<tr class=\"border-t border-border\" data-testid=\"gt-row\"><th class=\"p-2 text-left align-top text-sm font-normal text-ink\" scope=\"row\"><span class=\"flex flex-col items-start gap-1\"><span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

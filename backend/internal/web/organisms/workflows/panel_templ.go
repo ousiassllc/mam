@@ -459,7 +459,7 @@ func row(w Row) templ.Component {
 			}
 		}
 		if len(w.Warnings) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<ul class=\"flex flex-col gap-1 text-xs text-warning\" role=\"status\" data-testid=\"workflow-warnings\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<ul class=\"flex flex-col gap-1 text-sm text-warning\" role=\"status\" data-testid=\"workflow-warnings\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

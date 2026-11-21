@@ -36,7 +36,7 @@ templ List(w Weights) {
 	}
 	<section class="flex flex-col gap-2" data-testid="mm-runtime-weights" aria-labelledby="mm-runtime-weights-title">
 		<h3 id="mm-runtime-weights-title" class="text-sm font-semibold">重み・依存ファイルと出典・ライセンス（{ itoa(len(w.Assets)) } 件、{ w.Total }）</h3>
-		<ul class="flex flex-col gap-3 text-xs text-ink" role="list" data-testid="mm-runtime-assets">
+		<ul class="flex flex-col gap-3 text-sm text-ink" role="list" data-testid="mm-runtime-assets">
 			for _, a := range w.Assets {
 				@item(a)
 			}
@@ -53,7 +53,7 @@ templ item(a Asset) {
 				@atoms.Badge(atoms.BadgeNeutral, "任意")
 			}
 			@atoms.Badge(stTone, stLabel)
-			<span class="text-mute">{ a.Size }</span>
+			<span class="font-mono tabular-nums text-mute">{ a.Size }</span>
 		</div>
 		<p class="break-words text-mute">{ a.Description }</p>
 		<p class="break-words">
@@ -75,7 +75,7 @@ templ item(a Asset) {
 		<ul class="flex flex-col gap-1" role="list" data-testid="mm-runtime-asset-files">
 			for _, f := range a.Files {
 				<li class="break-all">
-					<code>{ f.Path }</code> { f.Size }
+					<code>{ f.Path }</code> <span class="font-mono tabular-nums">{ f.Size }</span>
 					<span class="block text-mute">SHA-256 <code data-testid="mm-sha256">{ f.SHA256 }</code></span>
 				</li>
 			}

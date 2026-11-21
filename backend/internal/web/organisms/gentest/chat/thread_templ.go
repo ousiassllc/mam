@@ -480,7 +480,7 @@ func status(m Message) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "\" class=\"self-start whitespace-pre-wrap break-words text-xs text-mute\" data-testid=\"gtc-status\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "\" class=\"self-start whitespace-pre-wrap break-words text-sm text-mute\" data-testid=\"gtc-status\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

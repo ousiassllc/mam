@@ -38,7 +38,7 @@ templ TakeTracePanel(t domain.TakeTrace) {
 			</dd>
 		</dl>
 		<div id={ "take-routing-" + t.Take.ID }>
-			<h4 class="text-xs font-semibold">Model routing</h4>
+			<h4 class="text-sm font-semibold">Model routing</h4>
 			if t.Routing == nil {
 				<p class="text-sm text-mute">記録なし（Multi-model routing の導入前に作られた Take です）。</p>
 			} else {
@@ -51,17 +51,17 @@ templ TakeTracePanel(t domain.TakeTrace) {
 					{ " / 使用: " + routingModelText(t.Routing.Primary) + " → " + routingModelText(t.Routing.Fallback) }
 				</p>
 				if len(t.Routing.Candidates) > 0 {
-					<table class="mt-1 w-full text-left text-xs">
+					<table class="mt-1 w-full text-left text-sm">
 						<thead>
-							<tr class="text-mute">
-								<th class="pr-2 font-normal">候補</th>
-								<th class="pr-2 font-normal">実績（Take・平均点・合格率）</th>
-								<th class="pr-2 text-right font-normal">コスト/Take</th>
-								<th class="pr-2 text-right font-normal">quality</th>
-								<th class="pr-2 text-right font-normal">cost</th>
-								<th class="pr-2 text-right font-normal">fit</th>
-								<th class="pr-2 text-right font-normal">score</th>
-								<th class="font-normal">除外理由</th>
+							<tr class="text-xs text-mute">
+								<th class="pr-2 font-semibold">候補</th>
+								<th class="pr-2 font-semibold">実績（Take・平均点・合格率）</th>
+								<th class="pr-2 text-right font-semibold">コスト/Take</th>
+								<th class="pr-2 text-right font-semibold">quality</th>
+								<th class="pr-2 text-right font-semibold">cost</th>
+								<th class="pr-2 text-right font-semibold">fit</th>
+								<th class="pr-2 text-right font-semibold">score</th>
+								<th class="font-semibold">除外理由</th>
 							</tr>
 						</thead>
 						<tbody>
@@ -86,9 +86,9 @@ templ TakeTracePanel(t domain.TakeTrace) {
 			}
 		</div>
 		<div>
-			<h4 class="text-xs font-semibold">References</h4>
+			<h4 class="text-sm font-semibold">References</h4>
 			if len(t.References) == 0 {
-				<p class="text-xs text-mute">参照画像なし</p>
+				<p class="text-sm text-mute">参照画像なし</p>
 			} else {
 				<ul class="flex flex-col gap-1">
 					for _, r := range t.References {
@@ -102,27 +102,27 @@ templ TakeTracePanel(t domain.TakeTrace) {
 			}
 		</div>
 		<details>
-			<summary class="cursor-pointer text-xs font-semibold">Source Shot Spec（Prompt version のスナップショット）</summary>
-			<pre class="mt-1 overflow-x-auto rounded-md bg-bone p-2 text-xs focus-visible:focus-ring" tabindex="0" role="region" aria-label="Source Shot Spec">{ prettyJSON(t.PromptVersion.SpecSnapshot) }</pre>
+			<summary class="cursor-pointer text-sm font-semibold">Source Shot Spec（Prompt version のスナップショット）</summary>
+			<pre class="mt-1 overflow-x-auto rounded-md bg-bone p-2 text-sm focus-visible:focus-ring" tabindex="0" role="region" aria-label="Source Shot Spec">{ prettyJSON(t.PromptVersion.SpecSnapshot) }</pre>
 		</details>
 		<details>
-			<summary class="cursor-pointer text-xs font-semibold">Model parameters</summary>
-			<pre class="mt-1 overflow-x-auto rounded-md bg-bone p-2 text-xs focus-visible:focus-ring" tabindex="0" role="region" aria-label="Model parameters">{ prettyJSON(t.ModelParameters) }</pre>
+			<summary class="cursor-pointer text-sm font-semibold">Model parameters</summary>
+			<pre class="mt-1 overflow-x-auto rounded-md bg-bone p-2 text-sm focus-visible:focus-ring" tabindex="0" role="region" aria-label="Model parameters">{ prettyJSON(t.ModelParameters) }</pre>
 		</details>
 		<details>
-			<summary class="cursor-pointer text-xs font-semibold">Model Adapter output</summary>
-			<pre class="mt-1 overflow-x-auto rounded-md bg-bone p-2 text-xs focus-visible:focus-ring" tabindex="0" role="region" aria-label="Model Adapter output">{ prettyJSON(t.PromptVersion.AdapterOutput) }</pre>
+			<summary class="cursor-pointer text-sm font-semibold">Model Adapter output</summary>
+			<pre class="mt-1 overflow-x-auto rounded-md bg-bone p-2 text-sm focus-visible:focus-ring" tabindex="0" role="region" aria-label="Model Adapter output">{ prettyJSON(t.PromptVersion.AdapterOutput) }</pre>
 		</details>
 		<div>
-			<h4 class="text-xs font-semibold">Judge results</h4>
+			<h4 class="text-sm font-semibold">Judge results</h4>
 			if len(t.Judgements) == 0 {
-				<p class="text-xs text-mute">まだ Judge されていません。</p>
+				<p class="text-sm text-mute">まだ Judge されていません。</p>
 			} else {
 				<ol class="flex flex-col gap-1">
 					for _, j := range t.Judgements {
 						<li class="flex flex-wrap items-center gap-2">
 							@atoms.Badge(JudgeTone(j.Result), j.Result.Label())
-							<span class="text-xs">{ fmt.Sprintf("confidence %.2f · Issue %d", j.OverallConfidence, len(j.Issues)) }</span>
+							<span class="text-sm">{ fmt.Sprintf("confidence %.2f · Issue %d", j.OverallConfidence, len(j.Issues)) }</span>
 							<time class="text-xs text-mute" datetime={ j.CreatedAt.Format("2006-01-02T15:04:05Z07:00") }>{ j.CreatedAt.Local().Format("2006/01/02 15:04:05") }</time>
 						</li>
 					}
@@ -130,13 +130,13 @@ templ TakeTracePanel(t domain.TakeTrace) {
 			}
 		</div>
 		<div>
-			<h4 class="text-xs font-semibold">Repair history</h4>
+			<h4 class="text-sm font-semibold">Repair history</h4>
 			if len(t.Repairs) == 0 {
-				<p class="text-xs text-mute">Repair はありません。</p>
+				<p class="text-sm text-mute">Repair はありません。</p>
 			} else {
 				<ol class="flex flex-col gap-1">
 					for _, r := range t.Repairs {
-						<li class="text-xs">
+						<li class="text-sm">
 							{ r.Action.Label() }
 							if r.ResultingTakeID != "" {
 								{ " → 新しい Take " + r.ResultingTakeID }

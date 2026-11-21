@@ -57,7 +57,7 @@ templ Section(d Data) {
 			for _, g := range d.Groups {
 				<section class="flex flex-col gap-1" data-testid={ "facefusion-models-" + g.Title }>
 					<h3 class="text-sm font-semibold text-ink">{ g.Title }</h3>
-					<ul class="flex flex-col gap-1 text-xs">
+					<ul class="flex flex-col gap-1 text-sm">
 						for _, m := range g.Models {
 							<li class="flex flex-wrap items-center gap-2" data-testid={ "facefusion-model-" + m.ID }>
 								<code>{ m.ID }</code>
@@ -74,7 +74,7 @@ templ Section(d Data) {
 					</ul>
 				</section>
 			}
-			<ul class="flex list-disc flex-col gap-1 pl-5 text-xs text-warning" data-testid="facefusion-notes">
+			<ul class="flex list-disc flex-col gap-1 pl-5 text-sm text-warning" data-testid="facefusion-notes">
 				for _, n := range d.Notes {
 					<li>{ n }</li>
 				}

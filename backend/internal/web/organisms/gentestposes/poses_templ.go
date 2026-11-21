@@ -93,7 +93,7 @@ func Dialog() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" class=\"mt-3 flex flex-col gap-3\" data-testid=\"gt-pose-body\" aria-live=\"polite\"><p class=\"text-xs text-mute\">読み込んでいます…</p></div></dialog>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" class=\"mt-3 flex flex-col gap-3\" data-testid=\"gt-pose-body\" aria-live=\"polite\"><p class=\"text-sm text-mute\">読み込んでいます…</p></div></dialog>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

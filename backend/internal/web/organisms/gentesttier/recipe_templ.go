@@ -192,7 +192,7 @@ func RecipePanel(d RecipeData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if len(d.Rows) == 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<p class=\"text-xs text-mute\" data-testid=\"gt-recipes-empty\">保存したレシピはまだありません。</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<p class=\"text-sm text-mute\" data-testid=\"gt-recipes-empty\">保存したレシピはまだありません。</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

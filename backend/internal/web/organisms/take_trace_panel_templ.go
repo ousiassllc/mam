@@ -217,7 +217,7 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\"><h4 class=\"text-xs font-semibold\">Model routing</h4>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\"><h4 class=\"text-sm font-semibold\">Model routing</h4>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -279,7 +279,7 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if len(t.Routing.Candidates) > 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<table class=\"mt-1 w-full text-left text-xs\"><thead><tr class=\"text-mute\"><th class=\"pr-2 font-normal\">候補</th><th class=\"pr-2 font-normal\">実績（Take・平均点・合格率）</th><th class=\"pr-2 text-right font-normal\">コスト/Take</th><th class=\"pr-2 text-right font-normal\">quality</th><th class=\"pr-2 text-right font-normal\">cost</th><th class=\"pr-2 text-right font-normal\">fit</th><th class=\"pr-2 text-right font-normal\">score</th><th class=\"font-normal\">除外理由</th></tr></thead> <tbody>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<table class=\"mt-1 w-full text-left text-sm\"><thead><tr class=\"text-xs text-mute\"><th class=\"pr-2 font-semibold\">候補</th><th class=\"pr-2 font-semibold\">実績（Take・平均点・合格率）</th><th class=\"pr-2 text-right font-semibold\">コスト/Take</th><th class=\"pr-2 text-right font-semibold\">quality</th><th class=\"pr-2 text-right font-semibold\">cost</th><th class=\"pr-2 text-right font-semibold\">fit</th><th class=\"pr-2 text-right font-semibold\">score</th><th class=\"font-semibold\">除外理由</th></tr></thead> <tbody>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -422,12 +422,12 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</div><div><h4 class=\"text-xs font-semibold\">References</h4>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</div><div><h4 class=\"text-sm font-semibold\">References</h4>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if len(t.References) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<p class=\"text-xs text-mute\">参照画像なし</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "<p class=\"text-sm text-mute\">参照画像なし</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -481,7 +481,7 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "</div><details><summary class=\"cursor-pointer text-xs font-semibold\">Source Shot Spec（Prompt version のスナップショット）</summary><pre class=\"mt-1 overflow-x-auto rounded-md bg-bone p-2 text-xs focus-visible:focus-ring\" tabindex=\"0\" role=\"region\" aria-label=\"Source Shot Spec\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "</div><details><summary class=\"cursor-pointer text-sm font-semibold\">Source Shot Spec（Prompt version のスナップショット）</summary><pre class=\"mt-1 overflow-x-auto rounded-md bg-bone p-2 text-sm focus-visible:focus-ring\" tabindex=\"0\" role=\"region\" aria-label=\"Source Shot Spec\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -494,7 +494,7 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "</pre></details> <details><summary class=\"cursor-pointer text-xs font-semibold\">Model parameters</summary><pre class=\"mt-1 overflow-x-auto rounded-md bg-bone p-2 text-xs focus-visible:focus-ring\" tabindex=\"0\" role=\"region\" aria-label=\"Model parameters\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "</pre></details> <details><summary class=\"cursor-pointer text-sm font-semibold\">Model parameters</summary><pre class=\"mt-1 overflow-x-auto rounded-md bg-bone p-2 text-sm focus-visible:focus-ring\" tabindex=\"0\" role=\"region\" aria-label=\"Model parameters\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -507,7 +507,7 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "</pre></details> <details><summary class=\"cursor-pointer text-xs font-semibold\">Model Adapter output</summary><pre class=\"mt-1 overflow-x-auto rounded-md bg-bone p-2 text-xs focus-visible:focus-ring\" tabindex=\"0\" role=\"region\" aria-label=\"Model Adapter output\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "</pre></details> <details><summary class=\"cursor-pointer text-sm font-semibold\">Model Adapter output</summary><pre class=\"mt-1 overflow-x-auto rounded-md bg-bone p-2 text-sm focus-visible:focus-ring\" tabindex=\"0\" role=\"region\" aria-label=\"Model Adapter output\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -520,12 +520,12 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "</pre></details><div><h4 class=\"text-xs font-semibold\">Judge results</h4>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "</pre></details><div><h4 class=\"text-sm font-semibold\">Judge results</h4>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if len(t.Judgements) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "<p class=\"text-xs text-mute\">まだ Judge されていません。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "<p class=\"text-sm text-mute\">まだ Judge されていません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -543,7 +543,7 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<span class=\"text-xs\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<span class=\"text-sm\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -592,12 +592,12 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "</div><div><h4 class=\"text-xs font-semibold\">Repair history</h4>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "</div><div><h4 class=\"text-sm font-semibold\">Repair history</h4>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if len(t.Repairs) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "<p class=\"text-xs text-mute\">Repair はありません。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "<p class=\"text-sm text-mute\">Repair はありません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -607,7 +607,7 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			for _, r := range t.Repairs {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "<li class=\"text-xs\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "<li class=\"text-sm\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

@@ -29,10 +29,10 @@ templ EngineDetail(e view.Engine) {
 			case "broken":
 				<p class="text-sm text-warning" role="alert" data-testid="mm-engine-broken">導入済みの記録がありますが、エンジンのファイルが見つかりません。もう一度導入してください。</p>
 		}
-		<dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-ink" data-testid="mm-engine-facts">
+		<dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-ink" data-testid="mm-engine-facts">
 			if view.EnginePhase(e) == "installed" {
 				<div class="col-span-2">
-					<dt class="text-mute">導入済み</dt>
+					<dt class="text-xs text-mute">導入済み</dt>
 					<dd>
 						ComfyUI { e.Version }（{ e.VariantLabel }
 						if e.CPU {
@@ -42,7 +42,7 @@ templ EngineDetail(e view.Engine) {
 					</dd>
 				</div>
 				if e.State == "running" {
-					<div class="col-span-2"><dt class="text-mute">待ち受け（この PC の中だけ）</dt><dd><code data-testid="mm-engine-url">{ e.URL }</code></dd></div>
+					<div class="col-span-2"><dt class="text-xs text-mute">待ち受け（この PC の中だけ）</dt><dd><code data-testid="mm-engine-url">{ e.URL }</code></dd></div>
 				}
 				if e.UpdateAvailable {
 					<div class="col-span-2 text-warning" data-testid="mm-engine-update-note"><dt>更新</dt><dd>固定版 { e.PinnedVersion } があります（導入済み: { e.Version }）</dd></div>
@@ -50,7 +50,7 @@ templ EngineDetail(e view.Engine) {
 			}
 			if e.Supported && e.Writable {
 				<div class="col-span-2">
-					<dt class="text-mute">導入先（空き { e.Free }）</dt>
+					<dt class="text-xs text-mute">導入先（空き { e.Free }）</dt>
 					<dd><code class="break-all" data-testid="mm-engine-dir">{ e.Dir }</code></dd>
 				</div>
 			}

@@ -22,14 +22,14 @@ templ ModelDetail(d Detail) {
 		if d.Check != "" {
 			<p class={ "text-sm", templ.KV("text-warning", d.Changed), templ.KV("text-ink", !d.Changed) } data-testid="mm-ollama-check">{ d.Check }</p>
 		}
-		<dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-ink" data-testid="mm-ollama-facts">
+		<dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-ink" data-testid="mm-ollama-facts">
 			<div class="col-span-2">
-				<dt class="text-mute">取得元（Ollama のライブラリ。{ d.CheckedAt } に確認）</dt>
+				<dt class="text-xs text-mute">取得元（Ollama のライブラリ。{ d.CheckedAt } に確認）</dt>
 				<dd class="break-all"><a class="underline" href={ templ.SafeURL(d.SourceURL) } target="_blank" rel="noopener noreferrer">{ d.SourceURL }</a></dd>
 			</div>
-			<div class="col-span-2"><dt class="text-mute">重みの SHA-256</dt><dd class="break-all"><code data-testid="mm-sha256">{ d.Digest }</code></dd></div>
+			<div class="col-span-2"><dt class="text-xs text-mute">重みの SHA-256</dt><dd class="break-all"><code data-testid="mm-sha256">{ d.Digest }</code></dd></div>
 			<div class="col-span-2">
-				<dt class="text-mute">取得するもの（合計 { d.Size }）</dt>
+				<dt class="text-xs text-mute">取得するもの（合計 { d.Size }）</dt>
 				<dd>
 					<ul role="list" class="flex flex-col gap-1" data-testid="mm-ollama-layers">
 						for _, l := range d.Layers {
@@ -38,8 +38,8 @@ templ ModelDetail(d Detail) {
 					</ul>
 				</dd>
 			</div>
-			<div class="min-w-0"><dt class="text-mute">ライセンス</dt><dd class="break-words"><a class="underline" href={ templ.SafeURL(d.LicenseURL) } target="_blank" rel="noopener noreferrer">{ d.LicenseName }</a></dd></div>
-			<div class="col-span-2"><dt class="text-mute">ライセンスの確認</dt><dd class="break-words">{ d.LicenseSummary }</dd></div>
+			<div class="min-w-0"><dt class="text-xs text-mute">ライセンス</dt><dd class="break-words"><a class="underline" href={ templ.SafeURL(d.LicenseURL) } target="_blank" rel="noopener noreferrer">{ d.LicenseName }</a></dd></div>
+			<div class="col-span-2"><dt class="text-xs text-mute">ライセンスの確認</dt><dd class="break-words">{ d.LicenseSummary }</dd></div>
 		</dl>
 		@modal.Actions() {
 			@atoms.Button(atoms.TonePrimary, "閉じる", templ.Attributes{"type": "button", "data-modal-close": true})

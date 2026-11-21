@@ -575,7 +575,7 @@ func reviewCard(projectID string, it Item, oob bool) templ.Component {
 			}
 		}
 		if len(it.Item.Responses) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<p class=\"text-xs text-mute\">応答はまだ取り込まれていません。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<p class=\"text-sm text-mute\">応答はまだ取り込まれていません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

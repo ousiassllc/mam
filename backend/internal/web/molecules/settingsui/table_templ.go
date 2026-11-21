@@ -259,7 +259,7 @@ func RowHead(class string) templ.Component {
 			templ_7745c5c3_Var11 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		var templ_7745c5c3_Var12 = []any{"px-3 py-3 font-semibold text-ink " + class}
+		var templ_7745c5c3_Var12 = []any{"px-3 py-3 font-normal text-ink " + class}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var12...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err

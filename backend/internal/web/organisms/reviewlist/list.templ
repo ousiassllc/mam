@@ -185,7 +185,7 @@ templ reviewCard(projectID string, it Item, oob bool) {
 			<p class="whitespace-pre-wrap text-sm text-ink">{ it.Item.Request.Note }</p>
 		}
 		if len(it.Item.Responses) == 0 {
-			<p class="text-xs text-mute">応答はまだ取り込まれていません。</p>
+			<p class="text-sm text-mute">応答はまだ取り込まれていません。</p>
 		}
 		for _, r := range it.Item.Responses {
 			<section class="flex flex-col gap-2 rounded-md bg-surface p-3" aria-label={ "応答 " + r.ReviewerName }>

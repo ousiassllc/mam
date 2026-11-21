@@ -33,10 +33,10 @@
 | 項目 | 決まり |
 |------|--------|
 | フォント（T1） | 英字・UI・日本語は `font-sans`（Sora → Noto Sans JP）、コードと桁を揃える数値は `font-mono`（JetBrains Mono）。いずれも SIL OFL。`static/fonts.mjs` が `@fontsource-variable/*` から `dist/fonts.css` と `dist/fonts/*.woff2` を作り、レイアウトが `paths.StaticFontsCSS` を読む（ネットワークからは取らない）。ライセンス全文は `THIRD_PARTY_NOTICES.md` |
-| サイズ（T3） | `text-xs` 12 · `text-sm` 14 · `text-base` 16 · `text-lg` 18 · `text-xl` 24（h3）· `text-2xl` 32（h2）· `text-3xl` 40（h1）。Tailwind の既定の大きさ（20・30・36）は無効。本文（文章として読ませる `<p>`）は `text-sm` 以上、`text-xs` は注記・バッジ・表の見出し |
+| サイズ（T3） | `text-xs` 12 · `text-sm` 14 · `text-base` 16 · `text-lg` 18 · `text-xl` 24（h3）· `text-2xl` 32（h2）· `text-3xl` 40（h1）。Tailwind の既定の大きさ（20・30・36）は無効。本文（文章として読ませる `<p>`・表の本体・一覧・警告・入力欄・リンク型ボタンの文字）は `text-sm` 以上、`text-xs` は注記・バッジ・表の見出し・`dt` のラベルだけ |
 | 行間（T4） | サイズごとに `xs` 1.6 · `sm` 1.7 · `base` 1.8 · `lg` 1.7 · `xl` 1.5 · `2xl` 1.4 · `3xl` 1.3。`body` は 16px・1.8 |
 | ウェイト（T2） | Regular（400）と SemiBold（600）の 2 段だけ。SemiBold は見出し（`h1`〜`h4`）・ボタン・`<summary>`・表の見出し行だけ。ナビ・リンク・ラベル・数値には付けない（現在地は色と背景で示す）。`font-medium` は使わない |
-| 数値（T5） | 桁を揃える数値（金額・容量）は `font-mono tabular-nums`、表の数値列は右寄せ。表の見出し行は `text-xs font-semibold text-mute` |
+| 数値（T5） | 桁を揃える数値（金額・容量）は `font-mono tabular-nums`、表の数値列は右寄せ。表の見出し行は `text-xs font-semibold text-mute`、行の見出し（`<th scope="row">`）と `<legend>` は Regular（`font-normal`） |
 
 ### 形・余白・線（Issue #1038）
 
@@ -295,6 +295,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.25 | 2026-11-12 | §1「プロンプトの重み調整」の「実装との差分」6 件を解消済みにした（差分の表を外し、直った点とそれを確かめるテストの記述に置き換えた）。W7 の「バーの中の `Esc`」は、押したあとにフォーカスが戻るプロンプト欄をバーが作用している欄と書いた（実装: `onKey`）。W8 の注の領域は、バーを描くときに常に置き、中身だけを更新する（実装: `render`） | Issues #1094・#1095 |
 | 0.26 | 2026-11-22 | §2 のアイコン一覧の注に、グリフをアイコンの代わりにしないことと、Lit 側の `icon()` を足した。`IconButton` は子に `Icon` を置く形（引数は `attrs` だけ）に改めた。✓・★・☆・×・‹・› の文字を `Icon` に置き換えた | #1179: アイコン（I）の指摘 |
 | 0.27 | 2026-11-22 | §1 のスライダーの行から、ホバー・ドラッグ中のつまみの塗り替えを外し、つまみの縁を `--border` 1px にした。進捗バー（`progress.css`）の行を足した | #1181: 部品・オーバーレイ（O）の指摘 |
+| 0.28 | 2026-11-22 | §1 の文字の行を、表の本体・一覧・警告・入力欄・リンク型ボタンの文字は 14px 以上（`text-xs` は注記・バッジ・表の見出し・`dt` のラベルだけ）、行の見出しと `<legend>` は Regular に改めた。`a11y/typography_test` に、`<th scope="row">`・`<legend>` に `font-semibold` を付けない検査を足した | #1185: タイポグラフィ（T）の指摘 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 

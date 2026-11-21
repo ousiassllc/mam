@@ -323,7 +323,7 @@ func pickerForm(d PickerData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<div class=\"overflow-x-auto\"><table class=\"w-full min-w-[40rem] text-left text-xs text-ink\" data-testid=\"gt-picker-table\"><caption class=\"sr-only\">画面に出せる入力</caption> <thead><tr class=\"text-mute\"><th scope=\"col\" class=\"py-1 pr-2 font-normal\">出す</th><th scope=\"col\" class=\"py-1 pr-2 font-normal\">ノード・入力</th><th scope=\"col\" class=\"py-1 pr-2 font-normal\">今の値</th><th scope=\"col\" class=\"py-1 pr-2 font-normal\">型</th><th scope=\"col\" class=\"py-1 pr-2 font-normal\">画面での名前</th><th scope=\"col\" class=\"py-1 font-normal\">範囲・選択肢</th></tr></thead> <tbody>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<div class=\"overflow-x-auto\"><table class=\"w-full min-w-[40rem] text-left text-sm text-ink\" data-testid=\"gt-picker-table\"><caption class=\"sr-only\">画面に出せる入力</caption> <thead><tr class=\"text-xs text-mute\"><th scope=\"col\" class=\"py-1 pr-2 font-semibold\">出す</th><th scope=\"col\" class=\"py-1 pr-2 font-semibold\">ノード・入力</th><th scope=\"col\" class=\"py-1 pr-2 font-semibold\">今の値</th><th scope=\"col\" class=\"py-1 pr-2 font-semibold\">型</th><th scope=\"col\" class=\"py-1 pr-2 font-semibold\">画面での名前</th><th scope=\"col\" class=\"py-1 font-semibold\">範囲・選択肢</th></tr></thead> <tbody>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -68,7 +68,7 @@ templ TableRowItem(r TableRow) {
 
 // RowHead is the first cell of a row: its name, which is what the other cells and the buttons of the row are about.
 templ RowHead(class string) {
-	<th scope="row" class={ "px-3 py-3 font-semibold text-ink " + class }>
+	<th scope="row" class={ "px-3 py-3 font-normal text-ink " + class }>
 		{ children... }
 	</th>
 }

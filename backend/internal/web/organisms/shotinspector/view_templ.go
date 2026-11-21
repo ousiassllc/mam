@@ -489,7 +489,7 @@ func View(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "\" class=\"mt-1 inline-block text-xs text-mute underline hover:text-ink\">Branch を作る</a></header><section aria-label=\"AUTO / MANUAL / LOCK\" class=\"flex flex-col gap-2\"><h3 class=\"text-sm font-semibold\">Locks</h3><p class=\"text-sm text-mute\">AUTO は AI が決定、MANUAL はあなたの指定、LOCK は現在値を固定して AI の変更を禁止します。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 39, "\" class=\"mt-1 inline-block text-sm text-mute underline hover:text-ink\">Branch を作る</a></header><section aria-label=\"AUTO / MANUAL / LOCK\" class=\"flex flex-col gap-2\"><h3 class=\"text-sm font-semibold\">Locks</h3><p class=\"text-sm text-mute\">AUTO は AI が決定、MANUAL はあなたの指定、LOCK は現在値を固定して AI の変更を禁止します。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

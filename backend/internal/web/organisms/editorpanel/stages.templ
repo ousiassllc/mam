@@ -91,7 +91,7 @@ templ editorAudioStage(d Data, oob bool) {
 			</ul>
 		}
 		if d.Audio != nil && len(d.Audio.Timeline.Skipped) > 0 {
-			<ul class="flex flex-col gap-1 text-xs text-warning" data-audio-skipped>
+			<ul class="flex flex-col gap-1 text-sm text-warning" data-audio-skipped>
 				for _, s := range d.Audio.Timeline.Skipped {
 					<li>{ audioSkippedText(s) }</li>
 				}

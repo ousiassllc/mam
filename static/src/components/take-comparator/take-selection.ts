@@ -31,13 +31,13 @@ export function renderSelection(view: SelectionView) {
               </li>`,
             )}
           </ol>
-          <p class="text-xs text-mute">合計 ${totalSeconds(selection).toFixed(1)} 秒（つなぎ目はクロスフェード）</p>`
+          <p class="text-xs text-mute">合計 <span class="font-mono tabular-nums">${totalSeconds(selection).toFixed(1)}</span> 秒（つなぎ目はクロスフェード）</p>`
     }
     <div class="flex flex-wrap items-center gap-2">
       <button type="button" data-action="confirm-partial" class="min-h-8 rounded-md bg-accent px-3 py-1 text-sm font-semibold text-bone transition-colors hover:bg-accent/85 focus-visible:focus-ring disabled:opacity-40 motion-reduce:transition-none" data-ripple ?disabled=${!view.canMerge} @click=${() => view.merge()}>
         この区間で合成
       </button>
-      <button type="button" data-action="clear-selection" class="text-xs text-mute underline hover:text-ink focus-visible:focus-ring" ?disabled=${selection.length === 0} @click=${() => view.clear()}>選び直す</button>
+      <button type="button" data-action="clear-selection" class="text-sm text-mute underline hover:text-ink focus-visible:focus-ring" ?disabled=${selection.length === 0} @click=${() => view.clear()}>選び直す</button>
     </div>
     <form class="flex flex-wrap items-center gap-2" @submit=${(e: Event) => view.submitInstruction(e)}>
       <input

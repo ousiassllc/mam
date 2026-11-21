@@ -385,7 +385,7 @@ func startForm(s ModelStart, templates []TemplateOption, errMsg string) templ.Co
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = atoms.Textarea(atoms.FieldMd, "h-40 w-full font-mono text-xs", templ.Attributes{
+		templ_7745c5c3_Err = atoms.Textarea(atoms.FieldMd, "h-40 w-full font-mono text-sm", templ.Attributes{
 			"id": "local-workflow-json", "name": FieldWorkflowText, "spellcheck": "false",
 		}, s.WorkflowText).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {

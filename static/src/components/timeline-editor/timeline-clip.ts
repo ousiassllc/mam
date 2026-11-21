@@ -11,7 +11,7 @@ const NUM = 'font-mono tabular-nums';
 /** The arrow-up / arrow-down buttons (W4): `atoms.IconButton` with a target of 24px or more (WCAG 2.5.8). */
 const ICON_BUTTON = `inline-flex min-h-6 min-w-6 items-center justify-center rounded-md text-mute transition-colors hover:text-ink disabled:opacity-40 motion-reduce:transition-none ${RING}`;
 /** The "外す" button (W3): the text of `atoms.LinkButton`, no ripple. */
-const LINK_BUTTON = `text-xs text-mute underline transition-colors hover:text-ink disabled:opacity-40 motion-reduce:transition-none ${RING}`;
+const LINK_BUTTON = `text-sm text-mute underline transition-colors hover:text-ink disabled:opacity-40 motion-reduce:transition-none ${RING}`;
 
 /** What a clip row shows and does: the editor owns the clips, the drag and the requests; the row only renders. */
 export interface ClipRowView {

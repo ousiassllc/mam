@@ -268,7 +268,7 @@ func ProposalCard(p Proposal) templ.Component {
 			}
 		}
 		if len(p.Warnings) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<ul class=\"list-disc pl-5 text-xs text-warning\" data-testid=\"gtc-warnings\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<ul class=\"list-disc pl-5 text-sm text-warning\" data-testid=\"gtc-warnings\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

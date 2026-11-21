@@ -51,9 +51,9 @@ templ ButtonLink(tone ButtonTone, label string, href templ.SafeURL, attrs templ.
 // colours it as an accent; any other tone is the muted default.
 templ LinkButton(tone ButtonTone, label string, attrs templ.Attributes) {
 	if tone == TonePrimary {
-		<button class="text-xs text-accent underline decoration-mute" { attrs... }>{ label }</button>
+		<button class="text-sm text-accent underline decoration-mute" { attrs... }>{ label }</button>
 	} else {
-		<button class="text-xs text-mute underline hover:text-ink" { attrs... }>{ label }</button>
+		<button class="text-sm text-mute underline hover:text-ink" { attrs... }>{ label }</button>
 	}
 }
 
@@ -79,7 +79,7 @@ templ SmallButtonFor(tone ButtonTone, label, subject string, attrs templ.Attribu
 
 // LinkButtonFor is the LinkButton of one row of a list, named after the row like SmallButtonFor.
 templ LinkButtonFor(label, subject string, attrs templ.Attributes) {
-	<button class="text-xs text-mute underline hover:text-ink" aria-label={ RowLabel(label, subject) } { attrs... }>{ label }</button>
+	<button class="text-sm text-mute underline hover:text-ink" aria-label={ RowLabel(label, subject) } { attrs... }>{ label }</button>
 }
 
 // SmallButtonLinkFor is a link that looks like the SmallButtonFor of one row of a list (the page the row opens): its

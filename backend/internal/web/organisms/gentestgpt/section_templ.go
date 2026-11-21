@@ -45,7 +45,7 @@ func Section(d Data) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, " data-gt-gpt data-testid=\"gt-gpt\"><legend class=\"px-1 text-sm font-semibold text-ink\">GPT Image 2.6 の設定</legend><div class=\"flex flex-col gap-3\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, " data-gt-gpt data-testid=\"gt-gpt\"><legend class=\"px-1 text-sm text-ink\">GPT Image 2.6 の設定</legend><div class=\"flex flex-col gap-3\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -8,7 +8,7 @@ import "github.com/ousiassllc/mam/backend/internal/web/atoms"
 templ Section(d Data) {
 	if d.Offered {
 		<fieldset class="flex flex-col gap-3 rounded-lg border border-border p-3 text-sm" hidden?={ !d.Shown } data-gt-gpt data-testid="gt-gpt">
-			<legend class="px-1 text-sm font-semibold text-ink">GPT Image 2.6 の設定</legend>
+			<legend class="px-1 text-sm text-ink">GPT Image 2.6 の設定</legend>
 			<div class="flex flex-col gap-3" hidden?={ !d.Fields } data-gt-gpt-fields>
 				<div class="flex flex-wrap items-end gap-3">
 					<label class="flex flex-col gap-1 text-xs text-mute" for="gt-gpt-complexity">

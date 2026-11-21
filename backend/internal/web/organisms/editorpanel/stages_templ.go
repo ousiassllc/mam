@@ -324,7 +324,7 @@ func editorAudioStage(d Data, oob bool) templ.Component {
 			}
 		}
 		if d.Audio != nil && len(d.Audio.Timeline.Skipped) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<ul class=\"flex flex-col gap-1 text-xs text-warning\" data-audio-skipped>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<ul class=\"flex flex-col gap-1 text-sm text-warning\" data-audio-skipped>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
