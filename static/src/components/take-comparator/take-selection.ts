@@ -1,4 +1,5 @@
 import { html } from 'lit';
+import { icon } from '../lib/icon';
 import { describeSegments, totalSeconds, type Clip, type Segment } from '../lib/timeline-model';
 
 /** What the picked parts show and do: the component owns the selection, the instruction and the requests. */
@@ -26,7 +27,7 @@ export function renderSelection(view: SelectionView) {
             ${selection.map(
               (s, i) => html`<li class="flex items-center gap-1 rounded-sm bg-accent-soft px-2 py-1" data-segment>
                 <span>${describeSegments([s], view.clips)}</span>
-                <button type="button" class="inline-flex min-h-6 min-w-6 items-center justify-center rounded-md text-mute transition-colors hover:text-ink focus-visible:focus-ring motion-reduce:transition-none" aria-label="区間 ${i + 1} を外す" data-action="remove-segment" data-ripple @click=${() => view.removeSegment(i)}>×</button>
+                <button type="button" class="inline-flex min-h-6 min-w-6 items-center justify-center rounded-md text-mute transition-colors hover:text-ink focus-visible:focus-ring motion-reduce:transition-none" aria-label="区間 ${i + 1} を外す" data-action="remove-segment" data-ripple @click=${() => view.removeSegment(i)}>${icon('close')}</button>
               </li>`,
             )}
           </ol>

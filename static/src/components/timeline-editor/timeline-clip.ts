@@ -2,13 +2,14 @@ import { html, nothing } from 'lit';
 import { live } from 'lit/directives/live.js';
 import { BADGE_TONE } from '../lib/badge';
 import { CLIP_KIND_LABEL, TRANSITION_LABEL, type EditClip, type TransitionType } from '../lib/edit-model';
+import { icon } from '../lib/icon';
 import type { EditTimelineBody } from './timeline-api';
 
 const RING = 'focus-visible:focus-ring';
 /** The digits of a number that lines up (W7): seconds, lengths. */
 const NUM = 'font-mono tabular-nums';
-/** The ↑ ↓ buttons (W4): `atoms.IconButton` with a target of 24px or more (WCAG 2.5.8). */
-const ICON_BUTTON = `min-h-6 min-w-6 rounded-md text-mute transition-colors hover:text-ink disabled:opacity-40 motion-reduce:transition-none ${RING}`;
+/** The arrow-up / arrow-down buttons (W4): `atoms.IconButton` with a target of 24px or more (WCAG 2.5.8). */
+const ICON_BUTTON = `inline-flex min-h-6 min-w-6 items-center justify-center rounded-md text-mute transition-colors hover:text-ink disabled:opacity-40 motion-reduce:transition-none ${RING}`;
 /** The "外す" button (W3): the text of `atoms.LinkButton`, no ripple. */
 const LINK_BUTTON = `text-xs text-mute underline transition-colors hover:text-ink disabled:opacity-40 motion-reduce:transition-none ${RING}`;
 
@@ -62,8 +63,8 @@ export function renderClipRow(c: EditClip, i: number, body: EditTimelineBody, vi
         ${c.objective ? html`<p class="text-xs text-mute">${c.objective}</p>` : nothing}
       </div>
       <span class="text-xs text-mute" data-start><span class=${NUM}>${c.start.toFixed(1)}</span> 秒〜 / <span class=${NUM}>${(c.out_point - c.in_point).toFixed(1)}</span> 秒</span>
-      <button type="button" aria-label="${c.label} を上へ" data-action="up" data-ripple class=${ICON_BUTTON} ?disabled=${locked || i === 0} @click=${() => view.move(i, i - 1)}>↑</button>
-      <button type="button" aria-label="${c.label} を下へ" data-action="down" data-ripple class=${ICON_BUTTON} ?disabled=${locked || i === view.count - 1} @click=${() => view.move(i, i + 1)}>↓</button>
+      <button type="button" aria-label="${c.label} を上へ" data-action="up" data-ripple class=${ICON_BUTTON} ?disabled=${locked || i === 0} @click=${() => view.move(i, i - 1)}>${icon('arrow-up')}</button>
+      <button type="button" aria-label="${c.label} を下へ" data-action="down" data-ripple class=${ICON_BUTTON} ?disabled=${locked || i === view.count - 1} @click=${() => view.move(i, i + 1)}>${icon('arrow-down')}</button>
       <button type="button" aria-label="外す: ${c.label}" data-action="remove" class=${LINK_BUTTON} ?disabled=${locked || view.count <= 1} @click=${() => view.remove(i)}>外す</button>
     </div>
     <div class="flex flex-wrap items-end gap-3 text-xs text-mute">
