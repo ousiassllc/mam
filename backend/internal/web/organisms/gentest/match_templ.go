@@ -916,7 +916,7 @@ func matchBestPrompt(b MatchBatch) templ.Component {
 			templ_7745c5c3_Var43 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "<div class=\"flex flex-col gap-2 rounded-lg border border-success/60 bg-success/10 p-3\" data-testid=\"gt-match-best-prompt\"><div class=\"flex flex-wrap items-center justify-between gap-2\"><span class=\"text-sm text-success\">ベストのプロンプト（")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 80, "<div class=\"flex flex-col gap-2 rounded-lg border border-success/40 bg-success/10 p-3\" data-testid=\"gt-match-best-prompt\"><div class=\"flex flex-wrap items-center justify-between gap-2\"><span class=\"text-sm text-success\">ベストのプロンプト（")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -945,14 +945,14 @@ func matchBestPrompt(b MatchBatch) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 82, "</div></div><textarea id=\"gt-match-best-text\" readonly rows=\"3\" class=\"w-full resize-y rounded-md border border-border bg-surface p-2 text-sm text-ink\" data-testid=\"gt-match-best-text\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 82, "</div></div><textarea id=\"gt-match-best-text\" readonly rows=\"3\" class=\"w-full resize-y rounded-md border border-border bg-surface p-2 text-sm text-ink focus-visible:focus-ring\" data-testid=\"gt-match-best-text\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var45 string
 		templ_7745c5c3_Var45, templ_7745c5c3_Err = templ.JoinStringErrs(b.BestPrompt)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/match.templ`, Line: 221, Col: 189}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentest/match.templ`, Line: 221, Col: 214}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var45))
 		if templ_7745c5c3_Err != nil {

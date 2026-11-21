@@ -112,7 +112,7 @@ templ Frame(title, description string) {
 
 // Error is the reason a request was refused; the script moves the focus to it when no field is to blame.
 templ Error(message string) {
-	<p id="mam-modal-error" role="alert" tabindex="-1" class="whitespace-pre-line rounded-md border border-danger/60 px-3 py-2 text-sm text-danger focus-visible:focus-ring">{ message }</p>
+	<p id="mam-modal-error" role="alert" tabindex="-1" class="whitespace-pre-line rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger focus-visible:focus-ring">{ message }</p>
 }
 
 // Actions is the row of buttons at the foot of the modal.

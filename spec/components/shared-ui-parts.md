@@ -70,7 +70,7 @@
 | 確認・破壊的操作（O2） | 確認は OS 標準の `confirm()` でなく、中央のモーダル（`modal.Confirm`。`--r-xl`・`shadow-modal`・危険ボタン「実行する」と「キャンセル」）。`hx-confirm` の要素は `htmx:confirm` をこのモーダルが受けてから送る（`static/src/components/confirm`）。`AppLayout` が `#confirm-template` を埋め込む。モデルマネージャーの年齢確認・ライセンス確認もページ内の枠でなく同じ `<dialog>`（`modal.InlineHost`。`showModal()` で開く） |
 | トースト（O3） | 「保存しました」のような **1 行の短い成功の文だけ**。画面下中央（下から 24）・高さ 40・ピル・`bg-ink text-bone`・同時に 1 つ（新しいものが前を置き換える）・3 秒で自動消去。閉じるボタンも持たない。サーバーが返す成功は `atoms.ToastOOB`（`#toast-region` の中身を置き換える） |
 | インラインアラート（O3） | エラー・業務エラー（403 / 409 / 423・予算超過・LOCK 違反など）・エラー詳細は、ページ上部（`#content` の先頭の `#alert-region`）に `atoms.Alert`（お知らせ / 成功 / 注意 / エラーの 4 種。アイコン＋見出し＋本文）で出す。閉じるまで残る（長い文を読み終えるため。WCAG 2.2.1）。同じ文は重ねない。サーバーは `atoms.ErrorAlertOOB`（`beforeend`）、スクリプトは `lib/alert.ts`（エラーは `#alert-template`、注意は `#alert-warning-template`） |
-| 接続の通知（O3） | 接続が切れた通知（`atoms.ConnectionNotice`）は、警告のアイコン＋文言＋ `--surface` の地に `border-warning/60` の枠（スナックバー。影なし）。トーストではない |
+| 接続の通知（O3） | 接続が切れた通知（`atoms.ConnectionNotice`）は、警告のアイコン＋文言＋ `border-warning/40` の枠と `bg-warning/10` の地（スナックバー。影なし）。トーストではない |
 | ボタン（O7） | `font-semibold`・`rounded-md`・無効は不透明度 .4・小は高さ 32（`min-h-8`）・標準は 40（`min-h-10`）。種類は主（`TonePrimary`）・サブ（`ToneNeutral`。透明＋ `border-border`）・ゴースト（`ToneGhost`）・危険（`ToneDanger`） |
 | 独自ウィジェット（Lit。P3） | `mam-timeline-editor`・`mam-take-comparator`・`mam-mask-paint` は共通ガイドに無い独自ウィジェットで、見た目・状態表示・操作・文言は案件ガイド [lit-widgets-guide.md](lit-widgets-guide.md) が決める（ボタン・入力・バッジ・通知・数値は上の表と同じ部品を使う） |
 

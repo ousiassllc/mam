@@ -106,7 +106,7 @@ templ stagedForm(s Staged) {
 			}
 		</div>
 		if s.Conflict != nil {
-			<div class="flex flex-col gap-1 rounded-md border border-warning/60 bg-warning/10 p-3 text-sm text-ink" role="alert" data-testid="mm-lora-conflict" data-same?={ s.Conflict.Same }>
+			<div class="flex flex-col gap-1 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-ink" role="alert" data-testid="mm-lora-conflict" data-same?={ s.Conflict.Same }>
 				if s.Conflict.Same {
 					<p>同じ内容のファイルが、すでに <code class="break-all">{ s.Conflict.Name }</code> として loras フォルダにあります。追加は要りません（取り消してください）。</p>
 				} else {

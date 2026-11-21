@@ -298,7 +298,7 @@ func Result(r TestResult) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if r.OK {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<div class=\"flex flex-col gap-1 rounded-lg border border-success/60 bg-success/10 p-3 text-sm text-ink\" role=\"status\" data-testid=\"mm-llm-test-ok\"><p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<div class=\"flex flex-col gap-1 rounded-lg border border-success/40 bg-success/10 p-3 text-sm text-ink\" role=\"status\" data-testid=\"mm-llm-test-ok\"><p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -162,7 +162,7 @@ func Section(d Data) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<span>ローカルが使えないときは、クラウドに切り替える（API 費用が出ます） <span class=\"block text-xs text-mute\">実行を始める前の検査で、ローカルが使えない（この PC で動かせない・導入されていない・重みが無い・参照音声が無い話者がいる）と分かったときだけ、その実行の全体をクラウドで作ります。実行の途中で切り替えることはなく、切り替えたときはチャットに書きます。オフのときは、理由を出して止まります（クラウドの費用は出ません）。</span></span></label><div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<span>ローカルが使えないときは、クラウドに切り替える（API 費用が出ます） <span class=\"block text-xs text-ink\">実行を始める前の検査で、ローカルが使えない（この PC で動かせない・導入されていない・重みが無い・参照音声が無い話者がいる）と分かったときだけ、その実行の全体をクラウドで作ります。実行の途中で切り替えることはなく、切り替えたときはチャットに書きます。オフのときは、理由を出して止まります（クラウドの費用は出ません）。</span></span></label><div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -256,7 +256,7 @@ func choice(p Provider) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if p.CloneNotice != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<p class=\"mt-3 rounded-md border border-warning/60 bg-warning/10 p-3 text-sm text-warning\" role=\"note\" data-testid=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "<p class=\"mt-3 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-warning\" role=\"note\" data-testid=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

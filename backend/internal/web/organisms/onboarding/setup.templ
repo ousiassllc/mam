@@ -99,7 +99,7 @@ templ FFmpegBody(f FFmpeg) {
 		ffmpeg と ffprobe は、品質判定（Judge）・Take のプレビュー・部分採用で使います。無くても Nefos Video は起動しますが、これらは使えなくなります。モデルマネージャーの「付随ソフト」でパスを指定していればそのパスを、無ければ Nefos Video を起動した環境の PATH（Mac では Homebrew の /opt/homebrew/bin と /usr/local/bin も）から探し、どこにも無ければ Nefos Video でダウンロードして入れたものを使います。
 	</p>
 	if f.Found() {
-		<div class="flex flex-col gap-1 rounded-md border border-success/60 px-3 py-2" role="status" data-testid="onboarding-ffmpeg-found">
+		<div class="flex flex-col gap-1 rounded-md border border-success/40 bg-success/10 px-3 py-2" role="status" data-testid="onboarding-ffmpeg-found">
 			<p class="text-sm">
 				@atoms.Badge(atoms.BadgeOK, "見つかりました")
 				<span class="ml-2">ffmpeg と ffprobe を使えます。</span>
@@ -108,7 +108,7 @@ templ FFmpegBody(f FFmpeg) {
 			<p class="text-sm text-mute">ffprobe: <code class={ codeClass }>{ f.FFprobe }</code></p>
 		</div>
 	} else {
-		<div class="flex flex-col gap-3 rounded-md border border-warning/60 px-3 py-2" role="status" data-testid="onboarding-ffmpeg-missing">
+		<div class="flex flex-col gap-3 rounded-md border border-warning/40 bg-warning/10 px-3 py-2" role="status" data-testid="onboarding-ffmpeg-missing">
 			<p class="text-sm">
 				@atoms.Badge(atoms.BadgeWarn, "見つかりません")
 				<span class="ml-2">{ missingText(f) }</span>

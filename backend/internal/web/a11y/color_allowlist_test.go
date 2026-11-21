@@ -31,10 +31,10 @@ var colorAllowlist = map[string][]string{
 	"primary action":  {"bg-accent", "hover:bg-accent/85", "text-bone"},
 	"link and icon":   {"text-accent", "decoration-mute"},
 	"selected":        {"border-accent", "has-[:checked]:border-accent", "peer-checked:border-accent", "peer-checked:bg-accent-soft", "hover:border-accent", "border-t-accent"},
-	"danger":          {"text-danger", "border-danger/60", "border-danger/40", "bg-danger/10", "bg-danger/20", "hover:bg-danger/10"},
-	"warning":         {"text-warning", "border-warning/60", "border-warning/40", "bg-warning/10", "bg-warning/20"},
-	"success":         {"text-success", "border-success/60", "border-success/40", "bg-success/10", "bg-success/20"},
-	"info":            {"text-info", "border-info/60", "border-info/40", "bg-info/10", "bg-info/20"},
+	"danger":          {"text-danger", "border-danger/40", "bg-danger/10", "hover:bg-danger/10"},
+	"warning":         {"text-warning", "border-warning/40", "bg-warning/10"},
+	"success":         {"text-success", "border-success/40", "bg-success/10"},
+	"info":            {"text-info", "border-info/40", "bg-info/10"},
 }
 
 var colorExceptions = map[string][]string{

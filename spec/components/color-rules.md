@@ -9,7 +9,7 @@
 - **色は Ousiass 共通デザインガイド（brand-guide `622ea73`）のトークンだけ。** `static/src/css/tokens.css` が唯一の「値を書く場所」で、`--ink` `--bone` `--mute` `--surface` `--border` `--accent` `--accent-soft` `--focus` と状態色 `--success` `--warning` `--danger` `--info` を、ライト（`:root`）とダーク（`:root[data-theme="dark"]`）の両方で定義する。写真の上に重ねる塗りだけは、写真が下地でテーマの面ではないので、テーマで変わらない専用のトークン `--overlay-deep`・`--overlay-pale` を `:root` に 1 組だけ持つ（§4.2）。Tailwind 4 の `@theme inline` が `--color-*: initial` で既定のパレットを消し、トークンを `bg-bone` `text-ink` `border-border` のクラスにする。**`bg-neutral-900` や `text-indigo-300` のような既定パレットのクラスは、コンパイルされず、テストも落とす。**
 - **ライト / ダークの切り替え**: `<html data-theme="light|dark">`（左メニューのテーマボタンが `mam_theme` クッキーと `data-theme` を書き、サーバーが次のページを同じテーマで描く。`backend/internal/web/themestate`）。クッキーが無いときは OS の設定（`prefers-color-scheme`）に従う。クラスに `dark:` は付けない（トークンが切り替わる）。
 - 意味は色相でなく**トークン**で決める: **危険 = `danger`・警告 = `warning`・成功 = `success`・情報／進行中 = `info`・主アクション／リンク／選択 = `accent`（インク色）・それ以外 = `ink` / `mute` / `border` / `surface` / `bone`**。状態色は彩度を落とした無彩色寄りで、色だけで意味を伝えない（文言とアイコン `atoms.Icon` を添える）。
-- **同じ意味に新しいクラスや `/opacity` を足さない。** 枠は `-/60`、薄い面は `/10`（弱い）か `/20`（バッジのような塗り）。足したいときは、画面のクラスを変えるのでなく、この文書の表を変える（テストの `colorAllowlist` も同じ版で変える）。
+- **同じ意味に新しいクラスや `/opacity` を足さない。** 枠は `-/40`、地は `/10`（ガイドの状態色は文字・枠 40%・地 10%）。足したいときは、画面のクラスを変えるのでなく、この文書の表を変える（テストの `colorAllowlist` も同じ版で変える）。
 - プリズム（`--prism-*`）はロゴ・ヒーロー・キービジュアル専用で、UI のクラスに使わない。フォーカスだけが `--focus`（プリズムの blue を薄く借りる）を使う。
 - コントラストは `a11y/contrast_test.go`（補助の文字に `text-neutral-500` を使わない）と `a11y/field_border_test.go`（入力欄の枠は、ライト・ダークのどちらでも面に対して 3:1 以上）が守る。
 - 共通部品が表の正: 色は `atoms.Badge`（`BadgeNeutral`・`BadgeInfo`・`BadgeWarn`・`BadgeOK`・`BadgeError`）と `atoms.Button`（`TonePrimary`・`ToneDanger`・`ToneNeutral`）から決まる。画面・molecules・organisms・Lit は、同じ意味ならこれと同じクラスを使う。
@@ -43,16 +43,16 @@
 | 主アクション（実ボタン） | `bg-accent` / `hover:bg-accent/85` / `text-bone` | `TonePrimary` |
 | リンク・アイコン強調 | `text-accent` / `decoration-mute`（リンクは `underline` を添える） | §1・`Icon` 周り |
 | 選択・現在地 | `border-accent` / `has-[:checked]:border-accent` / `peer-checked:border-accent` / `peer-checked:bg-accent-soft` / `hover:border-accent` / `border-t-accent` | 選ぶカード・ナビ・スピナーの回る弧 |
-| 危険 | 文字 `text-danger`、枠/面 `border-danger/60`・`border-danger/40`・`bg-danger/10`・`bg-danger/20`（Badge）・`hover:bg-danger/10`（`ToneDanger` のホバー） | `ToneDanger`・`BadgeError` |
-| 警告 | 文字 `text-warning`、枠/面 `border-warning/60`・`border-warning/40`・`bg-warning/10`・`bg-warning/20`（Badge） | `BadgeWarn` |
-| 成功 | 文字 `text-success`、枠/面 `border-success/60`・`border-success/40`・`bg-success/10`・`bg-success/20`（Badge） | `BadgeOK` |
-| 情報・進行中 | 文字 `text-info`、枠/面 `border-info/60`・`border-info/40`・`bg-info/10`・`bg-info/20`（Badge） | `BadgeInfo` |
+| 危険 | 文字 `text-danger`、枠/面 `border-danger/40`・`bg-danger/10`・`hover:bg-danger/10`（`ToneDanger` のホバー） | `ToneDanger`・`BadgeError` |
+| 警告 | 文字 `text-warning`、枠/面 `border-warning/40`・`bg-warning/10` | `BadgeWarn` |
+| 成功 | 文字 `text-success`、枠/面 `border-success/40`・`bg-success/10` | `BadgeOK` |
+| 情報・進行中 | 文字 `text-info`、枠/面 `border-info/40`・`bg-info/10` | `BadgeInfo` |
 
 ### 3.1 意味の色の枠・薄い面
 
-警告・成功・情報・危険は、**枠は `-/60`、薄い面は `/10`、バッジのような塗りは `/20`**（表の読み。新しい色・不透明度は足さない）。
+警告・成功・情報・危険は、**文字は状態色、枠は `-/40`、地は `/10`**（バッジ・アラート・注意の箱とも同じ。表の読み。新しい色・不透明度は足さない）。
 
-**ガイド（brand-guide `5d816f8`）の枠は 40%・地は 10%** なので、状態色の枠に `border-{danger,warning,success,info}/40` を許可に足した（2026-11-22）。`/60` と `/20` は呼び出し側を `/40` へ直し終えるまでの移行中として残し、直し終えたら表と `color_allowlist_test.go` から消す。注意書きの箱（枠だけ）・トースト・接続の通知・ステータスの帯がこれを使う。
+**ガイド（brand-guide `5d816f8`）の枠は 40%・地は 10%** なので、状態色は枠 `border-{danger,warning,success,info}/40`・地 `bg-…/10` の 1 通りにした（2026-11-22。旧 `border-…/60`・`bg-…/20` は呼び出し側をすべて直して許可から外した）。バッジ（`atoms.Badge`・Lit の `lib/badge.ts`）・インラインアラート・注意書きの箱・接続の通知・ステータスの帯がこれを使う。
 
 <!-- color-allowlist:end -->
 
@@ -141,3 +141,4 @@
 | 2.4 | 2026-11-16 | ライトの `--mute` を `#8b8b8e` から共通ガイドの `#6b6b6e` に改めた（`text-mute` の補足の文字が白の面で 3.40:1 → 5.31:1、bone の面で 3.11:1 → 4.87:1）。ダークは `#8b8b8e` のまま（`tokens.css` の 2 つのダークのブロックに明示した。これまでは `:root` の値を引き継いでいた）。許可クラスの表（§3・§4）は変えていない。`a11y/contrast_test.go` に、ライト・ダークの値と 4.5:1 の検査を足した | Issue #1159 |
 | 2.5 | 2026-11-19 | 本文の製品名の表示を「MAM」から「Nefos Video」に改めた（過去の改訂履歴の文は当時のまま） | #1170: 製品名を MAM から Nefos Video に変更（表示名のみ。識別子・パス・実行ファイル名は変更しない） |
 | 2.6 | 2026-11-22 | §3・§3.1 に状態色の枠 `border-{danger,warning,success,info}/40`（ガイド brand-guide `5d816f8` の枠 40%・地 10%）を足した。`/60`・`/20` は移行中として残す | #1179 #1176: 状態色をガイドに合わせる下準備 |
+| 2.7 | 2026-11-22 | §3・§3.1 から状態色の `/60`（枠）・`/20`（バッジの地）を外し、枠 `/40`・地 `/10` だけにした。バッジに 1px の枠 `/40` を足し、LOCK の選択面は `bg-accent-soft text-accent` にした | #1176: 色（C）の指摘 |

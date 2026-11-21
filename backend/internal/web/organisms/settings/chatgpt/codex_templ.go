@@ -225,14 +225,14 @@ func codexDetail(d Data) templ.Component {
 			templ_7745c5c3_Var4 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div class=\"flex flex-col gap-3\" data-testid=\"chatgpt-codex-detail\"><p class=\"rounded-md border border-warning/60 px-3 py-2 text-sm text-warning\" data-testid=\"chatgpt-codex-terms\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<div class=\"flex flex-col gap-3\" data-testid=\"chatgpt-codex-detail\"><p class=\"rounded-md border border-warning/40 bg-warning/10 px-3 py-2 text-sm text-warning\" data-testid=\"chatgpt-codex-terms\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(codexTerms)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/codex.templ`, Line: 93, Col: 126}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/chatgpt/codex.templ`, Line: 93, Col: 140}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {

@@ -50,7 +50,7 @@ func Box(p Props) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex flex-col gap-2 rounded-lg border border-danger/60 bg-danger/10 p-3 text-sm text-ink\" role=\"alert\" data-testid=\"error-box\" data-error-code=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex flex-col gap-2 rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-ink\" role=\"alert\" data-testid=\"error-box\" data-error-code=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -219,14 +219,14 @@ func Box(p Props) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\" readonly rows=\"4\" class=\"mt-2 w-full resize-y rounded-md border border-border bg-surface p-2 font-mono text-xs text-ink\" aria-label=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\" readonly rows=\"4\" class=\"mt-2 w-full resize-y rounded-md border border-border bg-surface p-2 font-mono text-xs text-ink focus-visible:focus-ring\" aria-label=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue(apperr.Text(p.Lang, "ui.detail", nil))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/errorbox/errorbox.templ`, Line: 36, Col: 202}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/errorbox/errorbox.templ`, Line: 36, Col: 227}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 		if templ_7745c5c3_Err != nil {
@@ -239,7 +239,7 @@ func Box(p Props) templ.Component {
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(p.View.Report(p.Lang))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/errorbox/errorbox.templ`, Line: 36, Col: 228}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/errorbox/errorbox.templ`, Line: 36, Col: 253}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {

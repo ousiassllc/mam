@@ -477,7 +477,7 @@ func codexGuidance(d Data) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if (d.Official.Login != nil && d.Official.Login.UseCodex) || (d.Official.SignedIn && d.Official.WorkspacePlan) {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<div class=\"flex flex-col gap-2 rounded-md border border-warning/60 px-3 py-2\" data-testid=\"chatgpt-use-codex\"><p class=\"text-sm text-warning\">組織のアカウントは Codex 経由のログインを使ってください。Business / Enterprise / Edu のワークスペースのアカウントは、OpenAI の仕様で、公式の方式ではプランを使えません。</p><a class=\"w-fit text-sm text-accent underline decoration-mute\" href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<div class=\"flex flex-col gap-2 rounded-md border border-warning/40 bg-warning/10 px-3 py-2\" data-testid=\"chatgpt-use-codex\"><p class=\"text-sm text-warning\">組織のアカウントは Codex 経由のログインを使ってください。Business / Enterprise / Edu のワークスペースのアカウントは、OpenAI の仕様で、公式の方式ではプランを使えません。</p><a class=\"w-fit text-sm text-accent underline decoration-mute\" href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

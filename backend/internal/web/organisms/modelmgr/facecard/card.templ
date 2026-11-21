@@ -33,7 +33,7 @@ templ Section(c Card) {
 			}
 		</p>
 		if c.OffReason == "runtime_unavailable" {
-			<div class="flex flex-col gap-1 rounded-lg border border-warning/60 p-2 text-xs text-warning" role="note" data-testid="mm-face-models-runtime">
+			<div class="flex flex-col gap-1 rounded-lg border border-warning/40 bg-warning/10 p-2 text-xs text-warning" role="note" data-testid="mm-face-models-runtime">
 				<p class="">モデルは入っていますが、顔の類似度はオフです（ONNX Runtime のライブラリが使えません）</p>
 				<p>{ c.OffCause }</p>
 				<p>{ c.OffFix }</p>
@@ -63,7 +63,7 @@ templ Section(c Card) {
 					<p class="text-mute">{ l.Summary }</p>
 					@commercial.Note(l.Answer)
 					if l.Notice != "" {
-						<p class="rounded-md border border-warning/60 p-2 text-warning" role="note" data-testid="mm-face-models-license-notice">{ l.Notice }</p>
+						<p class="rounded-md border border-warning/40 bg-warning/10 p-2 text-warning" role="note" data-testid="mm-face-models-license-notice">{ l.Notice }</p>
 					}
 					<p><a class="underline" href={ templ.SafeURL(l.URL) } target="_blank" rel="noopener noreferrer">ライセンス原文</a></p>
 				</li>
