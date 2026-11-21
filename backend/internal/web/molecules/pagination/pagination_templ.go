@@ -9,8 +9,8 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 const (
-	linkClass    = "inline-flex min-h-8 min-w-8 items-center justify-center rounded-md border border-border px-2 py-1 text-sm font-semibold text-ink transition-colors hover:bg-accent-soft focus-visible:focus-ring motion-reduce:transition-none"
-	currentClass = "inline-flex min-h-8 min-w-8 items-center justify-center rounded-md bg-accent px-2 py-1 text-sm font-semibold text-bone"
+	linkClass    = "inline-flex min-h-8 min-w-8 items-center justify-center rounded-md border border-border px-2 py-1 text-sm text-ink transition-colors hover:bg-accent-soft focus-visible:focus-ring motion-reduce:transition-none"
+	currentClass = "inline-flex min-h-8 min-w-8 items-center justify-center rounded-md bg-accent px-2 py-1 text-sm text-bone"
 	offClass     = "inline-flex min-h-8 items-center justify-center rounded-md border border-border px-2 py-1 text-sm text-mute opacity-40"
 )
 
