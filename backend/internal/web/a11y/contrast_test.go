@@ -59,3 +59,19 @@ func TestOverlayNumberChipIsReadableInBothThemes(t *testing.T) {
 	require.NotNil(t, picked, "the picked part of a take is drawn with bg-success/70")
 	assert.NotRegexp(t, `\btext-(bone|ink|mute|accent)\b`, picked[1], "the number is on its own chip, not on the see-through fill")
 }
+
+// The hint of an empty field (::placeholder) is --mute at full opacity: Tailwind's preflight leaves it at currentcolor 50%, 3.8:1 on --bone in the Light
+// theme. The rule is read from tokens.css, since a stylesheet is not rendered here (#1204).
+func TestTokens_PlaceholderIsMute(t *testing.T) {
+	raw, err := os.ReadFile("../../../../static/src/css/tokens.css")
+	require.NoError(t, err)
+	rule := regexp.MustCompile(`(?s)::placeholder\s*\{([^}]*)\}`).FindStringSubmatch(string(raw))
+	require.NotNil(t, rule, "tokens.css styles ::placeholder")
+	assert.Regexp(t, `color:\s*var\(--mute\)\s*;`, rule[1])
+	assert.Regexp(t, `opacity:\s*1\s*;`, rule[1])
+	for _, theme := range []string{"light", "dark"} {
+		for _, bg := range []string{"surface", "bone"} {
+			assert.GreaterOrEqual(t, contrast(tokenValue(t, theme, "mute"), tokenValue(t, theme, bg)), 4.5, "a placeholder on %s in the %s theme", bg, theme)
+		}
+	}
+}

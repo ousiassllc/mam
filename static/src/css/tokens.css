@@ -191,6 +191,12 @@
     accent-color: var(--accent);
   }
 
+  /* The hint in an empty field is --mute (C6), full opacity: the preflight default is currentcolor at 50%, 3.8:1 on --bone in Light (AA needs 4.5:1). */
+  ::placeholder {
+    color: var(--mute);
+    opacity: 1;
+  }
+
   /* The underline of a text link is --mute (O7), not the colour of its text: one place, so that a link that says only `underline` is the same as the
      one that also says `decoration-mute`. A utility class on a link still wins (the utilities layer is after this one). */
   :where(a, button).underline {
