@@ -30,6 +30,12 @@
   --overlay-deep: #5a0000;
   --overlay-pale: #ff8c96;
 
+  /* The thumb of a scrollbar (B2, guide §10, scrollbar.css): --mute, and on hover / drag --ink mixed in at 35% / 65% (darker in Light,
+     lighter in Dark). Written here once: this is the one place that writes a colour mix, and they follow --ink and --mute of the theme. */
+  --scrollbar-thumb: var(--mute);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--ink) 35%, var(--mute));
+  --scrollbar-thumb-active: color-mix(in srgb, var(--ink) 65%, var(--mute));
+
   /* The scrim behind a modal (O1): black in both themes. */
   --scrim: rgb(0 0 0 / 0.7);
 

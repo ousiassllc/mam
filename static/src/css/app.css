@@ -16,6 +16,9 @@
 /* The common look of every <progress> (O12): the browser's own bar is switched off, the rail and the fill are the guide's tokens. */
 @import "./progress.css" layer(components);
 
+/* The scrollbar of every scrolling area, vertical and horizontal (B1-B6): 8px, no arrows, a round --mute thumb; the OS bar stays with forced colours. */
+@import "./scrollbar.css";
+
 /* Tailwind must see class names used in Templ templates. */
 @source "../../../backend/internal/web";
 
