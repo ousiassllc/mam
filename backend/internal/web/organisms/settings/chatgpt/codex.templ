@@ -108,7 +108,7 @@ templ codexDetail(d Data) {
 
 // codexEngine is the Codex app-server on this machine: its state, where it came from and what to know before downloading it.
 templ codexEngine(c Codex) {
-	<div class="flex flex-col gap-2 rounded-md border border-border px-3 py-2" data-testid="chatgpt-codex-engine">
+	<div class="flex flex-col gap-2 rounded-lg border border-border px-3 py-2" data-testid="chatgpt-codex-engine">
 		<p class="text-sm">
 			<span class="">エンジン（Codex app-server）</span>
 			switch c.Engine.State {

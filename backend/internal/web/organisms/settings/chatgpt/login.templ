@@ -109,7 +109,7 @@ templ loginStart(f LoginForm) {
 // loginProgress is what to do for the login in progress.
 templ loginProgress(l *Login) {
 	if l.Device {
-		<div class="flex flex-col gap-2 rounded-md border border-border px-3 py-2" role="status" data-testid="chatgpt-device">
+		<div class="flex flex-col gap-2 rounded-lg border border-border px-3 py-2" role="status" data-testid="chatgpt-device">
 			<p class="text-sm">1. 別の端末でも構いません。次の URL を開いて ChatGPT にログインします。</p>
 			<a class="break-all text-sm underline" href={ templ.SafeURL(l.VerificationURL) } target="_blank" rel="noopener noreferrer" data-testid="chatgpt-device-url">{ l.VerificationURL }</a>
 			<p class="text-sm">2. 次のコードを入力します（有効期限: { l.ExpiresAt.Local().Format("15:04") } まで）。</p>
@@ -117,7 +117,7 @@ templ loginProgress(l *Login) {
 			<p class="text-sm text-ink">自分で始めたログインのときだけ続けてください。人やサイトに教えられたコードは入力しないでください。完了すると、この表示は自動で閉じます。</p>
 		</div>
 	} else {
-		<div class="flex flex-col gap-2 rounded-md border border-border px-3 py-2" role="status" data-testid="chatgpt-browser-login">
+		<div class="flex flex-col gap-2 rounded-lg border border-border px-3 py-2" role="status" data-testid="chatgpt-browser-login">
 			<p class="text-sm">{ l.Message }</p>
 			if l.AuthURL != "" && !l.BrowserOpened {
 				<a class="break-all text-sm underline" href={ templ.SafeURL(l.AuthURL) } target="_blank" rel="noopener noreferrer" data-testid="chatgpt-auth-url">ログインのページを開く</a>

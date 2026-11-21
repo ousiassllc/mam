@@ -355,7 +355,7 @@ func loginProgress(l *Login) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if l.Device {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<div class=\"flex flex-col gap-2 rounded-md border border-border px-3 py-2\" role=\"status\" data-testid=\"chatgpt-device\"><p class=\"text-sm\">1. 別の端末でも構いません。次の URL を開いて ChatGPT にログインします。</p><a class=\"break-all text-sm underline\" href=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<div class=\"flex flex-col gap-2 rounded-lg border border-border px-3 py-2\" role=\"status\" data-testid=\"chatgpt-device\"><p class=\"text-sm\">1. 別の端末でも構いません。次の URL を開いて ChatGPT にログインします。</p><a class=\"break-all text-sm underline\" href=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -412,7 +412,7 @@ func loginProgress(l *Login) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<div class=\"flex flex-col gap-2 rounded-md border border-border px-3 py-2\" role=\"status\" data-testid=\"chatgpt-browser-login\"><p class=\"text-sm\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<div class=\"flex flex-col gap-2 rounded-lg border border-border px-3 py-2\" role=\"status\" data-testid=\"chatgpt-browser-login\"><p class=\"text-sm\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

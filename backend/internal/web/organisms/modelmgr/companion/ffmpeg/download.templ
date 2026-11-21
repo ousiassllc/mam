@@ -15,7 +15,7 @@ func megabytes(n int64) string { return fmt.Sprintf("%d", (n+(1<<20)-1)>>20) }
 templ DownloadPanel(d Download) {
 	<section
 		id={ DownloadID }
-		class="flex flex-col gap-2 rounded-md border border-border px-3 py-2"
+		class="flex flex-col gap-2 rounded-lg border border-border px-3 py-2"
 		data-testid="ffmpeg-download"
 		if d.Polling() {
 			hx-get={ paths.FFmpegDownload() }

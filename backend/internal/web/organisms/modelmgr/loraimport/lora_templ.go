@@ -407,7 +407,7 @@ func stagedForm(s Staged) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "\"><div class=\"flex flex-col gap-1 rounded-md border border-border p-3 text-sm\" data-testid=\"mm-lora-file-facts\"><p class=\"break-all\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "\"><div class=\"flex flex-col gap-1 rounded-lg border border-border p-3 text-sm\" data-testid=\"mm-lora-file-facts\"><p class=\"break-all\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

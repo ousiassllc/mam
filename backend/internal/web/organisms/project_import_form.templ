@@ -14,7 +14,7 @@ type ProjectImportFormData struct {
 templ ProjectImportForm(d ProjectImportFormData) {
 	<form
 		id="project-import-form"
-		class="mt-4 flex flex-wrap items-center gap-2 rounded-md border border-border p-3 text-sm"
+		class="mt-4 flex flex-wrap items-center gap-2 rounded-lg border border-border p-3 text-sm"
 		hx-post={ paths.ProjectImport() }
 		hx-encoding="multipart/form-data"
 		hx-target="this"

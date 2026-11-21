@@ -110,3 +110,19 @@ func TestMotionCSS_FadesTheOverlaysAndClipsTheRipple(t *testing.T) {
 	}
 	assert.NotRegexp(t, `animation|@keyframes|translate|scale`, css, "an overlay fades; it does not move or bounce (M2)")
 }
+
+// A list, a form, a section or a table that is a bordered panel of its own on the screen is a card: rounded-lg (S1). rounded-md is for what sits in a
+// card (an input, a button, a nested face, an alert). A panel with a neutral border and rounded-md on one of these tags is the 2nd-run miss.
+func TestSources_PanelsOfTheirOwnAreRoundedLg(t *testing.T) {
+	panel := regexp.MustCompile(`(?s)<(?:ul|ol|form|section|table)\b[^<>]*\brounded-md\b[^<>]*\bborder-border\b[^<>]*>|<(?:ul|ol|form|section|table)\b[^<>]*\bborder-border\b[^<>]*\brounded-md\b[^<>]*>`)
+	for _, path := range colorSources(t) {
+		if strings.HasSuffix(path, ".css") {
+			continue
+		}
+		raw, err := os.ReadFile(path)
+		require.NoError(t, err)
+		for _, m := range panel.FindAllStringIndex(string(raw), -1) {
+			t.Errorf("%s:%d: a bordered list / form / section / table is a panel of its own: rounded-lg (S1)", path, strings.Count(string(raw)[:m[0]], "\n")+1)
+		}
+	}
+}

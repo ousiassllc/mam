@@ -309,7 +309,7 @@ func codexEngine(c Codex) templ.Component {
 			templ_7745c5c3_Var7 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<div class=\"flex flex-col gap-2 rounded-md border border-border px-3 py-2\" data-testid=\"chatgpt-codex-engine\"><p class=\"text-sm\"><span class=\"\">エンジン（Codex app-server）</span> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<div class=\"flex flex-col gap-2 rounded-lg border border-border px-3 py-2\" data-testid=\"chatgpt-codex-engine\"><p class=\"text-sm\"><span class=\"\">エンジン（Codex app-server）</span> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
