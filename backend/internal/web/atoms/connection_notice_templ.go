@@ -41,7 +41,19 @@ func ConnectionNotice() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<span data-connection-lost-message></span> <button type=\"button\" class=\"rounded-md border border-warning/40 px-2 py-1 hover:bg-accent-soft\" data-action=\"reconnect\">再接続</button> <button type=\"button\" class=\"rounded-md border border-warning/40 px-2 py-1 hover:bg-accent-soft\" data-action=\"reload\">再読み込み</button></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<span data-connection-lost-message></span>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = SmallButton(ToneNeutral, "再接続", templ.Attributes{"type": "button", "data-action": "reconnect"}).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = SmallButton(ToneNeutral, "再読み込み", templ.Attributes{"type": "button", "data-action": "reload"}).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

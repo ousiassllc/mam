@@ -40,3 +40,8 @@ func TestBar_ShowsTheTimeItWasReadOnlyWhenItHasOne(t *testing.T) {
 	assert.Contains(t, render(t, "/x", "x", "10:00:05"), `最終更新 <time>10:00:05</time>`)
 	assert.NotContains(t, render(t, "/x", "x", ""), "最終更新")
 }
+
+// The icon button is pressed like any button: it starts the ripple (the UI guide, M4).
+func TestBar_ButtonIsMarkedForTheRipple(t *testing.T) {
+	assert.Contains(t, render(t, "/model-manager/models", "mm-catalog", "10:00:05"), "data-ripple")
+}

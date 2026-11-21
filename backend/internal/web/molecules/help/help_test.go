@@ -26,7 +26,7 @@ func render(t *testing.T, c templ.Component) string {
 func TestToggle_IsANamedButtonThatControlsItsPanel(t *testing.T) {
 	html := render(t, help.Toggle("help-x", "API キー"))
 
-	assert.Contains(t, html, `<button type="button" data-help-toggle popovertarget="help-x" aria-expanded="false" aria-controls="help-x" aria-label="API キーの説明"`)
+	assert.Contains(t, html, `<button type="button" data-help-toggle data-ripple popovertarget="help-x" aria-expanded="false" aria-controls="help-x" aria-label="API キーの説明"`)
 	assert.Contains(t, html, `aria-hidden="true"`, "the icon is decoration")
 	assert.NotContains(t, html, "text-neutral-500")
 }

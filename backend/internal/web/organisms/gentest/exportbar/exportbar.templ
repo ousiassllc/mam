@@ -20,6 +20,7 @@ templ Bar(d Data) {
 				title="選んだ結果を ZIP で保存（カードをタップで選ぶ）"
 				disabled
 				data-gt-export-submit
+				data-ripple
 				data-testid="gt-export-selected-submit"
 			>
 				@atoms.Icon(atoms.IconDownload, "h-4 w-4 shrink-0")
@@ -32,6 +33,7 @@ templ Bar(d Data) {
 				title="選択を解除"
 				hidden
 				data-gt-select-clear
+				data-ripple
 				data-testid="gt-select-clear"
 			>
 				@atoms.Icon(atoms.IconClose, "h-4 w-4")
@@ -56,6 +58,7 @@ templ Bar(d Data) {
 				aria-label="この絞り込みの新しい順 N 件を ZIP で保存"
 				title="この絞り込みの新しい順 N 件を ZIP で保存"
 				data-testid="gt-export-latest-submit"
+				data-ripple
 			>
 				@atoms.Icon(atoms.IconDownload, "h-4 w-4")
 			</button>

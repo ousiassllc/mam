@@ -105,8 +105,9 @@ templ InstallPanel(w Wire, in Install) {
 		<div>
 			<button
 				type="button"
-				class="group inline-flex items-center justify-center rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bone transition-colors hover:bg-accent/85 disabled:cursor-not-allowed disabled:opacity-50"
+				class="group inline-flex items-center justify-center rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bone transition-colors hover:bg-accent/85 focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
 				data-testid="gt-pose-install-button"
+				data-ripple
 				hx-post={ w.InstallURL }
 				hx-target={ "#" + BodyID }
 				hx-swap="innerHTML"
@@ -262,8 +263,9 @@ templ adultSection(w Wire, a AdultOffer) {
 			<div>
 				<button
 					type="button"
-					class="group inline-flex items-center justify-center rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bone transition-colors hover:bg-accent/85 disabled:cursor-not-allowed disabled:opacity-50"
+					class="group inline-flex items-center justify-center rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bone transition-colors hover:bg-accent/85 focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none"
 					data-testid="gt-pose-adult-install-button"
+					data-ripple
 					hx-post={ w.InstallAdultURL }
 					hx-target={ "#" + BodyID }
 					hx-swap="innerHTML"

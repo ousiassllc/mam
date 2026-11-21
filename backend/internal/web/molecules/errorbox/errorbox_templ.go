@@ -284,14 +284,14 @@ func Box(p Props) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\" data-testid=\"error-copy\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "\" data-testid=\"error-copy\" data-ripple>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(apperr.Text(p.Lang, "ui.copy", nil))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/errorbox/errorbox.templ`, Line: 46, Col: 41}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/errorbox/errorbox.templ`, Line: 47, Col: 41}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 		if templ_7745c5c3_Err != nil {
@@ -304,7 +304,7 @@ func Box(p Props) templ.Component {
 		var templ_7745c5c3_Var19 string
 		templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.ResolveAttributeValue(statusID(p))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/errorbox/errorbox.templ`, Line: 47, Col: 25}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/errorbox/errorbox.templ`, Line: 48, Col: 25}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var19)
 		if templ_7745c5c3_Err != nil {
@@ -322,7 +322,7 @@ func Box(p Props) templ.Component {
 			var templ_7745c5c3_Var20 string
 			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(apperr.Text(p.Lang, "ui.error_id", nil))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/errorbox/errorbox.templ`, Line: 50, Col: 96}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/errorbox/errorbox.templ`, Line: 51, Col: 96}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 			if templ_7745c5c3_Err != nil {
@@ -335,7 +335,7 @@ func Box(p Props) templ.Component {
 			var templ_7745c5c3_Var21 string
 			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinStringErrs(p.View.ErrorID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/errorbox/errorbox.templ`, Line: 50, Col: 122}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/errorbox/errorbox.templ`, Line: 51, Col: 122}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 			if templ_7745c5c3_Err != nil {

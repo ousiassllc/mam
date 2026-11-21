@@ -84,11 +84,11 @@ export function renderTransport(v: TransportView) {
       }
     </div>
     <div class="flex items-center gap-2 text-xs text-ink">
-      <button type="button" data-action="prev-frame" class=${STEP_BUTTON} aria-label="1 コマ戻る" title="1 コマ戻る" @click=${() => v.step(-1)}>${icon('skip-prev')}</button>
-      <button type="button" data-action="play" class=${STEP_BUTTON} aria-label=${playLabel} title=${playLabel} @click=${v.toggle}>
+      <button type="button" data-action="prev-frame" data-ripple class=${STEP_BUTTON} aria-label="1 コマ戻る" title="1 コマ戻る" @click=${() => v.step(-1)}>${icon('skip-prev')}</button>
+      <button type="button" data-action="play" data-ripple class=${STEP_BUTTON} aria-label=${playLabel} title=${playLabel} @click=${v.toggle}>
         ${icon(v.playing ? 'pause' : 'play')}
       </button>
-      <button type="button" data-action="next-frame" class=${STEP_BUTTON} aria-label="1 コマ進む" title="1 コマ進む" @click=${() => v.step(1)}>${icon('skip-next')}</button>
+      <button type="button" data-action="next-frame" data-ripple class=${STEP_BUTTON} aria-label="1 コマ進む" title="1 コマ進む" @click=${() => v.step(1)}>${icon('skip-next')}</button>
       <span class="font-mono" data-timecode>${formatTimecode(v.currentTime, rate)}</span>
       <span class="font-mono text-mute">/ ${formatTimecode(max, rate)}</span>
       <span class="text-mute">${rate.toFixed(rate % 1 === 0 ? 0 : 2)} fps${v.rateKnown ? '' : '（仮）'}</span>
