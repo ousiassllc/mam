@@ -51,7 +51,7 @@ func ProposalCard(p Proposal) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" class=\"flex flex-col gap-3 rounded-lg border border-accent p-3 md:p-4\" data-testid=\"gtc-proposal\" data-state=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" class=\"flex flex-col gap-3 rounded-lg border border-mute p-3 md:p-4\" data-testid=\"gtc-proposal\" data-state=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

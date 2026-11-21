@@ -23,7 +23,7 @@ var qualityOptions = []qualityOption{
 // MODE switches AUTO ⇄ DIRECTOR (F-02); in DIRECTOR the message is read by the Command Interpreter
 // (F-24). Quality switches the Quality Policy at once (F-22).
 templ ChatComposer(p domain.Project) {
-	<div class="border-t border-border px-4 py-3">
+	<div class="border-t border-border px-4 py-3 md:px-6">
 		<form
 			id="chat-composer"
 			hx-post={ paths.Project(p.ID, "messages") }

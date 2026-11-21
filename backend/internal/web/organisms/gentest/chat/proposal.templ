@@ -12,7 +12,7 @@ import (
 templ ProposalCard(p Proposal) {
 	<section
 		id={ ID(p.ID) }
-		class="flex flex-col gap-3 rounded-lg border border-accent p-3 md:p-4"
+		class="flex flex-col gap-3 rounded-lg border border-mute p-3 md:p-4"
 		data-testid="gtc-proposal"
 		data-state={ p.State }
 		if p.Swap {

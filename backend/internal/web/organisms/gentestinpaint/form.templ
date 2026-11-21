@@ -82,7 +82,7 @@ templ Form(p Page) {
 
 // Confirm is the estimate. Running posts the same inputs back.
 templ Confirm(c Box) {
-	<div id={ outID } class="flex flex-col gap-3 rounded-lg border border-accent p-4" data-testid="gt-inpaint-confirm">
+	<div id={ outID } class="flex flex-col gap-3 rounded-lg border border-mute p-4" data-testid="gt-inpaint-confirm">
 		<h2 class="text-sm font-semibold">実行の確認</h2>
 		<p class="text-sm">全部で <strong>{ strconv.Itoa(c.Items) }</strong> 件。見積り合計は <strong>{ c.Total }</strong> です。結果は元の画像とは別のファイルになり、元の結果へのリンクが残ります。</p>
 		if len(c.Warnings) > 0 {
