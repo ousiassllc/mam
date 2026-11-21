@@ -277,7 +277,7 @@ templ BranchView(d BranchPageData) {
 			}
 			for _, s := range d.Shots {
 				<details class="rounded-lg border border-border p-2 text-sm">
-					<summary class="cursor-pointer">{ s.Label }</summary>
+					<summary class={ atoms.SummaryClass }>{ s.Label }</summary>
 					<form class="mt-2 flex flex-wrap items-end gap-2" hx-post={ branchShotURL(s.ShotID) } hx-swap="none" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
 						<label class="flex flex-col gap-1 text-xs text-mute">
 							分岐点

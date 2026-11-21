@@ -89,3 +89,23 @@ func TestSources_RowHeadsAndLegendsAreRegular(t *testing.T) {
 		}
 	}
 }
+
+// Every <summary> is written with atoms.SummaryClass (O8: the heading of an accordion is SemiBold, text-sm text-ink, with the focus ring): a <summary> with
+// a class of its own is the same part reading two ways.
+func TestSources_EverySummaryTakesTheSummaryClass(t *testing.T) {
+	summary := regexp.MustCompile(`<summary\b[^>]*>`)
+	for _, path := range colorSources(t) {
+		if strings.HasSuffix(path, ".css") {
+			continue
+		}
+		src, err := os.ReadFile(path)
+		require.NoError(t, err)
+		for n, line := range strings.Split(string(src), "\n") {
+			for _, tag := range summary.FindAllString(line, -1) {
+				if !strings.Contains(tag, "atoms.SummaryClass") {
+					t.Errorf("%s:%d: %s: a <summary> takes class={ atoms.SummaryClass } (O8)", path, n+1, tag)
+				}
+			}
+		}
+	}
+}

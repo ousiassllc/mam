@@ -181,6 +181,8 @@ templ MatchBox(b MatchBatch) {
 					hx-sync="this:drop"
 					hx-disabled-elt="find button[type=submit]"
 					hx-confirm="まだ始めていない回を取り消しますか？（作っている途中の絵は終わるまで待ちます）"
+					data-confirm-tone="primary"
+					data-confirm-label="取り消す"
 				>
 					@atoms.SmallButtonFor(atoms.ToneDanger, "取り消す", "プロンプトマッチ", templ.Attributes{"type": "submit", "data-testid": "gt-match-cancel"})
 				</form>

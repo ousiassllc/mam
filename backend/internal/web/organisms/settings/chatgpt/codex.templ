@@ -161,7 +161,7 @@ templ codexProgress(e CodexEngine) {
 
 // codexInstallButton downloads the engine; the confirmation says what is downloaded, from where and how big.
 templ codexInstallButton(e CodexEngine) {
-	<form hx-post={ paths.ChatGPTCodexInstall() } hx-target={ panelTarget } hx-swap="outerHTML" hx-sync="this:drop" hx-params="none" hx-disabled-elt="find button[type=submit]" hx-confirm={ downloadConfirm(e) + "よろしいですか？" }>
+	<form hx-post={ paths.ChatGPTCodexInstall() } hx-target={ panelTarget } hx-swap="outerHTML" hx-sync="this:drop" hx-params="none" hx-disabled-elt="find button[type=submit]" hx-confirm={ downloadConfirm(e) + "よろしいですか？" } data-confirm-tone="primary" data-confirm-label="ダウンロードする">
 		@atoms.SmallButtonFor(atoms.TonePrimary, "Codex をダウンロード", codexTitle, templ.Attributes{"type": "submit", "data-testid": "chatgpt-codex-install-button"})
 	</form>
 }

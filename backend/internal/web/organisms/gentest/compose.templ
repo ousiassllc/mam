@@ -151,7 +151,7 @@ templ promptFields(c Compose) {
 		</div>
 		if len(c.Recent) > 0 {
 			<details class="text-sm" data-testid="gt-recent">
-				<summary class="cursor-pointer text-xs text-mute">過去のプロンプトから追加（<a class="underline" href={ templ.SafeURL(paths.GenerationTestPrompts()) }>履歴を開く</a>）</summary>
+				<summary class={ atoms.SummaryClass }>過去のプロンプトから追加（<a class="underline" href={ templ.SafeURL(paths.GenerationTestPrompts()) }>履歴を開く</a>）</summary>
 				<ul class="mt-2 flex flex-col gap-2">
 					for _, r := range c.Recent {
 						<li class="flex items-start justify-between gap-2 rounded-lg border border-border p-2">

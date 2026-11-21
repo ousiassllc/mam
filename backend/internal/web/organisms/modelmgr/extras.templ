@@ -111,7 +111,7 @@ templ externalResult(r ExternalResult) {
 			}
 		</ul>
 		<details class="text-xs text-ink">
-			<summary class="cursor-pointer text-mute">フォルダごとのファイル</summary>
+			<summary class={ atoms.SummaryClass }>フォルダごとのファイル</summary>
 			for _, f := range r.Folders {
 				<p class="mt-1 break-all"><code>{ f.Name }</code>（{ itoa(len(f.Files)) }）</p>
 				if len(f.Files) > 0 {

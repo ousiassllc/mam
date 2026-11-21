@@ -339,11 +339,12 @@ func Items(d Data) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				templ_7745c5c3_Err = atoms.SmallButtonFor(atoms.ToneNeutral, "この Project に適用", t.Name, templ.Attributes{
-					"type":       "button",
-					"hx-post":    paths.Project(d.ProjectID, "brand-templates", t.ID, "apply"),
-					"hx-target":  "#brand-constraint-list",
-					"hx-swap":    "outerHTML",
-					"hx-confirm": "このテンプレートの制約をこの Project にコピーします（同じ制約はスキップ）。よろしいですか？",
+					"type":              "button",
+					"hx-post":           paths.Project(d.ProjectID, "brand-templates", t.ID, "apply"),
+					"hx-target":         "#brand-constraint-list",
+					"hx-swap":           "outerHTML",
+					"hx-confirm":        "このテンプレートの制約をこの Project にコピーします（同じ制約はスキップ）。よろしいですか？",
+					"data-confirm-tone": "primary", "data-confirm-label": "コピーする",
 				}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -405,7 +406,7 @@ func brandTemplateForm(d Data, oob bool) templ.Component {
 		var templ_7745c5c3_Var15 string
 		templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue(paths.Project(d.ProjectID, "brand-templates"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brandtemplate/panel.templ`, Line: 108, Col: 57}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brandtemplate/panel.templ`, Line: 109, Col: 57}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 		if templ_7745c5c3_Err != nil {
@@ -444,7 +445,7 @@ func brandTemplateForm(d Data, oob bool) templ.Component {
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(msg)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brandtemplate/panel.templ`, Line: 127, Col: 52}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/brandtemplate/panel.templ`, Line: 128, Col: 52}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {

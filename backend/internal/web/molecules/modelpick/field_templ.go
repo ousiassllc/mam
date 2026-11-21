@@ -164,7 +164,7 @@ func Field(f FieldData) templ.Component {
 				}
 			}
 		}
-		var templ_7745c5c3_Var9 = []any{"flex w-full cursor-pointer items-center gap-3 rounded-md border bg-bone px-3 py-2 text-left text-sm text-ink hover:border-accent focus-visible:focus-ring", fieldBorder(f.Invalid)}
+		var templ_7745c5c3_Var9 = []any{"flex w-full cursor-pointer items-center gap-3 rounded-md border bg-bone px-3 py-2 text-left text-sm text-ink hover:border-accent focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-40", fieldBorder(f.Invalid)}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var9...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err

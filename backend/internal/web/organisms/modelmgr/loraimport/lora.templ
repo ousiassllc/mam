@@ -64,7 +64,7 @@ templ pickForm(p Panel) {
 			data-lora-zone
 			data-testid="mm-lora-zone"
 		>
-			<label for="mm-lora-file" class="inline-flex cursor-pointer items-center rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bone hover:bg-accent/85" data-testid="mm-lora-choose">ファイルを追加</label>
+			<label for="mm-lora-file" class={ atoms.ButtonClass(atoms.TonePrimary), "cursor-pointer peer-focus-visible:focus-ring" } data-testid="mm-lora-choose">ファイルを追加</label>
 			<span class="text-mute">またはここに .safetensors のファイルをドロップ（{ p.MaxText } まで）</span>
 			<span class="text-sm text-mute">手元に保存した LoRA を、この PC の中の Nefos Video に取り込みます。ネットには送りません。取り込んだだけでは生成は始まりません。</span>
 		</div>
@@ -275,7 +275,7 @@ templ itemCard(it Item) {
 			<dd class="break-words" data-testid="mm-lora-item-license">{ licenseWords(it) }</dd>
 		</dl>
 		<details class="text-sm" data-testid="mm-lora-edit">
-			<summary class="cursor-pointer text-sm text-accent underline decoration-mute">情報を編集</summary>
+			<summary class={ atoms.SummaryClass }>情報を編集</summary>
 			<form
 				class="mt-2 flex flex-col gap-3"
 				hx-put={ LoRAsURL + "?" + FieldPath + "=" + url.QueryEscape(it.Path) }

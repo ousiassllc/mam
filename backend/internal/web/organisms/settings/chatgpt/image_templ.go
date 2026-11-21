@@ -304,7 +304,7 @@ func imageDetail(d Data) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" hx-swap=\"innerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\" hx-confirm=\"非公式の経路で画像を生成します。予告なく使えなくなることがあり、公式のプレビューでは画像生成はサポート外で、ChatGPT のプランの利用上限を消費します。オンにしますか？\"><input type=\"hidden\" name=\"enabled\" value=\"true\"> <label class=\"flex items-center gap-2 text-sm\"><input type=\"checkbox\" name=\"acknowledge_risks\" value=\"true\" required data-testid=\"chatgpt-image-ack\"> 上のリスクを理解したうえで、オンにします</label><div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" hx-swap=\"innerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\" hx-confirm=\"非公式の経路で画像を生成します。予告なく使えなくなることがあり、公式のプレビューでは画像生成はサポート外で、ChatGPT のプランの利用上限を消費します。オンにしますか？\" data-confirm-tone=\"primary\" data-confirm-label=\"オンにする\"><input type=\"hidden\" name=\"enabled\" value=\"true\"> <label class=\"flex items-center gap-2 text-sm\"><input type=\"checkbox\" name=\"acknowledge_risks\" value=\"true\" required data-testid=\"chatgpt-image-ack\"> 上のリスクを理解したうえで、オンにします</label><div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -148,7 +148,7 @@ templ hfFileRow(r HFRepo, f HFFile) {
 			<p class="text-ink">導入中です（下の「追加したモデル」に進み具合が出ます）</p>
 		} else {
 			<details class="text-ink" data-testid="mm-hfi-install">
-				<summary class="cursor-pointer text-success">導入する…</summary>
+				<summary class={ atoms.SummaryClass }>導入する…</summary>
 				@hfInstallForm(r, f)
 			</details>
 		}

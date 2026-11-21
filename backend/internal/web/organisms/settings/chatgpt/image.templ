@@ -101,6 +101,8 @@ templ imageDetail(d Data) {
 				hx-sync="this:drop"
 				hx-disabled-elt="find button[type=submit]"
 				hx-confirm="非公式の経路で画像を生成します。予告なく使えなくなることがあり、公式のプレビューでは画像生成はサポート外で、ChatGPT のプランの利用上限を消費します。オンにしますか？"
+				data-confirm-tone="primary"
+				data-confirm-label="オンにする"
 			>
 				<input type="hidden" name="enabled" value="true"/>
 				<label class="flex items-center gap-2 text-sm">

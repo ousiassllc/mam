@@ -93,4 +93,60 @@ describe('confirmDialog', () => {
     expect(root.dispatchEvent(noQuestion)).to.equal(true);
     root.remove();
   });
+
+  describe('the button that goes on (O2)', () => {
+    // modal.Confirm has the button in both tones; the script keeps the one that is asked for.
+    const BOTH =
+      '<dialog data-confirm><p data-confirm-message></p><button type="button" data-confirm-cancel>キャンセル</button>' +
+      '<button type="button" data-confirm-ok data-confirm-tone="danger">実行する</button>' +
+      '<button type="button" data-confirm-ok data-confirm-tone="primary" hidden>実行する</button></dialog>';
+    beforeEach(() => {
+      template.innerHTML = BOTH;
+    });
+
+    const buttons = () => [...open()!.querySelectorAll<HTMLButtonElement>('[data-confirm-ok]')];
+
+    it('is the danger button 実行する unless the asker says otherwise', async () => {
+      const answer = confirmDialog('削除します。よろしいですか？');
+      await waitUntil(open);
+      expect(buttons().map((b) => [b.dataset.confirmTone, b.textContent, b.hidden])).to.deep.equal([
+        ['danger', '実行する', false],
+      ]);
+      buttons()[0]!.click();
+      await answer;
+    });
+
+    it('is a primary button with the word of the asker for a question that destroys nothing', async () => {
+      const answer = confirmDialog('コピーします。よろしいですか？', { tone: 'primary', label: 'コピーする' });
+      await waitUntil(open);
+      expect(buttons().map((b) => [b.dataset.confirmTone, b.textContent, b.hidden])).to.deep.equal([
+        ['primary', 'コピーする', false],
+      ]);
+      buttons()[0]!.click();
+      expect(await answer).to.equal(true);
+    });
+
+    it('reads the tone and the word from the element that has hx-confirm', async () => {
+      const { installConfirm } = await import('./confirm');
+      const root = document.createElement('div');
+      document.body.append(root);
+      installConfirm(root as unknown as Document);
+      const asker = document.createElement('button');
+      asker.dataset.confirmTone = 'primary';
+      asker.dataset.confirmLabel = '復元する';
+      let issued = 0;
+      root.dispatchEvent(
+        new CustomEvent('htmx:confirm', {
+          bubbles: true,
+          cancelable: true,
+          detail: { question: '復元しますか？', elt: asker, issueRequest: () => (issued += 1) },
+        }),
+      );
+      await waitUntil(open);
+      expect(buttons().map((b) => [b.dataset.confirmTone, b.textContent])).to.deep.equal([['primary', '復元する']]);
+      buttons()[0]!.click();
+      await waitUntil(() => issued === 1);
+      root.remove();
+    });
+  });
 });

@@ -19,7 +19,7 @@ templ Field(f FieldData) {
 		<button
 			type="button"
 			id={ f.buttonID() }
-			class={ "flex w-full cursor-pointer items-center gap-3 rounded-md border bg-bone px-3 py-2 text-left text-sm text-ink hover:border-accent focus-visible:focus-ring", fieldBorder(f.Invalid) }
+			class={ "flex w-full cursor-pointer items-center gap-3 rounded-md border bg-bone px-3 py-2 text-left text-sm text-ink hover:border-accent focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-40", fieldBorder(f.Invalid) }
 			disabled?={ f.Disabled }
 			aria-haspopup="dialog"
 			data-ripple

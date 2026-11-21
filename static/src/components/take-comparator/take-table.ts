@@ -5,7 +5,8 @@ import { BADGE } from '../lib/badge';
 import { STATUS_CLASS } from './take-status';
 
 /** A button of a row: the text of `atoms.LinkButton` (W3), with the focus ring. */
-const ROW_BUTTON = 'text-sm text-mute underline hover:text-ink focus-visible:focus-ring';
+const ROW_BUTTON =
+  'text-sm text-mute underline hover:text-ink focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-40';
 /** A number of the table (W7): right-aligned, digits of one width. */
 const NUMBER = 'px-2 py-2 text-right font-mono tabular-nums';
 

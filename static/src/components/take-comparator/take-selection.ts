@@ -37,7 +37,7 @@ export function renderSelection(view: SelectionView) {
       <button type="button" data-action="confirm-partial" class="min-h-8 rounded-md bg-accent px-3 py-1 text-sm font-semibold text-bone transition-colors hover:bg-accent/85 focus-visible:focus-ring disabled:opacity-40 motion-reduce:transition-none" data-ripple ?disabled=${!view.canMerge} @click=${() => view.merge()}>
         この区間で合成
       </button>
-      <button type="button" data-action="clear-selection" class="text-sm text-mute underline hover:text-ink focus-visible:focus-ring" ?disabled=${selection.length === 0} @click=${() => view.clear()}>選び直す</button>
+      <button type="button" data-action="clear-selection" class="text-sm text-mute underline hover:text-ink focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-40" ?disabled=${selection.length === 0} @click=${() => view.clear()}>選び直す</button>
     </div>
     <form class="flex flex-wrap items-center gap-2" @submit=${(e: Event) => view.submitInstruction(e)}>
       <input

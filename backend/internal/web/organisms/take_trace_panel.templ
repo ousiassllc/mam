@@ -102,15 +102,15 @@ templ TakeTracePanel(t domain.TakeTrace) {
 			}
 		</div>
 		<details>
-			<summary class="cursor-pointer text-sm font-semibold">Source Shot Spec（Prompt version のスナップショット）</summary>
+			<summary class={ atoms.SummaryClass }>Source Shot Spec（Prompt version のスナップショット）</summary>
 			<pre class="mt-1 overflow-x-auto rounded-md bg-bone p-2 text-sm focus-visible:focus-ring" tabindex="0" role="region" aria-label="Source Shot Spec">{ prettyJSON(t.PromptVersion.SpecSnapshot) }</pre>
 		</details>
 		<details>
-			<summary class="cursor-pointer text-sm font-semibold">Model parameters</summary>
+			<summary class={ atoms.SummaryClass }>Model parameters</summary>
 			<pre class="mt-1 overflow-x-auto rounded-md bg-bone p-2 text-sm focus-visible:focus-ring" tabindex="0" role="region" aria-label="Model parameters">{ prettyJSON(t.ModelParameters) }</pre>
 		</details>
 		<details>
-			<summary class="cursor-pointer text-sm font-semibold">Model Adapter output</summary>
+			<summary class={ atoms.SummaryClass }>Model Adapter output</summary>
 			<pre class="mt-1 overflow-x-auto rounded-md bg-bone p-2 text-sm focus-visible:focus-ring" tabindex="0" role="region" aria-label="Model Adapter output">{ prettyJSON(t.PromptVersion.AdapterOutput) }</pre>
 		</details>
 		<div>

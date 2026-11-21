@@ -160,7 +160,7 @@ templ Groups(d Data) {
 		}
 		if len(archived) > 0 {
 			<details class="flex flex-col gap-2">
-				<summary class="cursor-pointer text-sm font-semibold text-ink">{ "アーカイブ済み (" + strconv.Itoa(len(archived)) + ")" }</summary>
+				<summary class={ atoms.SummaryClass }>{ "アーカイブ済み (" + strconv.Itoa(len(archived)) + ")" }</summary>
 				<div class="mt-2 flex flex-col gap-2">
 					for _, n := range archived {
 						@noteWithHistory(d, n)
@@ -196,7 +196,7 @@ templ noteItem(n domain.NoteView) {
 		<input type="hidden" name={ OnPageField } value={ n.ID }/>
 		@notecard.Card(n)
 		<details class="pl-3 text-sm">
-			<summary class="cursor-pointer text-xs text-mute">バージョン履歴</summary>
+			<summary class={ atoms.SummaryClass }>バージョン履歴</summary>
 			<div class="mt-2">
 				@organisms.VersionHistoryPanel(organisms.VersionHistoryData{
 					DOMID: "note-history-" + n.ID, Title: "メモのバージョン", BasePath: paths.Note(n.ID),

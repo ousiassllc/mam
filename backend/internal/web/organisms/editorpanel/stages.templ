@@ -26,6 +26,7 @@ templ editorEditStage(d Data, oob bool) {
 						"type": "button", "hx-post": paths.Project(d.Project.ID, "edit", "rough-cut"), "hx-vals": branchVals(d.BranchID),
 						"hx-disabled-elt": "this",
 						"hx-confirm":      "Rough Cut を作り直します。手動の編集は新しい版に置き換わります。よろしいですか？", "disabled": !d.CanRoughCut(),
+						"data-confirm-tone": "primary", "data-confirm-label": "作り直す",
 					})
 					<span class="text-xs text-mute">{ fmt.Sprintf("%d クリップ / %.1f 秒", d.Clips, d.Duration) }</span>
 				}

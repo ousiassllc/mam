@@ -51,6 +51,8 @@ templ BatchBox(b Batch) {
 					hx-sync="this:drop"
 					hx-disabled-elt="find button[type=submit]"
 					hx-confirm="まだ始めていない生成を取り消しますか？（呼び出し中のものは終わるまで待ちます）"
+					data-confirm-tone="primary"
+					data-confirm-label="取り消す"
 				>
 					@atoms.SmallButtonFor(atoms.ToneDanger, "取り消す", "生成", templ.Attributes{"type": "submit", "id": "gt-cancel", "data-testid": "gt-cancel"})
 				</form>

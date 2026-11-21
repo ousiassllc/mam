@@ -123,6 +123,8 @@ templ Panel(d Data) {
 				hx-sync="this:drop"
 				hx-disabled-elt="find button"
 				hx-confirm="学習には数十分かかり、その間 GPU を使います（同梱の ComfyUI の生成と同時には動かせません）。Nefos Video を再起動すると学習はやり直しになります。声の持ち主本人の同意を得た音声ですか？ 始めますか？"
+				data-confirm-tone="primary"
+				data-confirm-label="学習を始める"
 			>
 				<label class="flex flex-col gap-1 text-xs text-mute" for={ d.DOMID + "-s2" }>
 					SoVITS のエポック数（1〜{ itoa(d.Max.SoVITS) }）

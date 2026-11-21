@@ -528,7 +528,9 @@ func Notice(title, reason string) templ.Component {
 // Confirm is the confirmation modal (the UI guide, O2: a deletion, a removal and an irreversible step are asked in a centred modal, not in the browser's
 // own confirm() box): a <dialog> with the question, "キャンセル" and the danger button that goes on. A request whose element
 // has hx-confirm raises it (static/src/components/confirm); the page shell embeds one as <template id="confirm-template">, which the script clones,
-// fills with the question and opens. Esc, the scrim and "キャンセル" answer no.
+// fills with the question and opens. Esc, the scrim and "キャンセル" answer no. The button that goes on is the danger button; a question that is not
+// about a destruction says so on the asking element (data-confirm-tone="primary", data-confirm-label="コピーする"), and the script keeps the primary
+// button instead, with that word (confirm.ts).
 func Confirm() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -576,7 +578,11 @@ func Confirm() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = atoms.Button(atoms.ToneDanger, "実行する", templ.Attributes{"type": "button", "data-confirm-ok": true}).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = atoms.Button(atoms.ToneDanger, "実行する", templ.Attributes{"type": "button", "data-confirm-ok": true, "data-confirm-tone": "danger"}).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = atoms.Button(atoms.TonePrimary, "実行する", templ.Attributes{"type": "button", "data-confirm-ok": true, "data-confirm-tone": "primary", "hidden": true}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

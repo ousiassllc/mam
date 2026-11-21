@@ -527,14 +527,14 @@ func Panel(d Data) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button\" hx-confirm=\"学習には数十分かかり、その間 GPU を使います（同梱の ComfyUI の生成と同時には動かせません）。Nefos Video を再起動すると学習はやり直しになります。声の持ち主本人の同意を得た音声ですか？ 始めますか？\"><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button\" hx-confirm=\"学習には数十分かかり、その間 GPU を使います（同梱の ComfyUI の生成と同時には動かせません）。Nefos Video を再起動すると学習はやり直しになります。声の持ち主本人の同意を得た音声ですか？ 始めますか？\" data-confirm-tone=\"primary\" data-confirm-label=\"学習を始める\"><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var28 string
 			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.ResolveAttributeValue(d.DOMID + "-s2")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 127, Col: 78}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 129, Col: 78}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var28)
 			if templ_7745c5c3_Err != nil {
@@ -547,7 +547,7 @@ func Panel(d Data) templ.Component {
 			var templ_7745c5c3_Var29 string
 			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(itoa(d.Max.SoVITS))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 128, Col: 57}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 130, Col: 57}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 			if templ_7745c5c3_Err != nil {
@@ -568,7 +568,7 @@ func Panel(d Data) templ.Component {
 			var templ_7745c5c3_Var30 string
 			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.ResolveAttributeValue(d.DOMID + "-s1")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 131, Col: 78}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 133, Col: 78}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var30)
 			if templ_7745c5c3_Err != nil {
@@ -581,7 +581,7 @@ func Panel(d Data) templ.Component {
 			var templ_7745c5c3_Var31 string
 			templ_7745c5c3_Var31, templ_7745c5c3_Err = templ.JoinStringErrs(itoa(d.Max.GPT))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 132, Col: 51}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/voicetrainpanel/panel.templ`, Line: 134, Col: 51}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var31))
 			if templ_7745c5c3_Err != nil {

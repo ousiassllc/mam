@@ -68,7 +68,7 @@ templ View(d Data) {
 				}
 			</p>
 			<details class="text-sm" id="series-add-character">
-				<summary class="cursor-pointer text-xs text-ink">登場人物を追加（AI の企画を待たずに、正本へ直接登録する。次の Episode から使われます）</summary>
+				<summary class={ atoms.SummaryClass }>登場人物を追加（AI の企画を待たずに、正本へ直接登録する。次の Episode から使われます）</summary>
 				<div class="mt-2">
 					@molecules.CharacterCreate(seriesCharacterCreate(d))
 				</div>
