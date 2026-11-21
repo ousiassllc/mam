@@ -531,7 +531,7 @@ func ConsentDialog(c Consent) templ.Component {
 			templ_7745c5c3_Var15 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<section class=\"flex flex-col gap-3 p-5 focus-visible:focus-ring\" role=\"dialog\" aria-labelledby=\"mm-consent-title\" tabindex=\"-1\" data-inline-dialog data-return-focus=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<section class=\"flex flex-col gap-3 p-6 focus-visible:focus-ring\" role=\"dialog\" aria-labelledby=\"mm-consent-title\" tabindex=\"-1\" data-inline-dialog data-return-focus=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

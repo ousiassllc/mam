@@ -98,3 +98,38 @@ describe('inline dialog of the model manager (#841: age confirmation)', () => {
     expect(dialog() !== null).to.equal(true);
   });
 });
+
+describe('inline dialog host: the fade-out of a question that was closed (M5)', () => {
+  let host: HTMLDialogElement;
+  let style: HTMLStyleElement;
+
+  beforeEach(() => {
+    style = document.createElement('style');
+    style.textContent =
+      'dialog[data-inline-dialog-host]{opacity:0;transition:opacity 600ms linear,display 600ms allow-discrete,overlay 600ms allow-discrete}dialog[data-inline-dialog-host][open]{opacity:1}';
+    document.head.append(style);
+    host = document.createElement('dialog');
+    host.setAttribute('data-inline-dialog-host', '');
+    host.innerHTML = '<section role="dialog" data-inline-dialog aria-label="確認"><p>年齢確認</p></section>';
+    document.body.append(host);
+  });
+  afterEach(() => {
+    host.remove();
+    style.remove();
+  });
+
+  it('keeps the question while it fades out, does not open again with a swap, and empties the host when the fade is over', async () => {
+    host.showModal();
+    expect(getComputedStyle(host).opacity).to.equal('1'); // the style the fade starts from
+    const closed = new Promise((resolve) => host.addEventListener('close', resolve, { once: true }));
+    host.close();
+    await closed;
+    expect(host.children.length).to.equal(1);
+
+    document.body.dispatchEvent(new CustomEvent('htmx:afterSwap', { bubbles: true, detail: {} }));
+    expect(host.open).to.equal(false);
+
+    await waitUntil(() => host.children.length === 0, 'the host was not emptied after the fade', { timeout: 2000 });
+    expect(host.open).to.equal(false);
+  });
+});

@@ -28,6 +28,7 @@ templ Summary(b Filter) {
 								hx-target={ b.Target }
 								hx-swap="outerHTML"
 								data-testid="model-pick-chip-remove"
+								data-ripple
 							>
 								@atoms.Icon(atoms.IconClose, "h-4 w-4")
 							</button>
@@ -43,6 +44,7 @@ templ Summary(b Filter) {
 						hx-target={ b.Target }
 						hx-swap="outerHTML"
 						data-testid="model-pick-clear-all"
+						data-ripple
 					>すべてクリア</button>
 				</li>
 			</ul>
@@ -63,6 +65,7 @@ templ Summary(b Filter) {
 						hx-target={ b.Target }
 						hx-swap="outerHTML"
 						data-testid="model-pick-show-hidden"
+						data-ripple
 					>使えないものも表示</button>
 				</span>
 			}

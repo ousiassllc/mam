@@ -470,7 +470,7 @@ func runtimeModel(r Runtime, m Model) templ.Component {
 			}
 		}
 		if m.Consent != nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<div class=\"flex flex-col gap-2 rounded-lg border border-warning/60 bg-warning/10 p-3 text-xs\" data-testid=\"mm-runtime-model-consent\"><p class=\"text-ink\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<div class=\"flex flex-col gap-2 rounded-lg border border-warning/40 bg-warning/10 p-3 text-xs\" data-testid=\"mm-runtime-model-consent\"><p class=\"text-ink\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

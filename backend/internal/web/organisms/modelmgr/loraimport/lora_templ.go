@@ -303,7 +303,7 @@ func pickForm(p Panel) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, " まで）</span> <span class=\"text-xs text-mute\">手元に保存した LoRA を、この PC の中の Nefos Video に取り込みます。ネットには送りません。取り込んだだけでは生成は始まりません。</span></div><p class=\"mt-2 text-sm text-danger\" role=\"alert\" data-lora-error data-testid=\"mm-lora-client-error\" hidden></p><div class=\"mt-2 flex flex-col gap-1\" role=\"status\" aria-live=\"polite\" data-lora-progress data-testid=\"mm-lora-progress\" hidden><progress class=\"w-full\" max=\"100\" value=\"0\" aria-label=\"アップロードの進み具合\"></progress><p class=\"text-sm text-ink\" data-lora-progress-text></p></div></form>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, " まで）</span> <span class=\"text-sm text-mute\">手元に保存した LoRA を、この PC の中の Nefos Video に取り込みます。ネットには送りません。取り込んだだけでは生成は始まりません。</span></div><p class=\"mt-2 text-sm text-danger\" role=\"alert\" data-lora-error data-testid=\"mm-lora-client-error\" hidden></p><div class=\"mt-2 flex flex-col gap-1\" role=\"status\" aria-live=\"polite\" data-lora-progress data-testid=\"mm-lora-progress\" hidden><progress class=\"h-1.5 w-full\" max=\"100\" value=\"0\" aria-label=\"アップロードの進み具合\"></progress><p class=\"text-sm text-ink\" data-lora-progress-text></p></div></form>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -448,7 +448,7 @@ func stagedForm(s Staged) templ.Component {
 			}
 		}
 		if len(s.BaseRaw) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<p class=\"text-xs text-mute\" data-testid=\"mm-lora-base-raw\">ファイルに書かれたベースモデル: ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<p class=\"text-sm text-mute\" data-testid=\"mm-lora-base-raw\">ファイルに書かれたベースモデル: ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -486,7 +486,7 @@ func stagedForm(s Staged) templ.Component {
 			}
 		}
 		if s.Renamed {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<p class=\"text-xs text-warning\" data-testid=\"mm-lora-renamed\">使えない文字を置き換えたため、")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<p class=\"text-sm text-warning\" data-testid=\"mm-lora-renamed\">使えない文字を置き換えたため、")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -509,7 +509,7 @@ func stagedForm(s Staged) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if s.Conflict != nil {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<div class=\"flex flex-col gap-1 rounded-md border border-warning/60 bg-warning/10 p-3 text-sm text-ink\" role=\"alert\" data-testid=\"mm-lora-conflict\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<div class=\"flex flex-col gap-1 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-ink\" role=\"alert\" data-testid=\"mm-lora-conflict\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -678,12 +678,12 @@ func metaFields(s Staged) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if s.FromFile {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "<p class=\"text-xs text-mute\" data-testid=\"mm-lora-base-note\">ファイルの情報から読み取りました。違うときは直してください。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 58, "<p class=\"text-sm text-mute\" data-testid=\"mm-lora-base-note\">ファイルの情報から読み取りました。違うときは直してください。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "<p class=\"text-xs text-mute\" data-testid=\"mm-lora-base-note\">ファイルに書かれていないため、未設定です（選ばなければ未設定のまま追加します）。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 59, "<p class=\"text-sm text-mute\" data-testid=\"mm-lora-base-note\">ファイルに書かれていないため、未設定です（選ばなければ未設定のまま追加します）。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -12,9 +12,9 @@ func filterOptions() []modellicense.Filter { return modellicense.Filters() }
 func noteClass(v View) string {
 	base := "flex flex-col gap-1 rounded-md border p-2 text-xs break-words "
 	if v.Level == modellicense.No {
-		return base + "border-danger/60 bg-danger/10 text-danger"
+		return base + "border-danger/40 bg-danger/10 text-danger"
 	}
-	return base + "border-warning/60 bg-warning/10 text-warning"
+	return base + "border-warning/40 bg-warning/10 text-warning"
 }
 
 func noteIcon(v View) atoms.IconName {

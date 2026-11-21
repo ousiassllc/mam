@@ -39,18 +39,18 @@ templ ProposalCard(p Proposal) {
 			}
 		</ul>
 		<p class="text-sm" data-testid="gtc-items">全部で <strong>{ itoa(p.Items) }</strong> 件を生成します。見積り合計は <strong data-testid="gtc-total">{ p.Total }</strong>（合計は見積りで、実際の請求は提供元で確認してください）。</p>
-		<div class="overflow-x-auto">
+		<div class="overflow-x-auto focus-visible:focus-ring" tabindex="0" role="region" aria-label="見積りの内訳">
 			<table class="w-full min-w-max text-left text-sm" data-testid="gtc-lines">
 				<thead class="text-xs text-mute">
-					<tr><th class="py-1 pr-3 font-normal">モデル</th><th class="py-1 pr-3 font-normal">件数</th><th class="py-1 pr-3 font-normal">単価</th><th class="py-1 font-normal">小計</th></tr>
+					<tr><th class="py-1 pr-3 font-normal">モデル</th><th class="py-1 pr-3 text-right font-normal">件数</th><th class="py-1 pr-3 text-right font-normal">単価</th><th class="py-1 text-right font-normal">小計</th></tr>
 				</thead>
 				<tbody>
 					for _, l := range p.Lines {
 						<tr class="border-t border-border" data-testid="gtc-line">
 							<td class="py-1 pr-3">{ l.Label }</td>
-							<td class="py-1 pr-3">{ itoa(l.Items) }</td>
-							<td class="py-1 pr-3">{ l.Unit }</td>
-							<td class="py-1">{ l.Subtotal }</td>
+							<td class="py-1 pr-3 text-right font-mono tabular-nums">{ itoa(l.Items) }</td>
+							<td class="py-1 pr-3 text-right font-mono tabular-nums">{ l.Unit }</td>
+							<td class="py-1 text-right font-mono tabular-nums">{ l.Subtotal }</td>
 						</tr>
 					}
 				</tbody>
@@ -127,7 +127,7 @@ templ ResultBlock(r Result) {
 			}
 		</div>
 		if !r.Finished {
-			<progress class="h-2 w-full" max="100" value={ itoa(r.Percent) } aria-label="生成の進み具合"></progress>
+			<progress class="h-1.5 w-full" max="100" value={ itoa(r.Percent) } aria-label="生成の進み具合"></progress>
 		}
 		if r.Error != "" {
 			<p class="break-words text-sm text-danger">{ r.Error }</p>

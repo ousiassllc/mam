@@ -18,7 +18,7 @@
 | W1 | 色 | トークンのクラスだけ（[color-rules.md](color-rules.md) §3・§4）。面は `bg-surface`・枠は `border-border`・補助の文字は `text-mute`・選択と現在地は `border-accent`（＋`bg-accent-soft`）。意味の色は 4 トークン（`danger` `warning` `success` `info`）だけで、色だけで意味を伝えない（文言とアイコンを添える）。`#000` などの直書きはしない |
 | W2 | 行・パネルの面 | 並べて操作する 1 件（クリップの行・区間の選択パネル）は、カード（`rounded-lg border border-border bg-surface`、影なし）。カードの中の入れ子の面（区間のチップ）は `rounded-sm bg-accent-soft` |
 | W3 | ボタン | 共通ガイドの O7 と同じ（[shared-ui-parts.md](shared-ui-parts.md) §1「部品・オーバーレイ」）。主 = `bg-accent text-bone hover:bg-accent/85`、サブ = `border border-border text-ink hover:bg-accent-soft`。どれも `rounded-md font-semibold transition-colors motion-reduce:transition-none disabled:opacity-40`、小は `min-h-8 px-3 py-1 text-sm`（ウィジェットの中のボタンはすべて小）、押下は `data-ripple`、キーボードのフォーカスは `focus-visible:focus-ring`。行の中の補助の操作（「外す」「選択」「除外」「変更を戻す」「選び直す」）は `atoms.LinkButton` と同じ文字のボタン（`text-xs text-mute underline hover:text-ink`。リップルは付けない）で、同じく `focus-visible:focus-ring` を持つ |
-| W4 | 記号だけのボタン（↑ ↓ ×） | 名前は `aria-label`（見える記号は名前ではない）。押せる大きさは 24×24px 以上（WCAG 2.5.8）。`atoms.IconButton` と同じ形（`text-mute hover:text-ink`、`data-ripple`）で `focus-visible:focus-ring`。行に同じ名前を並べない（`atoms.RowLabel` と同じ規約。[overview.md](overview.md) §4.2・§4.3） |
+| W4 | アイコンだけのボタン（↑ ↓ ×） | 絵は文字でなく Iconoir のアイコン（`components/lib/icon.ts` の `icon()`。`atoms.Icon` と同じ path・`stroke-width` 1.5・`aria-hidden`。`icon.test.ts` が path の一致を検査する）。名前は `aria-label`（絵は名前ではない）。押せる大きさは 24×24px 以上（WCAG 2.5.8）。`atoms.IconButton` と同じ形（`text-mute hover:text-ink`、`data-ripple`）で `focus-visible:focus-ring`。行に同じ名前を並べない（`atoms.RowLabel` と同じ規約。[overview.md](overview.md) §4.2・§4.3） |
 | W5 | 入力欄 | 枠は `border-mute`（入力欄の枠のコントラスト 3:1。[color-rules.md](color-rules.md) §4）・`rounded-md`・`text-ink`・`px-2 py-1`。地は `bg-surface`（面の上）か `bg-bone`（ページの上）で、どちらも `a11y/field_border_test` が見る。ラベルは入力の上に `text-xs text-mute`（Regular）。無効は不透明度 .4。`focus-visible:focus-ring` |
 | W6 | ステータスの印 | `atoms.Badge` と同じ形（`rounded-full px-2 py-1 text-xs`＋ `bg-<状態>/20 text-<状態>`、中立は `bg-accent-soft text-ink`）。色は [shared-ui-parts.md](shared-ui-parts.md) §1「状態の種類と `Badge` の対応」に従う。**`rounded-sm` の枠だけの印や、`text-[10px]` のような 12px 未満の文字は使わない**（T3: 最小は `text-xs` 12px） |
 | W7 | 数値 | 桁を揃える秒数・点数は `font-mono tabular-nums`（T5）。表の数値列は右寄せ |
@@ -191,7 +191,7 @@ Shot の Take のスコアを比べ、1 つを選ぶ・除外する、また複�
 **TC-1〜TC-7 は Issue #1092 で解消した**（実装を規定に合わせた。差分として残したものは無い）。表の「実装」欄は解消前の状態の記録で、直した先は次のとおり。
 
 - TC-1・TC-7: 「選択」「除外」「選び直す」は `text-xs text-mute underline hover:text-ink focus-visible:focus-ring`（リップルなし）。「この区間で合成」「言葉で合成」は `min-h-8 text-sm font-semibold`＋`transition-colors motion-reduce:transition-none`＋`data-ripple`＋`focus-visible:focus-ring`、「×」は `min-h-6 min-w-6`＋`data-ripple`、言葉の入力は `text-ink focus-visible:focus-ring`、選択パネルは `bg-surface` のカード
-- TC-2・TC-3: Status は `rounded-full px-2 py-1 text-xs`＋ Shot カードの `TakeStatusBadge` と同じ色（候補 = `bg-warning/20 text-warning`・AI Pick = `bg-info/20 text-info`・採用 = `bg-success/20 text-success`・除外 = `bg-accent-soft text-ink`。取り消し線は無し）。「使用中」は `bg-success/20` のバッジ（括弧は無し）。レーンの区間の番号は `text-xs`
+- TC-2・TC-3: Status は `rounded-full px-2 py-1 text-xs`＋ Shot カードの `TakeStatusBadge` と同じ色（候補 = `border-warning/40 bg-warning/10 text-warning`・AI Pick = `border-info/40 bg-info/10 text-info`・採用 = `border-success/40 bg-success/10 text-success`（色は `lib/badge.ts` の `BADGE_TONE`）・除外 = `bg-accent-soft text-ink`。取り消し線は無し）。「使用中」は採用と同じ色のバッジ（括弧は無し）。レーンの区間の番号は `text-xs`
 - TC-4: スコアのセルは `text-right font-mono tabular-nums`、Product〜Continuity の列の見出しも右寄せ
 - TC-5: エラーは `#alert-region` のエラーのアラート、区間の上限・短すぎる区間は注意のアラート（`appendAlert(region, message, 'warning')`）。ウィジェットは通知の箱を持たない
 - TC-6: 空状態は `rounded-lg border border-dashed border-border p-6`（`data-empty`）
@@ -242,3 +242,4 @@ Shot の Take のスコアを比べ、1 つを選ぶ・除外する、また複�
 | 1.2 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |
 | 1.3 | 2026-11-12 | §6.1 の TL-1〜TL-10 を解消済みにし、直した先を書いた（`mam-timeline-editor` のフォーカスの輪・バッジ・数値・トースト・アラート・空状態・確認）（§3.2 の注意のアラートは `#alert-warning-template`） | Issue #1091 |
 | 1.4 | 2026-11-12 | §6.3 の MP-3 を解消済みにした（重ね塗りの専用トークン `--overlay-deep`・`--overlay-pale` を足し、写真の明るさで選ぶ。中間調の写真は 3:1 に届かないことを書いた）。§3.2 に、タイムライン編集の初回の読み込みに失敗したときの「もう一度読み込む」を足した | Issue #1093・#1091 |
+| 1.5 | 2026-11-22 | W4 を「アイコンだけのボタン」に改め、絵を `components/lib/icon.ts` の `icon()`（`atoms.Icon` と同じ Iconoir の path）にした。再生・コマ送り・並べ替え・区間削除のグリフを置き換えた | #1179: アイコン（I）の指摘 |

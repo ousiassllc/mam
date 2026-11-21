@@ -56,7 +56,7 @@ func List(w Weights) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if len(w.Unclear) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex flex-col gap-1 rounded-lg border border-warning/60 bg-warning/10 p-3 text-sm text-warning\" role=\"note\" data-testid=\"mm-runtime-unclear\"><p class=\"\">商用利用が確認できていない（不可・不明）重み・依存ファイルが ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex flex-col gap-1 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning\" role=\"note\" data-testid=\"mm-runtime-unclear\"><p class=\"\">商用利用が確認できていない（不可・不明）重み・依存ファイルが ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -333,7 +333,7 @@ func item(a Asset) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if modellicense.Commercial(a.License.Commercial) != modellicense.Yes {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<p class=\"break-words rounded-md border border-warning/60 bg-warning/10 p-2 text-warning\" role=\"note\" data-testid=\"mm-runtime-asset-notice\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<p class=\"break-words rounded-md border border-warning/40 bg-warning/10 p-2 text-warning\" role=\"note\" data-testid=\"mm-runtime-asset-notice\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

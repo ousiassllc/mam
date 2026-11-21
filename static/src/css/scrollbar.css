@@ -1,0 +1,51 @@
+/*
+ * The scrollbar of every scrolling area, vertical and horizontal (guide §10, B1-B6). No arrows, 8px, a transparent track and
+ * corner, a round --mute thumb that gets darker (Light) or lighter (Dark) on hover (35%) and on drag (65%). The bars stay native:
+ * nothing is hidden and nothing is drawn by script. Not the range slider (slider.css): its rules are another thing (B5).
+ *
+ * Priority (B3): Chromium 121 and later ignore ::-webkit-scrollbar while scrollbar-width / scrollbar-color is not `auto`, so the
+ * standard pair (thin + --mute: Firefox and others) is put back to `auto` inside @supports selector(::-webkit-scrollbar).
+ * Only when the system does not force colours (B4): with forced-colors: active (Windows high contrast) the OS bar stays.
+ */
+@media (forced-colors: none) {
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) transparent;
+  }
+
+  @supports selector(::-webkit-scrollbar) {
+    * {
+      scrollbar-width: auto;
+      scrollbar-color: auto;
+    }
+
+    *::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+
+    *::-webkit-scrollbar-track,
+    *::-webkit-scrollbar-corner {
+      background: transparent;
+    }
+
+    *::-webkit-scrollbar-button {
+      display: none;
+      width: 0;
+      height: 0;
+    }
+
+    *::-webkit-scrollbar-thumb {
+      background: var(--scrollbar-thumb);
+      border-radius: 999px;
+    }
+
+    *::-webkit-scrollbar-thumb:hover {
+      background: var(--scrollbar-thumb-hover);
+    }
+
+    *::-webkit-scrollbar-thumb:active {
+      background: var(--scrollbar-thumb-active);
+    }
+  }
+}

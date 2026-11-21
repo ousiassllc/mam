@@ -6,6 +6,7 @@
  * - `confirmDialog(question)` asks and answers `true` (the button that goes on) or `false` (キャンセル, Esc, a click on the scrim).
  * - An element with `hx-confirm` asks the same way before its request goes out (htmx's own confirm() is taken over through `htmx:confirm`).
  */
+import { whenFaded } from '../lib/fade';
 import { createLogger } from '../lib/logger';
 
 const log = createLogger('confirm');
@@ -31,7 +32,8 @@ export function confirmDialog(question: string): Promise<boolean> {
       if (answer || button.hasAttribute('data-confirm-cancel')) dialog.close();
     });
     dialog.addEventListener('close', () => {
-      dialog.remove();
+      // The modal and its scrim fade out (motion.css, M5): it leaves the document when the fade is over. The answer does not wait for it.
+      void whenFaded(dialog).then(() => dialog.remove());
       // The control that asked gets the focus back, when the swap that follows has not replaced it.
       if (opener?.isConnected) opener.focus({ preventScroll: true });
       resolve(answer);

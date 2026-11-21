@@ -8,24 +8,26 @@ import (
 // matchRound is one round: the picture, how much it looks like the reference, what was fixed to get it, and what still differs.
 templ matchRound(r MatchRound, target int) {
 	<li
-		class={ "grid gap-3 rounded-lg border p-3 sm:grid-cols-[10rem_1fr]", templ.KV("border-success/60 bg-success/10", r.Best), templ.KV("border-border", !r.Best) }
+		class={ "grid gap-3 rounded-lg border p-3 sm:grid-cols-[10rem_1fr]", templ.KV("border-success/40 bg-success/10", r.Best), templ.KV("border-border", !r.Best) }
 		data-testid="gt-match-round"
 		data-round={ itoa(r.N) }
 		data-status={ r.Status }
 		data-best={ boolText(r.Best) }
 	>
-		<div class="flex h-40 w-full items-center justify-center rounded-md bg-black sm:w-40">
-			if r.ImageURL != "" {
+		if r.ImageURL != "" {
+			<div class="flex h-40 w-full items-center justify-center rounded-md bg-black sm:w-40">
 				<img src={ r.ImageURL } alt={ "第 " + itoa(r.N) + " 回の生成結果" } class="h-full w-full rounded-md object-contain" loading="lazy"/>
-			} else {
+			</div>
+		} else {
+			<div class="flex h-40 w-full items-center justify-center rounded-md border border-border bg-surface sm:w-40">
 				@atoms.BadgeWith(resulttile.Tone(r.Status), r.StatusText, templ.Attributes{"data-testid": "gt-match-round-status"})
-			}
-		</div>
+			</div>
+		}
 		<div class="flex min-w-0 flex-col gap-2">
 			<div class="flex flex-wrap items-center gap-3">
 				<span class="text-xs text-mute">第 { itoa(r.N) } 回</span>
 				if r.Score != "" {
-					<span class="text-2xl tabular-nums text-ink" data-testid="gt-match-score">{ r.Score }</span>
+					<span class="text-2xl font-mono tabular-nums text-ink" data-testid="gt-match-score">{ r.Score }</span>
 					if r.Reached {
 						@atoms.Badge(atoms.BadgeOK, "目標に届きました")
 					}
@@ -49,7 +51,7 @@ templ matchRound(r MatchRound, target int) {
 			}
 			if r.Score != "" {
 				<progress
-					class={ "h-1.5 w-full", templ.KV("accent-success", r.Reached), templ.KV("accent-warning", !r.Reached) }
+					class="h-1.5 w-full"
 					max="100"
 					value={ itoa(r.Percent) }
 					aria-label={ "似てる度 " + r.Score }

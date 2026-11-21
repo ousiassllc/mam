@@ -29,3 +29,9 @@ func TestFieldInputsWithoutANameAreNotPostedAndADisabledFieldIsClosed(t *testing
 	html = fieldHTML(t, f)
 	assert.Equal(t, 3, strings.Count(html, "disabled"), "both inputs and the button")
 }
+
+// The button that opens the picker is pressed like any button: it starts the ripple (the UI guide, M4).
+func TestFieldOpenButtonIsMarkedForTheRipple(t *testing.T) {
+	html := fieldHTML(t, modelpick.FieldData{ID: "f", Label: "LoRA", URL: "/model-picker/lora"})
+	assert.Equal(t, 1, strings.Count(html, "data-ripple"))
+}

@@ -9,7 +9,7 @@
 - **色は Ousiass 共通デザインガイド（brand-guide `622ea73`）のトークンだけ。** `static/src/css/tokens.css` が唯一の「値を書く場所」で、`--ink` `--bone` `--mute` `--surface` `--border` `--accent` `--accent-soft` `--focus` と状態色 `--success` `--warning` `--danger` `--info` を、ライト（`:root`）とダーク（`:root[data-theme="dark"]`）の両方で定義する。写真の上に重ねる塗りだけは、写真が下地でテーマの面ではないので、テーマで変わらない専用のトークン `--overlay-deep`・`--overlay-pale` を `:root` に 1 組だけ持つ（§4.2）。Tailwind 4 の `@theme inline` が `--color-*: initial` で既定のパレットを消し、トークンを `bg-bone` `text-ink` `border-border` のクラスにする。**`bg-neutral-900` や `text-indigo-300` のような既定パレットのクラスは、コンパイルされず、テストも落とす。**
 - **ライト / ダークの切り替え**: `<html data-theme="light|dark">`（左メニューのテーマボタンが `mam_theme` クッキーと `data-theme` を書き、サーバーが次のページを同じテーマで描く。`backend/internal/web/themestate`）。クッキーが無いときは OS の設定（`prefers-color-scheme`）に従う。クラスに `dark:` は付けない（トークンが切り替わる）。
 - 意味は色相でなく**トークン**で決める: **危険 = `danger`・警告 = `warning`・成功 = `success`・情報／進行中 = `info`・主アクション／リンク／選択 = `accent`（インク色）・それ以外 = `ink` / `mute` / `border` / `surface` / `bone`**。状態色は彩度を落とした無彩色寄りで、色だけで意味を伝えない（文言とアイコン `atoms.Icon` を添える）。
-- **同じ意味に新しいクラスや `/opacity` を足さない。** 枠は `-/60`、薄い面は `/10`（弱い）か `/20`（バッジのような塗り）。足したいときは、画面のクラスを変えるのでなく、この文書の表を変える（テストの `colorAllowlist` も同じ版で変える）。
+- **同じ意味に新しいクラスや `/opacity` を足さない。** 枠は `-/40`、地は `/10`（ガイドの状態色は文字・枠 40%・地 10%）。足したいときは、画面のクラスを変えるのでなく、この文書の表を変える（テストの `colorAllowlist` も同じ版で変える）。
 - プリズム（`--prism-*`）はロゴ・ヒーロー・キービジュアル専用で、UI のクラスに使わない。フォーカスだけが `--focus`（プリズムの blue を薄く借りる）を使う。
 - コントラストは `a11y/contrast_test.go`（補助の文字に `text-neutral-500` を使わない）と `a11y/field_border_test.go`（入力欄の枠は、ライト・ダークのどちらでも面に対して 3:1 以上）が守る。
 - 共通部品が表の正: 色は `atoms.Badge`（`BadgeNeutral`・`BadgeInfo`・`BadgeWarn`・`BadgeOK`・`BadgeError`）と `atoms.Button`（`TonePrimary`・`ToneDanger`・`ToneNeutral`）から決まる。画面・molecules・organisms・Lit は、同じ意味ならこれと同じクラスを使う。
@@ -41,18 +41,18 @@
 | ホバー面 | `hover:bg-accent-soft` / `hover:border-mute` / `peer-not-checked:hover:border-mute` / `hover:bg-accent-soft/60` | §1・`peer-not-checked:` は選ぶカード（選んだカードの枠をホバーで灰色に戻さない） |
 | ホバーの文字 | `hover:text-ink` | §1 |
 | 主アクション（実ボタン） | `bg-accent` / `hover:bg-accent/85` / `text-bone` | `TonePrimary` |
-| リンク・アイコン強調 | `text-accent` / `decoration-mute`（リンクは `underline` を添える） | §1・`Icon` 周り |
-| 選択・現在地 | `border-accent` / `has-[:checked]:border-accent` / `peer-checked:border-accent` / `peer-checked:bg-accent-soft` / `hover:border-accent` / `border-t-accent` | 選ぶカード・ナビ・スピナーの回る弧 |
-| 危険 | 文字 `text-danger`、枠/面 `border-danger/60`・`border-danger/40`・`bg-danger/10`・`bg-danger/20`（Badge）・`hover:bg-danger/10`（`ToneDanger` のホバー） | `ToneDanger`・`BadgeError` |
-| 警告 | 文字 `text-warning`、枠/面 `border-warning/60`・`border-warning/40`・`bg-warning/10`・`bg-warning/20`（Badge） | `BadgeWarn` |
-| 成功 | 文字 `text-success`、枠/面 `border-success/60`・`border-success/40`・`bg-success/10`・`bg-success/20`（Badge） | `BadgeOK` |
-| 情報・進行中 | 文字 `text-info`、枠/面 `border-info/60`・`border-info/40`・`bg-info/10`・`bg-info/20`（Badge） | `BadgeInfo` |
+| リンク・アイコン強調 | `text-accent` / `decoration-mute`（リンクは `underline` を添える）/ `fill-current`（輪郭のアイコン `IconStar` を、オンのとき文字色で塗る） | §1・`Icon` 周り・お気に入りの星 |
+| 選択・現在地 | `border-accent` / `has-[:checked]:border-accent` / `peer-checked:border-accent` / `peer-checked:bg-accent-soft` / `hover:border-accent` / `border-t-accent` / `border-accent-soft` | 選ぶカード・ナビ・スピナーの回る弧（`border-t-accent`）と、スピナーの輪の残り（`border-accent-soft`。共通ガイド O12） |
+| 危険 | 文字 `text-danger`、枠/面 `border-danger/40`・`bg-danger/10`・`hover:bg-danger/10`（`ToneDanger` のホバー） | `ToneDanger`・`BadgeError` |
+| 警告 | 文字 `text-warning`、枠/面 `border-warning/40`・`bg-warning/10` | `BadgeWarn` |
+| 成功 | 文字 `text-success`、枠/面 `border-success/40`・`bg-success/10` | `BadgeOK` |
+| 情報・進行中 | 文字 `text-info`、枠/面 `border-info/40`・`bg-info/10` | `BadgeInfo` |
 
 ### 3.1 意味の色の枠・薄い面
 
-警告・成功・情報・危険は、**枠は `-/60`、薄い面は `/10`、バッジのような塗りは `/20`**（表の読み。新しい色・不透明度は足さない）。
+警告・成功・情報・危険は、**文字は状態色、枠は `-/40`、地は `/10`**（バッジ・アラート・注意の箱とも同じ。表の読み。新しい色・不透明度は足さない）。
 
-**ガイド（brand-guide `5d816f8`）の枠は 40%・地は 10%** なので、状態色の枠に `border-{danger,warning,success,info}/40` を許可に足した（2026-11-22）。`/60` と `/20` は呼び出し側を `/40` へ直し終えるまでの移行中として残し、直し終えたら表と `color_allowlist_test.go` から消す。注意書きの箱（枠だけ）・トースト・接続の通知・ステータスの帯がこれを使う。
+**ガイド（brand-guide `5d816f8`）の枠は 40%・地は 10%** なので、状態色は枠 `border-{danger,warning,success,info}/40`・地 `bg-…/10` の 1 通りにした（2026-11-22。旧 `border-…/60`・`bg-…/20` は呼び出し側をすべて直して許可から外した）。バッジ（`atoms.Badge`・Lit の `lib/badge.ts`）・インラインアラート・注意書きの箱・接続の通知・ステータスの帯がこれを使う。
 
 <!-- color-allowlist:end -->
 
@@ -84,7 +84,7 @@
 | `border-mute` | 入力欄（`atoms.fieldClass`）と、Lit が出す `<input>`・`<select>`・`<textarea>`（Take の指示欄・タイムラインのクリップ） | 入力欄の枠は、面に対して **3:1 以上**（WCAG 1.4.11）が必要で、`--border`（罫線用の薄い線）では足りない。`--mute` はライト・ダークのどちらでも 3:1 を超える（`a11y/field_border_test.go`） |
 | `bg-black` | 動画・画像のプレビューの背景（`<video>`・`<img>` の余白）と動画プレイヤーの舞台 | 映像のレターボックスは黒でないと映像が浮く（どちらのテーマでも黒）。モーダルの背後（スクラム）はクラスでなく `tokens.css` の `--scrim`（`static/src/css/motion.css` が `dialog::backdrop` に当てる） |
 | `border-transparent` | 現在地でないナビ・ステップの枠（`border-l-2` の幅を取っておく） | 枠の幅を保って現在地の切り替えで文字がずれないようにする（色はない） |
-| `accent-danger`・`accent-warning`・`accent-success` | 予算の `<progress>`（危険・警告・成功） | ブラウザが描くメーターの塗りの色（`accent-*`）で、表の文字用・面用のクラスは使えない。意味は状態色（危険 = danger・警告 = warning・成功 = success）を表と揃える。推定コストと上限の文字を添える（色だけで伝えない） |
+| `accent-danger`・`accent-warning`・`accent-success` | 予算の `<progress>`（危険・警告・成功） | メーターの塗りの色（`accent-*`。共通の `<progress>` の CSS `static/src/css/progress.css` が、このクラスの付いた `<progress>` の塗りを状態色にする）で、表の文字用・面用のクラスは使えない。**予算の `<progress>` だけ**で、似てる度などほかの進捗は `--accent` の塗りのまま（状態は文言で伝える）。意味は状態色（危険 = danger・警告 = warning・成功 = success）を表と揃える。推定コストと上限の文字を添える（色だけで伝えない） |
 | `bg-danger/70`・`bg-warning/70`・`bg-success/70`・`bg-info/70` | 動画の上・Take のレーンの上に重ねる塗り（Judge の指摘の位置・選んだ区間・ドラッグ中の区間・読み込みの進捗） | 映像・レーンが透けて見える**重ね塗り**で、`/20`（バッジ）では映像の上で見えない。意味は表と同じ（danger = 重大・warning = 中・info = 軽い／ドラッグ中・success = 選んだ） |
 
 <!-- color-exceptions:end -->
@@ -97,11 +97,9 @@
 |-----------|--------------------|
 | 塗り（選んだ値までのレール） | `--accent` |
 | 残りのレール | `--accent-soft` |
-| つまみ | 面 `--surface`・縁 `--accent` |
-| ホバー | つまみの面が `--accent-soft`（色・背景だけ。光彩なし） |
-| ドラッグ中（`:active`） | つまみの面が `--accent` |
+| つまみ | 面 `--surface`・縁 `--border` 1px（共通ガイド O11。ホバー・ドラッグ中の塗り替えはしない） |
 | キーボードのフォーカス（`:focus-visible`） | つまみの外側に `--bone` の隙間 2px と `--focus` の輪 2px（ほかの部品の `focus-ring` と同じ値） |
-| 無効（`:disabled`） | 塗り `--mute`・残り `--accent-soft`・つまみ `--accent-soft`（縁 `--mute`）。ホバー・ドラッグの変化なし |
+| 無効（`:disabled`） | 塗り `--mute`・残り `--accent-soft`・つまみ `--accent-soft`（縁 `--mute`） |
 | Windows のハイコントラスト（`forced-colors`） | システムの色（`Highlight`・`GrayText`・`ButtonFace`・`ButtonText`） |
 
 **WebKit（macOS の WKWebView）には、塗りの部分を指す疑似要素が無い**ので、レールは `linear-gradient(to right, 塗り var(--stop), 残り var(--stop))` で描く。`--fill`（0〜1）は値から `static/src/components/slider/slider.ts` が書く（読み込み・HTMX の差し替え・`input` のたび）。Lit が描くスライダーは `sliderStyle()`（`slider-model.ts`）で `style` に書く。`appearance: none` でブラウザの標準の見た目に頼らないので、Chromium（Windows の WebView2）と WebKit で同じ形になる。値・範囲・刻み・矢印キー・ドラッグは `<input type=range>` のままで、変えない。値の表示は各画面の `<output>`（スライダーの横か上）が持つ。
@@ -141,3 +139,6 @@
 | 2.4 | 2026-11-16 | ライトの `--mute` を `#8b8b8e` から共通ガイドの `#6b6b6e` に改めた（`text-mute` の補足の文字が白の面で 3.40:1 → 5.31:1、bone の面で 3.11:1 → 4.87:1）。ダークは `#8b8b8e` のまま（`tokens.css` の 2 つのダークのブロックに明示した。これまでは `:root` の値を引き継いでいた）。許可クラスの表（§3・§4）は変えていない。`a11y/contrast_test.go` に、ライト・ダークの値と 4.5:1 の検査を足した | Issue #1159 |
 | 2.5 | 2026-11-19 | 本文の製品名の表示を「MAM」から「Nefos Video」に改めた（過去の改訂履歴の文は当時のまま） | #1170: 製品名を MAM から Nefos Video に変更（表示名のみ。識別子・パス・実行ファイル名は変更しない） |
 | 2.6 | 2026-11-22 | §3・§3.1 に状態色の枠 `border-{danger,warning,success,info}/40`（ガイド brand-guide `5d816f8` の枠 40%・地 10%）を足した。`/60`・`/20` は移行中として残す | #1179 #1176: 状態色をガイドに合わせる下準備 |
+| 2.7 | 2026-11-22 | §3・§3.1 から状態色の `/60`（枠）・`/20`（バッジの地）を外し、枠 `/40`・地 `/10` だけにした。バッジに 1px の枠 `/40` を足し、LOCK の選択面は `bg-accent-soft text-accent` にした | #1176: 色（C）の指摘 |
+| 2.8 | 2026-11-22 | §3 の「リンク・アイコン強調」に `fill-current` を足した（輪郭のアイコン `IconStar` を、お気に入りがオンのとき文字色で塗る。`Icon` は `fill="none"` なので、塗りはクラスで上書きする）。新しい色は足していない | #1179: アイコン（I）の指摘（★ ☆ の文字を Iconoir の star に） |
+| 2.9 | 2026-11-22 | §4.1 のスライダーのつまみを、面 `--surface`・縁 `--border` 1px に改めた（共通ガイド O11）。ホバー・ドラッグ中のつまみの塗り替えは外した。新しい色は足していない。スピナーの輪の残りに `border-accent-soft` を許可した（O12）。§4 の `accent-*` の行は、予算の `<progress>` だけの例外と明記した（共通の進捗バー `progress.css` が塗りを描く） | #1181: 部品・オーバーレイ（O）の指摘 |

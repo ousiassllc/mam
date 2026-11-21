@@ -64,7 +64,7 @@ func TestButtons_AreMarkedForTheRipple(t *testing.T) {
 		"ButtonLink":     atoms.ButtonLink(atoms.ToneNeutral, "戻る", "/x", nil),
 		"ButtonFor":      atoms.ButtonFor(atoms.ToneDanger, "削除", "A", nil),
 		"SmallButtonFor": atoms.SmallButtonFor(atoms.ToneDanger, "削除", "A", nil),
-		"IconButton":     atoms.IconButton("×", nil),
+		"IconButton":     atoms.IconButton(nil),
 	} {
 		var sb strings.Builder
 		require.NoError(t, c.Render(context.Background(), &sb))

@@ -16,19 +16,20 @@ func badgeClass(tone BadgeTone) string {
 	return "inline-block rounded-full px-2 py-1 text-xs " + badgeColors(tone)
 }
 
-// badgeColors are the colours of a tone: the background and the text (the palette of spec/components/color-rules.md).
+// badgeColors are the colours of a tone: the text, a 40% edge and a 10% ground of the state colour (brand guide C4; the palette of
+// spec/components/color-rules.md). The neutral badge keeps a transparent edge, so that it is as big as the others.
 func badgeColors(tone BadgeTone) string {
 	switch tone {
 	case BadgeInfo:
-		return "bg-info/20 text-info"
+		return "border border-info/40 bg-info/10 text-info"
 	case BadgeWarn:
-		return "bg-warning/20 text-warning"
+		return "border border-warning/40 bg-warning/10 text-warning"
 	case BadgeOK:
-		return "bg-success/20 text-success"
+		return "border border-success/40 bg-success/10 text-success"
 	case BadgeError:
-		return "bg-danger/20 text-danger"
+		return "border border-danger/40 bg-danger/10 text-danger"
 	}
-	return "bg-accent-soft text-ink"
+	return "border border-transparent bg-accent-soft text-ink"
 }
 
 // Badge is a small status label.

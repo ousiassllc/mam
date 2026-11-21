@@ -63,3 +63,8 @@ func TestSources_UseOnlyTheGuidesSizesAndWeights(t *testing.T) {
 		}
 	}
 }
+
+// <strong> is SemiBold (T2): Tailwind's preflight would make it bolder (700), and the class check above does not see an element's default weight.
+func TestTokens_StrongIsSemiBold(t *testing.T) {
+	assert.Regexp(t, `(?s)@layer base \{.*\bstrong \{\s*font-weight: 600;`, readTokens(t))
+}

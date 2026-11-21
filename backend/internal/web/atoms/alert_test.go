@@ -24,7 +24,7 @@ func TestAlert_EachKindHasItsIconHeadingAndRole(t *testing.T) {
 		html := sb.String()
 
 		assert.Contains(t, html, `role="`+want.role+`" data-alert data-kind="`+string(kind)+`"`, kind)
-		assert.Contains(t, html, "border-"+want.tone+"/60 bg-"+want.tone+"/10", kind)
+		assert.Contains(t, html, "border-"+want.tone+"/40 bg-"+want.tone+"/10", kind)
 		assert.Contains(t, html, "<svg", "%s: an icon", kind)
 		assert.Contains(t, html, "見出し", kind)
 		assert.Contains(t, html, `data-alert-message>本文です`, kind)

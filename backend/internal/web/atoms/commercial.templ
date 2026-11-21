@@ -29,19 +29,12 @@ func commercialIcon(c modellicense.Commercial) IconName {
 	return IconBadgeHelp
 }
 
-func commercialEdge(c modellicense.Commercial) string {
-	if c == modellicense.Unknown || !c.Valid() {
-		return " border border-warning/60"
-	}
-	return ""
-}
-
 func commercialBadgeClass(c modellicense.Commercial) string {
-	return "inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs " + badgeColors(commercialTone(c)) + commercialEdge(c)
+	return "inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs " + badgeColors(commercialTone(c))
 }
 
 func commercialMarkClass(c modellicense.Commercial) string {
-	return "inline-flex items-center justify-center rounded-full p-1 " + badgeColors(commercialTone(c)) + commercialEdge(c)
+	return "inline-flex items-center justify-center rounded-full p-1 " + badgeColors(commercialTone(c))
 }
 
 // commercialName is the accessible name: the word, then what the license says.

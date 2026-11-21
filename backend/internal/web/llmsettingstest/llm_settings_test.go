@@ -67,6 +67,7 @@ func TestLLMSettings_TheModalOfAnAgentHoldsItsTwoTargetsAndTheirDefaults(t *test
 	assert.Equal(t, 1, strings.Count(body, "autofocus"), "one control to start with")
 	assert.Contains(t, body, `hx-put="`+paths.LLMAgent("director")+`"`)
 	assert.Contains(t, body, `hx-delete="`+paths.LLMAgent("director")+`"`)
+	assert.Regexp(t, `hx-delete="`+paths.LLMAgent("director")+`"[^>]*hx-confirm=|hx-confirm="[^"]*"[^>]*hx-delete="`+paths.LLMAgent("director")+`"`, body, "putting an Agent back to its default asks first (O2)")
 	for _, id := range []string{"llm-primary-model", "llm-fallback-model"} {
 		assert.Contains(t, body, `id="`+id+`-button"`)
 	}
@@ -95,7 +96,7 @@ func TestLLMSettings_ASavedAgentIsWhatTheNextStartLoadsAndTheAnswerIsItsRow(t *t
 	assert.Contains(t, body, "google / gemini-x")
 	assert.Contains(t, body, "変更あり")
 	assert.NotContains(t, body, "再起動で反映", "a saved route is in effect at once: the row does not wait for a restart")
-	assert.Contains(t, body, savedNoticeFor("Director（Scene / Shot の計画）"))
+	assert.Contains(t, body, savedNoticeFor("Director（Scene / Shot の計画）")+"</span>", "the toast is one short sentence")
 	assert.NotContains(t, body, `id="llm-row-writer"`, "only the row that was saved")
 
 	cfg, err := llm.LoadConfig(s.file)

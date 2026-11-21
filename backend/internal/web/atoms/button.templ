@@ -24,7 +24,7 @@ func buttonClass(tone ButtonTone, small bool) string {
 	case TonePrimary:
 		return base + "bg-accent text-bone hover:bg-accent/85"
 	case ToneDanger:
-		return base + "border border-danger/60 text-danger hover:bg-danger/10"
+		return base + "border border-danger/40 text-danger hover:bg-danger/10"
 	case ToneGhost:
 		return base + "text-ink hover:bg-accent-soft"
 	}
@@ -57,10 +57,12 @@ templ LinkButton(tone ButtonTone, label string, attrs templ.Attributes) {
 	}
 }
 
-// IconButton is a bare glyph button (for example the × that cancels a reply); label goes in
-// attrs as aria-label because the glyph is not a name.
-templ IconButton(glyph string, attrs templ.Attributes) {
-	<button class="text-mute hover:text-ink" data-ripple { attrs... }>{ glyph }</button>
+// IconButton is a bare icon button (for example the xmark that cancels a reply): its child is an Icon, and its name goes in
+// attrs as aria-label because the icon is not a name. It is 24px or more (WCAG 2.5.8).
+templ IconButton(attrs templ.Attributes) {
+	<button class="inline-flex min-h-6 min-w-6 items-center justify-center rounded-md text-mute hover:text-ink focus-visible:focus-ring" data-ripple { attrs... }>
+		{ children... }
+	</button>
 }
 
 // ButtonFor is the Button of one row of a list: its accessible name says which row it acts on

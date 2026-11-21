@@ -41,7 +41,7 @@ body
 
 | 部品 | 内容 |
 |------|------|
-| `Main` | `<main class="mx-auto flex w-full max-w-… flex-col gap-6 p-4 md:p-8">`。幅は `Narrow`（3xl）・`Medium`（4xl）・`Wide`（5xl）・`Wider`（6xl）・`Full`（7xl）。ブロックの間隔は 1 か所（`gap-6`）。狭い窓では余白 1rem |
+| `Main` | `<main class="mx-auto flex w-full max-w-… flex-col gap-6 p-4 md:p-6">`。幅は `Narrow`（3xl）・`Medium`（4xl）・`Wide`（5xl）・`Wider`（6xl）・`Full`（7xl）。ブロックの間隔は 1 か所（`gap-6`）。ガターは狭い窓で 1rem（16）、`md` 以上で 1.5rem（24。共通デザインガイド S5。アラート領域 `#alert-region` の左右も同じ `px-4 md:px-6`） |
 | `Header` | `<h1 class="text-xl font-semibold">`（全画面で 1 つ・同じ大きさ）。副題は `text-sm text-mute`（Project 名など）。説明があれば題の横の「?」（`help.Row`、[shared-ui-parts.md](shared-ui-parts.md) §9） |
 
 - **戻るリンクは持たない**。メニューが戻り道（`atoms.BackLink` は、メニューが持たない上位だけ: レビューの 1 件 → 一覧、Shot の Inspector → Scene / Shot、Series の Notes → Series）。
@@ -99,3 +99,4 @@ body
 | 1.4 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |
 | 1.5 | 2026-11-11 | §5 の単発生成の行の「4 つのページのリンク」を、タブ 6 つ（チャットで作るを足した）に直した（実装の `generationNav` に合わせた） | PR #1141 のレビュー指摘 |
 | 1.6 | 2026-11-19 | 本文の製品名の表示を「MAM」から「Nefos Video」に改めた（過去の改訂履歴の文は当時のまま） | #1170: 製品名を MAM から Nefos Video に変更（表示名のみ。識別子・パス・実行ファイル名は変更しない）。#1171: ヘッダーを Nefos Video のロゴ（タイルなしのマーク `mark-{light,dark}.svg` と「Nefos Video」の文字、折りたたみ時は `icon-32-{light,dark}.png`）に差し替え |
+| 1.7 | 2026-11-22 | `Main` の余白を `md:p-8`（32）から `md:p-6`（24）に改めた。アラート領域の左右も `md:px-6` | #1178: ガターはモバイル 16・デスクトップ 24（S5） |

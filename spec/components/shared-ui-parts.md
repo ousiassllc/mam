@@ -23,7 +23,8 @@
 | 主ボタンの `bg-accent` | `atoms.TonePrimary` の実ボタン専用 | カードの見た目に使わない（カードはリンクであってボタンではない） |
 | 状態 | `atoms.Badge`（neutral / info / warn / ok / error）と文字。**色だけで伝えない**（#790・#795） | §2 の対応表 |
 | カードの枠 | `border-border` は飾り。カードはタイトルの文字とフォーカスの輪で見分ける | 入力欄の枠のコントラスト（`field_border_test`）の対象ではない |
-| スライダー（`input[type=range]`。#955） | アプリの**すべて**のスライダーが `static/src/css/slider.css` の共通の見た目（レール 6px・つまみ 16px の丸。塗り `--accent`・残り `--accent-soft`・つまみ `--surface` に `--accent` の縁）。ホバー（つまみの面が `--accent-soft`）・ドラッグ中（つまみが `--accent`）・`focus-visible`（`--focus` の輪）・無効（`--mute`）を持つ。色は [color-rules.md](color-rules.md) §4.1。値は `<output>` を横（参照画像・LoRA の強さ）か上（プロンプトマッチの目標）に置く（動画の再生位置は、下のタイムコードが値） | 要素は `<input type=range>` のまま（矢印キー・ドラッグ・範囲・刻み・初期値は変えない）。WebKit にレールの塗りの疑似要素が無いので、塗りは `--fill`（`components/slider/slider.ts` が値から書く。Lit は `sliderStyle()`）と `linear-gradient` で描く。新しいスライダーは class で見た目を足さず、幅・並べ方だけ書く |
+| スライダー（`input[type=range]`。#955） | アプリの**すべて**のスライダーが `static/src/css/slider.css` の共通の見た目（レール 6px・つまみ 16px の丸。塗り `--accent`・残り `--accent-soft`・つまみ `--surface` に `--border` 1px の縁）。`focus-visible`（`--focus` の輪）・無効（`--mute`）を持つ。色は [color-rules.md](color-rules.md) §4.1。値は `<output>` を横（参照画像・LoRA の強さ）か上（プロンプトマッチの目標）に置く（動画の再生位置は、下のタイムコードが値） | 要素は `<input type=range>` のまま（矢印キー・ドラッグ・範囲・刻み・初期値は変えない）。WebKit にレールの塗りの疑似要素が無いので、塗りは `--fill`（`components/slider/slider.ts` が値から書く。Lit は `sliderStyle()`）と `linear-gradient` で描く。新しいスライダーは class で見た目を足さず、幅・並べ方だけ書く |
+| 進捗バー（`<progress>`。ガイド O12） | アプリの**すべて**の `<progress>` が `static/src/css/progress.css` の共通の見た目（高さ 6px・角丸 full・レール `--accent-soft`・塗り `--accent`。ブラウザ標準の青い塗り・枠は `appearance: none` で消す）。`aria-label` で名前を付ける。Windows のハイコントラストはシステムの色（`Highlight`・`GrayText`）。予算のメーターだけ、塗りが状態色（[color-rules.md](color-rules.md) §4 の承認済みの例外）。Lit の独自の帯（動画プレイヤーの読み込み）も高さ 6px・角丸 full・`role="progressbar"` と `aria-valuenow` | 値のない（不明な）作業にはバーを出さない（[jobs-screen.md](jobs-screen.md)） |
 
 ### 文字（Issue #1037）
 
@@ -44,7 +45,7 @@
 | 項目 | 決まり |
 |------|--------|
 | 角丸（S1） | `rounded-sm` 4（タグ・チェック・バッジの角）· `rounded-md` 8（入力・ボタン・カードの中の入れ子の面）· `rounded-lg` 12（カード）· `rounded-xl` 16（モーダル `<dialog>`）· `rounded-full`（ピル・アバター）。素の `rounded` は使わない |
-| 余白（S2） | 4px 基準（`1`=4・`2`=8・`3`=12・`4`=16・`6`=24 …）。`.5` の値（`gap-1.5` など）は使わない。メニュー項目は高さ 40（`min-h-10`）・項目間 8（`gap-2`）、ボタンは小 32（`min-h-8`）・標準 40（`min-h-10`） |
+| 余白（S2） | 4px 基準（`1`=4・`2`=8・`3`=12・`4`=16・`6`=24 …）。`.5` の値（`gap-1.5` ・ `bottom-1.5` など。上下左右の位置も）と、20 の値（`p-5`・`gap-5`・`px-5` など）は使わない（カード・ダイアログの内側は `p-4` か `p-6`、間は `gap-4` か `gap-6`）。メニュー項目は高さ 40（`min-h-10`）・項目間 8（`gap-2`。左側メニューも設定のナビも同じ）、ボタンは小 32（`min-h-8`）・標準 40（`min-h-10`）。画面のガターは 16、`md` 以上で 24（`p-4 md:p-6`） |
 | 影（S3） | 影はモーダルの `<dialog>` の `shadow-modal`（`0 1px 2px rgba(0,0,0,.06)`）だけ。カード・パネル・トースト・通知は影なしで、`border border-border` で区切る。ホバーの光る縁取りは使わない（色・背景・枠の色だけ） |
 | レイヤー（O4） | `z-dropdown` 100 · `z-sticky` 200 · `z-drawer` 300 · `z-modal` 400 · `z-toast` 500。カードの中で、全面を覆うクリック領域の上に出す部品だけ `z-raised`（部品の中の積み順で、ページのレイヤーではない）。`z-10` などの数字は使わない |
 | 動き（M1） | `transition-colors`（既定で `--motion-base` 180ms・`--ease-out`）と `motion-reduce:transition-none`。`transition`（すべての値）・`transition-shadow`・`transition-transform` は使わない |
@@ -58,7 +59,7 @@
 | ホバー・フォーカス（M1） | 色・背景だけ、`--motion-base` 180ms（フォーカスは即時〜`--motion-fast` 120ms）。`transition-colors` が既定でこの値を取る。光彩・拡大はしない |
 | 処理中表示（M3） | スピナー（`atoms.Spinner`）と更新ボタンの回る矢印は、`prefers-reduced-motion: reduce` でも回す（`motion-reduce:animate-none` を付けない）。移動・スライドの飾りだけを止める（`motion-reduce:transition-none`）。オーバーレイのフェードは reduce で 100ms 以内 |
 | リップル（M4） | `data-ripple` の付いたボタン（`atoms.Button` / `SmallButton` / `ButtonLink` / `…For` / `IconButton`・モーダルとトーストの閉じる・左メニューのボタン）の押下で、押した点から円が広がって消える（`--motion-slow` 280ms・`--ease-out`。円は `currentColor` の 20%）。無効なボタンと reduced-motion では出ない |
-| 出現・退出（M5） | `<dialog>`・popover・トーストは、出現がフェードイン `--motion-fade-in` 320ms（`--ease-out`）、退出がフェードアウト `--motion-fade-out` 240ms（`--ease-in`）。スクラム（`dialog::backdrop`）は `--scrim` を同じ時間でフェードする。移動は付けない |
+| 出現・退出（M5） | `<dialog>`・popover・トーストは、出現がフェードイン `--motion-fade-in` 320ms（`--ease-out`）、退出がフェードアウト `--motion-fade-out` 240ms（`--ease-in`）。スクラム（`dialog::backdrop`）は `--scrim` を同じ時間でフェードする。移動は付けない。インラインアラートも同じで、閉じるボタンで `data-leaving` が付き、フェードアウトしてから取り除く。確認モーダル（`confirm.ts`）の取り除きと、モーダル・モデル選択・インラインダイアログの中身の消去は、このフェードが終わってから行う（待つのは `getAnimations()` の transition。固定時間のタイマーは使わない。`components/lib/fade.ts`）。reduced-motion では 100ms 以内 |
 
 ### 部品・オーバーレイ（Issue #1041）
 
@@ -70,7 +71,7 @@
 | 確認・破壊的操作（O2） | 確認は OS 標準の `confirm()` でなく、中央のモーダル（`modal.Confirm`。`--r-xl`・`shadow-modal`・危険ボタン「実行する」と「キャンセル」）。`hx-confirm` の要素は `htmx:confirm` をこのモーダルが受けてから送る（`static/src/components/confirm`）。`AppLayout` が `#confirm-template` を埋め込む。モデルマネージャーの年齢確認・ライセンス確認もページ内の枠でなく同じ `<dialog>`（`modal.InlineHost`。`showModal()` で開く） |
 | トースト（O3） | 「保存しました」のような **1 行の短い成功の文だけ**。画面下中央（下から 24）・高さ 40・ピル・`bg-ink text-bone`・同時に 1 つ（新しいものが前を置き換える）・3 秒で自動消去。閉じるボタンも持たない。サーバーが返す成功は `atoms.ToastOOB`（`#toast-region` の中身を置き換える） |
 | インラインアラート（O3） | エラー・業務エラー（403 / 409 / 423・予算超過・LOCK 違反など）・エラー詳細は、ページ上部（`#content` の先頭の `#alert-region`）に `atoms.Alert`（お知らせ / 成功 / 注意 / エラーの 4 種。アイコン＋見出し＋本文）で出す。閉じるまで残る（長い文を読み終えるため。WCAG 2.2.1）。同じ文は重ねない。サーバーは `atoms.ErrorAlertOOB`（`beforeend`）、スクリプトは `lib/alert.ts`（エラーは `#alert-template`、注意は `#alert-warning-template`） |
-| 接続の通知（O3） | 接続が切れた通知（`atoms.ConnectionNotice`）は、警告のアイコン＋文言＋ `--surface` の地に `border-warning/60` の枠（スナックバー。影なし）。トーストではない |
+| 接続の通知（O3） | 接続が切れた通知（`atoms.ConnectionNotice`）は、警告のアイコン＋文言＋ `border-warning/40` の枠と `bg-warning/10` の地（スナックバー。影なし）。トーストではない |
 | ボタン（O7） | `font-semibold`・`rounded-md`・無効は不透明度 .4・小は高さ 32（`min-h-8`）・標準は 40（`min-h-10`）。種類は主（`TonePrimary`）・サブ（`ToneNeutral`。透明＋ `border-border`）・ゴースト（`ToneGhost`）・危険（`ToneDanger`） |
 | 独自ウィジェット（Lit。P3） | `mam-timeline-editor`・`mam-take-comparator`・`mam-mask-paint` は共通ガイドに無い独自ウィジェットで、見た目・状態表示・操作・文言は案件ガイド [lit-widgets-guide.md](lit-widgets-guide.md) が決める（ボタン・入力・バッジ・通知・数値は上の表と同じ部品を使う） |
 
@@ -95,8 +96,8 @@
 | 項目 | 決まり |
 |------|--------|
 | 面・枠（色。W1） | バーの面は `bg-surface`・枠は `border border-border`・角は `rounded-md`・内側は `p-2`・並びは `gap-2`（S1・S2。`.5` の値は使わない）。**影・光らせる・アクセントの塗りは使わない**（S3。バーは入力欄の補助で、主役ではない）。文字は `text-ink`、範囲・ショートカットの 1 行は `text-mute`、モデルの注は `text-warning`（色だけで伝えない: 注は必ず文で言う。W5） |
-| 文字（T1〜T5。W2） | 全体 `text-xs`（補助の部品なので 12px）。ボタンの文字は `font-semibold`。**いまの強さ（`1.2 倍`）は桁を揃える数値なので `font-mono tabular-nums`**（T5）、小数 1 桁（`toFixed(1)`）。ボタンの文言は「強める +」「弱める −」（`−` は U+2212。ハイフンにしない）。数値の後ろに必ず「倍」を付け、単位なしの数字にしない |
-| ボタン（O7・M1・M4。W3） | `atoms.SmallButton`（`ToneNeutral`）と同じ: `inline-flex items-center justify-center rounded-md border border-border font-semibold text-ink hover:bg-accent-soft transition-colors motion-reduce:transition-none`、高さは **32 以上**（`min-h-8`）、`data-ripple`（M4）。**押せないときは `aria-disabled="true"`＋不透明度 .4（`aria-disabled:opacity-40`）＋ `aria-disabled:cursor-not-allowed`**。`disabled` 属性にしない（フォーカスを残し、注の理由を読めるようにするため）。フォーカスは `focus-visible:focus-ring`（輪は色のクラスでない。[color-rules.md](color-rules.md) §1） |
+| 文字（T1〜T5。W2） | 全体 `text-xs`（補助の部品なので 12px）。**ボタンの文字は `text-sm font-semibold`（小ボタンは 14px。T3・T8）**。**いまの強さ（`1.2 倍`）は桁を揃える数値なので `font-mono tabular-nums`**（T5）、小数 1 桁（`toFixed(1)`）。ボタンの文言は「強める +」「弱める −」（`−` は U+2212。ハイフンにしない）。数値の後ろに必ず「倍」を付け、単位なしの数字にしない |
+| ボタン（O7・M1・M4。W3） | `atoms.SmallButton`（`ToneNeutral`）と同じ: `inline-flex items-center justify-center rounded-md border border-border text-sm font-semibold text-ink hover:bg-accent-soft transition-colors motion-reduce:transition-none`、高さは **32 以上**（`min-h-8`）、`data-ripple`（M4）。**押せないときは `aria-disabled="true"`＋不透明度 .4（`aria-disabled:opacity-40`）＋ `aria-disabled:cursor-not-allowed`**。`disabled` 属性にしない（フォーカスを残し、注の理由を読めるようにするため）。フォーカスは `focus-visible:focus-ring`（輪は色のクラスでない。[color-rules.md](color-rules.md) §1） |
 | 出る・消える（状態。W4） | **語を選んだときだけ**出て（バー本体の `role="group"` の `hidden` を外す。`<mam-prompt-weight>` の要素そのものは隠さない。W8）、選びを外す・フォーカスがバーとプロンプト欄の外へ移る・`Esc` で消える。**消えるときに動かさない**（M5 は `<dialog>`・popover・トーストの決まり。バーはフェードも移動もさせない。レイアウトが動くことの補足は下の「フォーカス」）。ネガティブプロンプトには出さない。動画のフォーム（段が無い）には付けない |
 | 状態の見せ方（W5） | 状態は **文で言う**（色だけにしない）: ①強めても弱めても変えられない端（0.5・1.5）は、そのボタンが押せない（W3）＋範囲の 1 行「0.5〜1.5」 ②選ばれたモデルが全部 `unsupported` ならボタンは両方押せず、注は `text-warning` で「（モデル名）では、ウェイト (語:1.3) は効きません。強調したい語は、文で言い換えてください…」（`weight-facts.ts` の `cautionOf`。名前は表示名で、識別子は出さない） ③一部だけ効きが弱いモデルは、その行を注に足す（「名前: 効きが弱いかも」） ④文字数の上限を超えるときは、変えずに「文字数の上限（N 文字）を超えるので、ウェイトは付けられません」を注に出す（`text-warning`）。注は 1 つの領域（`data-testid="gt-weight-note"`）に並べ、複数でも 1 つの `role="status"` の中に入れる。エラーの `atoms.Alert`（O3）にはしない（入力の補助で、業務エラーではない） |
 | 操作（W6） | マウス: ボタンを 1 回押すと 0.1 変わる。**押しても、プロンプト欄の選びとフォーカスを失わない**（`mousedown` の既定動作を止める）ので、続けて押せる。押したあとは、変えた部分全体（`(語:1.2)`）が選ばれたまま。元に戻すは、フォーカスがプロンプト欄にあるときはブラウザの「元に戻す」（`Ctrl/⌘+Z`）で 1 回分ずつ（`execCommand("insertText")`）。確認のモーダルは出さない（元に戻せるため。O2 の対象外） |
@@ -109,7 +110,7 @@
 
 - 署名の案: `templ Icon(name IconName, class string)`。`IconName` は文字列型の定数（綴りの間違いはコンパイルで落ちる）。未知の名前は描かない。
 - 出力: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false" class="{class}">…</svg>`（`stroke-linecap` / `stroke-linejoin` は各形に付く）。`<title>` は付けない。大きさは `class`（既定 `h-5 w-5 shrink-0`。ガイドの 16 / 20 / 24 = `h-4` / `h-5` / `h-6` だけ。スピナーは 20px）。色は `currentColor`（親の `text-*`）。
-- アイコンだけで意味を持つボタンは作らない。必要ならボタンに `aria-label`（既存の `IconButton`）。このリポジトリのアイコンはすべて飾りで、意味は文字が持つ。
+- アイコンだけで意味を持つボタンは作らない。必要ならボタンに `aria-label`（`IconButton`。子に `Icon` を置く）。このリポジトリのアイコンはすべて飾りで、意味は文字が持つ。文字のグリフ（× ✓ ★ ↑ ↓ ‹ ›）をアイコンの代わりにしない。Lit のウィジェットは `components/lib/icon.ts` の `icon()`（`atoms.Icon` と同じ path）を使う。
 - 入手元は #846 決定事項 3(a) を #1039 で改めた: **Iconoir（MIT。Ousiass 共通デザインガイド I1）の SVG のパスを `atoms/icon.templ` にコピー**する（npm の依存は足さない。`regular` 版・線 1.5）。`atoms` の行数は約 414 行で、約 16 個で 150 行前後の見込み（1 ファイル 300 行以内に収める）。コピー元の版は `icon.templ` の先頭のコメントに固定する。
 
 | `IconName`（案） | 当初の名前（Lucide。いまの絵は各 `case` のコメントの Iconoir の名前） | 使う場所 | 入れる Issue |
@@ -292,6 +293,8 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.23 | 2026-11-06 | §10 のモデルマネージャーの行から「試し生成」の区画を外し、区画「モデル」の「?」に生成テスト画面へのリンクを入れることを書いた（状態は仕様のみ） | Issue #1100 |
 | 0.24 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |
 | 0.25 | 2026-11-12 | §1「プロンプトの重み調整」の「実装との差分」6 件を解消済みにした（差分の表を外し、直った点とそれを確かめるテストの記述に置き換えた）。W7 の「バーの中の `Esc`」は、押したあとにフォーカスが戻るプロンプト欄をバーが作用している欄と書いた（実装: `onKey`）。W8 の注の領域は、バーを描くときに常に置き、中身だけを更新する（実装: `render`） | Issues #1094・#1095 |
+| 0.26 | 2026-11-22 | §2 のアイコン一覧の注に、グリフをアイコンの代わりにしないことと、Lit 側の `icon()` を足した。`IconButton` は子に `Icon` を置く形（引数は `attrs` だけ）に改めた。✓・★・☆・×・‹・› の文字を `Icon` に置き換えた | #1179: アイコン（I）の指摘 |
+| 0.27 | 2026-11-22 | §1 のスライダーの行から、ホバー・ドラッグ中のつまみの塗り替えを外し、つまみの縁を `--border` 1px にした。進捗バー（`progress.css`）の行を足した | #1181: 部品・オーバーレイ（O）の指摘 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 
@@ -328,7 +331,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 - **フォーカスと `Tab`**（決定）: 開いてもフォーカスは**ボタンに残す**（ダイアログではない。もう一度 `Enter` で閉じられる）。パネルは DOM でボタンのすぐ後ろにあるので、`Tab` でボタンの次にパネルの中のリンクへ進む（読み上げも続きとして読む）。**フォーカスがボタンとパネルの外へ出たら（`Tab`・`Shift+Tab`）閉じる**（外側のクリックのキーボード版。`focusin` で見る）。リンクの無い説明では、`Tab` は次のコントロールへ進んで閉じる。
 - **ARIA**（決定）: ボタンの名前は「<主題>の説明」（`help.ToggleLabel`。ページ中の「?」を一覧で見分けられるよう「ヘルプ」だけにしない）、`aria-expanded`、`aria-controls`。アイコンは飾り（§2）。パネルは `role="dialog"` にしない（ダイアログは開いたらフォーカスを中へ移し、名前と閉じ方を持つもので、非モーダルの説明に合わない）。`role="group"` と `aria-label`（ボタンと同じ「<主題>の説明」）にする（ランドマークを増やさず、読み上げが「<主題>の説明、グループ」と名前を告げる）。閉じている間は `display: none`（ブラウザ）で、読まれず、キーボードでも届かない。そのため**パネルに `flex`・`grid`・`block` などの display のクラスを付けない**（閉じたまま見えてしまう。`help_test`）。
 - **位置と狭い画面（約 375 px）**（`help.ts` の `place`）: パネルは `position: fixed`（top layer はビューポート基準）で、`toggle` で開いた直後に**ボタンの下**（ボタンの左端にそろえ、間 6 px）へ置く。幅は `min(24rem, 100vw − 1rem)`（375 px では 359 px）で、**はみ出すときは左へずらす**（左右とも 8 px の余白。`left = clamp(ボタンの左, 8, ビューポートの幅 − パネルの幅 − 8)`）。**下に高さが足りなければボタンの上へ反転する**（`top = ボタンの上 − 6 − パネルの高さ`。上にも足りなければ、窓の下端から 8 px 上にそろえる）。高さは `max-h-[calc(100dvh-1rem)]` で、超えたらパネルの中がスクロールする。ウィンドウのリサイズとページのスクロール（ボタンが動く）で置き直す。ページを横にスクロールさせない（`fixed` で、幅が窓を超えない）。親の `overflow` で切られない（top layer）。広い画面と同じ部品・同じ出し方で、画面幅による分岐は無い（上の計算だけ）。
-- **見た目**: 新しい色・影は作らない（§1）。ボタンは 28 px 角（`h-7 w-7`。WCAG 2.5.8 の 24 px 以上）の丸（`rounded-[50%]`。`atoms.Badge` の形を手書きしない検査 `badge_test` が `rounded-full` を禁じるため）で、`border-border text-ink`（ホバーで `border-border text-ink`。[color-rules.md](color-rules.md) §3 の「ホバー面」と §4 の `hover:text-ink`）、輪は §1 のフォーカスの輪、`transition-colors motion-reduce:transition-none`。パネルは §1 のカードと同じ面（`bg-surface`・`border-border`・`rounded-lg`・`p-3`）で文字は `text-ink`。アイコンは `atoms.IconHelp`（§2。Lucide `circle-question-mark`）。
+- **見た目**: 新しい色・影は作らない（§1）。ボタンは 28 px 角（`h-7 w-7`。WCAG 2.5.8 の 24 px 以上）の丸（`rounded-full`。`atoms.Badge` の形（`rounded-full px-2 py-1`）を手書きしない検査 `badge_test` は、この丸ボタンには当たらない）で、`border-border text-ink`（ホバーで `border-border text-ink`。[color-rules.md](color-rules.md) §3 の「ホバー面」と §4 の `hover:text-ink`）、輪は §1 のフォーカスの輪、`transition-colors motion-reduce:transition-none`。パネルは §1 のカードと同じ面（`bg-surface`・`border-border`・`rounded-lg`・`p-3`）で文字は `text-ink`。アイコンは `atoms.IconHelp`（§2。Lucide `circle-question-mark`）。
 - **置き場所**: `backend/internal/web/molecules/help/`（`ID`・`ToggleLabel`・`Toggle`・`Panel`・`Text`・`Row`。サブパッケージにするのは `molecules/` の行数の上限を守るため）と `static/src/components/help/`（`help.ts`・`help.wtest.ts`。Lit ではなく `inline-dialog` と同じ `installHelp()`。`main.ts` が呼ぶ。委譲のイベントなので、後から入った本文の「?」も動く）。`main.ts` では **`installInlineDialog()` より前**に呼ぶ（どちらも `document` の `keydown` で `Esc` を受け、先に走った方が `preventDefault` して取る。ヘルプが先でないと、ヘルプを開いたままフォーカスがページにあるとき `Esc` がヘルプでなく `inline-dialog` を閉じる。`help.wtest.ts` が見張る）。
 
 ### 9.2 画面の部品からの使い方

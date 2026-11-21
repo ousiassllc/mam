@@ -109,5 +109,5 @@ func TestMCPSettings_TheValueIsInOneAnswerOnlyAndNotInTheRowOfTheTable(t *testin
 	require.Equal(t, http.StatusOK, revoked.Code)
 	assert.True(t, strings.HasPrefix(revoked.Body.String(), `<tr id="mcp-token-`), "the answer is the row of the token, first: %s", revoked.Body.String())
 	assert.NotContains(t, revoked.Body.String(), value)
-	assert.Contains(t, revoked.Body.String(), "トークンを失効しました")
+	assert.Contains(t, revoked.Body.String(), "トークンを失効しました</span>", "the toast is one short sentence")
 }

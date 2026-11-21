@@ -55,7 +55,7 @@ func oobAttr(oob bool) templ.Attributes {
 templ Actions(d Data) {
 	<div
 		id="editor-actions"
-		class="flex flex-col gap-5"
+		class="flex flex-col gap-6"
 		hx-get={ paths.WithBranch(paths.Project(d.Project.ID, "edit", "actions"), d.BranchID) }
 		hx-trigger="timeline-updated from:body"
 		hx-swap="none"

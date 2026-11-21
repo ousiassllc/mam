@@ -52,7 +52,7 @@ func Main(w Width) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		var templ_7745c5c3_Var2 = []any{"mx-auto flex w-full flex-col gap-6 p-4 md:p-8", string(w)}
+		var templ_7745c5c3_Var2 = []any{"mx-auto flex w-full flex-col gap-6 p-4 md:p-6", string(w)}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var2...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err

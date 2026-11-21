@@ -23,6 +23,7 @@ func TestToast_IsAShortStatusPillOnInkWithoutAClose(t *testing.T) {
 	assert.Contains(t, html, "bg-ink")
 	assert.Contains(t, html, "text-bone")
 	assert.Contains(t, html, "min-h-10")
+	assert.Contains(t, html, `class="min-w-0 truncate" data-toast-message`, "one line: a long message is cut, not wrapped over the pill")
 	assert.Contains(t, html, "保存しました")
 	assert.Contains(t, html, "<svg", "the state is told by an icon as well as by the words")
 	assert.NotContains(t, html, "data-toast-close", "it goes by itself")

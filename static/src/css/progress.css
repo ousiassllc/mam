@@ -1,0 +1,61 @@
+/*
+ * The common progress bar (guide O12): every <progress> of the app. Height 6px, fully round, the rail is --accent-soft and the
+ * fill is --accent. The browser's own bar (the blue fill, the frame, 16px high) is switched off (appearance: none). The classes
+ * of the budget meter (accent-danger / accent-warning / accent-success: the approved exception of spec/components/color-rules.md §4)
+ * take the fill of their state colour; the browser would paint those with `accent-color`, which appearance: none no longer reads.
+ */
+progress {
+  --progress-fill: var(--accent);
+  --progress-rest: var(--accent-soft);
+
+  appearance: none;
+  -webkit-appearance: none;
+  height: 0.375rem;
+  border: 0;
+  border-radius: 9999px;
+  overflow: hidden;
+  background: var(--progress-rest);
+  color: var(--progress-fill);
+}
+
+progress.accent-danger {
+  --progress-fill: var(--danger);
+}
+
+progress.accent-warning {
+  --progress-fill: var(--warning);
+}
+
+progress.accent-success {
+  --progress-fill: var(--success);
+}
+
+progress::-webkit-progress-bar {
+  border-radius: 9999px;
+  background: var(--progress-rest);
+}
+
+progress::-webkit-progress-value {
+  border-radius: 9999px;
+  background: var(--progress-fill);
+}
+
+progress::-moz-progress-bar {
+  border-radius: 9999px;
+  background: var(--progress-fill);
+}
+
+/* Windows forced colours (high contrast): the author's colours are dropped, so name the system's. */
+@media (forced-colors: active) {
+  progress {
+    --progress-fill: Highlight;
+    --progress-rest: GrayText;
+    forced-color-adjust: none;
+  }
+
+  progress.accent-danger,
+  progress.accent-warning,
+  progress.accent-success {
+    --progress-fill: Highlight;
+  }
+}

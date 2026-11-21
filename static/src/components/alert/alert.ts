@@ -4,9 +4,11 @@
  * read at the reader's own pace or by a screen reader (WCAG 2.2.1). The markup is defined once, in atoms/alert.templ; the page shell embeds it as
  * #alert-template and this module clones it.
  */
+import { whenFaded } from '../lib/fade';
 import { createLogger } from '../lib/logger';
 
 const log = createLogger('alert');
+const SHOWN = '[data-alert]:not([data-leaving])';
 const CLOSE = '[data-alert-close]';
 const MESSAGE = '[data-alert-message]';
 
@@ -32,9 +34,9 @@ function messageOf(alert: Element): string {
   return alert.querySelector(MESSAGE)?.textContent ?? '';
 }
 
-/** Whether `region` already shows an alert with this message. */
+/** Whether `region` already shows an alert with this message (one that is fading out after its close does not count). */
 export function hasAlert(region: Element, message: string): boolean {
-  return Array.from(region.querySelectorAll('[data-alert]')).some((alert) => messageOf(alert) === message);
+  return Array.from(region.querySelectorAll(SHOWN)).some((alert) => messageOf(alert) === message);
 }
 
 /**
@@ -55,7 +57,7 @@ export function dedupeAlertsOnSwap(root: Document | HTMLElement = document): voi
   root.addEventListener('htmx:oobBeforeSwap', (event) => {
     const { target, fragment } = (event as CustomEvent<{ target?: Element; fragment?: ParentNode }>).detail;
     if (target?.id !== 'alert-region' || !fragment) return;
-    const seen = new Set(Array.from(target.querySelectorAll('[data-alert]')).map(messageOf));
+    const seen = new Set(Array.from(target.querySelectorAll(SHOWN)).map(messageOf));
     for (const alert of Array.from(fragment.querySelectorAll('[data-alert]'))) {
       const message = messageOf(alert);
       if (seen.has(message)) alert.remove();
@@ -64,10 +66,16 @@ export function dedupeAlertsOnSwap(root: Document | HTMLElement = document): voi
   });
 }
 
-/** Makes the close button of any alert, present or added later, remove that alert. */
+/**
+ * Makes the close button of any alert, present or added later, close that alert: it fades out (the CSS of data-leaving, motion.css; M5) and is
+ * removed when the fade is over.
+ */
 export function dismissAlertsOnClick(root: Document | HTMLElement = document): void {
   root.addEventListener('click', (event) => {
     const button = event.target instanceof Element ? event.target.closest(CLOSE) : null;
-    button?.closest('[data-alert]')?.remove();
+    const alert = button?.closest('[data-alert]');
+    if (!alert || alert.hasAttribute('data-leaving')) return;
+    alert.setAttribute('data-leaving', '');
+    void whenFaded(alert).then(() => alert.remove());
   });
 }

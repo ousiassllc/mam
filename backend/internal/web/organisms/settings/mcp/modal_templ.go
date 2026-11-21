@@ -449,7 +449,7 @@ func IssuedModal(t NewToken) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" class=\"inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-semibold text-ink hover:bg-accent-soft focus-visible:focus-ring\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" data-ripple class=\"inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-semibold text-ink hover:bg-accent-soft focus-visible:focus-ring\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -464,7 +464,7 @@ func IssuedModal(t NewToken) templ.Component {
 			var templ_7745c5c3_Var21 string
 			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.ResolveAttributeValue(CopyStatusID)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/mcp/modal.templ`, Line: 150, Col: 22}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/mcp/modal.templ`, Line: 151, Col: 22}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var21)
 			if templ_7745c5c3_Err != nil {

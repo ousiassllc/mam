@@ -27,7 +27,28 @@ describe('confirmDialog', () => {
     expect(open()!.querySelector('[data-confirm-message]')!.textContent).to.equal('削除します。よろしいですか？');
     (open()!.querySelector('[data-confirm-ok]') as HTMLButtonElement).click();
     expect(await answer).to.equal(true);
-    expect(document.querySelector('dialog[data-confirm]')).to.equal(null);
+    await waitUntil(() => document.querySelector('dialog[data-confirm]') === null, 'the dialog was not removed');
+  });
+
+  it('stays in the document while it fades out, and goes when the fade is over (M5)', async () => {
+    // What motion.css gives a dialog: the exit fade runs on opacity and on the discrete display.
+    const style = document.createElement('style');
+    style.textContent =
+      'dialog[data-confirm]{opacity:0;transition:opacity 200ms linear,display 200ms allow-discrete,overlay 200ms allow-discrete}dialog[data-confirm][open]{opacity:1}';
+    document.head.append(style);
+    try {
+      const answer = confirmDialog('q');
+      await waitUntil(open);
+      expect(getComputedStyle(open()!).opacity).to.equal('1'); // the style the fade starts from
+      (open()!.querySelector('[data-confirm-cancel]') as HTMLButtonElement).click();
+      const dialog = document.querySelector('dialog[data-confirm]')!;
+      expect(dialog.isConnected).to.equal(true);
+      expect(await answer).to.equal(false);
+      expect(dialog.isConnected).to.equal(true);
+      await waitUntil(() => !dialog.isConnected, 'the dialog was not removed after the fade');
+    } finally {
+      style.remove();
+    }
   });
 
   it('answers false on キャンセル and on Esc (the native cancel)', async () => {

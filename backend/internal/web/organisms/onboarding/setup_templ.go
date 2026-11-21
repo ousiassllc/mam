@@ -160,7 +160,7 @@ func ModelsBody(text llm.Data, images media.Data) templ.Component {
 			templ_7745c5c3_Var5 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<p class=\"text-sm text-ink\">既定の割り当てのままでも進めます。変えたいときだけ開いてください。たとえば ChatGPT のログインだけで使うときは、テキスト生成のプロバイダーに「chatgpt-subscription」を選ぶと、そのログインが使われます。</p><p class=\"text-sm text-mute\">保存した内容は、設定画面と同じく、テキスト生成は llm.json、画像・動画は models.json に書かれます。</p><details class=\"rounded-md border border-border px-3 py-2\" data-testid=\"onboarding-llm\"><summary class=\"cursor-pointer text-sm font-semibold\">テキスト生成（LLM）の割り当て</summary><div class=\"mt-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<p class=\"text-sm text-ink\">既定の割り当てのままでも進めます。変えたいときだけ開いてください。たとえば ChatGPT のログインだけで使うときは、テキスト生成のプロバイダーに「chatgpt-subscription」を選ぶと、そのログインが使われます。</p><p class=\"text-sm text-mute\">保存した内容は、設定画面と同じく、テキスト生成は llm.json、画像・動画は models.json に書かれます。</p><details class=\"rounded-lg border border-border px-3 py-2\" data-testid=\"onboarding-llm\"><summary class=\"cursor-pointer text-sm font-semibold\">テキスト生成（LLM）の割り当て</summary><div class=\"mt-3\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -168,7 +168,7 @@ func ModelsBody(text llm.Data, images media.Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</div></details> <details class=\"rounded-md border border-border px-3 py-2\" data-testid=\"onboarding-media\"><summary class=\"cursor-pointer text-sm font-semibold\">画像・動画モデルの割り当て</summary><div class=\"mt-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "</div></details> <details class=\"rounded-lg border border-border px-3 py-2\" data-testid=\"onboarding-media\"><summary class=\"cursor-pointer text-sm font-semibold\">画像・動画モデルの割り当て</summary><div class=\"mt-3\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -235,7 +235,7 @@ func FFmpegBody(f FFmpeg) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if f.Found() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"flex flex-col gap-1 rounded-md border border-success/60 px-3 py-2\" role=\"status\" data-testid=\"onboarding-ffmpeg-found\"><p class=\"text-sm\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"flex flex-col gap-1 rounded-md border border-success/40 bg-success/10 px-3 py-2\" role=\"status\" data-testid=\"onboarding-ffmpeg-found\"><p class=\"text-sm\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -318,7 +318,7 @@ func FFmpegBody(f FFmpeg) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<div class=\"flex flex-col gap-3 rounded-md border border-warning/60 px-3 py-2\" role=\"status\" data-testid=\"onboarding-ffmpeg-missing\"><p class=\"text-sm\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<div class=\"flex flex-col gap-3 rounded-md border border-warning/40 bg-warning/10 px-3 py-2\" role=\"status\" data-testid=\"onboarding-ffmpeg-missing\"><p class=\"text-sm\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -558,7 +558,7 @@ func MacBody(m Mac) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if m.Codex {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<section class=\"flex flex-col gap-2 rounded-md border border-border px-4 py-3\" aria-labelledby=\"onboarding-codex-title\" data-testid=\"onboarding-codex\"><h3 id=\"onboarding-codex-title\" class=\"text-base font-semibold\">Codex の場所（任意）</h3><p class=\"text-sm text-ink\">ChatGPT の組織のアカウントを Codex 経由で使うとき、自分で入れた codex の実行ファイルの場所を指定します。ターミナルで ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<section class=\"flex flex-col gap-2 rounded-lg border border-border px-4 py-3\" aria-labelledby=\"onboarding-codex-title\" data-testid=\"onboarding-codex\"><h3 id=\"onboarding-codex-title\" class=\"text-base font-semibold\">Codex の場所（任意）</h3><p class=\"text-sm text-ink\">ChatGPT の組織のアカウントを Codex 経由で使うとき、自分で入れた codex の実行ファイルの場所を指定します。ターミナルで ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -636,7 +636,7 @@ func MacBody(m Mac) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<section class=\"flex flex-col gap-2 rounded-md border border-border px-4 py-3\" aria-labelledby=\"onboarding-comfy-title\" data-testid=\"onboarding-comfy\"><h3 id=\"onboarding-comfy-title\" class=\"text-base font-semibold\">ComfyUI は外部のものを使います</h3><p class=\"text-sm text-ink\">Nefos Video は ComfyUI を同梱しません。ローカルで画像・動画を作りたいときは、公式の <strong>Comfy Desktop</strong>（macOS 13 以降・Apple Silicon）を入れて、その接続先の URL を Nefos Video に入れます。Comfy Desktop は、.dmg から入れるだけで、Python と MPS の設定まで自動で行います。</p><ol role=\"list\" class=\"list-decimal pl-6 text-sm text-ink\"><li>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "<section class=\"flex flex-col gap-2 rounded-lg border border-border px-4 py-3\" aria-labelledby=\"onboarding-comfy-title\" data-testid=\"onboarding-comfy\"><h3 id=\"onboarding-comfy-title\" class=\"text-base font-semibold\">ComfyUI は外部のものを使います</h3><p class=\"text-sm text-ink\">Nefos Video は ComfyUI を同梱しません。ローカルで画像・動画を作りたいときは、公式の <strong>Comfy Desktop</strong>（macOS 13 以降・Apple Silicon）を入れて、その接続先の URL を Nefos Video に入れます。Comfy Desktop は、.dmg から入れるだけで、Python と MPS の設定まで自動で行います。</p><ol role=\"list\" class=\"list-decimal pl-6 text-sm text-ink\"><li>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

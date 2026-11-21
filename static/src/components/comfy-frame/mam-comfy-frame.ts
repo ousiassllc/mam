@@ -105,7 +105,7 @@ export class MamComfyFrame extends LitElement {
             ? html`<div
               role="alert"
               data-testid="comfy-frame-failure"
-              class="rounded-md border border-warning/60 p-3 text-sm text-warning"
+              class="rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-warning"
             >
               ${this.failureMessage || 'ComfyUI の画面を表示できませんでした。'}
             </div>`

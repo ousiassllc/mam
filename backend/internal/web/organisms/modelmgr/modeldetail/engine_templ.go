@@ -96,7 +96,7 @@ func EngineDetail(e view.Engine) templ.Component {
 			}
 			switch view.EnginePhase(e) {
 			case "unsupported":
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"rounded-md border border-warning/60 bg-warning/10 p-3 text-sm text-warning\" role=\"note\" data-testid=\"mm-engine-unsupported\">同梱の ComfyUI は Windows 版と Apple Silicon の Mac（macOS 14 以降）版のデスクトップアプリだけで使えます。この環境（ブラウザ版・サーバー版・Intel Mac など）では、別に動かしている ComfyUI の URL を <a class=\"underline\" href=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-warning\" role=\"note\" data-testid=\"mm-engine-unsupported\">同梱の ComfyUI は Windows 版と Apple Silicon の Mac（macOS 14 以降）版のデスクトップアプリだけで使えます。この環境（ブラウザ版・サーバー版・Intel Mac など）では、別に動かしている ComfyUI の URL を <a class=\"underline\" href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -114,7 +114,7 @@ func EngineDetail(e view.Engine) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			case "readonly":
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"flex flex-col gap-1 rounded-lg border border-warning/60 bg-warning/10 p-3 text-sm text-warning\" role=\"alert\" data-testid=\"mm-engine-readonly\"><p>導入先のフォルダ（")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"flex flex-col gap-1 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning\" role=\"alert\" data-testid=\"mm-engine-readonly\"><p>導入先のフォルダ（")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

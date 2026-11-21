@@ -27,7 +27,7 @@ describe('long names stay inside their boxes (#1003)', () => {
   async function show(fixture: string): Promise<void> {
     const html = await (await fetch(TESTDATA + fixture)).text();
     host = document.createElement('div');
-    host.className = 'mx-auto max-w-5xl p-4 md:p-8';
+    host.className = 'mx-auto max-w-5xl p-4 md:p-6';
     host.innerHTML = html;
     document.body.append(host);
   }

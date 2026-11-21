@@ -39,7 +39,7 @@ func TestModel_TemplateFormSubmitsAsItIsAndTheModelAppearsInTheAssignments(t *te
 	rec := s.do(http.MethodPost, paths.LocalEndpoint("box", "models"), form)
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	assert.Contains(t, rec.Body.String(), `data-model-id="comfyui:box/sdxl"`)
-	assert.Contains(t, rec.Body.String(), "モデル「comfyui:box/sdxl」を保存しました")
+	assert.Contains(t, rec.Body.String(), "モデル「comfyui:box/sdxl」を保存しました</span>", "the toast is one short sentence")
 
 	// Video model from the template.
 	vid := startWith(t, s, "box", "txt2video-wan22-5b")
@@ -76,7 +76,7 @@ func TestModel_TemplateFormSubmitsAsItIsAndTheModelAppearsInTheAssignments(t *te
 	// Choosing them saves, and the model is then in use and cannot be deleted.
 	assign := s.assignImage("new_reference", "image_new_reference_primary_model", "comfyui:box/sdxl")
 	require.Equal(t, http.StatusOK, assign.Code, assign.Body.String())
-	assert.Contains(t, assign.Body.String(), "保存しました。すぐに反映されます")
+	assert.Contains(t, assign.Body.String(), "の画像モデルを保存しました</span>")
 	assign = s.assignPolicy("fast", "policy_fast_primary", "comfyui:box/wan@480p")
 	require.Equal(t, http.StatusOK, assign.Code, assign.Body.String())
 	assert.Contains(t, s.get(paths.LocalEndpoint("box")), "使用中: images.new_reference.primary")

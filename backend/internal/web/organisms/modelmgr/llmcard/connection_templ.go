@@ -178,7 +178,7 @@ func ConnectionSection(d Connection) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<span>画像・動画を作る前に、Ollama のモデルをメモリから降ろす<span class=\"block text-xs text-mute\">ComfyUI と GPU を取り合わないためのスイッチです（Ollama の keep_alive=0）。Ollama 以外のサーバーでは何もしません。使うときは、次の LLM の呼び出しでモデルを読み込み直すため少し待ちます。</span></span></label> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<span>画像・動画を作る前に、Ollama のモデルをメモリから降ろす<span class=\"block text-sm text-mute\">ComfyUI と GPU を取り合わないためのスイッチです（Ollama の keep_alive=0）。Ollama 以外のサーバーでは何もしません。使うときは、次の LLM の呼び出しでモデルを読み込み直すため少し待ちます。</span></span></label> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -298,7 +298,7 @@ func Result(r TestResult) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if r.OK {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<div class=\"flex flex-col gap-1 rounded-lg border border-success/60 bg-success/10 p-3 text-sm text-ink\" role=\"status\" data-testid=\"mm-llm-test-ok\"><p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<div class=\"flex flex-col gap-1 rounded-lg border border-success/40 bg-success/10 p-3 text-sm text-ink\" role=\"status\" data-testid=\"mm-llm-test-ok\"><p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

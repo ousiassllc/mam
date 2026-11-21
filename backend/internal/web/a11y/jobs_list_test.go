@@ -25,7 +25,7 @@ func TestJobsList_LinksAndBarsAreNamedAfterTheirRow(t *testing.T) {
 	require.Len(t, links, 2)
 	assert.Equal(t, "開く: 導入 Flux（2026-11-03 10:00）", links[0][1])
 	assert.Equal(t, "開く: 導入 Qwen（2026-11-03 09:00）", links[1][1])
-	assert.Contains(t, html, `<progress class="h-2 w-full" max="100" value="40" aria-label="導入 Flux（2026-11-03 10:00）の進み具合">`)
+	assert.Contains(t, html, `<progress class="h-1.5 w-full" max="100" value="40" aria-label="導入 Flux（2026-11-03 10:00）の進み具合">`)
 	assert.Contains(t, html, ">実行中</span>")
 	assert.Contains(t, html, ">失敗</span>")
 }

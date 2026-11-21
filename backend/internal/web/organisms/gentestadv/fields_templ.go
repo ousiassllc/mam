@@ -474,7 +474,7 @@ func advancedSlider(kind, label, name, value, min, max, step string, def float64
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "\"> <output class=\"w-14 text-right tabular-nums\" data-gt-adv-out>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "\"> <output class=\"w-14 text-right font-mono tabular-nums\" data-gt-adv-out>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
