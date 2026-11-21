@@ -82,7 +82,7 @@ func TestTheDetailOfASucceededVideoOffersTheBoxAndAFailedVideoOrAPictureDoesNot(
 	assert.Contains(t, body, `href="#gt-venh-upscale"`)
 	assert.Contains(t, body, "この動画を大きくする")
 	assert.Contains(t, body, "この動画を滑らかにする（コマを増やす）")
-	assert.Contains(t, body, "この PC で実行します。無料")
+	assert.Contains(t, body, "この PC で実行します（無料）")
 	assert.Contains(t, body, "クレジットの見積りを取る")
 	assert.Contains(t, body, "Powered by Topaz Labs", "Topaz is offered")
 	assert.NotContains(t, body, `data-testid="gt-next-similar"`, "a video has none of the buttons that make a picture")

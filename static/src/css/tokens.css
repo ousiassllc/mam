@@ -181,12 +181,12 @@
   /* The focus ring of a control that says nothing about it (C3): the same 2px solid --focus, offset 2 as the `focus-ring` utility below, not the
      browser's own ring. :where() adds no specificity and the utilities layer wins over this one, so `focus-visible:outline-none` and
      `focus-visible:focus-ring` on a control still decide its ring. */
-  :where(a, button, summary, [tabindex], input:is([type="checkbox"], [type="radio"], [type="file"]), video[controls]):focus-visible {
+  :where(a, button, summary, [tabindex], input:is([type="checkbox"], [type="radio"], [type="file"]), video[controls], audio[controls]):focus-visible {
     outline: 2px solid var(--focus);
     outline-offset: 2px;
   }
 
-  /* The fill of a native checkbox / radio and the thumb of a native range is --accent, not the browser's own blue (C3). */
+  /* The fill of a native checkbox / radio is --accent, not the browser's own blue (C3). A range is not here: slider.css draws it with appearance: none (accent-color does not reach it). */
   :root {
     accent-color: var(--accent);
   }

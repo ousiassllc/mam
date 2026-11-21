@@ -55,20 +55,20 @@ templ item(a Asset) {
 			@atoms.Badge(stTone, stLabel)
 			<span class="font-mono tabular-nums text-mute">{ a.Size }</span>
 		</div>
-		<p class="break-words text-mute">{ a.Description }</p>
+		<p class="break-words">{ a.Description }</p>
 		<p class="break-words">
 			出典:
 			<a class="underline" href={ templ.SafeURL(a.SourceURL) } target="_blank" rel="noopener noreferrer">{ a.SourceName }</a>
 		</p>
 		if a.SourceNote != "" {
-			<p class="break-words text-mute" data-testid="mm-runtime-source-note">{ a.SourceNote }</p>
+			<p class="break-words" data-testid="mm-runtime-source-note">{ a.SourceNote }</p>
 		}
 		<p class="flex flex-wrap items-center gap-2 break-words">
 			ライセンス:
 			<a class="underline" href={ templ.SafeURL(a.License.URL) } target="_blank" rel="noopener noreferrer">{ a.License.Name }</a>
 			@atoms.CommercialBadge(modellicense.Commercial(a.License.Commercial), a.License.Name, templ.Attributes{"data-testid": "mm-runtime-commercial"})
 		</p>
-		<p class="break-words text-mute">{ a.License.Summary }</p>
+		<p class="break-words">{ a.License.Summary }</p>
 		if modellicense.Commercial(a.License.Commercial) != modellicense.Yes {
 			<p class="break-words rounded-md border border-warning/40 bg-warning/10 p-2 text-warning" role="note" data-testid="mm-runtime-asset-notice">{ a.License.Notice }</p>
 		}

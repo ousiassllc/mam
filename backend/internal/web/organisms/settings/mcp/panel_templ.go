@@ -296,7 +296,7 @@ func noTokensRow() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\" data-testid=\"mcp-no-tokens\"><td colspan=\"5\" class=\"px-3 py-3 text-mute\">発行済みのトークンはありません。トークンがないと MCP には接続できません。</td></tr>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\" data-testid=\"mcp-no-tokens\"><td colspan=\"5\" class=\"px-3 py-3 text-ink\">発行済みのトークンはありません。トークンがないと MCP には接続できません。</td></tr>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

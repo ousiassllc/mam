@@ -80,7 +80,7 @@ templ pickerForm(d PickerData) {
 			<p class="text-sm text-warning" data-testid="gt-picker-readonly">このモデルの設定は、ここでは変えられません（設定ファイルが固定されています）。</p>
 		}
 		if len(d.Others()) > 0 {
-			<details class="text-xs text-mute" data-testid="gt-picker-others">
+			<details class="text-sm text-mute" data-testid="gt-picker-others">
 				<summary class={ atoms.SummaryClass }>選べない入力（{ strconv.Itoa(len(d.Others())) } 件）と、その理由</summary>
 				<ul class="mt-2 flex flex-col gap-1">
 					for _, r := range d.Others() {

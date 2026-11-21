@@ -135,7 +135,7 @@ templ ConsentDialog(n Node) {
 			商用利用: { n.LicenseCommercial } @commercialBadge(n)
 		</p>
 		if n.LicenseNotice != "" {
-			<p class="text-sm text-mute">{ n.LicenseNotice }</p>
+			<p class="text-sm text-ink">{ n.LicenseNotice }</p>
 		}
 		<p class="break-all text-sm text-mute">取得元: { n.Repo }（コミット <code>{ n.Commit }</code>。SHA-256 <code>{ n.ArchiveSHA }</code> を確かめます）</p>
 		<form

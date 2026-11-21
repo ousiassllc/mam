@@ -22,15 +22,15 @@ templ ModeControl(p domain.Project) {
 		<fieldset class="flex items-center gap-2">
 			<legend class="sr-only">MODE</legend>
 			<span>MODE</span>
-			@pick.Card(templ.Attributes{"type": "radio", "name": "mode", "value": "auto", "checked": p.Mode == domain.ModeAuto}, "px-3 py-1 text-xs") {
+			@pick.Card(templ.Attributes{"type": "radio", "name": "mode", "value": "auto", "checked": p.Mode == domain.ModeAuto}, "rounded-md px-3 py-1 text-xs") {
 				AUTO
 			}
-			@pick.Card(templ.Attributes{"type": "radio", "name": "mode", "value": "director", "checked": p.Mode == domain.ModeDirector}, "px-3 py-1 text-xs") {
+			@pick.Card(templ.Attributes{"type": "radio", "name": "mode", "value": "director", "checked": p.Mode == domain.ModeDirector}, "rounded-md px-3 py-1 text-xs") {
 				DIRECTOR
 			}
 		</fieldset>
 		if p.Mode == domain.ModeAuto {
-			<p class="basis-full text-mute" data-testid="auto-start-notice">{ mainline.AutoStartNotice }</p>
+			<p class="basis-full text-sm text-ink" data-testid="auto-start-notice">{ mainline.AutoStartNotice }</p>
 		}
 	</form>
 }

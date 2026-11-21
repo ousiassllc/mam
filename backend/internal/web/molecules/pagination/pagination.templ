@@ -32,6 +32,7 @@ templ Nav(p Props) {
 								id={ p.pageID(n) }
 								href={ templ.SafeURL(p.Href(n)) }
 								class={ linkClass }
+								data-ripple
 								aria-label={ pageLabel(n) }
 								hx-get={ p.Href(n) }
 								hx-target={ "#" + p.Target }
@@ -59,6 +60,7 @@ templ step(p Props, label, name string, page int, enabled bool) {
 			id={ p.id(name) }
 			href={ templ.SafeURL(p.Href(page)) }
 			class={ linkClass }
+			data-ripple
 			hx-get={ p.Href(page) }
 			hx-target={ "#" + p.Target }
 			hx-swap={ swap(p) }

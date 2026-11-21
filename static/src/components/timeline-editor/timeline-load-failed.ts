@@ -6,7 +6,7 @@ import { BUTTON, BUTTON_TONE } from '../lib/button';
  * offers "もう一度読み込む" (spec/components/lit-widgets-guide.md §3.2), so that the way on is not to open the page again.
  */
 export function renderLoadFailed(retrying: boolean, retry: () => void) {
-  return html`<div class="flex flex-col items-start gap-3 rounded-lg border border-dashed border-border p-6 text-sm text-mute" data-load-failed>
+  return html`<div class="flex flex-col items-start gap-3 rounded-lg border border-dashed border-border p-6 text-sm text-ink" data-load-failed>
     <p>タイムラインを読み込めませんでした。理由は通知に出ています。</p>
     <button
       type="button"

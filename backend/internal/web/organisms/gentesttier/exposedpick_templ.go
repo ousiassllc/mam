@@ -358,7 +358,7 @@ func pickerForm(d PickerData) templ.Component {
 			}
 		}
 		if len(d.Others()) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<details class=\"text-xs text-mute\" data-testid=\"gt-picker-others\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<details class=\"text-sm text-mute\" data-testid=\"gt-picker-others\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -42,7 +42,7 @@ func (e Endpoint) card(kind cardKind, oob bool) settingsui.Card {
 // button is pressed), the API key and, for the name that has no page, why the models cannot be opened.
 templ endpointDetails(e Endpoint) {
 	<code class="break-all text-xs text-ink" data-testid="local-endpoint-url">{ e.BaseURL }</code>
-	<div class="flex items-baseline gap-2 text-xs">
+	<div class="flex items-baseline gap-2 text-sm">
 		<span class="shrink-0 text-mute">接続:</span>
 		<div id={ testID(e.Name) } role="status" aria-live="polite" class="min-w-0 flex-1" data-testid="local-endpoint-test">
 			<span class="text-mute">未確認（「接続テスト」で確かめます）</span>
@@ -176,7 +176,7 @@ templ DraftTestResult(t TestView) {
 
 // TestResult is the line a connection test answers with.
 templ TestResult(t TestView) {
-	<div class="flex flex-col gap-1 text-xs" data-testid="local-test-result">
+	<div class="flex flex-col gap-1 text-sm" data-testid="local-test-result">
 		if t.OK {
 			<p class="text-success">{ t.Message }</p>
 		} else {

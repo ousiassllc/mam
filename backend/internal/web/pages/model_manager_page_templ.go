@@ -136,7 +136,7 @@ func ModelManagerCategoryPage(csrfToken string, c mmcat.Category, cats []mmcat.C
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = atoms.BackLinkWith(paths.ModelManager(), "← モデルマネージャー", templ.Attributes{"data-testid": "mm-back"}).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = atoms.BackLinkWith(paths.ModelManager(), "モデルマネージャー", templ.Attributes{"data-testid": "mm-back"}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

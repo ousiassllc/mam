@@ -169,7 +169,7 @@ func Form(p Page) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"gt-inpaint-source\"><span>画像ファイル（PNG・JPEG・WebP）。履歴やプロジェクトの画像は、その画面のリンクからも開けます。</span> <input id=\"gt-inpaint-source\" class=\"text-sm text-ink\" type=\"file\" name=\"source\" accept=\"image/png,image/jpeg,image/webp\"></label> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<label class=\"flex flex-col gap-1 text-ink\" for=\"gt-inpaint-source\"><span class=\"text-sm\">画像ファイル（PNG・JPEG・WebP）。履歴やプロジェクトの画像は、その画面のリンクからも開けます。</span> <input id=\"gt-inpaint-source\" class=\"text-sm text-ink\" type=\"file\" name=\"source\" accept=\"image/png,image/jpeg,image/webp\"></label> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

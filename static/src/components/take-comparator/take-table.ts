@@ -2,11 +2,9 @@ import { html, nothing } from 'lit';
 import type { TakeScore } from './take-model';
 import { describeTake, renderScore } from './take-cells';
 import { BADGE } from '../lib/badge';
+import { LINK_BUTTON } from '../lib/button';
 import { STATUS_CLASS } from './take-status';
 
-/** A button of a row: the text of `atoms.LinkButton` (W3), with the focus ring. */
-const ROW_BUTTON =
-  'text-sm text-mute underline hover:text-ink focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-40';
 /** A number of the table (W7): right-aligned, digits of one width. */
 const NUMBER = 'px-2 py-2 text-right font-mono tabular-nums';
 
@@ -50,18 +48,18 @@ function renderRow(t: TakeScore, minAxis: number, actions: TakeActions) {
       <span class="${BADGE} ${STATUS_CLASS[t.status]}" data-status=${t.status}>${t.status_label}</span>
       ${t.verdict ? html`<span class="ml-1 text-xs text-mute">${t.verdict.toUpperCase()}</span>` : nothing}
     </td>
-    <td class="px-2 py-2 text-xs">
+    <td class="px-2 py-2">
       ${
         t.select_url || t.reject_url
           ? html`<span class="flex gap-3">
             ${
               t.select_url
-                ? html`<button type="button" aria-label="選択: Take ${t.label}" class=${ROW_BUTTON} data-action="select" ?disabled=${actions.busy} @click=${() => actions.select(t)}>選択</button>`
+                ? html`<button type="button" aria-label="選択: Take ${t.label}" class=${LINK_BUTTON} data-action="select" ?disabled=${actions.busy} @click=${() => actions.select(t)}>選択</button>`
                 : nothing
             }
             ${
               t.reject_url
-                ? html`<button type="button" aria-label="除外: Take ${t.label}" class=${ROW_BUTTON} data-action="reject" ?disabled=${actions.busy} @click=${() => actions.reject(t)}>除外</button>`
+                ? html`<button type="button" aria-label="除外: Take ${t.label}" class=${LINK_BUTTON} data-action="reject" ?disabled=${actions.busy} @click=${() => actions.reject(t)}>除外</button>`
                 : nothing
             }
           </span>`

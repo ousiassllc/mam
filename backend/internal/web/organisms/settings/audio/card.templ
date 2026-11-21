@@ -43,7 +43,7 @@ func cloudCardOf(p Provider) settingsui.Card {
 
 // cloudKey is whether the API key of the cloud provider is stored, and where to store it.
 templ cloudKey(p Provider) {
-	<p class="break-words text-sm text-mute" data-testid={ "audio-key-" + p.Field }>
+	<p class="break-words text-sm text-ink" data-testid={ "audio-key-" + p.Field }>
 		if p.CloudKeySet {
 			API キー（{ p.CloudKey }）: 設定済み
 		} else {

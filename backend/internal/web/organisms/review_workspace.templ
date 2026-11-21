@@ -152,10 +152,10 @@ templ ReviewDecision(i domain.ReviewInbox) {
 			</label>
 			<fieldset class="flex flex-wrap gap-2 text-sm">
 				<legend class="mb-1 text-xs text-mute">判定</legend>
-				@pick.Card(templ.Attributes{"type": "radio", "name": "decision", "value": "approved", "required": true, "checked": i.Decision == domain.DecisionApproved}, "px-4 py-2 text-center") {
+				@pick.Card(templ.Attributes{"type": "radio", "name": "decision", "value": "approved", "required": true, "checked": i.Decision == domain.DecisionApproved}, "rounded-md px-4 py-2 text-center") {
 					承認
 				}
-				@pick.Card(templ.Attributes{"type": "radio", "name": "decision", "value": "changes_requested", "checked": i.Decision == domain.DecisionChangesRequested}, "px-4 py-2 text-center") {
+				@pick.Card(templ.Attributes{"type": "radio", "name": "decision", "value": "changes_requested", "checked": i.Decision == domain.DecisionChangesRequested}, "rounded-md px-4 py-2 text-center") {
 					修正依頼
 				}
 			</fieldset>

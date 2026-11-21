@@ -148,7 +148,7 @@ func Easy(e EasyData, card templ.Component) templ.Component {
 				"type": "radio", "name": FieldIntent, "value": i.ID, "checked": i.Selected,
 				"hx-get": paths.GenerationTestPart("easy-pick"), "hx-trigger": "change", "hx-target": "#" + PickID, "hx-swap": "outerHTML",
 				"hx-include": "#" + FormID + " [name=intent]," + "#" + FormID + " [name=ref]," + "#" + FormID + " [name=quality]:checked",
-			}, "flex flex-col gap-1 px-3 py-2 text-sm").Render(templ.WithChildren(ctx, templ_7745c5c3_Var5), templ_7745c5c3_Buffer)
+			}, "flex flex-col gap-1 rounded-lg px-3 py-2 text-sm").Render(templ.WithChildren(ctx, templ_7745c5c3_Var5), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -211,7 +211,7 @@ func Easy(e EasyData, card templ.Component) templ.Component {
 					"type": "radio", "name": FieldIntent, "value": i.ID, "checked": i.Selected,
 					"hx-get": paths.GenerationTestPart("easy-pick"), "hx-trigger": "change", "hx-target": "#" + PickID, "hx-swap": "outerHTML",
 					"hx-include": "#" + FormID + " [name=intent]," + "#" + FormID + " [name=ref]," + "#" + FormID + " [name=quality]:checked",
-				}, "flex flex-col gap-1 px-3 py-2 text-sm").Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
+				}, "flex flex-col gap-1 rounded-lg px-3 py-2 text-sm").Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -469,7 +469,7 @@ func Sizes(sizes []SizeChoice, oob bool) templ.Component {
 				}
 				return nil
 			})
-			templ_7745c5c3_Err = pick.Card(templ.Attributes{"type": "radio", "name": FieldAspect, "value": s.Value, "checked": s.Selected}, "px-4 py-2 text-center text-sm").Render(templ.WithChildren(ctx, templ_7745c5c3_Var21), templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = pick.Card(templ.Attributes{"type": "radio", "name": FieldAspect, "value": s.Value, "checked": s.Selected}, "rounded-md px-4 py-2 text-center text-sm").Render(templ.WithChildren(ctx, templ_7745c5c3_Var21), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -610,14 +610,14 @@ func EasyPick(e EasyData, card templ.Component) templ.Component {
 			}
 		}
 		if e.IntentHint != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "<p class=\"text-sm text-mute\" data-testid=\"gt-easy-hint\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "<p class=\"text-sm text-ink\" data-testid=\"gt-easy-hint\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var30 string
 			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(e.IntentHint)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentesttier/easy.templ`, Line: 111, Col: 73}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/gentesttier/easy.templ`, Line: 111, Col: 72}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 			if templ_7745c5c3_Err != nil {
@@ -689,7 +689,7 @@ func EasyPick(e EasyData, card templ.Component) templ.Component {
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = pick.Card(templ.Attributes{"type": "radio", "name": FieldQuality, "value": q.ID, "checked": q.Selected}, "px-4 py-2 text-center text-sm").Render(templ.WithChildren(ctx, templ_7745c5c3_Var32), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = pick.Card(templ.Attributes{"type": "radio", "name": FieldQuality, "value": q.ID, "checked": q.Selected}, "rounded-md px-4 py-2 text-center text-sm").Render(templ.WithChildren(ctx, templ_7745c5c3_Var32), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

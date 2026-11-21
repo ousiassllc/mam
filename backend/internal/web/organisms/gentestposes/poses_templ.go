@@ -124,7 +124,7 @@ func ModelNotes(n Notes) templ.Component {
 			templ_7745c5c3_Var4 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div class=\"flex flex-col gap-2 text-xs\" data-testid=\"gt-pose-models\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "<div class=\"flex flex-col gap-2 text-sm\" data-testid=\"gt-pose-models\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -412,7 +412,7 @@ func InstallPanel(w Wire, in Install) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<label class=\"flex items-start gap-2 text-xs text-ink\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<label class=\"flex items-start gap-2 text-sm text-ink\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -494,7 +494,7 @@ func InstallPanel(w Wire, in Install) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "\" hx-trigger=\"every 1s\" hx-swap=\"innerHTML\" class=\"text-xs text-ink\" role=\"status\" aria-live=\"polite\" data-testid=\"gt-pose-progress\"></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "\" hx-trigger=\"every 1s\" hx-swap=\"innerHTML\" class=\"text-sm text-ink\" role=\"status\" aria-live=\"polite\" data-testid=\"gt-pose-progress\"></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -959,7 +959,7 @@ func adultSection(w Wire, a AdultOffer) templ.Component {
 			templ_7745c5c3_Var45 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 83, "<section class=\"flex flex-col gap-2 rounded-lg border border-border p-3 text-xs\" data-testid=\"gt-pose-adult\"><h3 class=\"text-sm font-semibold text-ink\">成人向けのポーズ（sexy・二人）</h3>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 83, "<section class=\"flex flex-col gap-2 rounded-lg border border-border p-3 text-sm\" data-testid=\"gt-pose-adult\"><h3 class=\"text-sm font-semibold text-ink\">成人向けのポーズ（sexy・二人）</h3>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

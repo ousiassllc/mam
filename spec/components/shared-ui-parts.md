@@ -23,7 +23,7 @@
 | 主ボタンの `bg-accent` | `atoms.TonePrimary` の実ボタン専用 | カードの見た目に使わない（カードはリンクであってボタンではない） |
 | 状態 | `atoms.Badge`（neutral / info / warn / ok / error）と文字。**色だけで伝えない**（#790・#795） | §2 の対応表 |
 | カードの枠 | `border-border` は飾り。カードはタイトルの文字とフォーカスの輪で見分ける | 入力欄の枠のコントラスト（`field_border_test`）の対象ではない |
-| スライダー（`input[type=range]`。#955） | アプリの**すべて**のスライダーが `static/src/css/slider.css` の共通の見た目（レール 6px・つまみ 16px の丸。塗り `--accent`・残り `--accent-soft`・つまみ `--surface` に `--border` 1px の縁）。`focus-visible`（`--focus` の輪）・無効（`--mute`）を持つ。色は [color-rules.md](color-rules.md) §4.1。値は `<output>` を横（参照画像・LoRA の強さ）か上（プロンプトマッチの目標）に置く（動画の再生位置は、下のタイムコードが値） | 要素は `<input type=range>` のまま（矢印キー・ドラッグ・範囲・刻み・初期値は変えない）。WebKit にレールの塗りの疑似要素が無いので、塗りは `--fill`（`components/slider/slider.ts` が値から書く。Lit は `sliderStyle()`）と `linear-gradient` で描く。新しいスライダーは class で見た目を足さず、幅・並べ方だけ書く |
+| スライダー（`input[type=range]`。#955） | アプリの**すべて**のスライダーが `static/src/css/slider.css` の共通の見た目（レール 4px・つまみ 16px の丸（6px は進捗バー O12 の高さで、スライダーではない）。塗り `--accent`・残り `--accent-soft`・つまみ `--surface` に `--border` 1px の縁）。`focus-visible`（`--focus` の輪）・無効（`--mute`）を持つ。色は [color-rules.md](color-rules.md) §4.1。値は `<output>` を横（参照画像・LoRA の強さ）か上（プロンプトマッチの目標）に置く（動画の再生位置は、下のタイムコードが値） | 要素は `<input type=range>` のまま（矢印キー・ドラッグ・範囲・刻み・初期値は変えない）。WebKit にレールの塗りの疑似要素が無いので、塗りは `--fill`（`components/slider/slider.ts` が値から書く。Lit は `sliderStyle()`）と `linear-gradient` で描く。新しいスライダーは class で見た目を足さず、幅・並べ方だけ書く |
 | 進捗バー（`<progress>`。ガイド O12） | アプリの**すべて**の `<progress>` が `static/src/css/progress.css` の共通の見た目（高さ 6px・角丸 full・レール `--accent-soft`・塗り `--accent`。ブラウザ標準の青い塗り・枠は `appearance: none` で消す）。`aria-label` で名前を付ける。Windows のハイコントラストはシステムの色（`Highlight`・`GrayText`）。予算のメーターだけ、塗りが状態色（[color-rules.md](color-rules.md) §4 の承認済みの例外）。Lit の独自の帯（動画プレイヤーの読み込み）も高さ 6px・角丸 full・`role="progressbar"` と `aria-valuenow` | 値のない（不明な）作業にはバーを出さない（[jobs-screen.md](jobs-screen.md)） |
 
 ### 文字（Issue #1037）
@@ -33,7 +33,7 @@
 | 項目 | 決まり |
 |------|--------|
 | フォント（T1） | 英字・UI・日本語は `font-sans`（Sora → Noto Sans JP）、コードと桁を揃える数値は `font-mono`（JetBrains Mono）。いずれも SIL OFL。`static/fonts.mjs` が `@fontsource-variable/*` から `dist/fonts.css` と `dist/fonts/*.woff2` を作り、レイアウトが `paths.StaticFontsCSS` を読む（ネットワークからは取らない）。ライセンス全文は `THIRD_PARTY_NOTICES.md` |
-| サイズ（T3） | `text-xs` 12 · `text-sm` 14 · `text-base` 16 · `text-lg` 18 · `text-xl` 24（h3）· `text-2xl` 32（h2）· `text-3xl` 40（h1）。Tailwind の既定の大きさ（20・30・36）は無効。本文（文章として読ませる `<p>`・表の本体・一覧（`ul` / `ol` / `li`）・警告とエラーの文（`text-warning` / `text-danger`）・入力欄（`input` / `select` / `textarea`。`type=file` と Lit の入力も）・リンク型ボタンの文字）は `text-sm` 以上、`text-xs` は 1 文の注記・バッジ・表の見出し・`dt` のラベルだけ。**2 文以上の `<p>` は `text-xs` にしない**（`a11y/typography_test.go` の `TestSources_TextToReadIsAtLeast14px` が検査） |
+| サイズ（T3） | `text-xs` 12 · `text-sm` 14 · `text-base` 16 · `text-lg` 18 · `text-xl` 24（h3）· `text-2xl` 32（h2）· `text-3xl` 40（h1）。Tailwind の既定の大きさ（20・30・36）は無効。本文（文章として読ませる `<p>`・表の本体・一覧（`ul` / `ol` / `li`）・警告とエラーの文（`text-warning` / `text-danger`）・入力欄（`input` / `select` / `textarea`。`type=file` と Lit の入力も）・リンク型ボタンの文字）は `text-sm` 以上、`text-xs` は 1 文の注記・バッジ・表の見出し・`dt` のラベルだけ。**2 文以上の `<p>` は `text-xs` にしない**。**`text-xs` は子に継承される**ので、`text-xs` の外枠（`div` / `label` / `details` / `form`）の中に本文・入力欄・警告・ボタンを置かない（外枠から外し、短い注記・ラベルにだけ個別に付ける）（`a11y/typography_test.go` の `TestSources_TextToReadIsAtLeast14px`・`TestSources_TextToReadIsNot12pxByInheritance`・`TestRendered_TextToReadIsNot12px` が検査。後の 2 つは祖先の `text-xs` と描画した HTML を見る） |
 | 行間（T4） | サイズごとに `xs` 1.6 · `sm` 1.7 · `base` 1.8 · `lg` 1.7 · `xl` 1.5 · `2xl` 1.4 · `3xl` 1.3。`body` は 16px・1.8 |
 | ウェイト（T2） | Regular（400）と SemiBold（600）の 2 段だけ。SemiBold は見出し（`h1`〜`h4`）・ボタン・`<summary>`・表の見出し行だけ。ナビ・リンク・ラベル・数値には付けない（現在地は色と背景で示す）。`font-medium` は使わない |
 | 数値（T5） | 桁を揃える数値（金額・容量）は `font-mono tabular-nums`、表の数値列は右寄せ（件数・実績・日時の列も `font-mono tabular-nums`。日時は左寄せのままでよい）。表の見出し行（列の見出し `<th scope="col">` すべて）は `text-xs font-semibold text-mute`（`font-normal` にしない。`TestSources_HeaderRowOfATableIsSemiBold`）、行の見出し（`<th scope="row">`）と `<legend>` は Regular（`font-normal`） |
@@ -44,7 +44,7 @@
 
 | 項目 | 決まり |
 |------|--------|
-| 角丸（S1） | `rounded-sm` 4（タグ・チェック・バッジの角）· `rounded-md` 8（入力・ボタン・カードの中の入れ子の面）· `rounded-lg` 12（カード。画面に単独で置く枠付きの一覧・フォーム・パネルも。`a11y/shape_test.go` の `TestSources_PanelsOfTheirOwnAreRoundedLg`）· `rounded-xl` 16（モーダル `<dialog>`）· `rounded-full`（ピル・アバター）。素の `rounded` は使わない |
+| 角丸（S1） | `rounded-sm` 4（タグ・チェック・バッジの角）· `rounded-md` 8（入力・ボタン・カードの中の入れ子の面）· `rounded-lg` 12（カード。画面に単独で置く枠付きの一覧・フォーム・パネルも。`a11y/shape_test.go` の `TestSources_PanelsOfTheirOwnAreRoundedLg`）。**選ぶ枠（`pick.Card`）は角を持たず、呼び出しが決める**: 短いラベルのチップ（モード・レベル・サイズ・はい/いいえ）は `rounded-md`、タイトルと説明を持つカード（インテント・テンプレート）は `rounded-lg`。余白つきの面と枠の `li` / `div` / `span` / `section` は `rounded-lg`、ドロップ領域・動画のプレースホルダ・再生失敗の枠も `rounded-lg`（`TestSources_CardsAreRoundedLg`）· `rounded-xl` 16（モーダル `<dialog>`）· `rounded-full`（ピル・アバター）。素の `rounded` は使わない |
 | 余白（S2） | 4px 基準（`1`=4・`2`=8・`3`=12・`4`=16・`6`=24 …）。`.5` の値（`gap-1.5` ・ `bottom-1.5` など。上下左右の位置も）と、20 の値（`p-5`・`gap-5`・`px-5`・`pl-5` など。リストのインデントは `pl-4` か `pl-6`）は使わない（カード・ダイアログの内側は `p-4` か `p-6`、間は `gap-4` か `gap-6`）。メニュー項目は高さ 40（`min-h-10`）・項目間 8（`gap-2`。左側メニューも設定のナビも同じ）、ボタンは小 32（`min-h-8`）・標準 40（`min-h-10`）。画面のガターは 16、`md` 以上で 24（`p-4 md:p-6`） |
 | 影（S3） | 影はモーダルの `<dialog>` の `shadow-modal`（`0 1px 2px rgba(0,0,0,.06)`）だけ。カード・パネル・トースト・通知は影なしで、`border border-border` で区切る。ホバーの光る縁取りは使わない（色・背景・枠の色だけ） |
 | レイヤー（O4） | `z-dropdown` 100 · `z-sticky` 200 · `z-drawer` 300 · `z-modal` 400 · `z-toast` 500。カードの中で、全面を覆うクリック領域の上に出す部品だけ `z-raised`（部品の中の積み順で、ページのレイヤーではない）。`z-10` などの数字は使わない |
@@ -58,7 +58,7 @@
 |------|--------|
 | ホバー・フォーカス（M1） | 色・背景だけ、`--motion-base` 180ms（フォーカスは即時〜`--motion-fast` 120ms）。`transition-colors` が既定でこの値を取る。光彩・拡大はしない |
 | 処理中表示（M3） | スピナー（`atoms.Spinner`）と、更新ボタンの待ち中に出る同じスピナー（矢印のアイコンは回さず、待ち中だけスピナーに替える）は、`prefers-reduced-motion: reduce` でも回す（`motion-reduce:animate-none` を付けない）。移動・スライドの飾りだけを止める（`motion-reduce:transition-none`）。オーバーレイのフェードは reduce で 100ms 以内 |
-| リップル（M4） | `data-ripple` の付いたボタン（`atoms.Button` / `SmallButton` / `ButtonLink` / `…For` / `IconButton`・モーダルとトーストの閉じる・左メニューのボタン）の押下で、押した点から円が広がって消える（`--motion-slow` 280ms・`--ease-out`。円は `currentColor` の 20%）。無効なボタンと reduced-motion では出ない |
+| リップル（M4） | **ボタンの外見（`atoms.ButtonClass` / `SmallButtonClass`・ページ送りのリンク）を使う `<label>`・`<a>` にも `data-ripple` を付ける**（`a11y/shape_test.go` の `TestSources_ButtonLookedElementsHaveTheRipple`。`transition-colors` には必ず `motion-reduce:transition-none` を添える: `TestSources_TransitionsStopForReducedMotion`）。`data-ripple` の付いたボタン（`atoms.Button` / `SmallButton` / `ButtonLink` / `…For` / `IconButton`・モーダルとトーストの閉じる・左メニューのボタン）の押下で、押した点から円が広がって消える（`--motion-slow` 280ms・`--ease-out`。円は `currentColor` の 20%）。無効なボタンと reduced-motion では出ない |
 | 出現・退出（M5） | `<dialog>`・popover・トーストは、出現がフェードイン `--motion-fade-in` 320ms（`--ease-out`）、退出がフェードアウト `--motion-fade-out` 240ms（`--ease-in`）。スクラム（`dialog::backdrop`）は `--scrim` を同じ時間でフェードする。移動は付けない。インラインアラートも同じで、閉じるボタンで `data-leaving` が付き、フェードアウトしてから取り除く。接続断の通知（`atoms.ConnectionNotice`。`[data-connection-lost]`）も同じで、つながり直すと `connection-notice.ts` の `hide()` が `data-leaving` を付け、フェードが終わってから取り除く。確認モーダル（`confirm.ts`）の取り除きと、モーダル・モデル選択・インラインダイアログの中身の消去は、このフェードが終わってから行う（待つのは `getAnimations()` の transition。固定時間のタイマーは使わない。`components/lib/fade.ts`）。reduced-motion では 100ms 以内 |
 
 ### 部品・オーバーレイ（Issue #1041）
@@ -148,7 +148,8 @@
 | `IconPanelOpen` | `panel-left-open` | 〃 開くボタン | #915 |
 | `IconJobs` | `list-checks` | 左メニュー: ジョブ | #980 |
 | `IconPlay`・`IconPause`・`IconSkipPrev`・`IconSkipNext` | `play`・`pause`・`skip-prev`・`skip-next`（Iconoir） | プレーヤーの操作（`atoms/icon_player.templ`） | #1179 |
-| `IconArrowUp`・`IconArrowDown`・`IconChevronLeft` | `arrow-up`・`arrow-down`・`nav-arrow-left` | 並べ替え・戻る | #1179 |
+| `IconArrowUp`・`IconArrowDown`・`IconChevronLeft` | `arrow-up`・`arrow-down`・`nav-arrow-left` | 並べ替え・戻る（`atoms.BackLink` が前置する。ラベルは「← 」を付けない言葉だけ） | #1179・#1198 |
+| `IconPlus` | `plus` | チャットの添付ボタン（`sr-only` の「添付」を添える） | #1198 |
 | `IconStar` | `star`（輪郭のまま。塗らない。状態は線の色（`text-ink` ↔ `text-mute`）と `aria-pressed` で示す） | お気に入り | #1179 |
 | （`IconMedia`・`IconReview`・`IconChart`・`IconSettings` などは左メニューでも再利用） | | Scene / Shot・レビュー・制作指標・設定 | #915 |
 
@@ -306,6 +307,11 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.34 | 2026-11-22 | §1 の文字の行に、一覧（ul / ol / li）・警告とエラーの文・入力欄（file と Lit の入力も）・2 文以上の `<p>` を `text-sm` 以上と書き、列の見出し `<th>` を `font-semibold` にそろえ、件数・日時の列を `font-mono tabular-nums` にした。`a11y/typography_test` に 2 つの検査を足した | #1192: タイポグラフィ（T）の指摘 |
 | 0.35 | 2026-11-22 | §1 の角丸の行に、画面に単独で置く枠付きの一覧・フォーム・パネルは `rounded-lg` と明記した（プロジェクト一覧・取り込みフォーム・LoRA のファイル情報・Codex エンジン・ChatGPT ログインの案内・ffmpeg のダウンロードを `rounded-md` から直した）。`a11y/shape_test` に検査を足した | #1193: 形・余白・線（S）の指摘 |
 | 0.36 | 2026-11-22 | O1: スクラムは押し始めもスクラム上のときだけ閉じる。モデルピッカーの閉じるボタンを `sticky` の箱に。O3: 接続通知の位置・幅・折り返し。O7: リンク・リンク型ボタンの下線色を `tokens.css` の `:where(a, button).underline` の 1 か所に（`--mute`）、手書きのボタンの class を `atoms.ButtonClass`・`lib/button.ts` に寄せた。O12: 更新ボタンの待ち中は `atoms.Spinner`、動画のプレースホルダの進捗の塗りは `bg-accent` | #1194: 部品・オーバーレイ（O）の指摘 |
+| 0.37 | 2026-11-22 | §1 の文字の行に、`text-xs` は子に継承されるので外枠に付けず個別に付けると書き、検査を祖先の `text-xs` と描画結果まで広げた（`a11y/typography_test.go`）。ポーズ選択・音声の設定・接続テスト・AUTO の注記・重みバーの警告・こだわりの「元に戻す」（`lib/button.ts` の `BUTTON`）などを 14px 以上にした | #1196: タイポグラフィ（T）の指摘 |
+| 0.38 | 2026-11-22 | §1 の角丸の行に、選ぶ枠（`pick.Card`）は角を持たず呼び出しが `rounded-md`（チップ）か `rounded-lg`（カード）を決めると書いた。参照画像の行・画像のドロップ領域・動画の生成中プレースホルダと再生失敗の枠を `rounded-lg` にした。検査 `TestSources_CardsAreRoundedLg`（`a11y/shape_test.go`）を足した | #1197: 形・余白・線（S）の指摘 |
+| 0.39 | 2026-11-22 | §2 のアイコン一覧に `IconPlus`（Iconoir の `plus`）を足し、戻るリンクの矢印（`←`）とチャットの添付の `＋` を文字でなく Icon にした。`BackLink` のラベルは矢印抜きの言葉だけ | #1198: アイコン（I）の指摘 |
+| 0.40 | 2026-11-22 | §1 のリップルの行に、ボタンの外見の `<label>`・`<a>`（ファイル選択・ページ送り）にも `data-ripple` を付けると書いた。LOCK 切替・左メニューの `transition-colors` に `motion-reduce:transition-none` を揃え、検査 `TestSources_ButtonLookedElementsHaveTheRipple`・`TestSources_TransitionsStopForReducedMotion` を足した | #1199: モーション（M）の指摘 |
+| 0.41 | 2026-11-22 | §1 のスライダーの行のレールを 6px から 4px に直した（`slider.css` の `--rail: 0.25rem` とガイド O11 が正で、6px は進捗バー O12 の値）。テキストだけのボタン（`atoms.LinkButton`）の見た目を `linkButtonClass`（atoms）と `LINK_BUTTON`（`lib/button.ts`）の 1 か所にし、Lit の複製 4 か所と絞り込みボタンを置き換えた。検査 `TestSources_LinkButtonLookIsWrittenOnce`（`a11y/shape_test.go`）を足し、`TestSources_ButtonLookIsWrittenOnce` の手書きサブボタンの検出を `hover:` 抜きに広げた | #1200: 部品・オーバーレイ（O）の指摘 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 

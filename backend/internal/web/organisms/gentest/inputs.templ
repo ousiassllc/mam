@@ -48,12 +48,12 @@ templ inputFields(c Compose) {
 		<div
 			data-gt-dropzone
 			title={ dropHint(c) }
-			class="flex flex-col items-center gap-2 rounded-md border border-dashed border-border p-4 text-center text-sm text-ink transition-colors motion-reduce:transition-none"
+			class="flex flex-col items-center gap-2 rounded-lg border border-dashed border-border p-4 text-center text-sm text-ink transition-colors motion-reduce:transition-none"
 		>
 			<p>画像をドロップ、またはクリック</p>
 			<div class="flex flex-wrap justify-center gap-2">
 				<input id="gt-upload" type="file" name={ FieldUpload } multiple accept="image/png,image/jpeg,image/webp" class="peer sr-only" data-gt-file/>
-				<label for="gt-upload" class={ atoms.SmallButtonClass(atoms.ToneNeutral), "cursor-pointer peer-focus-visible:focus-ring" }>ファイルを選ぶ</label>
+				<label for="gt-upload" class={ atoms.SmallButtonClass(atoms.ToneNeutral), "cursor-pointer peer-focus-visible:focus-ring" } data-ripple>ファイルを選ぶ</label>
 				@atoms.SmallButton(atoms.ToneNeutral, "プロジェクトの画像から選ぶ", templ.Attributes{"type": "button", "data-gt-open-picker": "project"})
 				@atoms.SmallButton(atoms.ToneNeutral, "履歴の画像から選ぶ", templ.Attributes{
 					"type": "button", "data-gt-open-picker": "history", "hx-get": paths.GenerationTestPart("picker") + "?source=history",

@@ -74,7 +74,7 @@ templ matchRound(r MatchRound, target int) {
 				</ul>
 			}
 			if r.Prompt != "" {
-				<details class="text-xs" data-testid="gt-match-prompt">
+				<details class="text-sm" data-testid="gt-match-prompt">
 					<summary class={ atoms.SummaryClass }>プロンプト</summary>
 					<p class="mt-1 whitespace-pre-wrap break-words rounded-md border border-border p-2 text-ink" data-testid="gt-match-prompt-text">{ r.Prompt }</p>
 					if r.BasePrompt != "" {

@@ -31,7 +31,7 @@ func ModelRowID(endpoint, model string) string { return "local-model-" + endpoin
 // model are long (a workflow, the inputs it takes), so their forms open below the table, on the page, and not in a modal.
 templ Page(d Data, e Endpoint) {
 	<div id={ PageID } class="flex flex-col gap-6" data-testid="local-endpoint-page">
-		@atoms.BackLink(paths.LocalModels(), "← ローカル・代替モデルに戻る")
+		@atoms.BackLink(paths.LocalModels(), "ローカル・代替モデルに戻る")
 		if d.Pinned {
 			<p class="text-sm text-warning" role="status" data-testid="local-models-pinned">{ d.PinnedNote }</p>
 		}

@@ -92,7 +92,7 @@ templ ToolCardItem(c ToolCard) {
 					<span id={ c.elementID("title") } class="text-base font-semibold text-ink">{ c.Title }</span>
 				}
 			</span>
-			<span id={ c.elementID("desc") } class="text-pretty text-sm text-mute">{ c.Description }</span>
+			<span id={ c.elementID("desc") } class="text-pretty text-sm text-ink">{ c.Description }</span>
 			if len(c.Status) == 0 && c.StatusURL != "" {
 				<span
 					id={ c.elementID("status") }

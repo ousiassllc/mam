@@ -127,13 +127,50 @@ func TestSources_PanelsOfTheirOwnAreRoundedLg(t *testing.T) {
 	}
 }
 
+// A frame of its own that holds a title, a description or a body (a surface with a neutral border and a padding of 8px or more, on a li / div / span /
+// section / article / details) is a card: rounded-lg (S1). rounded-md is for a chip (a short label), an input, a button and a nested face. The tags above
+// (ul / form / ...) are held by TestSources_PanelsOfTheirOwnAreRoundedLg; the frame of a choice is held here too: pick.Card has no corner of its own, and
+// every call names one (a chip rounded-md, a card rounded-lg), so that a card does not get the chip's corner by default.
+func TestSources_CardsAreRoundedLg(t *testing.T) {
+	card := regexp.MustCompile(`<(?:li|div|span|section|article|details|label)\b[^<>]*>`)
+	pickCall := regexp.MustCompile(`@pick\.Card\((?s:.*?)\}, "([^"]*)"\)`)
+	hasClass := func(tag, class string) bool {
+		return regexp.MustCompile(`[ "']` + regexp.QuoteMeta(class) + `[ "']`).MatchString(tag)
+	}
+	padded := regexp.MustCompile(`[ "'](?:p|px|py)-[2-9][ "']`)
+	// The bar of the weight of a word sits against the text it edits and is a toolbar, not a card: its frame is rounded-md by spec/components/shared-ui-parts.md §W1.
+	const weightBar = "prompt-weight/mam-prompt-weight.ts"
+	for _, path := range colorSources(t) {
+		if strings.HasSuffix(path, ".css") || strings.HasSuffix(path, ".go") || strings.HasSuffix(path, weightBar) {
+			continue
+		}
+		raw, err := os.ReadFile(path)
+		require.NoError(t, err)
+		src := string(raw)
+		for _, m := range card.FindAllStringIndex(src, -1) {
+			tag := src[m[0]:m[1]]
+			if hasClass(tag, "rounded-md") && hasClass(tag, "border-border") && hasClass(tag, "bg-surface") && padded.MatchString(tag) {
+				t.Errorf("%s:%d: a bordered surface with padding is a card: rounded-lg (S1)", path, strings.Count(src[:m[0]], "\n")+1)
+			}
+		}
+		for _, m := range pickCall.FindAllStringSubmatchIndex(src, -1) {
+			if layout := src[m[2]:m[3]]; !strings.Contains(layout, "rounded-md") && !strings.Contains(layout, "rounded-lg") {
+				t.Errorf("%s:%d: a pick.Card names its corner: rounded-md for a chip, rounded-lg for a card (S1)", path, strings.Count(src[:m[0]], "\n")+1)
+			}
+		}
+	}
+	frame, err := os.ReadFile("../molecules/pick/pick.templ")
+	require.NoError(t, err)
+	assert.NotContains(t, string(frame), `"block rounded-md border border-border"`, "the corner of a pick.Card is the caller's")
+}
+
 // The look of a button is written once (O7): atoms/button.templ for the templates and components/lib/button.ts for the Lit parts. A line that spells the
 // main button (`bg-accent text-bone`) or the sub one (`border-border … hover:bg-accent-soft`) with the shape of a button (rounded-md font-semibold) again is a
 // copy that a change to the guide would miss.
 func TestSources_ButtonLookIsWrittenOnce(t *testing.T) {
 	shape := regexp.MustCompile(`rounded-md[^"` + "`" + `]*font-semibold|font-semibold[^"` + "`" + `]*rounded-md`)
 	main := regexp.MustCompile(`\bbg-accent\b[^"` + "`" + `]*\btext-bone\b`)
-	sub := regexp.MustCompile(`\bborder-border\b[^"` + "`" + `]*\bhover:bg-accent-soft\b`)
+	sub := regexp.MustCompile(`\bborder-border\b[^"` + "`" + `]*\bhover:bg-accent-soft\b|\bborder-border\b[^"` + "`" + `]*\btext-ink\b|\btext-ink\b[^"` + "`" + `]*\bborder-border\b`)
 	for _, path := range colorSources(t) {
 		if strings.HasSuffix(path, ".css") || strings.HasSuffix(path, "atoms/button.templ") || strings.HasSuffix(path, "lib/button.ts") {
 			continue
@@ -143,6 +180,113 @@ func TestSources_ButtonLookIsWrittenOnce(t *testing.T) {
 		for n, line := range strings.Split(string(src), "\n") {
 			if shape.MatchString(line) && (main.MatchString(line) || sub.MatchString(line)) {
 				t.Errorf("%s:%d: a button class written by hand: use atoms.ButtonClass / atoms.SmallButtonClass (templ) or BUTTON + BUTTON_TONE of lib/button.ts (Lit) (O7)", path, n+1)
+			}
+		}
+	}
+}
+
+// An icon is an Icon (Iconoir, I1), not a character that stands for one: the arrow of a back link, the plus of an attachment, the star of a favourite, the
+// cross of a close. A label that starts with an arrow, or a button whose only content is a plus, is a glyph a screen reader reads as "左矢印" and whose line
+// does not follow the scale. Texts that use an arrow to say "to" (→ in a sentence) are prose and not held here.
+func TestSources_IconsAreNotGlyphs(t *testing.T) {
+	glyph := regexp.MustCompile(`["'>（]\s*[←↑↓×＋✕✖★☆]\s*(?:[^\s"'<）]|["'<）])`)
+	for _, path := range colorSources(t) {
+		if strings.HasSuffix(path, ".css") || strings.HasSuffix(path, "-fixtures.ts") { // a fixture is a stand-in for markup the server renders
+			continue
+		}
+		raw, err := os.ReadFile(path)
+		require.NoError(t, err)
+		for n, line := range strings.Split(string(raw), "\n") {
+			if text := strings.TrimSpace(line); strings.HasPrefix(text, "//") || strings.HasPrefix(text, "/*") || strings.HasPrefix(text, "*") {
+				continue
+			}
+			if m := glyph.FindString(line); m != "" {
+				t.Errorf("%s:%d: %q: a glyph is used as an icon: use atoms.Icon / lib/icon.ts (Iconoir, I1)", path, n+1, m)
+			}
+		}
+	}
+}
+
+// An element drawn as a button gives the press of a button (M4): a <label>, <a> or <button> whose class is a button's (atoms.ButtonClass /
+// SmallButtonClass, or the bordered box of the pagination links) has data-ripple, the same as atoms.Button and ButtonLink. A face of a button without the ripple
+// is the one that a reader finds does not answer.
+func TestSources_ButtonLookedElementsHaveTheRipple(t *testing.T) {
+	element := regexp.MustCompile(`(?s)<(?:label|a|button|span)\b(?:[^<>"'{]|"[^"]*"|'[^']*'|\{[^}]*\})*>`)
+	look := regexp.MustCompile(`atoms\.(?:Small)?ButtonClass\(`)
+	paginationLook := regexp.MustCompile(`\blinkClass\b|\bcurrentClass\b`) // the bordered box of molecules/pagination (another package's linkClass is a text link)
+	for _, path := range colorSources(t) {
+		if !strings.HasSuffix(path, ".templ") || strings.HasSuffix(path, "atoms/button.templ") {
+			continue
+		}
+		raw, err := os.ReadFile(path)
+		require.NoError(t, err)
+		src := string(raw)
+		for _, m := range element.FindAllStringIndex(src, -1) {
+			tag := src[m[0]:m[1]]
+			if strings.HasPrefix(tag, "<span") && strings.Contains(tag, "aria-current") { // the mark of the current page is not pressed
+				continue
+			}
+			if (look.MatchString(tag) || strings.HasSuffix(path, "pagination/pagination.templ") && paginationLook.MatchString(tag)) && !strings.Contains(tag, "data-ripple") {
+				t.Errorf("%s:%d: an element that looks like a button has no data-ripple (M4)", path, strings.Count(src[:m[0]], "\n")+1)
+			}
+		}
+	}
+}
+
+// A transition is for a user who does not ask for less motion (M3): every `transition-colors` has `motion-reduce:transition-none` in the same class string.
+func TestSources_TransitionsStopForReducedMotion(t *testing.T) {
+	for _, path := range colorSources(t) {
+		if strings.HasSuffix(path, ".css") {
+			continue
+		}
+		raw, err := os.ReadFile(path)
+		require.NoError(t, err)
+		lines := strings.Split(string(raw), "\n")
+		for n, line := range lines {
+			if !regexp.MustCompile(`(?:^|[^\w:-])transition-colors(?:[^\w-]|$)`).MatchString(line) {
+				continue
+			}
+			end := min(n+3, len(lines)) // a class string that runs over lines (lib/button.ts) says it within its next two
+			if !strings.Contains(strings.Join(lines[n:end], "\n"), "motion-reduce:transition-none") {
+				t.Errorf("%s:%d: transition-colors without motion-reduce:transition-none (M3)", path, n+1)
+			}
+		}
+	}
+}
+
+// The look of a text-only button (a LinkButton: --mute text, an underline, Regular, disabled at opacity .4) is written once as well (O7): linkButtonClass in
+// atoms/button.templ for the templates and LINK_BUTTON in components/lib/button.ts for the Lit parts, the same words; a copy in a Lit part (take-table, the
+// timeline) drifts: one had no transition, another no cursor-not-allowed.
+func TestSources_LinkButtonLookIsWrittenOnce(t *testing.T) {
+	templ, err := os.ReadFile("../atoms/button.templ")
+	require.NoError(t, err)
+	ts, err := os.ReadFile("../../../../static/src/components/lib/button.ts")
+	require.NoError(t, err)
+	declared := regexp.MustCompile(`linkButtonClass = "([^"]*)"`).FindStringSubmatch(string(templ))
+	require.NotNil(t, declared, "atoms/button.templ declares linkButtonClass")
+	// LINK_BUTTON is a string of adjacent literals ('a ' + 'b'); the TypeScript says the focus ring where the template relies on tokens.css for it.
+	var lit []string
+	for _, m := range regexp.MustCompile(`'([^']*)'`).FindAllStringSubmatch(string(ts[strings.Index(string(ts), "export const LINK_BUTTON"):]), -1)[:2] {
+		lit = append(lit, strings.TrimSpace(m[1]))
+	}
+	var words []string
+	for _, w := range strings.Fields(strings.Join(lit, " ")) {
+		if w != "focus-visible:focus-ring" {
+			words = append(words, w)
+		}
+	}
+	assert.ElementsMatch(t, strings.Fields(declared[1]), words, "LINK_BUTTON of lib/button.ts is linkButtonClass of atoms/button.templ")
+
+	copied := regexp.MustCompile(`\btext-mute\b[^"'` + "`" + `]*\bunderline\b[^"'` + "`" + `]*\bhover:text-ink\b[^"'` + "`" + `]*\bdisabled:`)
+	for _, path := range colorSources(t) {
+		if strings.HasSuffix(path, ".css") || strings.HasSuffix(path, "atoms/button.templ") || strings.HasSuffix(path, "lib/button.ts") {
+			continue
+		}
+		src, err := os.ReadFile(path)
+		require.NoError(t, err)
+		for n, line := range strings.Split(string(src), "\n") {
+			if copied.MatchString(line) {
+				t.Errorf("%s:%d: the look of a text-only button written by hand: use atoms.LinkButton (templ) or LINK_BUTTON of lib/button.ts (Lit) (O7)", path, n+1)
 			}
 		}
 	}

@@ -1,5 +1,5 @@
 import { html } from 'lit';
-import { BUTTON, BUTTON_TONE } from '../lib/button';
+import { BUTTON, BUTTON_TONE, LINK_BUTTON } from '../lib/button';
 import { icon } from '../lib/icon';
 import { describeSegments, totalSeconds, type Clip, type Segment } from '../lib/timeline-model';
 
@@ -38,7 +38,7 @@ export function renderSelection(view: SelectionView) {
       <button type="button" data-action="confirm-partial" class="${BUTTON} ${BUTTON_TONE.primary}" data-ripple ?disabled=${!view.canMerge} @click=${() => view.merge()}>
         この区間で合成
       </button>
-      <button type="button" data-action="clear-selection" class="text-sm text-mute underline hover:text-ink focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-40" ?disabled=${selection.length === 0} @click=${() => view.clear()}>選び直す</button>
+      <button type="button" data-action="clear-selection" class="${LINK_BUTTON}" ?disabled=${selection.length === 0} @click=${() => view.clear()}>選び直す</button>
     </div>
     <form class="flex flex-wrap items-center gap-2" @submit=${(e: Event) => view.submitInstruction(e)}>
       <input

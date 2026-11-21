@@ -92,7 +92,7 @@ func detailURL(name string) string {
 // and the license are in its detail modal (ModelDetail).
 templ ModelCard(m Model) {
 	@modelcard.Item(card(m)) {
-		<p class="text-sm text-mute">{ m.Description }</p>
+		<p class="text-sm text-ink">{ m.Description }</p>
 		@view.Notice(m.Message, ModelID(m.Name))
 		switch m.State {
 			case StatePulling:

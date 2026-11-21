@@ -288,7 +288,7 @@ func loginStart(f LoginForm) templ.Component {
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = pick.Card(templ.Attributes{"type": "radio", "name": "method", "value": m.Value, "checked": i == 0, "autofocus": i == 0, "data-testid": "chatgpt-login-" + f.Kind + "-" + m.Value}, "px-3 py-2 text-sm").Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = pick.Card(templ.Attributes{"type": "radio", "name": "method", "value": m.Value, "checked": i == 0, "autofocus": i == 0, "data-testid": "chatgpt-login-" + f.Kind + "-" + m.Value}, "rounded-md px-3 py-2 text-sm").Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

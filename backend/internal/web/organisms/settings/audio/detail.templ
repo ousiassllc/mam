@@ -43,14 +43,14 @@ templ closeButton() {
 // providerNote is the line under a choice: what the choice does not change.
 templ providerNote(p Provider) {
 	if p.Note != "" {
-		<p class="text-sm text-mute" data-testid={ "audio-note-" + p.Field }>{ p.Note }</p>
+		<p class="text-sm text-ink" data-testid={ "audio-note-" + p.Field }>{ p.Note }</p>
 	}
 }
 
 // localState is the facts about a local provider: why it cannot be chosen on this PC, why it cannot be used now, the video memory it
 // needs, where it comes from, its license and the limits of its commercial use.
 templ localState(p Provider) {
-	<div id={ "audio-state-" + p.Field } class="flex min-w-0 flex-col gap-2 text-xs text-mute">
+	<div id={ "audio-state-" + p.Field } class="flex min-w-0 flex-col gap-2 text-sm">
 		if !p.Local.Supported {
 			<div class="flex flex-col gap-1 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning" role="note" data-testid={ "audio-unsupported-" + p.Field }>
 				<p>この PC では { p.Local.Name } を選べません。{ p.CloudLabel } のまま使えます。</p>
@@ -66,7 +66,7 @@ templ localState(p Provider) {
 			<pre class="max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-md bg-bone p-2 focus-visible:focus-ring" tabindex="0" role="region" aria-label={ p.LocalLabel + " の失敗内容" } data-testid={ "audio-process-error-" + p.Field }>{ p.Local.ProcessError }</pre>
 		}
 		if p.Local.VRAM != "" {
-			<p data-testid={ "audio-vram-" + p.Field }>{ p.Local.VRAM }</p>
+			<p class="text-mute" data-testid={ "audio-vram-" + p.Field }>{ p.Local.VRAM }</p>
 		}
 		<p class="break-words" data-testid={ "audio-source-" + p.Field }>
 			出典: <a class="break-all underline" href={ templ.SafeURL(p.Local.SourceURL) } rel="noopener noreferrer" target="_blank">{ p.Local.SourceURL }</a>
@@ -79,7 +79,7 @@ templ localState(p Provider) {
 			。重みと依存ファイルの出典・ライセンスは、モデルマネージャーの一覧にあります。
 		</p>
 		if p.Local.Model != "" {
-			<p data-testid={ "audio-model-" + p.Field }>使うモデル: { p.Local.Model }（変えるにはモデルマネージャーの「モデルの選択」）</p>
+			<p class="text-mute" data-testid={ "audio-model-" + p.Field }>使うモデル: { p.Local.Model }（変えるにはモデルマネージャーの「モデルの選択」）</p>
 		}
 		if len(p.Local.Cautions) > 0 {
 			<div class="flex flex-col gap-1 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning" role="note" data-testid={ "audio-cautions-" + p.Field }>

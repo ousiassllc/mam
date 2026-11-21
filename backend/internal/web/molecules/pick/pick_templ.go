@@ -34,7 +34,8 @@ const Glow = GlowFrame + " peer-disabled:opacity-60"
 const OpenFrame = "transition-colors hover:border-accent has-[[data-card-open]:focus-visible]:focus-ring motion-reduce:transition-none"
 
 // Card is a label around the hidden control (attrs: type, name, value, checked, disabled, data-*, hx-*) and the frame
-// that holds the children. layout is the classes of the frame for its content (padding, flex direction, text size).
+// that holds the children. layout is the classes of the frame for its content (the corner, padding, flex direction, text size): a chip (a short label: a mode, a level, a
+// size) is rounded-md and a card (a title and a hint, or a body: a template, an intent) is rounded-lg (S1), so the corner is the caller's and not a default of the frame.
 func Card(attrs templ.Attributes, layout string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -68,7 +69,7 @@ func Card(attrs templ.Attributes, layout string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var2 = []any{"block rounded-md border border-border", Glow, layout}
+		var templ_7745c5c3_Var2 = []any{"block border border-border", Glow, layout}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var2...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
