@@ -43,3 +43,8 @@ func TestSources_ParagraphsOfSeveralSentencesAreNotMute(t *testing.T) {
 		}
 	}
 }
+
+// The underline of a link is --mute whatever else the link says (O7): one rule in tokens.css, not a decoration-mute on every <a class="underline">.
+func TestTokens_TheUnderlineOfALinkIsMute(t *testing.T) {
+	assert.Regexp(t, `(?s)@layer base \{.*:where\(a, button\)\.underline \{\s*text-decoration-color: var\(--mute\);`, readTokens(t))
+}

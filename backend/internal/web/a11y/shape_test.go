@@ -126,3 +126,24 @@ func TestSources_PanelsOfTheirOwnAreRoundedLg(t *testing.T) {
 		}
 	}
 }
+
+// The look of a button is written once (O7): atoms/button.templ for the templates and components/lib/button.ts for the Lit parts. A line that spells the
+// main button (`bg-accent text-bone`) or the sub one (`border-border … hover:bg-accent-soft`) with the shape of a button (rounded-md font-semibold) again is a
+// copy that a change to the guide would miss.
+func TestSources_ButtonLookIsWrittenOnce(t *testing.T) {
+	shape := regexp.MustCompile(`rounded-md[^"` + "`" + `]*font-semibold|font-semibold[^"` + "`" + `]*rounded-md`)
+	main := regexp.MustCompile(`\bbg-accent\b[^"` + "`" + `]*\btext-bone\b`)
+	sub := regexp.MustCompile(`\bborder-border\b[^"` + "`" + `]*\bhover:bg-accent-soft\b`)
+	for _, path := range colorSources(t) {
+		if strings.HasSuffix(path, ".css") || strings.HasSuffix(path, "atoms/button.templ") || strings.HasSuffix(path, "lib/button.ts") {
+			continue
+		}
+		src, err := os.ReadFile(path)
+		require.NoError(t, err)
+		for n, line := range strings.Split(string(src), "\n") {
+			if shape.MatchString(line) && (main.MatchString(line) || sub.MatchString(line)) {
+				t.Errorf("%s:%d: a button class written by hand: use atoms.ButtonClass / atoms.SmallButtonClass (templ) or BUTTON + BUTTON_TONE of lib/button.ts (Lit) (O7)", path, n+1)
+			}
+		}
+	}
+}

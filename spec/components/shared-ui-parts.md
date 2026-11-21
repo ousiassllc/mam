@@ -57,7 +57,7 @@
 | 項目 | 決まり |
 |------|--------|
 | ホバー・フォーカス（M1） | 色・背景だけ、`--motion-base` 180ms（フォーカスは即時〜`--motion-fast` 120ms）。`transition-colors` が既定でこの値を取る。光彩・拡大はしない |
-| 処理中表示（M3） | スピナー（`atoms.Spinner`）と更新ボタンの回る矢印は、`prefers-reduced-motion: reduce` でも回す（`motion-reduce:animate-none` を付けない）。移動・スライドの飾りだけを止める（`motion-reduce:transition-none`）。オーバーレイのフェードは reduce で 100ms 以内 |
+| 処理中表示（M3） | スピナー（`atoms.Spinner`）と、更新ボタンの待ち中に出る同じスピナー（矢印のアイコンは回さず、待ち中だけスピナーに替える）は、`prefers-reduced-motion: reduce` でも回す（`motion-reduce:animate-none` を付けない）。移動・スライドの飾りだけを止める（`motion-reduce:transition-none`）。オーバーレイのフェードは reduce で 100ms 以内 |
 | リップル（M4） | `data-ripple` の付いたボタン（`atoms.Button` / `SmallButton` / `ButtonLink` / `…For` / `IconButton`・モーダルとトーストの閉じる・左メニューのボタン）の押下で、押した点から円が広がって消える（`--motion-slow` 280ms・`--ease-out`。円は `currentColor` の 20%）。無効なボタンと reduced-motion では出ない |
 | 出現・退出（M5） | `<dialog>`・popover・トーストは、出現がフェードイン `--motion-fade-in` 320ms（`--ease-out`）、退出がフェードアウト `--motion-fade-out` 240ms（`--ease-in`）。スクラム（`dialog::backdrop`）は `--scrim` を同じ時間でフェードする。移動は付けない。インラインアラートも同じで、閉じるボタンで `data-leaving` が付き、フェードアウトしてから取り除く。接続断の通知（`atoms.ConnectionNotice`。`[data-connection-lost]`）も同じで、つながり直すと `connection-notice.ts` の `hide()` が `data-leaving` を付け、フェードが終わってから取り除く。確認モーダル（`confirm.ts`）の取り除きと、モーダル・モデル選択・インラインダイアログの中身の消去は、このフェードが終わってから行う（待つのは `getAnimations()` の transition。固定時間のタイマーは使わない。`components/lib/fade.ts`）。reduced-motion では 100ms 以内 |
 
@@ -67,11 +67,11 @@
 
 | 項目 | 決まり |
 |------|--------|
-| スクラムで閉じる（O1） | モーダルの `<dialog>` は、外側（スクラム）のクリックで閉じる（`static/src/components/scrim`。Esc・閉じるボタンも）。**保存するフォーム**の欄（ダイアログの中の `<form>` の `input` / `select` / `textarea`。検索欄（`type=search`）、`form` が存在しない名前の欄、`hx-get` のフォーム、ページ側のフォームに属する欄は除く）を変更したダイアログだけ、先に確認のモーダル「入力した内容は保存されません。閉じますか？」を出し、入力途中の内容を巻き込んで消さない。モデルピッカー・画像ピッカー・ポーズ選択のような「選ぶだけ」のダイアログは、絞り込みを触っても外側のクリックで 1 回で閉じる。スクラムはダイアログと一緒にフェードする（M5） |
+| スクラムで閉じる（O1） | モーダルの `<dialog>` は、外側（スクラム）のクリックで閉じる（`static/src/components/scrim`。Esc・閉じるボタンも）。**押し始めもスクラム上だったときだけ**閉じる（欄の文字をなぞり選びして、スクラム上で離しただけでは閉じない。`pointerdown` の起点を見る）。閉じるボタンは `modal.Host` と同じ、ゼロ高さの `sticky top-0` の箱に入れ、スクロールしても届く位置に置く（モデルピッカーも同じ）。**保存するフォーム**の欄（ダイアログの中の `<form>` の `input` / `select` / `textarea`。検索欄（`type=search`）、`form` が存在しない名前の欄、`hx-get` のフォーム、ページ側のフォームに属する欄は除く）を変更したダイアログだけ、先に確認のモーダル「入力した内容は保存されません。閉じますか？」を出し、入力途中の内容を巻き込んで消さない。モデルピッカー・画像ピッカー・ポーズ選択のような「選ぶだけ」のダイアログは、絞り込みを触っても外側のクリックで 1 回で閉じる。スクラムはダイアログと一緒にフェードする（M5） |
 | 確認・破壊的操作（O2） | 確認は OS 標準の `confirm()` でなく、中央のモーダル（`modal.Confirm`。`--r-xl`・`shadow-modal`・危険ボタン「実行する」と「キャンセル」）。`hx-confirm` の要素は `htmx:confirm` をこのモーダルが受けてから送る（`static/src/components/confirm`）。破壊的でない確認（コピー・作り直し・取り消し・オンにする・ダウンロード・復元・学習を始める）は、その要素の `data-confirm-tone="primary"` と `data-confirm-label="コピーする"` を `confirm.ts` が読み、危険ボタンでなく主ボタンと具体的な言葉で出す（`modal.Confirm` は両方のボタンを持ち、使わないほうを取り除く）。`AppLayout` が `#confirm-template` を埋め込む。モデルマネージャーの年齢確認・ライセンス確認もページ内の枠でなく同じ `<dialog>`（`modal.InlineHost`。`showModal()` で開く） |
 | トースト（O3） | 「保存しました」のような **1 行の短い成功の文だけ**。画面下中央（下から 24）・高さ 40・ピル・`bg-ink text-bone`・同時に 1 つ（新しいものが前を置き換える）・3 秒で自動消去。閉じるボタンも持たない。サーバーが返す成功は `atoms.ToastOOB`（`#toast-region` の中身を置き換える） |
 | インラインアラート（O3） | エラー・業務エラー（403 / 409 / 423・予算超過・LOCK 違反など）・エラー詳細は、ページ上部（`#content` の先頭の `#alert-region`）に `atoms.Alert`（お知らせ / 成功 / 注意 / エラーの 4 種。アイコン＋見出し＋本文）で出す。閉じるまで残る（長い文を読み終えるため。WCAG 2.2.1）。同じ文は重ねない。サーバーは `atoms.ErrorAlertOOB`（`beforeend`）、スクリプトは `lib/alert.ts`（エラーは `#alert-template`、注意は `#alert-warning-template`） |
-| 接続の通知（O3） | 接続が切れた通知（`atoms.ConnectionNotice`）は、警告のアイコン＋文言＋ `border-warning/40` の枠と `bg-warning/10` の地（スナックバー。影なし）。トーストではない |
+| 接続の通知（O3） | 接続が切れた通知（`atoms.ConnectionNotice`）は、警告のアイコン＋文言＋ `border-warning/40` の枠と `bg-warning/10` の地（スナックバー。影なし）。トーストではない。左下に出し（`bottom-20 left-4`。トースト `bottom-6` の上で、重ならない）、幅は `max-w-[calc(100vw-2rem)]`・ボタンは `flex-wrap` で折り返す |
 | ボタン（O7） | `font-semibold`・`rounded-md`・無効は不透明度 .4（`disabled:opacity-40`・`disabled:cursor-not-allowed`。リンク型ボタン `LinkButton` / `LinkButtonFor`・Lit の行のボタン・`modelpick` の入力風のボタンも）・小は高さ 32（`min-h-8`）・標準は 40（`min-h-10`）。種類は主（`TonePrimary`）・サブ（`ToneNeutral`。透明＋ `border-border`）・ゴースト（`ToneGhost`）・危険（`ToneDanger`）。`<label>` でファイル選択を開くものなど、ボタンに見える `<button>` でない要素は `atoms.ButtonClass` / `SmallButtonClass` の class を使う |
 | アコーディオン（O8） | native の `<details>`。見出し `<summary>` は SemiBold・`text-sm text-ink`・フォーカスの輪の 1 つの class（`atoms.SummaryClass`）。`<summary>` は配置の class だけを足し、太さ・色は足さない（`a11y/typography_test` が、`<summary>` が `atoms.SummaryClass` を使うかを見る） |
 | スクロール領域（B1〜B6） | スクロールバーは `static/src/css/scrollbar.css` の 1 つの規則（幅・高さ 8px・矢印なし・丸い `--mute` のつまみ。強制カラー時は OS の標準）。スクロールする領域に、フォーカスできる要素が中に無い（読み取り専用・ボタンが出ない・文字だけ）ことがありうるときは、`tabindex="0"`・名前（`role="region"` と `aria-label`。ログは `role="log"`）・`focus-visible:focus-ring` を付ける。キーボードの ↑ ↓ PageUp PageDown Space Home End で動かせるようにするため（`SettingsTable` の囲み・`#chat-thread`・結果の比較表・Take の比較表・値の選択表・コマンドの `<pre>`） |
@@ -305,6 +305,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.33 | 2026-11-22 | スクロール領域（B1〜B6）の行を足した。中にフォーカスできる要素が無いことがありうるスクロール領域（設定テーブルの囲み・チャットスレッド・結果の比較表・Take の比較表・値の選択表・コマンドの `<pre>`）に `tabindex="0"`・名前・`focus-visible:focus-ring` を付けた | #1190: スクロールバー（B）の指摘 |
 | 0.34 | 2026-11-22 | §1 の文字の行に、一覧（ul / ol / li）・警告とエラーの文・入力欄（file と Lit の入力も）・2 文以上の `<p>` を `text-sm` 以上と書き、列の見出し `<th>` を `font-semibold` にそろえ、件数・日時の列を `font-mono tabular-nums` にした。`a11y/typography_test` に 2 つの検査を足した | #1192: タイポグラフィ（T）の指摘 |
 | 0.35 | 2026-11-22 | §1 の角丸の行に、画面に単独で置く枠付きの一覧・フォーム・パネルは `rounded-lg` と明記した（プロジェクト一覧・取り込みフォーム・LoRA のファイル情報・Codex エンジン・ChatGPT ログインの案内・ffmpeg のダウンロードを `rounded-md` から直した）。`a11y/shape_test` に検査を足した | #1193: 形・余白・線（S）の指摘 |
+| 0.36 | 2026-11-22 | O1: スクラムは押し始めもスクラム上のときだけ閉じる。モデルピッカーの閉じるボタンを `sticky` の箱に。O3: 接続通知の位置・幅・折り返し。O7: リンク・リンク型ボタンの下線色を `tokens.css` の `:where(a, button).underline` の 1 か所に（`--mute`）、手書きのボタンの class を `atoms.ButtonClass`・`lib/button.ts` に寄せた。O12: 更新ボタンの待ち中は `atoms.Spinner`、動画のプレースホルダの進捗の塗りは `bg-accent` | #1194: 部品・オーバーレイ（O）の指摘 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 

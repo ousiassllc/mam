@@ -41,7 +41,7 @@
 | ホバー面 | `hover:bg-accent-soft` / `hover:border-mute` / `peer-not-checked:hover:border-mute` | §1・`peer-not-checked:` は選ぶカード（選んだカードの枠をホバーで灰色に戻さない）。`/60` の薄めはガイドに無いので使わない |
 | ホバーの文字 | `hover:text-ink` | §1 |
 | 主アクション（実ボタン） | `bg-accent` / `hover:bg-accent/85` / `text-bone` | `TonePrimary` |
-| リンク・アイコン強調 | `text-accent` / `decoration-mute`（リンクは `underline` を添える） | §1・`Icon` 周り |
+| リンク・アイコン強調 | `text-accent` / `decoration-mute`（リンクは `underline` を添える。下線の色は `tokens.css` の `:where(a, button).underline` が `--mute` にするので、`underline` だけでも `decoration-mute` と同じ） | §1・`Icon` 周り |
 | 選択・現在地 | `border-accent` / `has-[:checked]:border-accent` / `peer-checked:border-accent` / `peer-checked:bg-accent-soft` / `hover:border-accent` / `border-t-accent` / `border-accent-soft` | 選ぶカード・ナビ・スピナーの回る弧（`border-t-accent`）と、スピナーの輪の残り（`border-accent-soft`。共通ガイド O12） |
 | 危険 | 文字 `text-danger`、枠/面 `border-danger/40`・`bg-danger/10`・`hover:bg-danger/10`（`ToneDanger` のホバー） | `ToneDanger`・`BadgeError` |
 | 警告 | 文字 `text-warning`、枠/面 `border-warning/40`・`bg-warning/10` | `BadgeWarn` |
@@ -145,3 +145,4 @@
 | 2.10 | 2026-11-22 | §3 の「ホバー面」から `hover:bg-accent-soft/60` を外し、`hover:bg-accent-soft` だけにした（ガイドに無い薄め方）。§1 のフォーカスの輪に、クラスを付けない要素向けの `tokens.css` の `@layer base` の規則を足した。トークンの出典を `5d816f8` に改めた | #1184: 色（C）の指摘 |
 | 2.11 | 2026-11-22 | §3 の「リンク・アイコン強調」から `fill-current` を外した（2.8 を戻す）。お気に入りの星は輪郭のままで、状態は線の色（`text-ink` ↔ `text-mute`）と `aria-pressed` で示す（ガイド I2: 塗りのアイコンは逸脱） | #1187: アイコン（I）の指摘 |
 | 2.12 | 2026-11-22 | §1 のフォーカスの輪の `:where()` に `input` の checkbox / radio / file と `video[controls]` を足し、`:root { accent-color: var(--accent) }` を足した。§3 の「補助・説明の文字」を、2 文以上の説明は `text-ink` と明記した（`a11y/mute_text_test.go` が検査）。新しいクラスは足していない | #1191: 色（C）の指摘 |
+| 2.13 | 2026-11-22 | §3 の「リンク・アイコン強調」に、下線の色は `tokens.css` の `:where(a, button).underline` が `--mute` にすることを書いた。動画のプレースホルダの進捗の塗りを `bg-info/70` から `bg-accent` にした（§4 の重ね塗りの例外は、動画の上・レーンの上だけ） | #1194: 部品・オーバーレイ（O）の指摘 |

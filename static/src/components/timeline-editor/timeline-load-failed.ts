@@ -1,4 +1,5 @@
 import { html, nothing } from 'lit';
+import { BUTTON, BUTTON_TONE } from '../lib/button';
 
 /**
  * What the editor shows when its first load failed (not a 404): the reason is the alert in #alert-region, so this says where to look and
@@ -12,7 +13,7 @@ export function renderLoadFailed(retrying: boolean, retry: () => void) {
       data-action="retry"
       data-ripple
       aria-busy=${retrying ? 'true' : 'false'}
-      class="min-h-8 rounded-md border border-border px-3 py-1 text-sm font-semibold text-ink transition-colors hover:bg-accent-soft disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none focus-visible:focus-ring"
+      class="${BUTTON} ${BUTTON_TONE.neutral}"
       @click=${retry}
     >
       もう一度読み込む

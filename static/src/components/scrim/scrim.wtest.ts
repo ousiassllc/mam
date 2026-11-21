@@ -42,6 +42,42 @@ describe('scrim', () => {
     expect(dialog.open).to.equal(true);
   });
 
+  describe('a press and its click', () => {
+    const pressAt = (target: Element, x: number, y: number) =>
+      target.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: x, clientY: y }));
+
+    it('does not close when the press started inside the dialog and the click lands on the scrim (a drag that selects text)', () => {
+      const box = dialog.getBoundingClientRect();
+      const input = dialog.querySelector('input') as HTMLInputElement;
+      pressAt(input, box.left + 30, box.top + 30);
+      clickAt(box.left - 5, box.top - 5); // the click of the common ancestor, where the button was let go
+      expect(dialog.open).to.equal(true);
+    });
+
+    it('does not close when the press started on the dialog padding and the click lands on the scrim', () => {
+      const box = dialog.getBoundingClientRect();
+      pressAt(dialog, box.left + 3, box.top + 3);
+      clickAt(box.left - 5, box.top - 5);
+      expect(dialog.open).to.equal(true);
+    });
+
+    it('closes when the press and the click are both on the scrim', () => {
+      const box = dialog.getBoundingClientRect();
+      pressAt(dialog, box.left - 5, box.top - 5);
+      clickAt(box.left - 5, box.top - 5);
+      expect(dialog.open).to.equal(false);
+    });
+
+    it('forgets the press after its click: the next click that no press came before closes', () => {
+      const box = dialog.getBoundingClientRect();
+      pressAt(dialog.querySelector('input') as Element, box.left + 30, box.top + 30);
+      clickAt(box.left - 5, box.top - 5);
+      expect(dialog.open).to.equal(true);
+      clickAt(box.left - 5, box.top - 5);
+      expect(dialog.open).to.equal(false);
+    });
+  });
+
   it('asks before it closes a dialog whose field was changed, and keeps it open on "キャンセル"', async () => {
     installConfirm(document);
     (dialog.querySelector('input') as HTMLInputElement).dispatchEvent(new Event('input', { bubbles: true }));
