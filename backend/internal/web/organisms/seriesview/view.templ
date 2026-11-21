@@ -147,9 +147,9 @@ templ seriesHistory(d Data, oob bool) {
 		}
 	>
 		<h2 class="text-sm font-semibold text-ink">正本の更新履歴</h2>
-		<ul class="text-sm text-mute">
+		<ul class="text-sm">
 			for _, v := range d.Versions {
-				<li>バージョン { strconv.Itoa(v.Number) } · { v.CreatedAt.Local().Format("2006-01-02 15:04") }</li>
+				<li class="text-mute">バージョン { strconv.Itoa(v.Number) } · { v.CreatedAt.Local().Format("2006-01-02 15:04") }</li>
 			}
 		</ul>
 	</section>

@@ -28,8 +28,12 @@ func TestSources_TextOfSeveralSentencesIsNotMute(t *testing.T) {
 		}
 		src, err := os.ReadFile(path)
 		require.NoError(t, err)
-		for _, found := range mutedSentences(parseSource(string(src))) {
+		tree := parseSource(string(src))
+		for _, found := range mutedSentences(tree) {
 			t.Errorf("%s: %s is text-mute: a text to read is text-ink (C6); only a one-line caption is text-mute", path, found)
+		}
+		for _, found := range mutedLists(tree) {
+			t.Errorf("%s: %s: the items say their own colour, the list does not (C6)", path, found)
 		}
 	}
 }

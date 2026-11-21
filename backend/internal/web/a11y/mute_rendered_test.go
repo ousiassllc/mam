@@ -73,6 +73,9 @@ func TestRendered_TextOfSeveralSentencesIsNotMute(t *testing.T) {
 		for _, found := range mutedSentences(root) {
 			t.Errorf("%s: %s is text-mute: a text to read is text-ink (C6)", name, found)
 		}
+		for _, found := range mutedLists(root) {
+			t.Errorf("%s: %s: the items say their own colour, the list does not (C6)", name, found)
+		}
 	}
 }
 
