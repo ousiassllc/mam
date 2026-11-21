@@ -215,7 +215,7 @@ export class MamVideoPlayer extends LitElement {
     const generating = stage === 'queued' || stage === 'generating' || stage === 'repairing';
     if (!this.videoSrc || generating) return renderPlaceholder(this.progress);
     if (this.failed) {
-      return html`<div class="flex aspect-video items-center justify-center rounded-md border border-border bg-surface text-xs text-mute" role="alert" data-placeholder>
+      return html`<div class="flex aspect-video items-center justify-center rounded-lg border border-border bg-surface text-xs text-mute" role="alert" data-placeholder>
         動画を再生できません
       </div>`;
     }

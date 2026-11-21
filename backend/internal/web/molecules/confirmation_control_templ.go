@@ -168,7 +168,7 @@ func ConfirmationControl(p domain.Project) templ.Component {
 					}
 					return nil
 				})
-				templ_7745c5c3_Err = pick.Card(templ.Attributes{"type": "checkbox", "name": "checkpoints", "value": string(c), "checked": hasCheckpoint(p, c)}, "px-2 py-1 text-xs").Render(templ.WithChildren(ctx, templ_7745c5c3_Var6), templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = pick.Card(templ.Attributes{"type": "checkbox", "name": "checkpoints", "value": string(c), "checked": hasCheckpoint(p, c)}, "rounded-md px-2 py-1 text-xs").Render(templ.WithChildren(ctx, templ_7745c5c3_Var6), templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

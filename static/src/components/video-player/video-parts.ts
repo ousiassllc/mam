@@ -100,7 +100,7 @@ export function renderTransport(v: TransportView) {
 export function renderPlaceholder(progress: ShotProgress | null) {
   const fraction = progressFraction(progress);
   return html`<div
-    class="flex aspect-video flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border bg-surface text-xs text-mute"
+    class="flex aspect-video flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-surface text-xs text-mute"
     role="status"
     data-placeholder
     data-stage=${progress?.stage ?? 'idle'}

@@ -217,7 +217,7 @@ func ComposeForm(c Compose) templ.Component {
 				"hx-target":  "#" + ComposeID,
 				"hx-swap":    "outerHTML",
 				"hx-include": "#" + ComposeID,
-			}, "px-4 py-2 text-center").Render(templ.WithChildren(ctx, templ_7745c5c3_Var10), templ_7745c5c3_Buffer)
+			}, "rounded-md px-4 py-2 text-center").Render(templ.WithChildren(ctx, templ_7745c5c3_Var10), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -123,7 +123,7 @@ func inputFields(c Compose) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\" class=\"flex flex-col items-center gap-2 rounded-md border border-dashed border-border p-4 text-center text-sm text-ink transition-colors motion-reduce:transition-none\"><p>画像をドロップ、またはクリック</p><div class=\"flex flex-wrap justify-center gap-2\"><input id=\"gt-upload\" type=\"file\" name=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "\" class=\"flex flex-col items-center gap-2 rounded-lg border border-dashed border-border p-4 text-center text-sm text-ink transition-colors motion-reduce:transition-none\"><p>画像をドロップ、またはクリック</p><div class=\"flex flex-wrap justify-center gap-2\"><input id=\"gt-upload\" type=\"file\" name=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

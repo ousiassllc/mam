@@ -127,6 +127,43 @@ func TestSources_PanelsOfTheirOwnAreRoundedLg(t *testing.T) {
 	}
 }
 
+// A frame of its own that holds a title, a description or a body (a surface with a neutral border and a padding of 8px or more, on a li / div / span /
+// section / article / details) is a card: rounded-lg (S1). rounded-md is for a chip (a short label), an input, a button and a nested face. The tags above
+// (ul / form / ...) are held by TestSources_PanelsOfTheirOwnAreRoundedLg; the frame of a choice is held here too: pick.Card has no corner of its own, and
+// every call names one (a chip rounded-md, a card rounded-lg), so that a card does not get the chip's corner by default.
+func TestSources_CardsAreRoundedLg(t *testing.T) {
+	card := regexp.MustCompile(`<(?:li|div|span|section|article|details|label)\b[^<>]*>`)
+	pickCall := regexp.MustCompile(`@pick\.Card\((?s:.*?)\}, "([^"]*)"\)`)
+	hasClass := func(tag, class string) bool {
+		return regexp.MustCompile(`[ "']` + regexp.QuoteMeta(class) + `[ "']`).MatchString(tag)
+	}
+	padded := regexp.MustCompile(`[ "'](?:p|px|py)-[2-9][ "']`)
+	// The bar of the weight of a word sits against the text it edits and is a toolbar, not a card: its frame is rounded-md by spec/components/shared-ui-parts.md §W1.
+	const weightBar = "prompt-weight/mam-prompt-weight.ts"
+	for _, path := range colorSources(t) {
+		if strings.HasSuffix(path, ".css") || strings.HasSuffix(path, ".go") || strings.HasSuffix(path, weightBar) {
+			continue
+		}
+		raw, err := os.ReadFile(path)
+		require.NoError(t, err)
+		src := string(raw)
+		for _, m := range card.FindAllStringIndex(src, -1) {
+			tag := src[m[0]:m[1]]
+			if hasClass(tag, "rounded-md") && hasClass(tag, "border-border") && hasClass(tag, "bg-surface") && padded.MatchString(tag) {
+				t.Errorf("%s:%d: a bordered surface with padding is a card: rounded-lg (S1)", path, strings.Count(src[:m[0]], "\n")+1)
+			}
+		}
+		for _, m := range pickCall.FindAllStringSubmatchIndex(src, -1) {
+			if layout := src[m[2]:m[3]]; !strings.Contains(layout, "rounded-md") && !strings.Contains(layout, "rounded-lg") {
+				t.Errorf("%s:%d: a pick.Card names its corner: rounded-md for a chip, rounded-lg for a card (S1)", path, strings.Count(src[:m[0]], "\n")+1)
+			}
+		}
+	}
+	frame, err := os.ReadFile("../molecules/pick/pick.templ")
+	require.NoError(t, err)
+	assert.NotContains(t, string(frame), `"block rounded-md border border-border"`, "the corner of a pick.Card is the caller's")
+}
+
 // The look of a button is written once (O7): atoms/button.templ for the templates and components/lib/button.ts for the Lit parts. A line that spells the
 // main button (`bg-accent text-bone`) or the sub one (`border-border … hover:bg-accent-soft`) with the shape of a button (rounded-md font-semibold) again is a
 // copy that a change to the guide would miss.

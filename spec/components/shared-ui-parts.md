@@ -44,7 +44,7 @@
 
 | 項目 | 決まり |
 |------|--------|
-| 角丸（S1） | `rounded-sm` 4（タグ・チェック・バッジの角）· `rounded-md` 8（入力・ボタン・カードの中の入れ子の面）· `rounded-lg` 12（カード。画面に単独で置く枠付きの一覧・フォーム・パネルも。`a11y/shape_test.go` の `TestSources_PanelsOfTheirOwnAreRoundedLg`）· `rounded-xl` 16（モーダル `<dialog>`）· `rounded-full`（ピル・アバター）。素の `rounded` は使わない |
+| 角丸（S1） | `rounded-sm` 4（タグ・チェック・バッジの角）· `rounded-md` 8（入力・ボタン・カードの中の入れ子の面）· `rounded-lg` 12（カード。画面に単独で置く枠付きの一覧・フォーム・パネルも。`a11y/shape_test.go` の `TestSources_PanelsOfTheirOwnAreRoundedLg`）。**選ぶ枠（`pick.Card`）は角を持たず、呼び出しが決める**: 短いラベルのチップ（モード・レベル・サイズ・はい/いいえ）は `rounded-md`、タイトルと説明を持つカード（インテント・テンプレート）は `rounded-lg`。余白つきの面と枠の `li` / `div` / `span` / `section` は `rounded-lg`、ドロップ領域・動画のプレースホルダ・再生失敗の枠も `rounded-lg`（`TestSources_CardsAreRoundedLg`）· `rounded-xl` 16（モーダル `<dialog>`）· `rounded-full`（ピル・アバター）。素の `rounded` は使わない |
 | 余白（S2） | 4px 基準（`1`=4・`2`=8・`3`=12・`4`=16・`6`=24 …）。`.5` の値（`gap-1.5` ・ `bottom-1.5` など。上下左右の位置も）と、20 の値（`p-5`・`gap-5`・`px-5`・`pl-5` など。リストのインデントは `pl-4` か `pl-6`）は使わない（カード・ダイアログの内側は `p-4` か `p-6`、間は `gap-4` か `gap-6`）。メニュー項目は高さ 40（`min-h-10`）・項目間 8（`gap-2`。左側メニューも設定のナビも同じ）、ボタンは小 32（`min-h-8`）・標準 40（`min-h-10`）。画面のガターは 16、`md` 以上で 24（`p-4 md:p-6`） |
 | 影（S3） | 影はモーダルの `<dialog>` の `shadow-modal`（`0 1px 2px rgba(0,0,0,.06)`）だけ。カード・パネル・トースト・通知は影なしで、`border border-border` で区切る。ホバーの光る縁取りは使わない（色・背景・枠の色だけ） |
 | レイヤー（O4） | `z-dropdown` 100 · `z-sticky` 200 · `z-drawer` 300 · `z-modal` 400 · `z-toast` 500。カードの中で、全面を覆うクリック領域の上に出す部品だけ `z-raised`（部品の中の積み順で、ページのレイヤーではない）。`z-10` などの数字は使わない |
@@ -307,6 +307,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.35 | 2026-11-22 | §1 の角丸の行に、画面に単独で置く枠付きの一覧・フォーム・パネルは `rounded-lg` と明記した（プロジェクト一覧・取り込みフォーム・LoRA のファイル情報・Codex エンジン・ChatGPT ログインの案内・ffmpeg のダウンロードを `rounded-md` から直した）。`a11y/shape_test` に検査を足した | #1193: 形・余白・線（S）の指摘 |
 | 0.36 | 2026-11-22 | O1: スクラムは押し始めもスクラム上のときだけ閉じる。モデルピッカーの閉じるボタンを `sticky` の箱に。O3: 接続通知の位置・幅・折り返し。O7: リンク・リンク型ボタンの下線色を `tokens.css` の `:where(a, button).underline` の 1 か所に（`--mute`）、手書きのボタンの class を `atoms.ButtonClass`・`lib/button.ts` に寄せた。O12: 更新ボタンの待ち中は `atoms.Spinner`、動画のプレースホルダの進捗の塗りは `bg-accent` | #1194: 部品・オーバーレイ（O）の指摘 |
 | 0.37 | 2026-11-22 | §1 の文字の行に、`text-xs` は子に継承されるので外枠に付けず個別に付けると書き、検査を祖先の `text-xs` と描画結果まで広げた（`a11y/typography_test.go`）。ポーズ選択・音声の設定・接続テスト・AUTO の注記・重みバーの警告・こだわりの「元に戻す」（`lib/button.ts` の `BUTTON`）などを 14px 以上にした | #1196: タイポグラフィ（T）の指摘 |
+| 0.38 | 2026-11-22 | §1 の角丸の行に、選ぶ枠（`pick.Card`）は角を持たず呼び出しが `rounded-md`（チップ）か `rounded-lg`（カード）を決めると書いた。参照画像の行・画像のドロップ領域・動画の生成中プレースホルダと再生失敗の枠を `rounded-lg` にした。検査 `TestSources_CardsAreRoundedLg`（`a11y/shape_test.go`）を足した | #1197: 形・余白・線（S）の指摘 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 

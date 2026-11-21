@@ -52,7 +52,7 @@ templ ConfirmationControl(p domain.Project) {
 			<fieldset class="flex flex-wrap gap-2">
 				<legend class="sr-only">確認ポイント</legend>
 				for _, c := range domain.SelectableCheckpoints() {
-					@pick.Card(templ.Attributes{"type": "checkbox", "name": "checkpoints", "value": string(c), "checked": hasCheckpoint(p, c)}, "px-2 py-1 text-xs") {
+					@pick.Card(templ.Attributes{"type": "checkbox", "name": "checkpoints", "value": string(c), "checked": hasCheckpoint(p, c)}, "rounded-md px-2 py-1 text-xs") {
 						{ c.Label() }
 					}
 				}
