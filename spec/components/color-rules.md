@@ -36,6 +36,7 @@
 | トースト | `bg-ink` / `text-bone` | O3（インク地にボーン字のピル。`atoms.Toast`） |
 | カード・モーダルの面 | `bg-surface` / `border-border` | §1 |
 | 補助・説明の文字 | `text-mute`（1 行の補足・キャプションだけ。2 文以上の説明・注意・手順・空状態の案内は `text-ink`） | §1・`contrast_test`・`a11y/mute_text_test.go`（ソースの文言）・`a11y/mute_rendered_test.go`（描画した HTML） |
+| 入力欄のプレースホルダー | `--mute`・不透明度 1（`tokens.css` の `::placeholder`）。Light・Dark のどちらも `--surface`・`--bone` 上で AA 4.5:1 |
 | 枠・区切り | `border-border` / `divide-border` | §1・一覧 |
 | 据え置きの面（現在地・コード欄・チップ） | `bg-accent-soft` | ガイドの `--accent-soft` |
 | ホバー面 | `hover:bg-accent-soft` / `hover:border-mute` / `peer-not-checked:hover:border-mute` | §1・`peer-not-checked:` は選ぶカード（選んだカードの枠をホバーで灰色に戻さない）。`/60` の薄めはガイドに無いので使わない |
@@ -148,3 +149,4 @@
 | 2.13 | 2026-11-22 | §3 の「リンク・アイコン強調」に、下線の色は `tokens.css` の `:where(a, button).underline` が `--mute` にすることを書いた。動画のプレースホルダの進捗の塗りを `bg-info/70` から `bg-accent` にした（§4 の重ね塗りの例外は、動画の上・レーンの上だけ） | #1194: 部品・オーバーレイ（O）の指摘 |
 | 2.14 | 2026-11-22 | §1 のフォーカスの輪の `:where()` に `audio[controls]` を足した（`video[controls]` と同じ輪）。§3 の「補助・説明の文字」の検査を、タグ（p / li のほか td・span・label・div）と祖先の `text-mute` の継承、Go 定数・カタログ JSON 由来の文言（描画した HTML）まで広げた（`a11y/mute_text_test.go`・`mute_rendered_test.go`）。2 文以上のモーダルの説明・設定の説明・導入前のライセンス同意文・AUTO の同意文などを `text-ink` にした。新しいクラスは足していない | #1195: 色（C）の指摘 |
 | 2.15 | 2026-11-22 | §4 の重ね塗りの例外（`bg-success/70` 等）の上には文字を直接置かないと書いた（Take 比較の選んだ区間の番号は `bg-surface text-ink` のチップ。`text-bone` は Light で 4.5:1 未満だった。`contrast_test`）。ポーズ素材のライセンス概要（カタログ JSON 由来の複数文）とチャットの見積り拒否の状態行を `text-ink` にし、`mute_rendered_test` の描画対象にポーズ選択の 3 状態とチャットのスレッドを足した | #1201: 色（C）の指摘 |
+| 2.16 | 2026-11-22 | §3 に、入力欄のプレースホルダー（`::placeholder`）は `tokens.css` の `@layer base` で `--mute`・不透明度 1 にすると書いた（Tailwind の既定は `currentcolor` の 50% で、Light の `--bone` 上 3.8:1 だった）。検査 `TestTokens_PlaceholderIsMute`（`a11y/contrast_test.go`）を足した | #1204: 色（C）の指摘 |

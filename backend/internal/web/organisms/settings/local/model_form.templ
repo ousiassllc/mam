@@ -37,13 +37,14 @@ templ ModelFormView(f ModelForm, errMsg string) {
 			</p>
 			<p class="text-sm text-ink">名前は変えられません（Take とコスト台帳に残る識別子が名前でできているため）。変えたいときは、削除して作り直してください。</p>
 		} else {
-			<label class="flex flex-col gap-1 text-xs text-mute" for="local-model-name">
-				<span>名前（英小文字・数字・. _ -。識別子は「{ f.EndpointKind }:{ f.Endpoint }/名前」になります）</span>
+			<div class="flex flex-col gap-1">
+				<label class="text-xs text-mute" for="local-model-name">名前</label>
 				@atoms.Input(atoms.FieldMd, "w-64", templ.Attributes{
 					"id": "local-model-name", "name": FieldName, "type": "text", "value": f.Name, "required": true,
-					"maxlength": itoa(MaxNameLen), "pattern": NamePattern, "autocomplete": "off",
+					"maxlength": itoa(MaxNameLen), "pattern": NamePattern, "autocomplete": "off", "aria-describedby": "local-model-name-help",
 				})
-			</label>
+				<p id="local-model-name-help" class="text-sm text-ink">英小文字・数字・. _ -。識別子は「{ f.EndpointKind }:{ f.Endpoint }/名前」になります。</p>
+			</div>
 		}
 		if f.EndpointKind == KindComfyUI {
 			@workflowFields(f)
@@ -137,14 +138,16 @@ templ videoFields(f ModelForm) {
 	<fieldset class="flex flex-col gap-2" data-testid="local-video-fields">
 		<legend class="text-sm">動画の能力</legend>
 		<div class="flex flex-wrap items-end gap-3">
-			<label class="flex flex-col gap-1 text-xs text-mute" for="local-durations">
-				<span>長さ（秒。小さい順にカンマ区切り。例: 3, 4, 5）</span>
-				@atoms.Input(atoms.FieldMd, "w-48", templ.Attributes{"id": "local-durations", "name": FieldDurations, "type": "text", "value": f.Durations, "required": true, "autocomplete": "off"})
-			</label>
-			<label class="flex flex-col gap-1 text-xs text-mute" for="local-resolutions">
-				<span>解像度（短辺。カンマ区切り。例: 480p, 720p）</span>
-				@atoms.Input(atoms.FieldMd, "w-48", templ.Attributes{"id": "local-resolutions", "name": FieldResolutions, "type": "text", "value": f.Resolutions, "required": true, "autocomplete": "off"})
-			</label>
+			<div class="flex flex-col gap-1">
+				<label class="text-xs text-mute" for="local-durations">長さ（秒）</label>
+				@atoms.Input(atoms.FieldMd, "w-48", templ.Attributes{"id": "local-durations", "name": FieldDurations, "type": "text", "value": f.Durations, "required": true, "autocomplete": "off", "aria-describedby": "local-durations-help"})
+				<p id="local-durations-help" class="text-sm text-ink">小さい順にカンマ区切り。例: 3, 4, 5。</p>
+			</div>
+			<div class="flex flex-col gap-1">
+				<label class="text-xs text-mute" for="local-resolutions">解像度</label>
+				@atoms.Input(atoms.FieldMd, "w-48", templ.Attributes{"id": "local-resolutions", "name": FieldResolutions, "type": "text", "value": f.Resolutions, "required": true, "autocomplete": "off", "aria-describedby": "local-resolutions-help"})
+				<p id="local-resolutions-help" class="text-sm text-ink">短辺。カンマ区切り。例: 480p, 720p。</p>
+			</div>
 		</div>
 		<label class="flex items-center gap-2 text-sm">
 			@atoms.Choice("", templ.Attributes{"type": "checkbox", "name": FieldNativeAudio, "value": "1", "checked": f.NativeAudio})
@@ -155,14 +158,16 @@ templ videoFields(f ModelForm) {
 
 templ costFields(f ModelForm) {
 	if f.Media == MediaVideo {
-		<label class="flex flex-col gap-1 text-xs text-mute" for="local-cost-second">
-			<span>見積コスト（USD / 秒。空: 0。参考値で、見積にだけ使います）</span>
-			@atoms.Input(atoms.FieldMd, "w-32", templ.Attributes{"id": "local-cost-second", "name": FieldCostSecond, "type": "number", "min": "0", "step": "any", "value": f.CostPerSecond})
-		</label>
+		<div class="flex flex-col gap-1">
+			<label class="text-xs text-mute" for="local-cost-second">見積コスト（USD / 秒）</label>
+			@atoms.Input(atoms.FieldMd, "w-32", templ.Attributes{"id": "local-cost-second", "name": FieldCostSecond, "type": "number", "min": "0", "step": "any", "value": f.CostPerSecond, "aria-describedby": "local-cost-help"})
+			<p id="local-cost-help" class="text-sm text-ink">空: 0。参考値で、見積にだけ使います。</p>
+		</div>
 	} else {
-		<label class="flex flex-col gap-1 text-xs text-mute" for="local-cost-image">
-			<span>見積コスト（USD / 枚。空: 0。参考値で、見積にだけ使います）</span>
-			@atoms.Input(atoms.FieldMd, "w-32", templ.Attributes{"id": "local-cost-image", "name": FieldCostImage, "type": "number", "min": "0", "step": "any", "value": f.CostPerImage})
-		</label>
+		<div class="flex flex-col gap-1">
+			<label class="text-xs text-mute" for="local-cost-image">見積コスト（USD / 枚）</label>
+			@atoms.Input(atoms.FieldMd, "w-32", templ.Attributes{"id": "local-cost-image", "name": FieldCostImage, "type": "number", "min": "0", "step": "any", "value": f.CostPerImage, "aria-describedby": "local-cost-help"})
+			<p id="local-cost-help" class="text-sm text-ink">空: 0。参考値で、見積にだけ使います。</p>
+		</div>
 	}
 }

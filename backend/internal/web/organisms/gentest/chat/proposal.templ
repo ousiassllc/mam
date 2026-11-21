@@ -19,7 +19,7 @@ templ ProposalCard(p Proposal) {
 			hx-swap-oob="true"
 		}
 	>
-		<h3 class="text-sm font-semibold">実行の確認</h3>
+		<h2 class="text-sm font-semibold">実行の確認</h2>
 		<dl class="flex flex-col gap-1 text-sm" data-testid="gtc-facts">
 			for _, kv := range p.Facts {
 				<div class="flex flex-wrap gap-x-2">
@@ -119,7 +119,7 @@ templ ResultBlock(r Result) {
 		}
 	>
 		<div class="flex flex-wrap items-center gap-2">
-			<h3 class="text-sm font-semibold">生成の結果</h3>
+			<h2 class="text-sm font-semibold">生成の結果</h2>
 			@atoms.BadgeWith(r.Tone, r.StateTxt, templ.Attributes{"data-testid": "gtc-result-state"})
 			<span class="text-xs text-mute" data-testid="gtc-result-progress">{ itoa(r.Done) } / { itoa(r.Total) } 件（{ r.Counts }）</span>
 			if r.Estimate != "" {

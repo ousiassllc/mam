@@ -108,7 +108,7 @@ templ hfRepoView(r HFRepo) {
 		}
 		for _, g := range r.Groups {
 			<section class="flex flex-col gap-1" data-testid="mm-hfi-group" data-group={ g.Name }>
-				<h4 class="break-words text-sm font-semibold">{ g.Name }</h4>
+				<h3 class="break-words text-sm font-semibold">{ g.Name }</h3>
 				<ul class="flex flex-col divide-y divide-border text-sm">
 					for _, f := range g.Files {
 						@hfFileRow(r, f)

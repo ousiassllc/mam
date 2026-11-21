@@ -43,10 +43,11 @@ templ Box(f Form) {
 						hx-sync="this:drop"
 						hx-disabled-elt="find button[type=submit]"
 					>
-						<label class="flex flex-col gap-1 text-ink" for="gt-faceswap-face">
-							<span class="text-xs">顔の画像（入れ替える顔。いちばん大きい顔が使われます。PNG・JPEG・WebP）</span>
-							<input id="gt-faceswap-face" class="text-sm text-ink" type="file" name={ FieldFace } accept="image/png,image/jpeg,image/webp" required data-testid="gt-faceswap-face"/>
-						</label>
+						<div class="flex flex-col gap-1">
+							<label class="text-xs text-ink" for="gt-faceswap-face">顔の画像</label>
+							<input id="gt-faceswap-face" class="text-sm text-ink" type="file" name={ FieldFace } accept="image/png,image/jpeg,image/webp" required aria-describedby="gt-faceswap-face-help" data-testid="gt-faceswap-face"/>
+							<p id="gt-faceswap-face-help" class="text-sm text-ink">入れ替える顔。いちばん大きい顔が使われます。PNG・JPEG・WebP。</p>
+						</div>
 						<div class="flex flex-wrap items-end gap-3">
 							@modelSelect("gt-faceswap-swapper", FieldSwapper, "入れ替えモデル", f.Swappers, f.WarningsURL)
 							@modelSelect("gt-faceswap-detector", FieldDetector, "顔検出モデル", f.Detectors, f.WarningsURL)
