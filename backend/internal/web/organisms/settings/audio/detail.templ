@@ -63,7 +63,7 @@ templ localState(p Provider) {
 			<p class="text-warning" role="status">保存済みの設定はローカルですが、この PC では動かせないため、今は使われません（保存するとクラウドに切り替わります）。</p>
 		}
 		if p.Local.ProcessError != "" {
-			<pre class="max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-md bg-bone p-2" data-testid={ "audio-process-error-" + p.Field }>{ p.Local.ProcessError }</pre>
+			<pre class="max-h-40 overflow-auto whitespace-pre-wrap break-all rounded-md bg-bone p-2 focus-visible:focus-ring" tabindex="0" role="region" aria-label={ p.LocalLabel + " の失敗内容" } data-testid={ "audio-process-error-" + p.Field }>{ p.Local.ProcessError }</pre>
 		}
 		if p.Local.VRAM != "" {
 			<p data-testid={ "audio-vram-" + p.Field }>{ p.Local.VRAM }</p>

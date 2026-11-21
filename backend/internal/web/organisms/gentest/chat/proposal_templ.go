@@ -182,7 +182,7 @@ func ProposalCard(p Proposal) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</strong>（合計は見積りで、実際の請求は提供元で確認してください）。</p><div class=\"overflow-x-auto\"><table class=\"w-full min-w-max text-left text-sm\" data-testid=\"gtc-lines\"><thead class=\"text-xs text-mute\"><tr><th class=\"py-1 pr-3 font-normal\">モデル</th><th class=\"py-1 pr-3 text-right font-normal\">件数</th><th class=\"py-1 pr-3 text-right font-normal\">単価</th><th class=\"py-1 text-right font-normal\">小計</th></tr></thead> <tbody>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</strong>（合計は見積りで、実際の請求は提供元で確認してください）。</p><div class=\"overflow-x-auto focus-visible:focus-ring\" tabindex=\"0\" role=\"region\" aria-label=\"見積りの内訳\"><table class=\"w-full min-w-max text-left text-sm\" data-testid=\"gtc-lines\"><thead class=\"text-xs text-mute\"><tr><th class=\"py-1 pr-3 font-normal\">モデル</th><th class=\"py-1 pr-3 text-right font-normal\">件数</th><th class=\"py-1 pr-3 text-right font-normal\">単価</th><th class=\"py-1 text-right font-normal\">小計</th></tr></thead> <tbody>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

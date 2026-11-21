@@ -77,7 +77,7 @@ templ EngineCard(e Engine) {
 
 templ installedCard(e Engine) {
 	if e.State == "failed" && e.ProcessError != "" {
-		<pre class="max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-surface p-2 text-xs text-danger" role="alert" data-testid="mm-engine-failure">{ e.ProcessError }</pre>
+		<pre class="max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-surface p-2 text-xs text-danger focus-visible:focus-ring" role="alert" tabindex="0" aria-label={ EngineName + " の失敗内容" } data-testid="mm-engine-failure">{ e.ProcessError }</pre>
 	}
 	@modelcard.Actions() {
 		if e.State == "running" || e.State == "starting" {

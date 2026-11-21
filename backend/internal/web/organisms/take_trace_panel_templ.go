@@ -481,40 +481,40 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "</div><details><summary class=\"cursor-pointer text-xs font-semibold\">Source Shot Spec（Prompt version のスナップショット）</summary><pre class=\"mt-1 overflow-x-auto rounded-md bg-bone p-2 text-xs\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "</div><details><summary class=\"cursor-pointer text-xs font-semibold\">Source Shot Spec（Prompt version のスナップショット）</summary><pre class=\"mt-1 overflow-x-auto rounded-md bg-bone p-2 text-xs focus-visible:focus-ring\" tabindex=\"0\" role=\"region\" aria-label=\"Source Shot Spec\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var28 string
 		templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(prettyJSON(t.PromptVersion.SpecSnapshot))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 106, Col: 110}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 106, Col: 192}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "</pre></details> <details><summary class=\"cursor-pointer text-xs font-semibold\">Model parameters</summary><pre class=\"mt-1 overflow-x-auto rounded-md bg-bone p-2 text-xs\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "</pre></details> <details><summary class=\"cursor-pointer text-xs font-semibold\">Model parameters</summary><pre class=\"mt-1 overflow-x-auto rounded-md bg-bone p-2 text-xs focus-visible:focus-ring\" tabindex=\"0\" role=\"region\" aria-label=\"Model parameters\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var29 string
 		templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(prettyJSON(t.ModelParameters))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 110, Col: 99}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 110, Col: 181}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "</pre></details> <details><summary class=\"cursor-pointer text-xs font-semibold\">Model Adapter output</summary><pre class=\"mt-1 overflow-x-auto rounded-md bg-bone p-2 text-xs\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 48, "</pre></details> <details><summary class=\"cursor-pointer text-xs font-semibold\">Model Adapter output</summary><pre class=\"mt-1 overflow-x-auto rounded-md bg-bone p-2 text-xs focus-visible:focus-ring\" tabindex=\"0\" role=\"region\" aria-label=\"Model Adapter output\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var30 string
 		templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(prettyJSON(t.PromptVersion.AdapterOutput))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 114, Col: 111}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 114, Col: 197}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 		if templ_7745c5c3_Err != nil {
