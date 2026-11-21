@@ -170,7 +170,7 @@ func TestSources_CardsAreRoundedLg(t *testing.T) {
 func TestSources_ButtonLookIsWrittenOnce(t *testing.T) {
 	shape := regexp.MustCompile(`rounded-md[^"` + "`" + `]*font-semibold|font-semibold[^"` + "`" + `]*rounded-md`)
 	main := regexp.MustCompile(`\bbg-accent\b[^"` + "`" + `]*\btext-bone\b`)
-	sub := regexp.MustCompile(`\bborder-border\b[^"` + "`" + `]*\bhover:bg-accent-soft\b`)
+	sub := regexp.MustCompile(`\bborder-border\b[^"` + "`" + `]*\bhover:bg-accent-soft\b|\bborder-border\b[^"` + "`" + `]*\btext-ink\b|\btext-ink\b[^"` + "`" + `]*\bborder-border\b`)
 	for _, path := range colorSources(t) {
 		if strings.HasSuffix(path, ".css") || strings.HasSuffix(path, "atoms/button.templ") || strings.HasSuffix(path, "lib/button.ts") {
 			continue
@@ -249,6 +249,44 @@ func TestSources_TransitionsStopForReducedMotion(t *testing.T) {
 			end := min(n+3, len(lines)) // a class string that runs over lines (lib/button.ts) says it within its next two
 			if !strings.Contains(strings.Join(lines[n:end], "\n"), "motion-reduce:transition-none") {
 				t.Errorf("%s:%d: transition-colors without motion-reduce:transition-none (M3)", path, n+1)
+			}
+		}
+	}
+}
+
+// The look of a text-only button (a LinkButton: --mute text, an underline, Regular, disabled at opacity .4) is written once as well (O7): linkButtonClass in
+// atoms/button.templ for the templates and LINK_BUTTON in components/lib/button.ts for the Lit parts, the same words; a copy in a Lit part (take-table, the
+// timeline) drifts: one had no transition, another no cursor-not-allowed.
+func TestSources_LinkButtonLookIsWrittenOnce(t *testing.T) {
+	templ, err := os.ReadFile("../atoms/button.templ")
+	require.NoError(t, err)
+	ts, err := os.ReadFile("../../../../static/src/components/lib/button.ts")
+	require.NoError(t, err)
+	declared := regexp.MustCompile(`linkButtonClass = "([^"]*)"`).FindStringSubmatch(string(templ))
+	require.NotNil(t, declared, "atoms/button.templ declares linkButtonClass")
+	// LINK_BUTTON is a string of adjacent literals ('a ' + 'b'); the TypeScript says the focus ring where the template relies on tokens.css for it.
+	var lit []string
+	for _, m := range regexp.MustCompile(`'([^']*)'`).FindAllStringSubmatch(string(ts[strings.Index(string(ts), "export const LINK_BUTTON"):]), -1)[:2] {
+		lit = append(lit, strings.TrimSpace(m[1]))
+	}
+	var words []string
+	for _, w := range strings.Fields(strings.Join(lit, " ")) {
+		if w != "focus-visible:focus-ring" {
+			words = append(words, w)
+		}
+	}
+	assert.ElementsMatch(t, strings.Fields(declared[1]), words, "LINK_BUTTON of lib/button.ts is linkButtonClass of atoms/button.templ")
+
+	copied := regexp.MustCompile(`\btext-mute\b[^"'` + "`" + `]*\bunderline\b[^"'` + "`" + `]*\bhover:text-ink\b[^"'` + "`" + `]*\bdisabled:`)
+	for _, path := range colorSources(t) {
+		if strings.HasSuffix(path, ".css") || strings.HasSuffix(path, "atoms/button.templ") || strings.HasSuffix(path, "lib/button.ts") {
+			continue
+		}
+		src, err := os.ReadFile(path)
+		require.NoError(t, err)
+		for n, line := range strings.Split(string(src), "\n") {
+			if copied.MatchString(line) {
+				t.Errorf("%s:%d: the look of a text-only button written by hand: use atoms.LinkButton (templ) or LINK_BUTTON of lib/button.ts (Lit) (O7)", path, n+1)
 			}
 		}
 	}

@@ -12,6 +12,10 @@ const (
 	ToneGhost ButtonTone = "ghost"
 )
 
+// linkButtonClass is the look of a LinkButton that is not the main action: text with a --mute underline, Regular, disabled at opacity .4 (O7). The same string is
+// LINK_BUTTON of static/src/components/lib/button.ts, for the Lit parts (a11y/shape_test.go holds the two together).
+const linkButtonClass = "text-sm text-mute underline transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none"
+
 func buttonClass(tone ButtonTone, small bool) string {
 	// SemiBold, --r-md, disabled at opacity .4; a small button is 32 high and the others 40 (the UI guide, O7).
 	base := "inline-flex items-center justify-center rounded-md font-semibold transition-colors disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none "
@@ -59,7 +63,7 @@ templ LinkButton(tone ButtonTone, label string, attrs templ.Attributes) {
 	if tone == TonePrimary {
 		<button class="text-sm text-accent underline decoration-mute disabled:cursor-not-allowed disabled:opacity-40" { attrs... }>{ label }</button>
 	} else {
-		<button class="text-sm text-mute underline hover:text-ink disabled:cursor-not-allowed disabled:opacity-40" { attrs... }>{ label }</button>
+		<button class={ linkButtonClass } { attrs... }>{ label }</button>
 	}
 }
 
@@ -85,7 +89,7 @@ templ SmallButtonFor(tone ButtonTone, label, subject string, attrs templ.Attribu
 
 // LinkButtonFor is the LinkButton of one row of a list, named after the row like SmallButtonFor.
 templ LinkButtonFor(label, subject string, attrs templ.Attributes) {
-	<button class="text-sm text-mute underline hover:text-ink disabled:cursor-not-allowed disabled:opacity-40" aria-label={ RowLabel(label, subject) } { attrs... }>{ label }</button>
+	<button class={ linkButtonClass } aria-label={ RowLabel(label, subject) } { attrs... }>{ label }</button>
 }
 
 // SmallButtonLinkFor is a link that looks like the SmallButtonFor of one row of a list (the page the row opens): its

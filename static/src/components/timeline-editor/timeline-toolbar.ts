@@ -1,6 +1,6 @@
 import { html, nothing } from 'lit';
 import { BADGE, BADGE_TONE } from '../lib/badge';
-import { BUTTON, BUTTON_TONE } from '../lib/button';
+import { BUTTON, BUTTON_TONE, LINK_BUTTON } from '../lib/button';
 import { isDirty, timelineSeconds, type EditClip } from '../lib/edit-model';
 
 /** What the toolbar under the clips shows and does: the editor owns the save, the reload and their focus. */
@@ -31,7 +31,7 @@ export function renderToolbar(view: ToolbarView) {
     <button
       type="button"
       data-action="revert"
-      class="text-sm text-mute underline transition-colors hover:text-ink disabled:opacity-40 motion-reduce:transition-none focus-visible:focus-ring"
+      class="${LINK_BUTTON}"
       ?disabled=${view.busy || !dirty}
       @click=${() => view.revert()}
     >

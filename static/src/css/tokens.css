@@ -186,7 +186,7 @@
     outline-offset: 2px;
   }
 
-  /* The fill of a native checkbox / radio and the thumb of a native range is --accent, not the browser's own blue (C3). */
+  /* The fill of a native checkbox / radio is --accent, not the browser's own blue (C3). A range is not here: slider.css draws it with appearance: none (accent-color does not reach it). */
   :root {
     accent-color: var(--accent);
   }

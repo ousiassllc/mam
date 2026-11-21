@@ -23,7 +23,7 @@
 | 主ボタンの `bg-accent` | `atoms.TonePrimary` の実ボタン専用 | カードの見た目に使わない（カードはリンクであってボタンではない） |
 | 状態 | `atoms.Badge`（neutral / info / warn / ok / error）と文字。**色だけで伝えない**（#790・#795） | §2 の対応表 |
 | カードの枠 | `border-border` は飾り。カードはタイトルの文字とフォーカスの輪で見分ける | 入力欄の枠のコントラスト（`field_border_test`）の対象ではない |
-| スライダー（`input[type=range]`。#955） | アプリの**すべて**のスライダーが `static/src/css/slider.css` の共通の見た目（レール 6px・つまみ 16px の丸。塗り `--accent`・残り `--accent-soft`・つまみ `--surface` に `--border` 1px の縁）。`focus-visible`（`--focus` の輪）・無効（`--mute`）を持つ。色は [color-rules.md](color-rules.md) §4.1。値は `<output>` を横（参照画像・LoRA の強さ）か上（プロンプトマッチの目標）に置く（動画の再生位置は、下のタイムコードが値） | 要素は `<input type=range>` のまま（矢印キー・ドラッグ・範囲・刻み・初期値は変えない）。WebKit にレールの塗りの疑似要素が無いので、塗りは `--fill`（`components/slider/slider.ts` が値から書く。Lit は `sliderStyle()`）と `linear-gradient` で描く。新しいスライダーは class で見た目を足さず、幅・並べ方だけ書く |
+| スライダー（`input[type=range]`。#955） | アプリの**すべて**のスライダーが `static/src/css/slider.css` の共通の見た目（レール 4px・つまみ 16px の丸（6px は進捗バー O12 の高さで、スライダーではない）。塗り `--accent`・残り `--accent-soft`・つまみ `--surface` に `--border` 1px の縁）。`focus-visible`（`--focus` の輪）・無効（`--mute`）を持つ。色は [color-rules.md](color-rules.md) §4.1。値は `<output>` を横（参照画像・LoRA の強さ）か上（プロンプトマッチの目標）に置く（動画の再生位置は、下のタイムコードが値） | 要素は `<input type=range>` のまま（矢印キー・ドラッグ・範囲・刻み・初期値は変えない）。WebKit にレールの塗りの疑似要素が無いので、塗りは `--fill`（`components/slider/slider.ts` が値から書く。Lit は `sliderStyle()`）と `linear-gradient` で描く。新しいスライダーは class で見た目を足さず、幅・並べ方だけ書く |
 | 進捗バー（`<progress>`。ガイド O12） | アプリの**すべて**の `<progress>` が `static/src/css/progress.css` の共通の見た目（高さ 6px・角丸 full・レール `--accent-soft`・塗り `--accent`。ブラウザ標準の青い塗り・枠は `appearance: none` で消す）。`aria-label` で名前を付ける。Windows のハイコントラストはシステムの色（`Highlight`・`GrayText`）。予算のメーターだけ、塗りが状態色（[color-rules.md](color-rules.md) §4 の承認済みの例外）。Lit の独自の帯（動画プレイヤーの読み込み）も高さ 6px・角丸 full・`role="progressbar"` と `aria-valuenow` | 値のない（不明な）作業にはバーを出さない（[jobs-screen.md](jobs-screen.md)） |
 
 ### 文字（Issue #1037）
@@ -311,6 +311,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.38 | 2026-11-22 | §1 の角丸の行に、選ぶ枠（`pick.Card`）は角を持たず呼び出しが `rounded-md`（チップ）か `rounded-lg`（カード）を決めると書いた。参照画像の行・画像のドロップ領域・動画の生成中プレースホルダと再生失敗の枠を `rounded-lg` にした。検査 `TestSources_CardsAreRoundedLg`（`a11y/shape_test.go`）を足した | #1197: 形・余白・線（S）の指摘 |
 | 0.39 | 2026-11-22 | §2 のアイコン一覧に `IconPlus`（Iconoir の `plus`）を足し、戻るリンクの矢印（`←`）とチャットの添付の `＋` を文字でなく Icon にした。`BackLink` のラベルは矢印抜きの言葉だけ | #1198: アイコン（I）の指摘 |
 | 0.40 | 2026-11-22 | §1 のリップルの行に、ボタンの外見の `<label>`・`<a>`（ファイル選択・ページ送り）にも `data-ripple` を付けると書いた。LOCK 切替・左メニューの `transition-colors` に `motion-reduce:transition-none` を揃え、検査 `TestSources_ButtonLookedElementsHaveTheRipple`・`TestSources_TransitionsStopForReducedMotion` を足した | #1199: モーション（M）の指摘 |
+| 0.41 | 2026-11-22 | §1 のスライダーの行のレールを 6px から 4px に直した（`slider.css` の `--rail: 0.25rem` とガイド O11 が正で、6px は進捗バー O12 の値）。テキストだけのボタン（`atoms.LinkButton`）の見た目を `linkButtonClass`（atoms）と `LINK_BUTTON`（`lib/button.ts`）の 1 か所にし、Lit の複製 4 か所と絞り込みボタンを置き換えた。検査 `TestSources_LinkButtonLookIsWrittenOnce`（`a11y/shape_test.go`）を足し、`TestSources_ButtonLookIsWrittenOnce` の手書きサブボタンの検出を `hover:` 抜きに広げた | #1200: 部品・オーバーレイ（O）の指摘 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 
