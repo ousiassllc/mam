@@ -1,6 +1,7 @@
 package a11y_test
 
 import (
+	"fmt"
 	"os"
 	"regexp"
 	"strings"
@@ -171,6 +172,61 @@ func TestSources_HeaderRowOfATableIsSemiBold(t *testing.T) {
 					t.Errorf("%s:%d: %s: a header of a column is font-semibold (T2); only a row head (scope=\"row\") is Regular", path, n+1, tag)
 				}
 			}
+		}
+	}
+}
+
+// smallInherited lists the elements of a tree that are 12px (text-xs) because an ancestor says so, or by their own class, and are a text to read (T3): a
+// list, a field the user types or picks into, a button, a warning or an error, and a paragraph of two sentences or more. A class check of the element's own
+// tag misses the child that takes its parent's size: <label class="text-xs"><input type="file"></label> is a 12px field.
+func smallInherited(root *muteNode) []string {
+	var found []string
+	var walk func(n *muteNode)
+	walk = func(n *muteNode) {
+		if n.tag != "" && n.size() == "text-xs" {
+			at := fmt.Sprintf("%d %q", n.line, short(n.ownText()))
+			switch {
+			case n.tag == "button" && !n.hasLetters():
+				// an icon-only button has no text to set in a size
+			case n.tag == "ul" || n.tag == "ol" || n.tag == "li" || n.tag == "select" || n.tag == "textarea" || n.tag == "button":
+				found = append(found, fmt.Sprintf("line %s <%s> is 12px (text-xs, own or inherited): a list, a field and a button are text-sm or larger (T3)", at, n.tag))
+			case n.tag == "input" && n.typesText():
+				found = append(found, fmt.Sprintf("line %s <input> is 12px (text-xs, own or inherited): a field is text-sm or larger (T3)", at))
+			case (n.tag == "p" || n.tag == "pre" || n.tag == "dd") && n.alert():
+				found = append(found, fmt.Sprintf("line %s <%s> is a warning or an error in 12px (text-xs, own or inherited): text-sm or larger (T3)", at, n.tag))
+			case n.tag == "p" && sentences(n.ownText()) >= 2:
+				found = append(found, fmt.Sprintf("line %s <p> of %d sentences is 12px (text-xs, own or inherited): a note of one sentence is text-xs, a text to read is text-sm (T3)", at, sentences(n.ownText())))
+			}
+		}
+		for _, k := range n.kids {
+			walk(k)
+		}
+	}
+	walk(root)
+	return found
+}
+
+// The 12px of a parent is the 12px of its children (T3): the size a text is set in is the nearest text-xs / text-sm / ... on it or above it, not only its own class.
+func TestSources_TextToReadIsNot12pxByInheritance(t *testing.T) {
+	for _, path := range colorSources(t) {
+		if strings.HasSuffix(path, ".css") || strings.HasSuffix(path, ".go") {
+			continue
+		}
+		src, err := os.ReadFile(path)
+		require.NoError(t, err)
+		for _, found := range smallInherited(parseSource(string(src))) {
+			t.Errorf("%s: %s", path, found)
+		}
+	}
+}
+
+// The same on what the screens render: a text that comes from a Go constant or a catalog is as long as it is, and a component's class is what it is on the screen.
+func TestRendered_TextToReadIsNot12px(t *testing.T) {
+	for name, page := range renderedScreens(t) {
+		root, err := parseRendered(page)
+		require.NoError(t, err)
+		for _, found := range smallInherited(root) {
+			t.Errorf("%s: %s", name, found)
 		}
 	}
 }

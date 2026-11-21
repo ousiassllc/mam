@@ -33,13 +33,13 @@ func hasCheckpoint(p domain.Project, c domain.Checkpoint) bool {
 templ ConfirmationControl(p domain.Project) {
 	<form
 		id="confirmation-control"
-		class="flex flex-wrap items-center gap-2 text-xs"
+		class="flex flex-wrap items-center gap-2"
 		hx-put={ paths.Project(p.ID, "confirmation-level") }
 		hx-trigger="change"
 		hx-target="this"
 		hx-swap="outerHTML"
 	>
-		<label for="confirmation-level" class="text-mute">確認レベル</label>
+		<label for="confirmation-level" class="text-xs text-mute">確認レベル</label>
 		@atoms.Select(atoms.FieldMd, "", templ.Attributes{
 			"id":   "confirmation-level",
 			"name": "level",
@@ -59,7 +59,7 @@ templ ConfirmationControl(p domain.Project) {
 			</fieldset>
 		}
 		if p.Mode == domain.ModeAuto {
-			<p class="basis-full text-ink" data-testid="auto-start-level-notice">{ mainline.AutoStartAtAnyLevel }</p>
+			<p class="basis-full text-sm text-ink" data-testid="auto-start-level-notice">{ mainline.AutoStartAtAnyLevel }</p>
 		}
 	</form>
 }

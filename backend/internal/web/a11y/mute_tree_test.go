@@ -14,6 +14,7 @@ import (
 type muteNode struct {
 	tag     string
 	classes map[string]bool
+	attr    map[string]string
 	text    string
 	line    int
 	parent  *muteNode
@@ -33,6 +34,58 @@ func (n *muteNode) muted() bool {
 		}
 		for c := range e.classes {
 			if textColors[c] {
+				return false
+			}
+		}
+	}
+	return false
+}
+
+// sizeClasses are the classes that set the size of a text; the nearest one on an element or its ancestors is the size the element is set in (font-size is inherited).
+var sizeClasses = map[string]bool{"text-xs": true, "text-sm": true, "text-base": true, "text-lg": true, "text-xl": true, "text-2xl": true, "text-3xl": true}
+
+// size is the size class n is set in: its own, or the nearest ancestor's ("" when none says: the body's 16px).
+func (n *muteNode) size() string {
+	for e := n; e != nil; e = e.parent {
+		for c := range e.classes {
+			if sizeClasses[c] {
+				return c
+			}
+		}
+	}
+	return ""
+}
+
+// hasLetters says whether n says a word anywhere below it (an icon-only button does not).
+func (n *muteNode) hasLetters() bool {
+	if strings.IndexFunc(n.text, unicode.IsLetter) >= 0 {
+		return true
+	}
+	for _, k := range n.kids {
+		if k.hasLetters() {
+			return true
+		}
+	}
+	return false
+}
+
+// typesText says whether an <input> shows text the user types or picks: not a hidden field, a slider, a checkbox or a radio (no font-size to speak of).
+func (n *muteNode) typesText() bool {
+	switch n.attr["type"] {
+	case "hidden", "range", "checkbox", "radio", "color":
+		return false
+	}
+	return true
+}
+
+// alert is the colour of a warning or an error the text is set in: its own, or the nearest ancestor's.
+func (n *muteNode) alert() bool {
+	for e := n; e != nil; e = e.parent {
+		for c := range e.classes {
+			if c == "text-warning" || c == "text-danger" {
+				return true
+			}
+			if textColors[c] || c == "text-mute" {
 				return false
 			}
 		}
@@ -131,8 +184,9 @@ func parseRendered(src string) (*muteNode, error) {
 				if c.Data == "script" || c.Data == "style" || c.Data == "template" || c.Data == "option" || c.Data == "svg" {
 					continue
 				}
-				e := &muteNode{tag: c.Data, classes: map[string]bool{}, parent: parent}
+				e := &muteNode{tag: c.Data, classes: map[string]bool{}, attr: map[string]string{}, parent: parent}
 				for _, a := range c.Attr {
+					e.attr[a.Key] = a.Val
 					if a.Key == "class" {
 						for _, w := range strings.Fields(a.Val) {
 							e.classes[w] = true
@@ -191,6 +245,17 @@ func classesOf(attrs string) map[string]bool {
 	return set
 }
 
+var typeAttr = regexp.MustCompile(`\btype="([^"]*)"`)
+
+// attrsOf reads the attributes a check needs (type) from a tag's attributes.
+func attrsOf(attrs string) map[string]string {
+	set := map[string]string{}
+	if m := typeAttr.FindStringSubmatch(attrs); m != nil {
+		set["type"] = m[1]
+	}
+	return set
+}
+
 // withoutComponentCalls drops the `@pkg.Component(...)` calls of a templ file (their arguments are Go, not text) but not the `{ ... }` block that may follow them.
 func withoutComponentCalls(src string) string {
 	var sb strings.Builder
@@ -216,6 +281,7 @@ func withoutComponentCalls(src string) string {
 				}
 			}
 		}
+		sb.WriteString(strings.Repeat("\n", strings.Count(src[loc[0]:i], "\n"))) // the lines stay where they were
 		src = src[i:]
 	}
 }
@@ -249,7 +315,7 @@ func parseSource(src string) *muteNode {
 				}
 			}
 		default:
-			e := &muteNode{tag: tag, classes: classesOf(attrs), parent: cur, line: strings.Count(src[:m[0]], "\n") + 1}
+			e := &muteNode{tag: tag, classes: classesOf(attrs), attr: attrsOf(attrs), parent: cur, line: strings.Count(src[:m[0]], "\n") + 1}
 			cur.kids = append(cur.kids, e)
 			if !selfClosing && !voidTags[tag] {
 				cur = e

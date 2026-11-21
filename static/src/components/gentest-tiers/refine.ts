@@ -6,6 +6,7 @@
  * The rules are in refine-model.ts. The listeners are on the document: the form may arrive in a swapped body.
  */
 
+import { BUTTON, BUTTON_TONE } from '../lib/button';
 import { changed, changedItems, droppedKeys, line, resetLabel, type Item } from './refine-model';
 
 const ROOT = '[data-gt-refine]';
@@ -214,7 +215,8 @@ function row(item: Item): HTMLElement {
   const button = document.createElement('button');
   button.type = 'button';
   button.dataset.gtReset = item.key;
-  button.className = 'rounded-md border border-border px-2 py-1 text-ink hover:bg-accent-soft';
+  button.className = `${BUTTON} ${BUTTON_TONE.neutral}`;
+  button.dataset.ripple = '';
   button.textContent = '元に戻す';
   button.setAttribute('aria-label', resetLabel(item));
   li.append(text, button);

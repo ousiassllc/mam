@@ -50,7 +50,7 @@ function renderRow(t: TakeScore, minAxis: number, actions: TakeActions) {
       <span class="${BADGE} ${STATUS_CLASS[t.status]}" data-status=${t.status}>${t.status_label}</span>
       ${t.verdict ? html`<span class="ml-1 text-xs text-mute">${t.verdict.toUpperCase()}</span>` : nothing}
     </td>
-    <td class="px-2 py-2 text-xs">
+    <td class="px-2 py-2">
       ${
         t.select_url || t.reject_url
           ? html`<span class="flex gap-3">

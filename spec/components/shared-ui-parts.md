@@ -33,7 +33,7 @@
 | 項目 | 決まり |
 |------|--------|
 | フォント（T1） | 英字・UI・日本語は `font-sans`（Sora → Noto Sans JP）、コードと桁を揃える数値は `font-mono`（JetBrains Mono）。いずれも SIL OFL。`static/fonts.mjs` が `@fontsource-variable/*` から `dist/fonts.css` と `dist/fonts/*.woff2` を作り、レイアウトが `paths.StaticFontsCSS` を読む（ネットワークからは取らない）。ライセンス全文は `THIRD_PARTY_NOTICES.md` |
-| サイズ（T3） | `text-xs` 12 · `text-sm` 14 · `text-base` 16 · `text-lg` 18 · `text-xl` 24（h3）· `text-2xl` 32（h2）· `text-3xl` 40（h1）。Tailwind の既定の大きさ（20・30・36）は無効。本文（文章として読ませる `<p>`・表の本体・一覧（`ul` / `ol` / `li`）・警告とエラーの文（`text-warning` / `text-danger`）・入力欄（`input` / `select` / `textarea`。`type=file` と Lit の入力も）・リンク型ボタンの文字）は `text-sm` 以上、`text-xs` は 1 文の注記・バッジ・表の見出し・`dt` のラベルだけ。**2 文以上の `<p>` は `text-xs` にしない**（`a11y/typography_test.go` の `TestSources_TextToReadIsAtLeast14px` が検査） |
+| サイズ（T3） | `text-xs` 12 · `text-sm` 14 · `text-base` 16 · `text-lg` 18 · `text-xl` 24（h3）· `text-2xl` 32（h2）· `text-3xl` 40（h1）。Tailwind の既定の大きさ（20・30・36）は無効。本文（文章として読ませる `<p>`・表の本体・一覧（`ul` / `ol` / `li`）・警告とエラーの文（`text-warning` / `text-danger`）・入力欄（`input` / `select` / `textarea`。`type=file` と Lit の入力も）・リンク型ボタンの文字）は `text-sm` 以上、`text-xs` は 1 文の注記・バッジ・表の見出し・`dt` のラベルだけ。**2 文以上の `<p>` は `text-xs` にしない**。**`text-xs` は子に継承される**ので、`text-xs` の外枠（`div` / `label` / `details` / `form`）の中に本文・入力欄・警告・ボタンを置かない（外枠から外し、短い注記・ラベルにだけ個別に付ける）（`a11y/typography_test.go` の `TestSources_TextToReadIsAtLeast14px`・`TestSources_TextToReadIsNot12pxByInheritance`・`TestRendered_TextToReadIsNot12px` が検査。後の 2 つは祖先の `text-xs` と描画した HTML を見る） |
 | 行間（T4） | サイズごとに `xs` 1.6 · `sm` 1.7 · `base` 1.8 · `lg` 1.7 · `xl` 1.5 · `2xl` 1.4 · `3xl` 1.3。`body` は 16px・1.8 |
 | ウェイト（T2） | Regular（400）と SemiBold（600）の 2 段だけ。SemiBold は見出し（`h1`〜`h4`）・ボタン・`<summary>`・表の見出し行だけ。ナビ・リンク・ラベル・数値には付けない（現在地は色と背景で示す）。`font-medium` は使わない |
 | 数値（T5） | 桁を揃える数値（金額・容量）は `font-mono tabular-nums`、表の数値列は右寄せ（件数・実績・日時の列も `font-mono tabular-nums`。日時は左寄せのままでよい）。表の見出し行（列の見出し `<th scope="col">` すべて）は `text-xs font-semibold text-mute`（`font-normal` にしない。`TestSources_HeaderRowOfATableIsSemiBold`）、行の見出し（`<th scope="row">`）と `<legend>` は Regular（`font-normal`） |
@@ -306,6 +306,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.34 | 2026-11-22 | §1 の文字の行に、一覧（ul / ol / li）・警告とエラーの文・入力欄（file と Lit の入力も）・2 文以上の `<p>` を `text-sm` 以上と書き、列の見出し `<th>` を `font-semibold` にそろえ、件数・日時の列を `font-mono tabular-nums` にした。`a11y/typography_test` に 2 つの検査を足した | #1192: タイポグラフィ（T）の指摘 |
 | 0.35 | 2026-11-22 | §1 の角丸の行に、画面に単独で置く枠付きの一覧・フォーム・パネルは `rounded-lg` と明記した（プロジェクト一覧・取り込みフォーム・LoRA のファイル情報・Codex エンジン・ChatGPT ログインの案内・ffmpeg のダウンロードを `rounded-md` から直した）。`a11y/shape_test` に検査を足した | #1193: 形・余白・線（S）の指摘 |
 | 0.36 | 2026-11-22 | O1: スクラムは押し始めもスクラム上のときだけ閉じる。モデルピッカーの閉じるボタンを `sticky` の箱に。O3: 接続通知の位置・幅・折り返し。O7: リンク・リンク型ボタンの下線色を `tokens.css` の `:where(a, button).underline` の 1 か所に（`--mute`）、手書きのボタンの class を `atoms.ButtonClass`・`lib/button.ts` に寄せた。O12: 更新ボタンの待ち中は `atoms.Spinner`、動画のプレースホルダの進捗の塗りは `bg-accent` | #1194: 部品・オーバーレイ（O）の指摘 |
+| 0.37 | 2026-11-22 | §1 の文字の行に、`text-xs` は子に継承されるので外枠に付けず個別に付けると書き、検査を祖先の `text-xs` と描画結果まで広げた（`a11y/typography_test.go`）。ポーズ選択・音声の設定・接続テスト・AUTO の注記・重みバーの警告・こだわりの「元に戻す」（`lib/button.ts` の `BUTTON`）などを 14px 以上にした | #1196: タイポグラフィ（T）の指摘 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 

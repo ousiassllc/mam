@@ -609,7 +609,7 @@ func promptFields(c Compose) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			for _, r := range c.Recent {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<li class=\"flex items-start justify-between gap-2 rounded-lg border border-border p-2\"><span class=\"whitespace-pre-wrap break-words text-xs text-ink\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<li class=\"flex items-start justify-between gap-2 rounded-lg border border-border p-2\"><span class=\"whitespace-pre-wrap break-words text-sm text-ink\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
