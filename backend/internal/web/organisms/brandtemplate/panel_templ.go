@@ -455,7 +455,7 @@ func brandTemplateForm(d Data, oob bool) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<p class=\"text-sm text-mute\">保存するのは現在の制約のコピーです。以後この Project の制約を変えてもテンプレートは変わらず、テンプレートを削除しても適用済みの Project には影響しません。</p><div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "<p class=\"text-sm text-ink\">保存するのは現在の制約のコピーです。以後この Project の制約を変えてもテンプレートは変わらず、テンプレートを削除しても適用済みの Project には影響しません。</p><div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

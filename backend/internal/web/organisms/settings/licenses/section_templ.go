@@ -147,14 +147,14 @@ func item(it Item) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" hx-trigger=\"toggle once\" hx-target=\"find [data-license-text]\" hx-swap=\"innerHTML\"><summary class=\"cursor-pointer break-words rounded-lg px-3 py-2 text-sm text-ink hover:bg-accent-soft/60 focus-visible:focus-ring motion-reduce:transition-none\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" hx-trigger=\"toggle once\" hx-target=\"find [data-license-text]\" hx-swap=\"innerHTML\"><summary class=\"cursor-pointer break-words rounded-lg px-3 py-2 text-sm text-ink hover:bg-accent-soft focus-visible:focus-ring motion-reduce:transition-none\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(it.Title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/licenses/section.templ`, Line: 32, Col: 174}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/licenses/section.templ`, Line: 32, Col: 171}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 		if templ_7745c5c3_Err != nil {

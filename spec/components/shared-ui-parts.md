@@ -18,7 +18,7 @@
 | 主要な文字 | `text-ink` | |
 | アイコンの色 | `text-accent`（インク色） | 飾りなので 1.4.11 の対象外だが、見える色にしておく |
 | フォーカスの輪 | `focus-visible:focus-ring`（`tokens.css` の `@utility`。`outline: 2px solid var(--focus)` + `outline-offset: 2px`。`--focus` はライト `#4a72d0`・ダーク `#60a5fa`） | `peer-focus-visible:focus-ring`（チャットの添付）も同じ。輪は `outline` なので Windows のハイコントラスト（`forced-colors`）でも描かれ、`ring-*` の影の輪は使わない。輪を出さない見出しなどは `focus-visible:outline-none` |
-| ホバー | `hover:border-mute hover:bg-accent-soft/60` | 見た目の補助。ホバーだけに意味を持たせない |
+| ホバー | `hover:border-mute hover:bg-accent-soft` | 見た目の補助。ホバーだけに意味を持たせない |
 | 動き | 色・背景の `transition-colors`（`--motion-base` 180ms・`--ease-out`）と `motion-reduce:transition-none`。拡大・移動・アニメーションは使わない。例外は下の「動き（#1040）」 | #797（`prefers-reduced-motion`）。スピナーは処理中表示なので、reduced-motion でも回す（#1040） |
 | 主ボタンの `bg-accent` | `atoms.TonePrimary` の実ボタン専用 | カードの見た目に使わない（カードはリンクであってボタンではない） |
 | 状態 | `atoms.Badge`（neutral / info / warn / ok / error）と文字。**色だけで伝えない**（#790・#795） | §2 の対応表 |

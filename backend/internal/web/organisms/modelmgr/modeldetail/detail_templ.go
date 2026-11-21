@@ -1046,7 +1046,7 @@ func ExternalDetail(endpoint string, m view.ExternalModel) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 88, " <p class=\"text-sm text-mute\">外部の ComfyUI へのモデルの導入は、その ComfyUI の側で行ってください（Nefos Video は読むだけです）。そろっているモデルは、接続先にワークフローを登録すると使えます。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 88, " <p class=\"text-sm text-ink\">外部の ComfyUI へのモデルの導入は、その ComfyUI の側で行ってください（Nefos Video は読むだけです）。そろっているモデルは、接続先にワークフローを登録すると使えます。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

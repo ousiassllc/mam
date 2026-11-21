@@ -210,7 +210,7 @@ func ToolCardItem(c ToolCard) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\" class=\"flex h-full min-h-36 flex-col gap-3 rounded-lg border border-border bg-surface p-4 transition-colors hover:border-mute hover:bg-accent-soft/60 focus-visible:focus-ring motion-reduce:transition-none\"><span class=\"flex items-center gap-3\"><span class=\"flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent\" aria-hidden=\"true\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\" class=\"flex h-full min-h-36 flex-col gap-3 rounded-lg border border-border bg-surface p-4 transition-colors hover:border-mute hover:bg-accent-soft focus-visible:focus-ring motion-reduce:transition-none\"><span class=\"flex items-center gap-3\"><span class=\"flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent\" aria-hidden=\"true\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

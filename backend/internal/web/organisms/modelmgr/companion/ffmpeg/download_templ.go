@@ -382,7 +382,7 @@ func DownloadPanel(d Download) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-params=\"none\" hx-disabled-elt=\"find button[type=submit]\"><p class=\"mb-2 text-sm text-mute\" data-testid=\"ffmpeg-download-about\">ffmpeg と ffprobe（")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-params=\"none\" hx-disabled-elt=\"find button[type=submit]\"><p class=\"mb-2 text-sm text-ink\" data-testid=\"ffmpeg-download-about\">ffmpeg と ffprobe（")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

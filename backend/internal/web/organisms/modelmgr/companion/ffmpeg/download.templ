@@ -76,7 +76,7 @@ templ DownloadPanel(d Download) {
 			}
 			if !d.Installed || d.UpdateAvailable {
 				<form hx-post={ paths.FFmpegDownload() } hx-target={ "#" + DownloadID } hx-swap="outerHTML" hx-sync="this:drop" hx-params="none" hx-disabled-elt="find button[type=submit]">
-					<p class="mb-2 text-sm text-mute" data-testid="ffmpeg-download-about">
+					<p class="mb-2 text-sm text-ink" data-testid="ffmpeg-download-about">
 						ffmpeg と ffprobe（{ d.Build }）を、配布元（{ d.Publisher }）からダウンロードします。約 { megabytes(d.DownloadBytes) } MB。展開後は約 { megabytes(d.ExtractedBytes) } MB。
 						ダウンロードしたファイルは、Nefos Video に固定してある SHA-256 と一致したときだけ使います（一致しなければ削除します）。
 						ライセンスは <a class="underline" href={ templ.SafeURL(d.LicenseURL) } target="_blank" rel="noopener noreferrer">{ d.License }</a>、

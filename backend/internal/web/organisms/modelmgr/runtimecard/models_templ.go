@@ -95,7 +95,7 @@ func RuntimeModels(r Runtime) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"text-sm text-mute\">選ぶとサーバーを止めます。次に起動するときから、選んだモデルで動きます。そのモデルの重みは、カードの「重みを導入」で取得してください。</p><div class=\"flex gap-2\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"text-sm text-ink\">選ぶとサーバーを止めます。次に起動するときから、選んだモデルで動きます。そのモデルの重みは、カードの「重みを導入」で取得してください。</p><div class=\"flex gap-2\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

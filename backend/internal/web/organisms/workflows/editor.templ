@@ -24,7 +24,7 @@ templ editor(e Editor) {
 		data-testid="workflow-editor-form"
 	>
 		<h3 class="text-sm font-semibold">ワークフロー「{ e.Name }」を編集（現在 v{ itoa(e.Version) }）</h3>
-		<p class="text-sm text-mute">グラフか入力の割り当てを変えて保存すると、版が上がります（v{ itoa(e.Version + 1) }）。過去の Take は、作ったときの版の識別子を残します。名前や接続先だけの変更では版は上がりません。</p>
+		<p class="text-sm text-ink">グラフか入力の割り当てを変えて保存すると、版が上がります（v{ itoa(e.Version + 1) }）。過去の Take は、作ったときの版の識別子を残します。名前や接続先だけの変更では版は上がりません。</p>
 		if e.Error != "" {
 			<p class="text-sm text-danger" role="alert" data-testid="workflow-form-error">{ e.Error }</p>
 		}
@@ -41,7 +41,7 @@ templ editor(e Editor) {
 		</div>
 		<fieldset class="flex flex-col gap-2" data-testid="workflow-assignments">
 			<legend class="text-sm">入力の割り当て</legend>
-			<p class="text-sm text-mute">Nefos Video の値を、ワークフローのどのノードのどの入力に入れるかを選びます（ノードの一覧は、このワークフローの API 形式のグラフから作っています）。他のノードがつないでいる入力は選べません。Prompt は必須です。</p>
+			<p class="text-sm text-ink">Nefos Video の値を、ワークフローのどのノードのどの入力に入れるかを選びます（ノードの一覧は、このワークフローの API 形式のグラフから作っています）。他のノードがつないでいる入力は選べません。Prompt は必須です。</p>
 			<table class="w-full text-sm">
 				<tbody>
 					for _, s := range e.Slots {

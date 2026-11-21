@@ -221,7 +221,7 @@ func progress(f Frame) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" class=\"inline-block rounded-md border border-transparent px-2 py-1 text-ink hover:bg-accent-soft/60 hover:text-ink focus-visible:focus-ring\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" class=\"inline-block rounded-md border border-transparent px-2 py-1 text-ink hover:bg-accent-soft hover:text-ink focus-visible:focus-ring\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

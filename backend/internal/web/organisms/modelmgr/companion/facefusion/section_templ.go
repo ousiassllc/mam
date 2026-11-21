@@ -260,14 +260,14 @@ func Section(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if len(d.SearchDirs) > 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<p class=\"text-sm text-mute\" data-testid=\"facefusion-search-dirs\">フォルダを空にしたときの探し方: ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<p class=\"text-sm text-ink\" data-testid=\"facefusion-search-dirs\">フォルダを空にしたときの探し方: ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var11 string
 				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(joinDirs(d.SearchDirs))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/companion/facefusion/section.templ`, Line: 55, Col: 141}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/companion/facefusion/section.templ`, Line: 55, Col: 140}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 				if templ_7745c5c3_Err != nil {
@@ -662,7 +662,7 @@ func installSteps(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "><summary class=\"cursor-pointer text-sm font-semibold text-ink\">FaceFusion の入れ方</summary><div class=\"mt-2 flex flex-col gap-3 text-sm\"><p class=\"text-mute\">Nefos Video は FaceFusion を取得しません（OpenRAIL-AS。条文は利用者が読みます）。公式の手順を、ここに写しています。Windows・Linux・macOS のアクセラレーターの準備は、 <a class=\"underline\" href=\"https://docs.facefusion.io/installation\" target=\"_blank\" rel=\"noopener noreferrer\">公式のページ</a>の手順に従ってください。</p><ol class=\"flex list-decimal flex-col gap-3 pl-5\"><li class=\"flex flex-col gap-1\"><span>conda を入れて、端末で使えるようにします。</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 61, "><summary class=\"cursor-pointer text-sm font-semibold text-ink\">FaceFusion の入れ方</summary><div class=\"mt-2 flex flex-col gap-3 text-sm\"><p class=\"text-ink\">Nefos Video は FaceFusion を取得しません（OpenRAIL-AS。条文は利用者が読みます）。公式の手順を、ここに写しています。Windows・Linux・macOS のアクセラレーターの準備は、 <a class=\"underline\" href=\"https://docs.facefusion.io/installation\" target=\"_blank\" rel=\"noopener noreferrer\">公式のページ</a>の手順に従ってください。</p><ol class=\"flex list-decimal flex-col gap-3 pl-5\"><li class=\"flex flex-col gap-1\"><span>conda を入れて、端末で使えるようにします。</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -747,7 +747,7 @@ func installSteps(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "</li></ol><p class=\"text-mute\">入れたら、上の「もう一度探す」を押してください。Python の欄の例は conda の環境 <code>facefusion</code> の <code>python</code>、フォルダの欄の例は <code>git clone</code> したフォルダです。</p></div></details>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "</li></ol><p class=\"text-ink\">入れたら、上の「もう一度探す」を押してください。Python の欄の例は conda の環境 <code>facefusion</code> の <code>python</code>、フォルダの欄の例は <code>git clone</code> したフォルダです。</p></div></details>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

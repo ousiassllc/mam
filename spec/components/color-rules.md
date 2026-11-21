@@ -6,14 +6,14 @@
 
 ## 1. 方針
 
-- **色は Ousiass 共通デザインガイド（brand-guide `622ea73`）のトークンだけ。** `static/src/css/tokens.css` が唯一の「値を書く場所」で、`--ink` `--bone` `--mute` `--surface` `--border` `--accent` `--accent-soft` `--focus` と状態色 `--success` `--warning` `--danger` `--info` を、ライト（`:root`）とダーク（`:root[data-theme="dark"]`）の両方で定義する。写真の上に重ねる塗りだけは、写真が下地でテーマの面ではないので、テーマで変わらない専用のトークン `--overlay-deep`・`--overlay-pale` を `:root` に 1 組だけ持つ（§4.2）。Tailwind 4 の `@theme inline` が `--color-*: initial` で既定のパレットを消し、トークンを `bg-bone` `text-ink` `border-border` のクラスにする。**`bg-neutral-900` や `text-indigo-300` のような既定パレットのクラスは、コンパイルされず、テストも落とす。**
+- **色は Ousiass 共通デザインガイド（brand-guide `5d816f8`）のトークンだけ。** `static/src/css/tokens.css` が唯一の「値を書く場所」で、`--ink` `--bone` `--mute` `--surface` `--border` `--accent` `--accent-soft` `--focus` と状態色 `--success` `--warning` `--danger` `--info` を、ライト（`:root`）とダーク（`:root[data-theme="dark"]`）の両方で定義する。写真の上に重ねる塗りだけは、写真が下地でテーマの面ではないので、テーマで変わらない専用のトークン `--overlay-deep`・`--overlay-pale` を `:root` に 1 組だけ持つ（§4.2）。Tailwind 4 の `@theme inline` が `--color-*: initial` で既定のパレットを消し、トークンを `bg-bone` `text-ink` `border-border` のクラスにする。**`bg-neutral-900` や `text-indigo-300` のような既定パレットのクラスは、コンパイルされず、テストも落とす。**
 - **ライト / ダークの切り替え**: `<html data-theme="light|dark">`（左メニューのテーマボタンが `mam_theme` クッキーと `data-theme` を書き、サーバーが次のページを同じテーマで描く。`backend/internal/web/themestate`）。クッキーが無いときは OS の設定（`prefers-color-scheme`）に従う。クラスに `dark:` は付けない（トークンが切り替わる）。
 - 意味は色相でなく**トークン**で決める: **危険 = `danger`・警告 = `warning`・成功 = `success`・情報／進行中 = `info`・主アクション／リンク／選択 = `accent`（インク色）・それ以外 = `ink` / `mute` / `border` / `surface` / `bone`**。状態色は彩度を落とした無彩色寄りで、色だけで意味を伝えない（文言とアイコン `atoms.Icon` を添える）。
 - **同じ意味に新しいクラスや `/opacity` を足さない。** 枠は `-/40`、地は `/10`（ガイドの状態色は文字・枠 40%・地 10%）。足したいときは、画面のクラスを変えるのでなく、この文書の表を変える（テストの `colorAllowlist` も同じ版で変える）。
 - プリズム（`--prism-*`）はロゴ・ヒーロー・キービジュアル専用で、UI のクラスに使わない。フォーカスだけが `--focus`（プリズムの blue を薄く借りる）を使う。
 - コントラストは `a11y/contrast_test.go`（補助の文字に `text-neutral-500` を使わない）と `a11y/field_border_test.go`（入力欄の枠は、ライト・ダークのどちらでも面に対して 3:1 以上）が守る。
 - 共通部品が表の正: 色は `atoms.Badge`（`BadgeNeutral`・`BadgeInfo`・`BadgeWarn`・`BadgeOK`・`BadgeError`）と `atoms.Button`（`TonePrimary`・`ToneDanger`・`ToneNeutral`）から決まる。画面・molecules・organisms・Lit は、同じ意味ならこれと同じクラスを使う。
-- **フォーカスの輪**は色のクラスでなく、`focus-ring`（`tokens.css` の `@utility`。`outline: 2px solid var(--focus)` + `outline-offset: 2px`）を `focus-visible:focus-ring`・`peer-focus-visible:focus-ring` のように付ける。`ring-*` / `ring-offset-*` の影の輪は使わない。
+- **フォーカスの輪**は色のクラスでなく、`focus-ring`（`tokens.css` の `@utility`。`outline: 2px solid var(--focus)` + `outline-offset: 2px`）を `focus-visible:focus-ring`・`peer-focus-visible:focus-ring` のように付ける。`ring-*` / `ring-offset-*` の影の輪は使わない。クラスを付けないリンク・ボタン・`<summary>`・`tabindex` のある要素も、`tokens.css` の `@layer base` の `:where(a, button, summary, [tabindex]):focus-visible` が同じ輪（2px solid `--focus`・offset 2）を出す（ブラウザ既定の輪に任せない）。詳細度が 0 で `utilities` より前の層なので、`focus-visible:outline-none`・`focus-visible:focus-ring` を付けた要素はそちらが勝つ。
 
 ## 2. 検査の範囲
 
@@ -38,7 +38,7 @@
 | 補助・説明の文字 | `text-mute`（本文の長文には使わない） | §1・`contrast_test` |
 | 枠・区切り | `border-border` / `divide-border` | §1・一覧 |
 | 据え置きの面（現在地・コード欄・チップ） | `bg-accent-soft` | ガイドの `--accent-soft` |
-| ホバー面 | `hover:bg-accent-soft` / `hover:border-mute` / `peer-not-checked:hover:border-mute` / `hover:bg-accent-soft/60` | §1・`peer-not-checked:` は選ぶカード（選んだカードの枠をホバーで灰色に戻さない） |
+| ホバー面 | `hover:bg-accent-soft` / `hover:border-mute` / `peer-not-checked:hover:border-mute` | §1・`peer-not-checked:` は選ぶカード（選んだカードの枠をホバーで灰色に戻さない）。`/60` の薄めはガイドに無いので使わない |
 | ホバーの文字 | `hover:text-ink` | §1 |
 | 主アクション（実ボタン） | `bg-accent` / `hover:bg-accent/85` / `text-bone` | `TonePrimary` |
 | リンク・アイコン強調 | `text-accent` / `decoration-mute`（リンクは `underline` を添える）/ `fill-current`（輪郭のアイコン `IconStar` を、オンのとき文字色で塗る） | §1・`Icon` 周り・お気に入りの星 |
@@ -142,3 +142,4 @@
 | 2.7 | 2026-11-22 | §3・§3.1 から状態色の `/60`（枠）・`/20`（バッジの地）を外し、枠 `/40`・地 `/10` だけにした。バッジに 1px の枠 `/40` を足し、LOCK の選択面は `bg-accent-soft text-accent` にした | #1176: 色（C）の指摘 |
 | 2.8 | 2026-11-22 | §3 の「リンク・アイコン強調」に `fill-current` を足した（輪郭のアイコン `IconStar` を、お気に入りがオンのとき文字色で塗る。`Icon` は `fill="none"` なので、塗りはクラスで上書きする）。新しい色は足していない | #1179: アイコン（I）の指摘（★ ☆ の文字を Iconoir の star に） |
 | 2.9 | 2026-11-22 | §4.1 のスライダーのつまみを、面 `--surface`・縁 `--border` 1px に改めた（共通ガイド O11）。ホバー・ドラッグ中のつまみの塗り替えは外した。新しい色は足していない。スピナーの輪の残りに `border-accent-soft` を許可した（O12）。§4 の `accent-*` の行は、予算の `<progress>` だけの例外と明記した（共通の進捗バー `progress.css` が塗りを描く） | #1181: 部品・オーバーレイ（O）の指摘 |
+| 2.10 | 2026-11-22 | §3 の「ホバー面」から `hover:bg-accent-soft/60` を外し、`hover:bg-accent-soft` だけにした（ガイドに無い薄め方）。§1 のフォーカスの輪に、クラスを付けない要素向けの `tokens.css` の `@layer base` の規則を足した。トークンの出典を `5d816f8` に改めた | #1184: 色（C）の指摘 |

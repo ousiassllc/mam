@@ -506,7 +506,7 @@ func installGuide(os OS) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\">brew install ffmpeg</code></p><p class=\"text-sm text-mute\">Homebrew の /opt/homebrew/bin（Apple Silicon）と /usr/local/bin（Intel）は自動で探します。ほかの場所に入れたときは、モデルマネージャーの「付随ソフト」でパスを指定してください。</p></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\">brew install ffmpeg</code></p><p class=\"text-sm text-ink\">Homebrew の /opt/homebrew/bin（Apple Silicon）と /usr/local/bin（Intel）は自動で探します。ほかの場所に入れたときは、モデルマネージャーの「付随ソフト」でパスを指定してください。</p></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

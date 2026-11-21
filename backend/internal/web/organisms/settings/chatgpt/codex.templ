@@ -76,7 +76,7 @@ templ codexBrief(d Data) {
 		@codexProgress(d.Codex.Engine)
 		@loginFailed(d.Codex.Login)
 		if !d.Codex.Engine.Supported {
-			<p class="text-sm text-mute" data-testid="chatgpt-codex-unsupported">この環境では取得できません（取得できるのは Windows 版と macOS 版（Apple Silicon）だけです）。自分で入れた codex の実行ファイルのパスを、詳細で指定してください。</p>
+			<p class="text-sm text-ink" data-testid="chatgpt-codex-unsupported">この環境では取得できません（取得できるのは Windows 版と macOS 版（Apple Silicon）だけです）。自分で入れた codex の実行ファイルのパスを、詳細で指定してください。</p>
 		}
 		if d.Codex.JustSignedIn {
 			<p class="text-sm text-success" data-testid="chatgpt-codex-assign-hint">
@@ -96,7 +96,7 @@ templ codexDetail(d Data) {
 		@codexPathForm(d.Codex)
 		@codexAccount(d.Codex)
 		if d.Codex.EngineReady() {
-			<p class="text-sm text-mute">
+			<p class="text-sm text-ink">
 				使うには、ワークスペースの所有者が「Codex をローカルで使う」権限（Codex Local）をメンバーに許可している必要があります。デバイスコードでログインするには、デバイスコードのログインも許可されている必要があります（beta）。
 			</p>
 		}

@@ -178,7 +178,7 @@ func Panel(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</div><p class=\"text-sm text-mute\">この PC の GPT-SoVITS で、手持ちの音声からこの登場人物の声を学習します（参照音声だけで作るゼロショットより、声が近くなります）。学習した声は、この登場人物の声の合成に使われます（Series の正本で学習すると、以後に作る Episode に引き継がれます）。</p><p class=\"text-sm text-warning\" role=\"note\" data-testid=\"voice-train-consent-notice\">声の持ち主本人の同意を得た音声だけで学習してください。同意なしに実在の人（声優・有名人など）の声をコピーしたり、なりすましや人をだます合成音声に使ったりしてはいけません。Nefos Video は同意を確かめません。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "</div><p class=\"text-sm text-ink\">この PC の GPT-SoVITS で、手持ちの音声からこの登場人物の声を学習します（参照音声だけで作るゼロショットより、声が近くなります）。学習した声は、この登場人物の声の合成に使われます（Series の正本で学習すると、以後に作る Episode に引き継がれます）。</p><p class=\"text-sm text-warning\" role=\"note\" data-testid=\"voice-train-consent-notice\">声の持ち主本人の同意を得た音声だけで学習してください。同意なしに実在の人（声優・有名人など）の声をコピーしたり、なりすましや人をだます合成音声に使ったりしてはいけません。Nefos Video は同意を確かめません。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -620,7 +620,7 @@ func Panel(d Data) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, " <p class=\"text-sm text-mute\" data-testid=\"voice-train-eta-note\">見込み時間は、学習を始める前には出せません（実際の PC で測っていないため）。始めると、最初のエポックが終わった時点から、段階ごとの残り時間を表示します。VRAM の目安や学習の質は、実機では確かめていません。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, " <p class=\"text-sm text-ink\" data-testid=\"voice-train-eta-note\">見込み時間は、学習を始める前には出せません（実際の PC で測っていないため）。始めると、最初のエポックが終わった時点から、段階ごとの残り時間を表示します。VRAM の目安や学習の質は、実機では確かめていません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

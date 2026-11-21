@@ -52,7 +52,7 @@ templ Section(d Data) {
 				</div>
 			</form>
 			if len(d.SearchDirs) > 0 {
-				<p class="text-sm text-mute" data-testid="facefusion-search-dirs">フォルダを空にしたときの探し方: { joinDirs(d.SearchDirs) }（この順）。Python は、FaceFusion の公式手順の conda 環境 facefusion、次に PATH の python3 / python を探します。</p>
+				<p class="text-sm text-ink" data-testid="facefusion-search-dirs">フォルダを空にしたときの探し方: { joinDirs(d.SearchDirs) }（この順）。Python は、FaceFusion の公式手順の conda 環境 facefusion、次に PATH の python3 / python を探します。</p>
 			}
 			for _, g := range d.Groups {
 				<section class="flex flex-col gap-1" data-testid={ "facefusion-models-" + g.Title }>
@@ -115,7 +115,7 @@ templ installSteps(d Data) {
 	<details id={ StepsID } class="rounded-lg border border-border px-3 py-2" data-testid="mm-facefusion-steps" open?={ !d.Ready }>
 		<summary class="cursor-pointer text-sm font-semibold text-ink">FaceFusion の入れ方</summary>
 		<div class="mt-2 flex flex-col gap-3 text-sm">
-			<p class="text-mute">
+			<p class="text-ink">
 				Nefos Video は FaceFusion を取得しません（OpenRAIL-AS。条文は利用者が読みます）。公式の手順を、ここに写しています。Windows・Linux・macOS のアクセラレーターの準備は、
 				<a class="underline" href="https://docs.facefusion.io/installation" target="_blank" rel="noopener noreferrer">公式のページ</a>の手順に従ってください。
 			</p>
@@ -150,7 +150,7 @@ templ installSteps(d Data) {
 					@command("conda activate facefusion")
 				</li>
 			</ol>
-			<p class="text-mute">入れたら、上の「もう一度探す」を押してください。Python の欄の例は conda の環境 <code>facefusion</code> の <code>python</code>、フォルダの欄の例は <code>git clone</code> したフォルダです。</p>
+			<p class="text-ink">入れたら、上の「もう一度探す」を押してください。Python の欄の例は conda の環境 <code>facefusion</code> の <code>python</code>、フォルダの欄の例は <code>git clone</code> したフォルダです。</p>
 		</div>
 	</details>
 }

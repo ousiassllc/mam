@@ -877,7 +877,7 @@ func GalleryPanel(w Wire, g Gallery) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, "</div></fieldset></div><p class=\"text-sm text-mute\" data-testid=\"gt-pose-kinds-note\">線画は編集モデル（「ポーズだけ」の参照）向けです。深度・法線は、ControlNet のモデル（深度・法線）に制御画像として渡すマップです。 ControlNet のモデルは受け取った画像をそのまま制御画像にするので、モデルに合わせた種類を選んでください（深度のモデルには「深度」、法線のモデルには「法線」）。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 77, "</div></fieldset></div><p class=\"text-sm text-ink\" data-testid=\"gt-pose-kinds-note\">線画は編集モデル（「ポーズだけ」の参照）向けです。深度・法線は、ControlNet のモデル（深度・法線）に制御画像として渡すマップです。 ControlNet のモデルは受け取った画像をそのまま制御画像にするので、モデルに合わせた種類を選んでください（深度のモデルには「深度」、法線のモデルには「法線」）。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
