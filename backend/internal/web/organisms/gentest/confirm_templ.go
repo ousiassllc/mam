@@ -334,7 +334,7 @@ func ConfirmBox(c Confirm) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<table class=\"w-full text-left text-sm\" data-testid=\"gt-confirm-lines\"><thead class=\"text-xs text-mute\"><tr><th class=\"py-1 pr-2 font-normal\">モデル</th><th class=\"py-1 pr-2 text-right font-normal\">件数</th><th class=\"py-1 pr-2 text-right font-normal\">単価</th><th class=\"py-1 text-right font-normal\">小計</th></tr></thead> <tbody>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<table class=\"w-full text-left text-sm\" data-testid=\"gt-confirm-lines\"><thead class=\"text-xs text-mute\"><tr><th class=\"py-1 pr-2 font-semibold\">モデル</th><th class=\"py-1 pr-2 text-right font-semibold\">件数</th><th class=\"py-1 pr-2 text-right font-semibold\">単価</th><th class=\"py-1 text-right font-semibold\">小計</th></tr></thead> <tbody>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

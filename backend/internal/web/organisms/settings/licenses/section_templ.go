@@ -232,7 +232,7 @@ func Text(title, body string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\" data-testid=\"license-text\" class=\"max-h-[60vh] overflow-y-auto whitespace-pre-wrap break-words font-mono text-xs text-ink focus-visible:focus-ring\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\" data-testid=\"license-text\" class=\"max-h-[60vh] overflow-y-auto whitespace-pre-wrap break-words font-mono text-sm text-ink focus-visible:focus-ring\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

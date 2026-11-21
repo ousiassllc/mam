@@ -33,10 +33,10 @@
 | 項目 | 決まり |
 |------|--------|
 | フォント（T1） | 英字・UI・日本語は `font-sans`（Sora → Noto Sans JP）、コードと桁を揃える数値は `font-mono`（JetBrains Mono）。いずれも SIL OFL。`static/fonts.mjs` が `@fontsource-variable/*` から `dist/fonts.css` と `dist/fonts/*.woff2` を作り、レイアウトが `paths.StaticFontsCSS` を読む（ネットワークからは取らない）。ライセンス全文は `THIRD_PARTY_NOTICES.md` |
-| サイズ（T3） | `text-xs` 12 · `text-sm` 14 · `text-base` 16 · `text-lg` 18 · `text-xl` 24（h3）· `text-2xl` 32（h2）· `text-3xl` 40（h1）。Tailwind の既定の大きさ（20・30・36）は無効。本文（文章として読ませる `<p>`・表の本体・一覧・警告・入力欄・リンク型ボタンの文字）は `text-sm` 以上、`text-xs` は注記・バッジ・表の見出し・`dt` のラベルだけ |
+| サイズ（T3） | `text-xs` 12 · `text-sm` 14 · `text-base` 16 · `text-lg` 18 · `text-xl` 24（h3）· `text-2xl` 32（h2）· `text-3xl` 40（h1）。Tailwind の既定の大きさ（20・30・36）は無効。本文（文章として読ませる `<p>`・表の本体・一覧（`ul` / `ol` / `li`）・警告とエラーの文（`text-warning` / `text-danger`）・入力欄（`input` / `select` / `textarea`。`type=file` と Lit の入力も）・リンク型ボタンの文字）は `text-sm` 以上、`text-xs` は 1 文の注記・バッジ・表の見出し・`dt` のラベルだけ。**2 文以上の `<p>` は `text-xs` にしない**（`a11y/typography_test.go` の `TestSources_TextToReadIsAtLeast14px` が検査） |
 | 行間（T4） | サイズごとに `xs` 1.6 · `sm` 1.7 · `base` 1.8 · `lg` 1.7 · `xl` 1.5 · `2xl` 1.4 · `3xl` 1.3。`body` は 16px・1.8 |
 | ウェイト（T2） | Regular（400）と SemiBold（600）の 2 段だけ。SemiBold は見出し（`h1`〜`h4`）・ボタン・`<summary>`・表の見出し行だけ。ナビ・リンク・ラベル・数値には付けない（現在地は色と背景で示す）。`font-medium` は使わない |
-| 数値（T5） | 桁を揃える数値（金額・容量）は `font-mono tabular-nums`、表の数値列は右寄せ。表の見出し行は `text-xs font-semibold text-mute`、行の見出し（`<th scope="row">`）と `<legend>` は Regular（`font-normal`） |
+| 数値（T5） | 桁を揃える数値（金額・容量）は `font-mono tabular-nums`、表の数値列は右寄せ（件数・実績・日時の列も `font-mono tabular-nums`。日時は左寄せのままでよい）。表の見出し行（列の見出し `<th scope="col">` すべて）は `text-xs font-semibold text-mute`（`font-normal` にしない。`TestSources_HeaderRowOfATableIsSemiBold`）、行の見出し（`<th scope="row">`）と `<legend>` は Regular（`font-normal`） |
 
 ### 形・余白・線（Issue #1038）
 
@@ -98,7 +98,7 @@
 | 項目 | 決まり |
 |------|--------|
 | 面・枠（色。W1） | バーの面は `bg-surface`・枠は `border border-border`・角は `rounded-md`・内側は `p-2`・並びは `gap-2`（S1・S2。`.5` の値は使わない）。**影・光らせる・アクセントの塗りは使わない**（S3。バーは入力欄の補助で、主役ではない）。文字は `text-ink`、範囲・ショートカットの 1 行は `text-mute`、モデルの注は `text-warning`（色だけで伝えない: 注は必ず文で言う。W5） |
-| 文字（T1〜T5。W2） | 全体 `text-xs`（補助の部品なので 12px）。**ボタンの文字は `text-sm font-semibold`（小ボタンは 14px。T3・T8）**。**いまの強さ（`1.2 倍`）は桁を揃える数値なので `font-mono tabular-nums`**（T5）、小数 1 桁（`toFixed(1)`）。ボタンの文言は「強める +」「弱める −」（`−` は U+2212。ハイフンにしない）。数値の後ろに必ず「倍」を付け、単位なしの数字にしない |
+| 文字（T1〜T5。W2） | 全体 `text-xs`（補助の部品なので 12px）。ただしモデルの注意の文（`mam-weight-note`。`text-warning`）は `text-sm`（警告の文は 14px 以上）。**ボタンの文字は `text-sm font-semibold`（小ボタンは 14px。T3・T8）**。**いまの強さ（`1.2 倍`）は桁を揃える数値なので `font-mono tabular-nums`**（T5）、小数 1 桁（`toFixed(1)`）。ボタンの文言は「強める +」「弱める −」（`−` は U+2212。ハイフンにしない）。数値の後ろに必ず「倍」を付け、単位なしの数字にしない |
 | ボタン（O7・M1・M4。W3） | `atoms.SmallButton`（`ToneNeutral`）と同じ: `inline-flex items-center justify-center rounded-md border border-border text-sm font-semibold text-ink hover:bg-accent-soft transition-colors motion-reduce:transition-none`、高さは **32 以上**（`min-h-8`）、`data-ripple`（M4）。**押せないときは `aria-disabled="true"`＋不透明度 .4（`aria-disabled:opacity-40`）＋ `aria-disabled:cursor-not-allowed`**。`disabled` 属性にしない（フォーカスを残し、注の理由を読めるようにするため）。フォーカスは `focus-visible:focus-ring`（輪は色のクラスでない。[color-rules.md](color-rules.md) §1） |
 | 出る・消える（状態。W4） | **語を選んだときだけ**出て（バー本体の `role="group"` の `hidden` を外す。`<mam-prompt-weight>` の要素そのものは隠さない。W8）、選びを外す・フォーカスがバーとプロンプト欄の外へ移る・`Esc` で消える。**消えるときに動かさない**（M5 は `<dialog>`・popover・トーストの決まり。バーはフェードも移動もさせない。レイアウトが動くことの補足は下の「フォーカス」）。ネガティブプロンプトには出さない。動画のフォーム（段が無い）には付けない |
 | 状態の見せ方（W5） | 状態は **文で言う**（色だけにしない）: ①強めても弱めても変えられない端（0.5・1.5）は、そのボタンが押せない（W3）＋範囲の 1 行「0.5〜1.5」 ②選ばれたモデルが全部 `unsupported` ならボタンは両方押せず、注は `text-warning` で「（モデル名）では、ウェイト (語:1.3) は効きません。強調したい語は、文で言い換えてください…」（`weight-facts.ts` の `cautionOf`。名前は表示名で、識別子は出さない） ③一部だけ効きが弱いモデルは、その行を注に足す（「名前: 効きが弱いかも」） ④文字数の上限を超えるときは、変えずに「文字数の上限（N 文字）を超えるので、ウェイトは付けられません」を注に出す（`text-warning`）。注は 1 つの領域（`data-testid="gt-weight-note"`）に並べ、複数でも 1 つの `role="status"` の中に入れる。エラーの `atoms.Alert`（O3）にはしない（入力の補助で、業務エラーではない） |
@@ -303,6 +303,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.31 | 2026-11-22 | §M5 の出現・退出に接続断の通知（`[data-connection-lost]`）を足した（`motion.css`。`hide()` はフェードアウトのあとで取り除く）。サムネイルの × ↑ ↓ ・お気に入りの星・LOCK の 3 値ボタンに `data-ripple` を付けた（M4） | #1188: モーション（M）の指摘 |
 | 0.32 | 2026-11-22 | §O1 の入力保護の確認を、保存するフォームの欄だけに限った（検索・フィルタ・ピッカーは外側クリックで即閉じる）。§O2 に、非破壊の確認を `data-confirm-tone` / `data-confirm-label` で主ボタン・具体的な言葉にすることを足した。§O7 に、リンク型ボタンなどの無効の見た目と、ボタンに見える `<label>` の class（`ButtonClass` / `SmallButtonClass`）を足した。§O8 に、`<summary>` を 1 つの class（`atoms.SummaryClass`）にそろえることを足した | #1189: 部品・オーバーレイ（O）の指摘 |
 | 0.33 | 2026-11-22 | スクロール領域（B1〜B6）の行を足した。中にフォーカスできる要素が無いことがありうるスクロール領域（設定テーブルの囲み・チャットスレッド・結果の比較表・Take の比較表・値の選択表・コマンドの `<pre>`）に `tabindex="0"`・名前・`focus-visible:focus-ring` を付けた | #1190: スクロールバー（B）の指摘 |
+| 0.34 | 2026-11-22 | §1 の文字の行に、一覧（ul / ol / li）・警告とエラーの文・入力欄（file と Lit の入力も）・2 文以上の `<p>` を `text-sm` 以上と書き、列の見出し `<th>` を `font-semibold` にそろえ、件数・日時の列を `font-mono tabular-nums` にした。`a11y/typography_test` に 2 つの検査を足した | #1192: タイポグラフィ（T）の指摘 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 

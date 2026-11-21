@@ -463,7 +463,7 @@ func DetailSection(d Detail, inModal bool) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.English != "" || d.EnglishNegative != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<div class=\"flex flex-col gap-1\" data-testid=\"gt-english\"><h3 class=\"text-xs text-mute\">英訳（送った英語）</h3><p class=\"whitespace-pre-wrap break-words rounded-md border border-border p-2 text-sm\" data-testid=\"gt-english-prompt\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<div class=\"flex flex-col gap-1\" data-testid=\"gt-english\"><h3 class=\"text-sm font-semibold text-ink\">英訳（送った英語）</h3><p class=\"whitespace-pre-wrap break-words rounded-md border border-border p-2 text-sm\" data-testid=\"gt-english-prompt\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -504,7 +504,7 @@ func DetailSection(d Detail, inModal bool) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<div class=\"flex flex-col gap-1\"><h3 class=\"text-xs text-mute\">実際に送ったプロンプト</h3><p class=\"whitespace-pre-wrap break-words rounded-md border border-border p-2 text-sm\" data-testid=\"gt-sent-prompt\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 40, "<div class=\"flex flex-col gap-1\"><h3 class=\"text-sm font-semibold text-ink\">実際に送ったプロンプト</h3><p class=\"whitespace-pre-wrap break-words rounded-md border border-border p-2 text-sm\" data-testid=\"gt-sent-prompt\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -558,12 +558,12 @@ func DetailSection(d Detail, inModal bool) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(d.Inputs) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "<div class=\"flex flex-col gap-2\"><h3 class=\"text-xs text-mute\">入力画像</h3><ul class=\"flex flex-wrap gap-3\" data-testid=\"gt-inputs-list\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 46, "<div class=\"flex flex-col gap-2\"><h3 class=\"text-sm font-semibold text-ink\">入力画像</h3><ul class=\"flex flex-wrap gap-3\" data-testid=\"gt-inputs-list\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			for _, in := range d.Inputs {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<li class=\"flex w-32 flex-col gap-1 text-xs\"><img class=\"h-24 w-full rounded-md object-cover\" src=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "<li class=\"flex w-32 flex-col gap-1 text-sm\"><img class=\"h-24 w-full rounded-md object-cover\" src=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -626,7 +626,7 @@ func DetailSection(d Detail, inModal bool) templ.Component {
 			}
 		}
 		if len(d.Imports) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<div class=\"flex flex-col gap-1\"><h3 class=\"text-xs text-mute\">取り込み済み</h3><ul class=\"text-sm\" data-testid=\"gt-imports\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "<div class=\"flex flex-col gap-1\"><h3 class=\"text-sm font-semibold text-ink\">取り込み済み</h3><ul class=\"text-sm\" data-testid=\"gt-imports\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

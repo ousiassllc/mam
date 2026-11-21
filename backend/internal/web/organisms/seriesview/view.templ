@@ -128,7 +128,7 @@ templ View(d Data) {
 templ seriesVersionLine(d Data, oob bool) {
 	<p
 		id="series-version"
-		class="text-xs text-ink"
+		class="text-sm text-ink"
 		if oob {
 			hx-swap-oob="true"
 		}
@@ -147,7 +147,7 @@ templ seriesHistory(d Data, oob bool) {
 		}
 	>
 		<h2 class="text-sm font-semibold text-ink">正本の更新履歴</h2>
-		<ul class="text-xs text-mute">
+		<ul class="text-sm text-mute">
 			for _, v := range d.Versions {
 				<li>バージョン { strconv.Itoa(v.Number) } · { v.CreatedAt.Local().Format("2006-01-02 15:04") }</li>
 			}

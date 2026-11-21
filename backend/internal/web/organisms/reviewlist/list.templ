@@ -150,7 +150,7 @@ templ reviewRequestForm(d Data) {
 // reviewImportForm is the form that imports a Review Response (it replaces itself).
 templ reviewImportForm(d Data) {
 	<form class="flex flex-wrap items-center gap-2" hx-post={ paths.Project(d.ProjectID, "reviews", "feedback") } hx-encoding="multipart/form-data" hx-target="this" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
-		<input id="review-response-file" type="file" name="response" required accept=".json,application/json" aria-label="応答ファイル" class="text-xs"/>
+		<input id="review-response-file" type="file" name="response" required accept=".json,application/json" aria-label="応答ファイル" class="text-sm"/>
 		@atoms.Button(atoms.ToneNeutral, "取り込む", templ.Attributes{"type": "submit"})
 	</form>
 }

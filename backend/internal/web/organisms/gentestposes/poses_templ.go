@@ -333,7 +333,7 @@ func InstallPanel(w Wire, in Install) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</p><ul class=\"flex flex-col gap-2 text-xs\" data-testid=\"gt-pose-licenses\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</p><ul class=\"flex flex-col gap-2 text-sm\" data-testid=\"gt-pose-licenses\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1327,7 +1327,7 @@ func card(w Wire, c Card) templ.Component {
 			templ_7745c5c3_Var62 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 114, "<li class=\"flex flex-col gap-1 rounded-lg border border-border p-2 text-xs\" data-testid=\"gt-pick\" data-pose-card><img class=\"aspect-[3/4] w-full rounded-md bg-surface object-contain\" src=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 114, "<li class=\"flex flex-col gap-1 rounded-lg border border-border p-2 text-sm\" data-testid=\"gt-pick\" data-pose-card><img class=\"aspect-[3/4] w-full rounded-md bg-surface object-contain\" src=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -173,7 +173,7 @@ func Summary(c Card) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if c.Note != "" {
-			var templ_7745c5c3_Var7 = []any{"break-words text-xs text-warning", templ.KV("opacity-60", c.Reason != nil)}
+			var templ_7745c5c3_Var7 = []any{"break-words text-sm text-warning", templ.KV("opacity-60", c.Reason != nil)}
 			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var7...)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err

@@ -167,7 +167,7 @@ templ BranchDetail(d BranchDetailData) {
 		</section>
 		<section aria-label="Branch のバージョン履歴" class="flex flex-col gap-1">
 			<h3 class="text-sm font-semibold text-ink">バージョン履歴</h3>
-			<ol class="flex flex-col gap-1 text-xs text-ink">
+			<ol class="flex flex-col gap-1 text-sm text-ink">
 				for _, v := range d.Versions {
 					<li>v{ strconv.Itoa(v.Number) } · { v.Name } · World State: { branchWorldText(v.WorldStateVersion) } · { v.CreatedAt.Local().Format("2006-01-02 15:04") }</li>
 				}

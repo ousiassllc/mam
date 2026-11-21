@@ -378,7 +378,7 @@ func codexEngine(c Codex) templ.Component {
 			}
 		}
 		if c.Engine.Error != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<pre class=\"whitespace-pre-wrap break-words text-xs text-danger\" role=\"alert\" data-testid=\"chatgpt-codex-engine-error\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<pre class=\"whitespace-pre-wrap break-words text-sm text-danger\" role=\"alert\" data-testid=\"chatgpt-codex-engine-error\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -815,7 +815,7 @@ func codexWho(c Codex) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if len(c.Limits) > 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "<ul class=\"flex flex-col gap-1 text-xs\" data-testid=\"chatgpt-codex-limits\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 54, "<ul class=\"flex flex-col gap-1 text-sm\" data-testid=\"chatgpt-codex-limits\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

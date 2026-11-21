@@ -42,7 +42,7 @@ templ ProposalCard(p Proposal) {
 		<div class="overflow-x-auto focus-visible:focus-ring" tabindex="0" role="region" aria-label="見積りの内訳">
 			<table class="w-full min-w-max text-left text-sm" data-testid="gtc-lines">
 				<thead class="text-xs text-mute">
-					<tr><th class="py-1 pr-3 font-normal">モデル</th><th class="py-1 pr-3 text-right font-normal">件数</th><th class="py-1 pr-3 text-right font-normal">単価</th><th class="py-1 text-right font-normal">小計</th></tr>
+					<tr><th class="py-1 pr-3 font-semibold">モデル</th><th class="py-1 pr-3 text-right font-semibold">件数</th><th class="py-1 pr-3 text-right font-semibold">単価</th><th class="py-1 text-right font-semibold">小計</th></tr>
 				</thead>
 				<tbody>
 					for _, l := range p.Lines {
@@ -140,6 +140,6 @@ templ ResultBlock(r Result) {
 				</li>
 			}
 		</ul>
-		<p class="text-xs text-ink">タップすると詳細（プロンプト・設定・取り込み）が開きます。<a class="underline focus-visible:focus-ring" href={ templ.SafeURL(paths.GenerationTestHistory()) }>履歴</a>にも残ります。</p>
+		<p class="text-sm text-ink">タップすると詳細（プロンプト・設定・取り込み）が開きます。<a class="underline focus-visible:focus-ring" href={ templ.SafeURL(paths.GenerationTestHistory()) }>履歴</a>にも残ります。</p>
 	</section>
 }

@@ -182,7 +182,7 @@ func ProposalCard(p Proposal) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</strong>（合計は見積りで、実際の請求は提供元で確認してください）。</p><div class=\"overflow-x-auto focus-visible:focus-ring\" tabindex=\"0\" role=\"region\" aria-label=\"見積りの内訳\"><table class=\"w-full min-w-max text-left text-sm\" data-testid=\"gtc-lines\"><thead class=\"text-xs text-mute\"><tr><th class=\"py-1 pr-3 font-normal\">モデル</th><th class=\"py-1 pr-3 text-right font-normal\">件数</th><th class=\"py-1 pr-3 text-right font-normal\">単価</th><th class=\"py-1 text-right font-normal\">小計</th></tr></thead> <tbody>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</strong>（合計は見積りで、実際の請求は提供元で確認してください）。</p><div class=\"overflow-x-auto focus-visible:focus-ring\" tabindex=\"0\" role=\"region\" aria-label=\"見積りの内訳\"><table class=\"w-full min-w-max text-left text-sm\" data-testid=\"gtc-lines\"><thead class=\"text-xs text-mute\"><tr><th class=\"py-1 pr-3 font-semibold\">モデル</th><th class=\"py-1 pr-3 text-right font-semibold\">件数</th><th class=\"py-1 pr-3 text-right font-semibold\">単価</th><th class=\"py-1 text-right font-semibold\">小計</th></tr></thead> <tbody>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -701,7 +701,7 @@ func ResultBlock(r Result) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "</ul><p class=\"text-xs text-ink\">タップすると詳細（プロンプト・設定・取り込み）が開きます。<a class=\"underline focus-visible:focus-ring\" href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 69, "</ul><p class=\"text-sm text-ink\">タップすると詳細（プロンプト・設定・取り込み）が開きます。<a class=\"underline focus-visible:focus-ring\" href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

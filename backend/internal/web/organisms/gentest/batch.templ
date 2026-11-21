@@ -75,9 +75,9 @@ templ BatchBox(b Batch) {
 			<table class="w-full min-w-max border-collapse text-sm" data-testid="gt-grid">
 				<thead>
 					<tr>
-						<th class="p-2 text-left text-xs font-normal text-mute">モデル ＼ プロンプト</th>
+						<th class="p-2 text-left text-xs font-semibold text-mute">モデル ＼ プロンプト</th>
 						for _, c := range b.Cols {
-							<th class="max-w-xs p-2 text-left align-top text-xs font-normal text-ink" data-testid="gt-col">
+							<th class="max-w-xs p-2 text-left align-top text-xs font-semibold text-ink" data-testid="gt-col">
 								<span class="line-clamp-3 whitespace-pre-wrap break-words">{ c.Text }</span>
 								if c.Negative != "" {
 									<span class="mt-1 block text-mute">ネガティブ: { c.Negative }</span>

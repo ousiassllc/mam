@@ -49,7 +49,7 @@ templ editorEditStage(d Data, oob bool) {
 						<li>
 							<span class="text-xs text-mute">{ clipPosition(f.ClipIndex) }</span> { f.Issue } → { f.Action }
 							if f.Need != nil {
-								<span class="text-xs text-warning" data-need-shot>{ " 追加 Shot: " + needLabel(f.Need) }</span>
+								<span class="text-sm text-warning" data-need-shot>{ " 追加 Shot: " + needLabel(f.Need) }</span>
 							}
 						</li>
 					}
@@ -85,7 +85,7 @@ templ editorAudioStage(d Data, oob bool) {
 			}
 		</div>
 		if d.Audio != nil && len(d.Audio.Timeline.Scenes) > 0 {
-			<ul class="flex flex-col gap-1 text-xs text-ink" data-audio-scenes>
+			<ul class="flex flex-col gap-1 text-sm text-ink" data-audio-scenes>
 				for _, s := range d.Audio.Timeline.Scenes {
 					<li>{ audioSceneText(s) }</li>
 				}
@@ -128,7 +128,7 @@ templ editorVoiceForm(d Data, oob bool) {
 templ editorVoices(d Data, oob bool) {
 	<div id="editor-voices" class="contents" { oobAttr(oob)... }>
 		if len(d.Voices) > 0 {
-			<ul class="flex flex-col gap-1 text-xs text-ink" data-audio-voices>
+			<ul class="flex flex-col gap-1 text-sm text-ink" data-audio-voices>
 				for _, v := range d.Voices {
 					<li>{ v.Speaker + "（クローン音声）" }</li>
 				}

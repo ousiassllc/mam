@@ -146,7 +146,7 @@ templ ShotActions(shotID, subject string, canContinue bool, candidates bool) {
 // the Shot is not busy (generating or repairing). The Judge button runs the AI Video Judge on a Take that
 // has no result (never judged, or the run failed); it is drawn only when domain.CheckJudge accepts it.
 templ TakeRow(t domain.Take, n int, selected bool, repairable bool, judgeable bool) {
-	<li class="flex items-center justify-between gap-2 text-xs text-ink">
+	<li class="flex items-center justify-between gap-2 text-sm text-ink">
 		<span class="flex min-w-0 items-center gap-1">
 			<span class="truncate" title={ t.ModelName }>{ t.ModelName }</span>
 			@commercial.Mark(commercial.Of(t.ModelName))

@@ -44,7 +44,7 @@ templ ChatComposer(p domain.Project) {
 				}
 			</div>
 			<input type="hidden" name="reply_to_message_id" id="reply-to" value=""/>
-			<ul id="attachment-names" class="mb-2 flex flex-wrap gap-2 text-xs text-ink"></ul>
+			<ul id="attachment-names" class="mb-2 flex flex-wrap gap-2 text-sm text-ink"></ul>
 			<div class="flex items-end gap-2">
 				<input id="composer-files" type="file" name="attachments" multiple accept={ AcceptedUploads + ",.safetensors" } aria-label="画像・動画・LoRA（.safetensors）を添付" class="peer sr-only"/>
 				<label for="composer-files" class={ atoms.ButtonClass(atoms.ToneNeutral), "cursor-pointer peer-focus-visible:focus-ring" } title="画像・動画・LoRA（.safetensors）を添付">＋</label>

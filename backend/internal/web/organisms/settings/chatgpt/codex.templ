@@ -129,7 +129,7 @@ templ codexEngine(c Codex) {
 			<p class="text-sm text-mute">{ s }</p>
 		}
 		if c.Engine.Error != "" {
-			<pre class="whitespace-pre-wrap break-words text-xs text-danger" role="alert" data-testid="chatgpt-codex-engine-error">{ c.Engine.Error }</pre>
+			<pre class="whitespace-pre-wrap break-words text-sm text-danger" role="alert" data-testid="chatgpt-codex-engine-error">{ c.Engine.Error }</pre>
 		}
 		if c.Engine.UpdateAvailable {
 			<p class="text-sm text-warning" data-testid="chatgpt-codex-update">この Nefos Video が確かめた版は { c.Engine.PinnedVersion } です。取得済みの { c.Engine.Version } は使いません。もう一度取得してください。</p>
@@ -187,7 +187,7 @@ templ codexWho(c Codex) {
 				}
 			</p>
 			if len(c.Limits) > 0 {
-				<ul class="flex flex-col gap-1 text-xs" data-testid="chatgpt-codex-limits">
+				<ul class="flex flex-col gap-1 text-sm" data-testid="chatgpt-codex-limits">
 					for _, l := range c.Limits {
 						<li>{ limitText(l) }</li>
 					}

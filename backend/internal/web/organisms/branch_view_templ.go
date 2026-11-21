@@ -482,7 +482,7 @@ func BranchDetail(d BranchDetailData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</ul></section><section aria-label=\"Branch のバージョン履歴\" class=\"flex flex-col gap-1\"><h3 class=\"text-sm font-semibold text-ink\">バージョン履歴</h3><ol class=\"flex flex-col gap-1 text-xs text-ink\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "</ul></section><section aria-label=\"Branch のバージョン履歴\" class=\"flex flex-col gap-1\"><h3 class=\"text-sm font-semibold text-ink\">バージョン履歴</h3><ol class=\"flex flex-col gap-1 text-sm text-ink\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

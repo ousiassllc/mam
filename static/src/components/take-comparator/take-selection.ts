@@ -23,7 +23,7 @@ export function renderSelection(view: SelectionView) {
     ${
       selection.length === 0
         ? html`<p class="text-xs text-mute">Take の帯をドラッグして区間を選ぶと、選んだ順につなぎます。</p>`
-        : html`<ol class="flex flex-wrap gap-2 text-xs">
+        : html`<ol class="flex flex-wrap gap-2 text-sm">
             ${selection.map(
               (s, i) => html`<li class="flex items-center gap-1 rounded-sm bg-accent-soft px-2 py-1" data-segment>
                 <span>${describeSegments([s], view.clips)}</span>
@@ -43,7 +43,7 @@ export function renderSelection(view: SelectionView) {
       <input
         type="text"
         name="instruction"
-        class="min-w-64 flex-1 rounded-md border border-mute bg-surface px-2 py-1 text-xs text-ink focus-visible:focus-ring"
+        class="min-w-64 flex-1 rounded-md border border-mute bg-surface px-2 py-1 text-sm text-ink focus-visible:focus-ring"
         placeholder="Take A の 0-2秒 + Take B の 2-4秒"
         aria-label="区間を言葉で指定"
         .value=${view.instruction}

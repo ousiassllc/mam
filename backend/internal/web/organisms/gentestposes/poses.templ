@@ -82,7 +82,7 @@ templ InstallPanel(w Wire, in Install) {
 				</span>
 			}
 		</p>
-		<ul class="flex flex-col gap-2 text-xs" data-testid="gt-pose-licenses">
+		<ul class="flex flex-col gap-2 text-sm" data-testid="gt-pose-licenses">
 			for _, l := range in.Licenses {
 				<li class="flex flex-col gap-1 rounded-lg border border-border p-2">
 					<p class="flex flex-wrap items-center gap-2 text-ink">
@@ -303,7 +303,7 @@ templ ResultsList(w Wire, r Results) {
 }
 
 templ card(w Wire, c Card) {
-	<li class="flex flex-col gap-1 rounded-lg border border-border p-2 text-xs" data-testid="gt-pick" data-pose-card>
+	<li class="flex flex-col gap-1 rounded-lg border border-border p-2 text-sm" data-testid="gt-pick" data-pose-card>
 		<img
 			class="aspect-[3/4] w-full rounded-md bg-surface object-contain"
 			src={ c.Image }

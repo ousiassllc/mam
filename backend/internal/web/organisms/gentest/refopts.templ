@@ -67,7 +67,7 @@ templ Picker(rows []Ref, empty string) {
 	}
 	<ul class="grid grid-cols-2 gap-2 sm:grid-cols-4">
 		for _, r := range rows {
-			<li class="flex flex-col gap-1 rounded-lg border border-border p-2 text-xs" data-testid="gt-pick">
+			<li class="flex flex-col gap-1 rounded-lg border border-border p-2 text-sm" data-testid="gt-pick">
 				if r.ThumbURL != "" {
 					<img class="aspect-square w-full rounded-md object-cover" src={ r.ThumbURL } alt={ r.Label } loading="lazy"/>
 				}

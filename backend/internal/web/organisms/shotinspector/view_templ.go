@@ -111,7 +111,7 @@ func SpecSection(d Data) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" hx-target=\"#shot-spec\" hx-swap=\"outerHTML\" class=\"flex flex-col gap-2\"><label for=\"shot-spec-text\" class=\"text-xs text-mute\">Shot Spec を直接編集（JSON。英語で記述。LOCK 中の項目は変更できません）</label>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "\" hx-target=\"#shot-spec\" hx-swap=\"outerHTML\" class=\"flex flex-col gap-2\"><label for=\"shot-spec-text\" class=\"text-sm text-ink\">Shot Spec を直接編集（JSON。英語で記述。LOCK 中の項目は変更できません）</label>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -524,7 +524,7 @@ func View(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "\" hx-target=\"#shot-inspector\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\" class=\"flex flex-col gap-2\"><label for=\"director-command\" class=\"text-xs text-mute\">自然言語で指示（例: もう少し寄って。ラベルは固定して）。この Shot だけが再生成されます</label>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 42, "\" hx-target=\"#shot-inspector\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\" class=\"flex flex-col gap-2\"><label for=\"director-command\" class=\"text-sm text-ink\">自然言語で指示（例: もう少し寄って。ラベルは固定して）。この Shot だけが再生成されます</label>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -645,7 +645,7 @@ func View(d Data) templ.Component {
 						return templ_7745c5c3_Err
 					}
 					if len(res.Issues) > 0 {
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<ul class=\"list-disc pl-6 text-xs text-ink\">")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 55, "<ul class=\"list-disc pl-6 text-sm text-ink\">")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}

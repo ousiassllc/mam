@@ -158,7 +158,7 @@ func editorEditStage(d Data, oob bool) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if f.Need != nil {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<span class=\"text-xs text-warning\" data-need-shot>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<span class=\"text-sm text-warning\" data-need-shot>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -296,7 +296,7 @@ func editorAudioStage(d Data, oob bool) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if d.Audio != nil && len(d.Audio.Timeline.Scenes) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<ul class=\"flex flex-col gap-1 text-xs text-ink\" data-audio-scenes>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<ul class=\"flex flex-col gap-1 text-sm text-ink\" data-audio-scenes>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -487,7 +487,7 @@ func editorVoices(d Data, oob bool) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(d.Voices) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "<ul class=\"flex flex-col gap-1 text-xs text-ink\" data-audio-voices>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "<ul class=\"flex flex-col gap-1 text-sm text-ink\" data-audio-voices>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -75,7 +75,7 @@ templ Panel(d Data) {
 			if len(d.Clips) > 0 {
 				<ul class="flex flex-col gap-1" data-testid="voice-train-clips">
 					for _, c := range d.Clips {
-						<li class="flex flex-wrap items-center gap-2 text-xs text-ink">
+						<li class="flex flex-wrap items-center gap-2 text-sm text-ink">
 							<span class="text-mute">{ clipSeconds(c) }</span>
 							<span class="min-w-0 flex-1 break-words">{ c.Text }</span>
 							if !d.running() {

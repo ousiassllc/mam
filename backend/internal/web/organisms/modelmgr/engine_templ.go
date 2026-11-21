@@ -389,7 +389,7 @@ func installedCard(e Engine) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if e.State == "failed" && e.ProcessError != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<pre class=\"max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-surface p-2 text-xs text-danger focus-visible:focus-ring\" role=\"alert\" tabindex=\"0\" aria-label=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "<pre class=\"max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-surface p-2 text-sm text-danger focus-visible:focus-ring\" role=\"alert\" tabindex=\"0\" aria-label=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

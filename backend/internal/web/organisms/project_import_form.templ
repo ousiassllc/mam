@@ -23,7 +23,7 @@ templ ProjectImportForm(d ProjectImportFormData) {
 		hx-disabled-elt="find button[type=submit]"
 	>
 		<label for="project-import-file" class="text-ink">プロジェクトバンドルを読み込む</label>
-		<input id="project-import-file" type="file" name="bundle" required accept=".zip,application/zip" class="text-xs"/>
+		<input id="project-import-file" type="file" name="bundle" required accept=".zip,application/zip" class="text-sm"/>
 		@atoms.Button(atoms.ToneNeutral, "読み込む", templ.Attributes{
 			"type": "submit",
 		})

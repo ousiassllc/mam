@@ -27,7 +27,7 @@ templ ApprovalCard(m domain.ThreadMessage) {
 			</p>
 			<p class="whitespace-pre-wrap break-words" data-testid="approval-summary">{ m.Content }</p>
 			if m.Unrecorded {
-				<p class="mt-1 text-xs text-mute" data-testid="approval-unrecorded">{ mainline.UnrecordedCardNote }</p>
+				<p class="mt-1 text-sm text-ink" data-testid="approval-unrecorded">{ mainline.UnrecordedCardNote }</p>
 			}
 			if m.ApprovalStatus == domain.ApprovalPending {
 				<form

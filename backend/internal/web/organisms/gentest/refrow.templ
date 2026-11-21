@@ -12,7 +12,7 @@ const thumbButton = "inline-flex items-center rounded-md bg-surface px-2 py-1 te
 // are drawn from this markup too (the template of inputFields).
 templ RefRow(r Ref, media string, ui RefUI) {
 	<li
-		class="flex flex-col gap-2 rounded-md border border-border bg-surface p-2 text-xs data-[dragging]:opacity-50"
+		class="flex flex-col gap-2 rounded-md border border-border bg-surface p-2 text-sm data-[dragging]:opacity-50"
 		data-testid="gt-ref"
 		data-gt-ref
 		data-ref={ r.Value }

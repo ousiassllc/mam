@@ -67,7 +67,7 @@ templ matchRound(r MatchRound, target int) {
 				<p class="break-words text-sm text-ink" data-testid="gt-match-change"><span class="text-xs text-mute">直したところ</span> { r.Change }</p>
 			}
 			if len(r.Differences) > 0 {
-				<ul class="list-disc pl-6 text-xs text-ink" data-testid="gt-match-differences">
+				<ul class="list-disc pl-6 text-sm text-ink" data-testid="gt-match-differences">
 					for _, d := range r.Differences {
 						<li class="break-words">{ d }</li>
 					}

@@ -279,7 +279,7 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if len(t.Routing.Candidates) > 0 {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<table class=\"mt-1 w-full text-left text-sm\"><thead><tr class=\"text-xs text-mute\"><th class=\"pr-2 font-semibold\">候補</th><th class=\"pr-2 font-semibold\">実績（Take・平均点・合格率）</th><th class=\"pr-2 text-right font-semibold\">コスト/Take</th><th class=\"pr-2 text-right font-semibold\">quality</th><th class=\"pr-2 text-right font-semibold\">cost</th><th class=\"pr-2 text-right font-semibold\">fit</th><th class=\"pr-2 text-right font-semibold\">score</th><th class=\"font-semibold\">除外理由</th></tr></thead> <tbody>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "<table class=\"mt-1 w-full text-left text-sm\"><thead><tr class=\"text-xs text-mute\"><th class=\"pr-2 font-semibold\">候補</th><th class=\"pr-2 text-right font-semibold\">実績（Take・平均点・合格率）</th><th class=\"pr-2 text-right font-semibold\">コスト/Take</th><th class=\"pr-2 text-right font-semibold\">quality</th><th class=\"pr-2 text-right font-semibold\">cost</th><th class=\"pr-2 text-right font-semibold\">fit</th><th class=\"pr-2 text-right font-semibold\">score</th><th class=\"font-semibold\">除外理由</th></tr></thead> <tbody>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -297,14 +297,14 @@ func TakeTracePanel(t domain.TakeTrace) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</td><td class=\"pr-2\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</td><td class=\"pr-2 text-right font-mono tabular-nums\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var18 string
 					templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(routingRecordText(c))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 71, Col: 48}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/take_trace_panel.templ`, Line: 71, Col: 82}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 					if templ_7745c5c3_Err != nil {
