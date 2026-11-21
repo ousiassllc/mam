@@ -30,6 +30,7 @@ func TestIcon_EveryIconIsADecorativeSVGWithItsOwnShape(t *testing.T) {
 		atoms.IconBadgeCheck, atoms.IconBadgeAlert, atoms.IconBadgeHelp, atoms.IconBan, atoms.IconFilter, atoms.IconCheck, atoms.IconDownload,
 		atoms.IconVideo, atoms.IconVoice, atoms.IconLipSync,
 		atoms.IconSuccess, atoms.IconWarning, atoms.IconDanger, atoms.IconInfo, atoms.IconTheme,
+		atoms.IconPlay, atoms.IconPause, atoms.IconSkipPrev, atoms.IconSkipNext, atoms.IconArrowUp, atoms.IconArrowDown, atoms.IconStar, atoms.IconChevronLeft,
 	}
 	shapes := map[string]atoms.IconName{}
 	for _, name := range names {
@@ -55,6 +56,15 @@ func TestIcon_EveryIconIsADecorativeSVGWithItsOwnShape(t *testing.T) {
 func TestIcon_ClassIsTheSizeAndDefaultsToTwentyPixels(t *testing.T) {
 	assert.Contains(t, renderIcon(t, atoms.IconChart, ""), `class="h-5 w-5 shrink-0"`)
 	assert.Contains(t, renderIcon(t, atoms.IconChart, "h-4 w-4"), `class="h-4 w-4"`)
+}
+
+// The star is an outline (fill="none" on the <svg>); a caller that wants it filled puts fill-current in the class, which
+// reaches the <svg> as it is and beats the presentation attribute.
+func TestIcon_StarIsAnOutlineThatTheClassCanFill(t *testing.T) {
+	html := renderIcon(t, atoms.IconStar, "h-4 w-4 fill-current")
+
+	assert.Contains(t, html, `fill="none"`)
+	assert.Contains(t, html, `class="h-4 w-4 fill-current"`)
 }
 
 func TestIcon_UnknownNameDrawsNothing(t *testing.T) {

@@ -1,0 +1,66 @@
+package atoms
+
+// Icons of the player controls, the arrows and the star (Iconoir v7.12.2, copied as in icon.templ; the file is split from icon_status.templ to stay under the
+// line limit). iconStatus hands every name it does not know to iconPlayer. The star is an outline: the caller fills it (a favourite that is on) with the
+// fill utility of Tailwind in the class, which beats the fill="none" of the <svg>.
+
+// Icons of the player controls, the arrows of a list and the star of a favourite.
+const (
+	IconPlay        IconName = "play"
+	IconPause       IconName = "pause"
+	IconSkipPrev    IconName = "skip-prev"
+	IconSkipNext    IconName = "skip-next"
+	IconArrowUp     IconName = "arrow-up"
+	IconArrowDown   IconName = "arrow-down"
+	IconStar        IconName = "star"
+	IconChevronLeft IconName = "chevron-left"
+)
+
+// iconPlayer draws the icons of the player controls, the arrows and the star; an unknown name draws nothing.
+templ iconPlayer(name IconName, class string) {
+	switch name {
+		case IconPlay:
+			// play
+			@iconSVG(class) {
+				<path d="M6.90588 4.53682C6.50592 4.2998 6 4.58808 6 5.05299V18.947C6 19.4119 6.50592 19.7002 6.90588 19.4632L18.629 12.5162C19.0211 12.2838 19.0211 11.7162 18.629 11.4838L6.90588 4.53682Z" stroke-linecap="round" stroke-linejoin="round"></path>
+			}
+		case IconPause:
+			// pause
+			@iconSVG(class) {
+				<path d="M6 18.4V5.6C6 5.26863 6.26863 5 6.6 5H9.4C9.73137 5 10 5.26863 10 5.6V18.4C10 18.7314 9.73137 19 9.4 19H6.6C6.26863 19 6 18.7314 6 18.4Z"></path>
+				<path d="M14 18.4V5.6C14 5.26863 14.2686 5 14.6 5H17.4C17.7314 5 18 5.26863 18 5.6V18.4C18 18.7314 17.7314 19 17.4 19H14.6C14.2686 19 14 18.7314 14 18.4Z"></path>
+			}
+		case IconSkipPrev:
+			// skip-prev
+			@iconSVG(class) {
+				<path d="M6 7V17" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M17.0282 5.2672C17.4217 4.95657 18 5.23682 18 5.73813V18.2619C18 18.7632 17.4217 19.0434 17.0282 18.7328L9.09651 12.4709C8.79223 12.2307 8.79223 11.7693 9.09651 11.5291L17.0282 5.2672Z" stroke-linecap="round" stroke-linejoin="round"></path>
+			}
+		case IconSkipNext:
+			// skip-next
+			@iconSVG(class) {
+				<path d="M18 7V17" stroke-linecap="round" stroke-linejoin="round"></path>
+				<path d="M6.97179 5.2672C6.57832 4.95657 6 5.23682 6 5.73813V18.2619C6 18.7632 6.57832 19.0434 6.97179 18.7328L14.9035 12.4709C15.2078 12.2307 15.2078 11.7693 14.9035 11.5291L6.97179 5.2672Z" stroke-linecap="round" stroke-linejoin="round"></path>
+			}
+		case IconArrowUp:
+			// arrow-up
+			@iconSVG(class) {
+				<path d="M12 21L12 3M12 3L20.5 11.5M12 3L3.5 11.5" stroke-linecap="round" stroke-linejoin="round"></path>
+			}
+		case IconArrowDown:
+			// arrow-down
+			@iconSVG(class) {
+				<path d="M12 3L12 21M12 21L20.5 12.5M12 21L3.5 12.5" stroke-linecap="round" stroke-linejoin="round"></path>
+			}
+		case IconStar:
+			// star
+			@iconSVG(class) {
+				<path d="M8.58737 8.23597L11.1849 3.00376C11.5183 2.33208 12.4817 2.33208 12.8151 3.00376L15.4126 8.23597L21.2215 9.08017C21.9668 9.18848 22.2638 10.0994 21.7243 10.6219L17.5217 14.6918L18.5135 20.4414C18.6409 21.1798 17.8614 21.7428 17.1945 21.3941L12 18.678L6.80547 21.3941C6.1386 21.7428 5.35909 21.1798 5.48645 20.4414L6.47825 14.6918L2.27575 10.6219C1.73617 10.0994 2.03322 9.18848 2.77852 9.08017L8.58737 8.23597Z" stroke-linecap="round" stroke-linejoin="round"></path>
+			}
+		case IconChevronLeft:
+			// nav-arrow-left
+			@iconSVG(class) {
+				<path d="M15 6L9 12L15 18" stroke-linecap="round" stroke-linejoin="round"></path>
+			}
+	}
+}
