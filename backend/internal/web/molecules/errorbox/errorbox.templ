@@ -4,7 +4,10 @@
 // English screen reads English.
 package errorbox
 
-import "github.com/ousiassllc/mam/backend/internal/apperr"
+import (
+	"github.com/ousiassllc/mam/backend/internal/apperr"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+)
 
 // Props is what the box draws.
 type Props struct {
@@ -36,15 +39,13 @@ templ Box(p Props) {
 			<textarea id={ fieldID(p) } readonly rows="4" class="mt-2 w-full resize-y rounded-md border border-border bg-surface p-2 font-mono text-xs text-ink focus-visible:focus-ring" aria-label={ apperr.Text(p.Lang, "ui.detail", nil) }>{ p.View.Report(p.Lang) }</textarea>
 		</details>
 		<div class="flex items-center gap-2">
-			<button
-				type="button"
-				class="inline-flex items-center justify-center rounded-md border border-border px-2 py-1 text-sm font-semibold text-ink transition-colors hover:bg-accent-soft"
-				data-copy-source={ fieldID(p) }
-				data-copy-status={ statusID(p) }
-				data-copy-done={ apperr.Text(p.Lang, "ui.copied", nil) }
-				data-testid="error-copy"
-				data-ripple
-			>{ apperr.Text(p.Lang, "ui.copy", nil) }</button>
+			@atoms.SmallButton(atoms.ToneNeutral, apperr.Text(p.Lang, "ui.copy", nil), templ.Attributes{
+				"type":             "button",
+				"data-copy-source": fieldID(p),
+				"data-copy-status": statusID(p),
+				"data-copy-done":   apperr.Text(p.Lang, "ui.copied", nil),
+				"data-testid":      "error-copy",
+			})
 			<span id={ statusID(p) } class="text-xs text-ink" role="status"></span>
 		</div>
 		if p.View.ErrorID != "" {

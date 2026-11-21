@@ -29,18 +29,16 @@ templ Section(d Data) {
 						@atoms.Badge(atoms.BadgeWarn, "未設定")
 					}
 				</p>
-				<button
-					type="button"
-					id={ FindAgainID }
-					class="rounded-md border border-border px-3 py-1 text-sm text-ink hover:border-mute focus-visible:focus-ring"
-					hx-get={ paths.CompanionFaceFusion() }
-					hx-target={ "#" + PanelID }
-					hx-swap="outerHTML"
-					hx-sync="this:drop"
-					hx-disabled-elt="this"
-					data-testid="mm-facefusion-refind"
-					data-ripple
-				>もう一度探す</button>
+				@atoms.SmallButton(atoms.ToneNeutral, "もう一度探す", templ.Attributes{
+					"type":            "button",
+					"id":              FindAgainID,
+					"hx-get":          paths.CompanionFaceFusion(),
+					"hx-target":       "#" + PanelID,
+					"hx-swap":         "outerHTML",
+					"hx-sync":         "this:drop",
+					"hx-disabled-elt": "this",
+					"data-testid":     "mm-facefusion-refind",
+				})
 			</div>
 			if d.VersionNote != "" {
 				<p class="text-sm text-warning" role="note" data-testid="mm-facefusion-version-note">{ d.VersionNote }</p>

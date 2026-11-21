@@ -420,7 +420,7 @@ func InstallPanel(w Wire, in Install) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<span>上のライセンスと取得元を確認しました。ダウンロードに同意します。</span></label><div><button type=\"button\" class=\"group inline-flex items-center justify-center rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bone transition-colors hover:bg-accent/85 focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none\" data-testid=\"gt-pose-install-button\" data-ripple hx-post=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<span>上のライセンスと取得元を確認しました。ダウンロードに同意します。</span></label><div><button type=\"button\" class=\"group inline-flex min-h-10 items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-semibold text-bone transition-colors hover:bg-accent/85 focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none\" data-testid=\"gt-pose-install-button\" data-ripple hx-post=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -1116,7 +1116,7 @@ func adultSection(w Wire, a AdultOffer) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "<span>上のライセンスと取得元を確認しました。成人向けのポーズのダウンロードに同意します。</span></label><div><button type=\"button\" class=\"group inline-flex items-center justify-center rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bone transition-colors hover:bg-accent/85 focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-50 motion-reduce:transition-none\" data-testid=\"gt-pose-adult-install-button\" data-ripple hx-post=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 101, "<span>上のライセンスと取得元を確認しました。成人向けのポーズのダウンロードに同意します。</span></label><div><button type=\"button\" class=\"group inline-flex min-h-10 items-center justify-center rounded-md bg-accent px-4 py-2 text-sm font-semibold text-bone transition-colors hover:bg-accent/85 focus-visible:focus-ring disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none\" data-testid=\"gt-pose-adult-install-button\" data-ripple hx-post=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

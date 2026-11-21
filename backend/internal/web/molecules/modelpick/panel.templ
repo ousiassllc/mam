@@ -4,6 +4,7 @@ import (
 	"slices"
 
 	"github.com/ousiassllc/mam/backend/internal/modelfilter"
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 )
 
 // Panel is the panel of detailed filters that the funnel opens: a group of choices for each thing a model can be told apart by (the sections the screen's Facets
@@ -65,16 +66,14 @@ templ Panel(b Filter, oob bool) {
 		</div>
 		<div class="flex flex-wrap items-center justify-between gap-2">
 			<p class="text-sm text-mute">条件を選ぶと、その場で一覧が絞り込まれます。</p>
-			<button
-				type="button"
-				class="cursor-pointer rounded-md border border-border px-3 py-1 text-xs text-ink hover:border-mute focus-visible:focus-ring"
-				hx-get={ b.URL(b.ClearAll()) }
-				hx-include={ b.clearInclude() }
-				hx-target={ b.Target }
-				hx-swap="outerHTML"
-				data-testid="model-pick-clear"
-				data-ripple
-			>すべてクリア</button>
+			@atoms.SmallButton(atoms.ToneNeutral, "すべてクリア", templ.Attributes{
+				"type":        "button",
+				"hx-get":      b.URL(b.ClearAll()),
+				"hx-include":  b.clearInclude(),
+				"hx-target":   b.Target,
+				"hx-swap":     "outerHTML",
+				"data-testid": "model-pick-clear",
+			})
 		</div>
 	</div>
 }
