@@ -6,7 +6,7 @@ package atoms
 // that 3 seconds are enough to read it; what else there is to say belongs in the body of the screen. It is not for what went wrong: an error, a refusal and anything that needs reading again is an Alert.
 templ Toast(message string) {
 	<div class="pointer-events-auto flex min-h-10 max-w-full items-center gap-2 rounded-full bg-ink px-4 py-2 text-sm text-bone" role="status" data-toast>
-		@Icon(IconSuccess, "h-4 w-4 shrink-0")
+		@Icon(IconSuccess, "size-icon-sm shrink-0")
 		<span class="min-w-0 truncate" data-toast-message>{ message }</span>
 	</div>
 }

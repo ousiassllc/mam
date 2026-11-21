@@ -68,13 +68,13 @@ func alertRole(kind AlertKind) string {
 // static/src/components/alert/alert.ts clones for the alerts it raises itself.
 templ Alert(kind AlertKind, title, body string) {
 	<div class={ alertClass(kind) } role={ alertRole(kind) } data-alert data-kind={ string(kind) }>
-		@Icon(alertIcon(kind), "mt-1 h-5 w-5 shrink-0 "+alertTone(kind))
+		@Icon(alertIcon(kind), "mt-1 size-icon-md shrink-0 "+alertTone(kind))
 		<div class="flex min-w-0 flex-1 flex-col gap-1">
 			<p class={ "font-semibold", alertTone(kind) }>{ title }</p>
 			<p class="whitespace-pre-line break-words text-ink" data-alert-message>{ body }</p>
 		</div>
 		<button type="button" class="shrink-0 rounded-md p-1 text-mute transition-colors hover:bg-accent-soft hover:text-ink focus-visible:focus-ring motion-reduce:transition-none" aria-label="閉じる" data-alert-close data-ripple>
-			@Icon(IconClose, "h-4 w-4")
+			@Icon(IconClose, "size-icon-sm")
 		</button>
 	</div>
 }

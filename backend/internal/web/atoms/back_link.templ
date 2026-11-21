@@ -11,7 +11,7 @@ templ BackLink(href, label string) {
 // BackLinkWith is a BackLink whose link carries attrs too (a data-testid).
 templ BackLinkWith(href, label string, attrs templ.Attributes) {
 	<a href={ templ.SafeURL(href) } class="inline-flex items-center gap-1 text-sm text-mute hover:text-ink" { attrs... }>
-		@Icon(IconChevronLeft, "h-4 w-4 shrink-0")
+		@Icon(IconChevronLeft, "size-icon-sm shrink-0")
 		{ label }
 	</a>
 }

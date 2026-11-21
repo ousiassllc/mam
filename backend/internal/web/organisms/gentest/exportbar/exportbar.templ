@@ -23,7 +23,7 @@ templ Bar(d Data) {
 				data-ripple
 				data-testid="gt-export-selected-submit"
 			>
-				@atoms.Icon(atoms.IconDownload, "h-4 w-4 shrink-0")
+				@atoms.Icon(atoms.IconDownload, "size-icon-sm shrink-0")
 				<span data-gt-selected-count data-testid="gt-selected-count">0</span>
 			</button>
 			<button
@@ -36,7 +36,7 @@ templ Bar(d Data) {
 				data-ripple
 				data-testid="gt-select-clear"
 			>
-				@atoms.Icon(atoms.IconClose, "h-4 w-4")
+				@atoms.Icon(atoms.IconClose, "size-icon-sm")
 			</button>
 		</form>
 		<form method="get" action={ templ.SafeURL(d.URL) } class="flex items-center gap-1" data-testid="gt-export-latest" hx-get={ d.URL } hx-target={ "#" + StatusID } hx-swap="innerHTML" hx-sync="this:drop">
@@ -60,7 +60,7 @@ templ Bar(d Data) {
 				data-testid="gt-export-latest-submit"
 				data-ripple
 			>
-				@atoms.Icon(atoms.IconDownload, "h-4 w-4")
+				@atoms.Icon(atoms.IconDownload, "size-icon-sm")
 			</button>
 		</form>
 		<div id={ StatusID } class="basis-full" aria-live="polite" data-testid="gt-export-status" data-gt-export-status></div>

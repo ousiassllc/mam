@@ -77,10 +77,10 @@ templ menu(s State, folded bool) {
 				class="rounded-md p-2 text-mute transition-colors hover:bg-accent-soft hover:text-ink focus-visible:focus-ring max-md:hidden motion-reduce:transition-none"
 			>
 				<span class="group-data-[folded=true]:hidden">
-					@atoms.Icon(atoms.IconPanelClose, "h-5 w-5")
+					@atoms.Icon(atoms.IconPanelClose, "size-icon-md")
 				</span>
 				<span class="hidden group-data-[folded=true]:inline">
-					@atoms.Icon(atoms.IconPanelOpen, "h-5 w-5")
+					@atoms.Icon(atoms.IconPanelOpen, "size-icon-md")
 				</span>
 			</button>
 		</div>
@@ -109,7 +109,7 @@ templ menu(s State, folded bool) {
 			data-testid="theme-toggle"
 			class="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-mute transition-colors hover:bg-accent-soft hover:text-ink focus-visible:focus-ring motion-reduce:transition-none max-md:justify-center"
 		>
-			@atoms.Icon(atoms.IconTheme, "h-5 w-5")
+			@atoms.Icon(atoms.IconTheme, "size-icon-md")
 			<span class="max-md:sr-only group-data-[folded=true]:sr-only">{ LabelTheme }</span>
 		</button>
 	</nav>
@@ -178,7 +178,7 @@ templ entry(it Item, mark string) {
 		}
 	>
 		<span class={ iconClass(mark != "") }>
-			@atoms.Icon(it.Icon, "h-5 w-5")
+			@atoms.Icon(it.Icon, "size-icon-md")
 		</span>
 		<span class={ labelClass }>{ it.Label }</span>
 	</a>

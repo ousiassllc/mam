@@ -23,7 +23,7 @@ var qualityOptions = []qualityOption{
 // MODE switches AUTO ⇄ DIRECTOR (F-02); in DIRECTOR the message is read by the Command Interpreter
 // (F-24). Quality switches the Quality Policy at once (F-22).
 templ ChatComposer(p domain.Project) {
-	<div class="border-t border-border px-4 py-3">
+	<div class="border-t border-border px-4 py-3 md:px-6">
 		<form
 			id="chat-composer"
 			hx-post={ paths.Project(p.ID, "messages") }
@@ -40,7 +40,7 @@ templ ChatComposer(p domain.Project) {
 					"id":         "reply-cancel",
 					"aria-label": "返信を取り消す",
 				}) {
-					@atoms.Icon(atoms.IconClose, "h-4 w-4")
+					@atoms.Icon(atoms.IconClose, "size-icon-sm")
 				}
 			</div>
 			<input type="hidden" name="reply_to_message_id" id="reply-to" value=""/>
@@ -48,7 +48,7 @@ templ ChatComposer(p domain.Project) {
 			<div class="flex items-end gap-2">
 				<input id="composer-files" type="file" name="attachments" multiple accept={ AcceptedUploads + ",.safetensors" } aria-label="画像・動画・LoRA（.safetensors）を添付" class="peer sr-only"/>
 				<label for="composer-files" class={ atoms.ButtonClass(atoms.ToneNeutral), "cursor-pointer peer-focus-visible:focus-ring" } data-ripple title="画像・動画・LoRA（.safetensors）を添付">
-					@atoms.Icon(atoms.IconPlus, "h-4 w-4")
+					@atoms.Icon(atoms.IconPlus, "size-icon-sm")
 					<span class="sr-only">添付</span>
 				</label>
 				@atoms.Textarea(atoms.FieldLg, "min-h-10 flex-1 resize-y", templ.Attributes{

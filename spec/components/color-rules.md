@@ -36,6 +36,7 @@
 | トースト | `bg-ink` / `text-bone` | O3（インク地にボーン字のピル。`atoms.Toast`） |
 | カード・モーダルの面 | `bg-surface` / `border-border` | §1 |
 | 補助・説明の文字 | `text-mute`（1 行の補足・キャプションだけ。2 文以上の説明・注意・手順・空状態の案内は `text-ink`） | §1・`contrast_test`・`a11y/mute_text_test.go`（ソースの文言）・`a11y/mute_rendered_test.go`（描画した HTML） |
+| 入力欄のプレースホルダー | `--mute`・不透明度 1（`tokens.css` の `::placeholder`）。Light・Dark のどちらも `--surface`・`--bone` 上で AA 4.5:1 |
 | 枠・区切り | `border-border` / `divide-border` | §1・一覧 |
 | 据え置きの面（現在地・コード欄・チップ） | `bg-accent-soft` | ガイドの `--accent-soft` |
 | ホバー面 | `hover:bg-accent-soft` / `hover:border-mute` / `peer-not-checked:hover:border-mute` | §1・`peer-not-checked:` は選ぶカード（選んだカードの枠をホバーで灰色に戻さない）。`/60` の薄めはガイドに無いので使わない |
@@ -81,7 +82,7 @@
 
 | クラス | 使う場所 | 理由 |
 |--------|---------|------|
-| `border-mute` | 入力欄（`atoms.fieldClass`）と、Lit が出す `<input>`・`<select>`・`<textarea>`（Take の指示欄・タイムラインのクリップ） | 入力欄の枠は、面に対して **3:1 以上**（WCAG 1.4.11）が必要で、`--border`（罫線用の薄い線）では足りない。`--mute` はライト・ダークのどちらでも 3:1 を超える（`a11y/field_border_test.go`） |
+| `border-mute` | 入力欄（`atoms.fieldClass`）と、Lit が出す `<input>`・`<select>`・`<textarea>`（Take の指示欄・タイムラインのクリップ）と、実行の確認カード（`gentest/confirm.templ`・`gentest/chat/proposal.templ`・`gentestinpaint/form.templ`。ガイド S4 の強調枠 = 1px `--mute`。`border-accent` は選択・現在位置だけ） | 入力欄の枠は、面に対して **3:1 以上**（WCAG 1.4.11）が必要で、`--border`（罫線用の薄い線）では足りない。`--mute` はライト・ダークのどちらでも 3:1 を超える（`a11y/field_border_test.go`） |
 | `bg-black` | 動画・画像のプレビューの背景（`<video>`・`<img>` の余白）と動画プレイヤーの舞台 | 映像のレターボックスは黒でないと映像が浮く（どちらのテーマでも黒）。モーダルの背後（スクラム）はクラスでなく `tokens.css` の `--scrim`（`static/src/css/motion.css` が `dialog::backdrop` に当てる） |
 | `border-transparent` | 現在地でないナビ・ステップの枠（`border-l-2` の幅を取っておく） | 枠の幅を保って現在地の切り替えで文字がずれないようにする（色はない） |
 | `accent-danger`・`accent-warning`・`accent-success` | 予算の `<progress>`（危険・警告・成功） | メーターの塗りの色（`accent-*`。共通の `<progress>` の CSS `static/src/css/progress.css` が、このクラスの付いた `<progress>` の塗りを状態色にする）で、表の文字用・面用のクラスは使えない。**予算の `<progress>` だけ**で、似てる度などほかの進捗は `--accent` の塗りのまま（状態は文言で伝える）。意味は状態色（危険 = danger・警告 = warning・成功 = success）を表と揃える。推定コストと上限の文字を添える（色だけで伝えない） |
@@ -148,3 +149,5 @@
 | 2.13 | 2026-11-22 | §3 の「リンク・アイコン強調」に、下線の色は `tokens.css` の `:where(a, button).underline` が `--mute` にすることを書いた。動画のプレースホルダの進捗の塗りを `bg-info/70` から `bg-accent` にした（§4 の重ね塗りの例外は、動画の上・レーンの上だけ） | #1194: 部品・オーバーレイ（O）の指摘 |
 | 2.14 | 2026-11-22 | §1 のフォーカスの輪の `:where()` に `audio[controls]` を足した（`video[controls]` と同じ輪）。§3 の「補助・説明の文字」の検査を、タグ（p / li のほか td・span・label・div）と祖先の `text-mute` の継承、Go 定数・カタログ JSON 由来の文言（描画した HTML）まで広げた（`a11y/mute_text_test.go`・`mute_rendered_test.go`）。2 文以上のモーダルの説明・設定の説明・導入前のライセンス同意文・AUTO の同意文などを `text-ink` にした。新しいクラスは足していない | #1195: 色（C）の指摘 |
 | 2.15 | 2026-11-22 | §4 の重ね塗りの例外（`bg-success/70` 等）の上には文字を直接置かないと書いた（Take 比較の選んだ区間の番号は `bg-surface text-ink` のチップ。`text-bone` は Light で 4.5:1 未満だった。`contrast_test`）。ポーズ素材のライセンス概要（カタログ JSON 由来の複数文）とチャットの見積り拒否の状態行を `text-ink` にし、`mute_rendered_test` の描画対象にポーズ選択の 3 状態とチャットのスレッドを足した | #1201: 色（C）の指摘 |
+| 2.16 | 2026-11-22 | §3 に、入力欄のプレースホルダー（`::placeholder`）は `tokens.css` の `@layer base` で `--mute`・不透明度 1 にすると書いた（Tailwind の既定は `currentcolor` の 50% で、Light の `--bone` 上 3.8:1 だった）。検査 `TestTokens_PlaceholderIsMute`（`a11y/contrast_test.go`）を足した | #1204: 色（C）の指摘 |
+| 2.17 | 2026-11-22 | §4 の `border-mute` の使う場所に、実行の確認カード 3 件（強調枠）を足した（`border-accent` だった。accent の枠は選択・現在位置だけ）。検査 `TestSources_ConfirmCardsHaveTheEmphasisBorder`（`a11y/gutter_emphasis_test.go`）を足した | #1206: 形・余白・線（S）の指摘 |

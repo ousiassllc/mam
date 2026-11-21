@@ -334,7 +334,7 @@ func Confirm(c Box) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "\" class=\"flex flex-col gap-3 rounded-lg border border-accent p-4\" data-testid=\"gt-inpaint-confirm\"><h2 class=\"text-sm font-semibold\">実行の確認</h2><p class=\"text-sm\">全部で <strong>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "\" class=\"flex flex-col gap-3 rounded-lg border border-mute p-4\" data-testid=\"gt-inpaint-confirm\"><h2 class=\"text-sm font-semibold\">実行の確認</h2><p class=\"text-sm\">全部で <strong>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

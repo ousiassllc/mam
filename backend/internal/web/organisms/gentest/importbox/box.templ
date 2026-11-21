@@ -93,8 +93,8 @@ templ Box(f Form) {
 					@atoms.Input(atoms.FieldMd, "", templ.Attributes{"id": "gt-import-tags", "name": "tags", "type": "text"})
 				</label>
 			</div>
-			<fieldset class="flex flex-wrap items-end gap-3 text-xs text-ink">
-				<legend class="mb-1">続けてスロットに割り当てる（省略可。種類が合うものだけ。LOCK されたスロットは変えられません）</legend>
+			<fieldset class="flex flex-wrap items-end gap-3 text-xs text-ink" aria-describedby="gt-assign-help">
+				<legend class="mb-1">続けてスロットに割り当てる</legend>
 				<label class="flex flex-col gap-1" for="gt-assign-target">
 					<span>対象</span>
 					@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": "gt-assign-target", "name": "assign_target"}) {
@@ -112,6 +112,7 @@ templ Box(f Form) {
 					<span>スロット（face・body など）</span>
 					@atoms.Input(atoms.FieldMd, "", templ.Attributes{"id": "gt-assign-slot", "name": "assign_slot", "type": "text"})
 				</label>
+				<p id="gt-assign-help" class="w-full text-sm text-ink">省略可。種類が合うものだけ。LOCK されたスロットは変えられません。</p>
 			</fieldset>
 		}
 		@atoms.Button(atoms.TonePrimary, "取り込む", templ.Attributes{"type": "submit", "data-testid": "gt-import-submit"})

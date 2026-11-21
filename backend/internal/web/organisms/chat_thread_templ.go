@@ -225,7 +225,7 @@ func ChatThread(msgs []domain.ThreadMessage) templ.Component {
 			templ_7745c5c3_Var5 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"chat-thread\" class=\"flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4 focus-visible:focus-ring\" tabindex=\"0\" role=\"log\" aria-live=\"polite\" aria-label=\"チャットスレッド\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"chat-thread\" class=\"flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4 md:px-6 focus-visible:focus-ring\" tabindex=\"0\" role=\"log\" aria-live=\"polite\" aria-label=\"チャットスレッド\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

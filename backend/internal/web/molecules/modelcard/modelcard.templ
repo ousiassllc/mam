@@ -10,7 +10,7 @@ import (
 // Tile is the picture of a card: an icon on a raised tile. The meaning is in the words next to it, so the tile is decoration.
 templ Tile(icon atoms.IconName) {
 	<span class="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent" aria-hidden="true" data-testid="model-tile">
-		@atoms.Icon(icon, "h-6 w-6 shrink-0")
+		@atoms.Icon(icon, "size-icon-lg shrink-0")
 	</span>
 }
 

@@ -51,7 +51,7 @@ func ProposalCard(p Proposal) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" class=\"flex flex-col gap-3 rounded-lg border border-accent p-3 md:p-4\" data-testid=\"gtc-proposal\" data-state=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" class=\"flex flex-col gap-3 rounded-lg border border-mute p-3 md:p-4\" data-testid=\"gtc-proposal\" data-state=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -74,7 +74,7 @@ func ProposalCard(p Proposal) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "><h3 class=\"text-sm font-semibold\">実行の確認</h3><dl class=\"flex flex-col gap-1 text-sm\" data-testid=\"gtc-facts\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "><h2 class=\"text-sm font-semibold\">実行の確認</h2><dl class=\"flex flex-col gap-1 text-sm\" data-testid=\"gtc-facts\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -558,7 +558,7 @@ func ResultBlock(r Result) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "><div class=\"flex flex-wrap items-center gap-2\"><h3 class=\"text-sm font-semibold\">生成の結果</h3>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 53, "><div class=\"flex flex-wrap items-center gap-2\"><h2 class=\"text-sm font-semibold\">生成の結果</h2>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

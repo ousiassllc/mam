@@ -49,7 +49,7 @@ const (
 )
 
 // iconDefaultClass is the size of an icon whose class is empty.
-const iconDefaultClass = "h-5 w-5 shrink-0"
+const iconDefaultClass = "size-icon-md shrink-0"
 
 func iconClass(class string) string {
 	if class == "" {
@@ -58,7 +58,7 @@ func iconClass(class string) string {
 	return class
 }
 
-// Icon draws a decorative icon in the colour of the parent text (currentColor). An empty class means h-5 w-5; an
+// Icon draws a decorative icon in the colour of the parent text (currentColor). An empty class means size-icon-md (20px); an
 // unknown name draws nothing.
 func Icon(name IconName, class string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {

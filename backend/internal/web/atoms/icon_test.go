@@ -54,13 +54,13 @@ func TestIcon_EveryIconIsADecorativeSVGWithItsOwnShape(t *testing.T) {
 }
 
 func TestIcon_ClassIsTheSizeAndDefaultsToTwentyPixels(t *testing.T) {
-	assert.Contains(t, renderIcon(t, atoms.IconChart, ""), `class="h-5 w-5 shrink-0"`)
-	assert.Contains(t, renderIcon(t, atoms.IconChart, "h-4 w-4"), `class="h-4 w-4"`)
+	assert.Contains(t, renderIcon(t, atoms.IconChart, ""), `class="size-icon-md shrink-0"`)
+	assert.Contains(t, renderIcon(t, atoms.IconChart, "size-icon-sm"), `class="size-icon-sm"`)
 }
 
 // The star is an outline (I2): the <svg> is fill="none" and a call site tells a state by the colour of the line, not by a fill.
 func TestIcon_StarIsAnOutline(t *testing.T) {
-	html := renderIcon(t, atoms.IconStar, "h-4 w-4")
+	html := renderIcon(t, atoms.IconStar, "size-icon-sm")
 
 	assert.Contains(t, html, `fill="none"`)
 	assert.Contains(t, html, `stroke="currentColor"`)

@@ -143,7 +143,7 @@ func Alert(kind AlertKind, title, body string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = Icon(alertIcon(kind), "mt-1 h-5 w-5 shrink-0 "+alertTone(kind)).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Icon(alertIcon(kind), "mt-1 size-icon-md shrink-0 "+alertTone(kind)).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -199,7 +199,7 @@ func Alert(kind AlertKind, title, body string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = Icon(IconClose, "h-4 w-4").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Icon(IconClose, "size-icon-sm").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

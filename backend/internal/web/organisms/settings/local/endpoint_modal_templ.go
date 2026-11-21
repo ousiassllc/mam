@@ -282,32 +282,34 @@ func EndpointModal(f EndpointForm, errMsg string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</label> <label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"local-endpoint-timeout\"><span>タイムアウト（秒。ComfyUI は進みが止まってから。空: ComfyUI 10800・互換 900）</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "</label><div class=\"flex flex-col gap-1\"><label class=\"text-xs text-mute\" for=\"local-endpoint-timeout\">タイムアウト（秒）</label>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			templ_7745c5c3_Err = atoms.Input(atoms.FieldMd, "w-32", templ.Attributes{
 				"id": "local-endpoint-timeout", "name": FieldTimeout, "type": "number", "min": "1", "step": "1", "value": f.TimeoutSeconds,
+				"aria-describedby": "local-endpoint-timeout-help",
 			}).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</label></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<p id=\"local-endpoint-timeout-help\" class=\"max-w-prose text-sm text-ink\">ComfyUI は進みが止まってから数えます。空: ComfyUI 10800・互換 900。</p></div></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if !f.Edit {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"local-endpoint-key-input\"><span>API キー（任意。保存後は設定済みかどうかと末尾 4 文字だけを表示します）</span>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<div class=\"flex flex-col gap-1\"><label class=\"text-xs text-mute\" for=\"local-endpoint-key-input\">API キー（任意）</label>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				templ_7745c5c3_Err = atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
 					"id": "local-endpoint-key-input", "name": FieldAPIKey, "type": "password", "autocomplete": "new-password", "spellcheck": "false",
+					"aria-describedby": "local-endpoint-key-help",
 				}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</label>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "<p id=\"local-endpoint-key-help\" class=\"text-sm text-mute\">保存後は設定済みかどうかと末尾 4 文字だけを表示します。</p></div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

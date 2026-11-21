@@ -99,9 +99,13 @@ templ pickerRow(r PickerRow, editable bool) {
 				"type": "checkbox", "name": FieldPickRow, "value": r.Key, "checked": r.Chosen, "disabled": !editable, "aria-label": r.Class + "." + r.Input + "（ノード " + r.Node + "）を画面に出す",
 			})
 		</td>
-		<th scope="row" class="py-2 pr-2 font-normal text-ink">{ r.Class }.{ r.Input } <span class="text-mute">ノード { r.Node }</span></th>
-		<td class="py-2 pr-2 break-all">{ r.Value }</td>
-		<td class="py-2 pr-2">{ r.Type }</td>
+		<th scope="row" class="py-2 pr-2 font-normal text-ink"><code>{ r.Class }.{ r.Input }</code> <span class="text-mute">ノード { r.Node }</span></th>
+		if r.Type == "int" || r.Type == "float" {
+			<td class="py-2 pr-2 text-right font-mono tabular-nums break-all">{ r.Value }</td>
+		} else {
+			<td class="py-2 pr-2 font-mono break-all">{ r.Value }</td>
+		}
+		<td class="py-2 pr-2"><code>{ r.Type }</code></td>
 		<td class="py-2 pr-2">
 			@atoms.Input(atoms.FieldSm, "w-44", templ.Attributes{"name": FieldPickLabel + r.Key, "type": "text", "maxlength": itoa(MaxPickLabel), "value": r.Label, "disabled": !editable, "aria-label": r.Key + " の画面での名前"})
 		</td>
