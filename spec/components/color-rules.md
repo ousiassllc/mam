@@ -97,11 +97,9 @@
 |-----------|--------------------|
 | 塗り（選んだ値までのレール） | `--accent` |
 | 残りのレール | `--accent-soft` |
-| つまみ | 面 `--surface`・縁 `--accent` |
-| ホバー | つまみの面が `--accent-soft`（色・背景だけ。光彩なし） |
-| ドラッグ中（`:active`） | つまみの面が `--accent` |
+| つまみ | 面 `--surface`・縁 `--border` 1px（共通ガイド O11。ホバー・ドラッグ中の塗り替えはしない） |
 | キーボードのフォーカス（`:focus-visible`） | つまみの外側に `--bone` の隙間 2px と `--focus` の輪 2px（ほかの部品の `focus-ring` と同じ値） |
-| 無効（`:disabled`） | 塗り `--mute`・残り `--accent-soft`・つまみ `--accent-soft`（縁 `--mute`）。ホバー・ドラッグの変化なし |
+| 無効（`:disabled`） | 塗り `--mute`・残り `--accent-soft`・つまみ `--accent-soft`（縁 `--mute`） |
 | Windows のハイコントラスト（`forced-colors`） | システムの色（`Highlight`・`GrayText`・`ButtonFace`・`ButtonText`） |
 
 **WebKit（macOS の WKWebView）には、塗りの部分を指す疑似要素が無い**ので、レールは `linear-gradient(to right, 塗り var(--stop), 残り var(--stop))` で描く。`--fill`（0〜1）は値から `static/src/components/slider/slider.ts` が書く（読み込み・HTMX の差し替え・`input` のたび）。Lit が描くスライダーは `sliderStyle()`（`slider-model.ts`）で `style` に書く。`appearance: none` でブラウザの標準の見た目に頼らないので、Chromium（Windows の WebView2）と WebKit で同じ形になる。値・範囲・刻み・矢印キー・ドラッグは `<input type=range>` のままで、変えない。値の表示は各画面の `<output>`（スライダーの横か上）が持つ。
@@ -143,3 +141,4 @@
 | 2.6 | 2026-11-22 | §3・§3.1 に状態色の枠 `border-{danger,warning,success,info}/40`（ガイド brand-guide `5d816f8` の枠 40%・地 10%）を足した。`/60`・`/20` は移行中として残す | #1179 #1176: 状態色をガイドに合わせる下準備 |
 | 2.7 | 2026-11-22 | §3・§3.1 から状態色の `/60`（枠）・`/20`（バッジの地）を外し、枠 `/40`・地 `/10` だけにした。バッジに 1px の枠 `/40` を足し、LOCK の選択面は `bg-accent-soft text-accent` にした | #1176: 色（C）の指摘 |
 | 2.8 | 2026-11-22 | §3 の「リンク・アイコン強調」に `fill-current` を足した（輪郭のアイコン `IconStar` を、お気に入りがオンのとき文字色で塗る。`Icon` は `fill="none"` なので、塗りはクラスで上書きする）。新しい色は足していない | #1179: アイコン（I）の指摘（★ ☆ の文字を Iconoir の star に） |
+| 2.9 | 2026-11-22 | §4.1 のスライダーのつまみを、面 `--surface`・縁 `--border` 1px に改めた（共通ガイド O11）。ホバー・ドラッグ中のつまみの塗り替えは外した。新しい色は足していない | #1181: 部品・オーバーレイ（O）の指摘 |
