@@ -312,6 +312,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.39 | 2026-11-22 | §2 のアイコン一覧に `IconPlus`（Iconoir の `plus`）を足し、戻るリンクの矢印（`←`）とチャットの添付の `＋` を文字でなく Icon にした。`BackLink` のラベルは矢印抜きの言葉だけ | #1198: アイコン（I）の指摘 |
 | 0.40 | 2026-11-22 | §1 のリップルの行に、ボタンの外見の `<label>`・`<a>`（ファイル選択・ページ送り）にも `data-ripple` を付けると書いた。LOCK 切替・左メニューの `transition-colors` に `motion-reduce:transition-none` を揃え、検査 `TestSources_ButtonLookedElementsHaveTheRipple`・`TestSources_TransitionsStopForReducedMotion` を足した | #1199: モーション（M）の指摘 |
 | 0.41 | 2026-11-22 | §1 のスライダーの行のレールを 6px から 4px に直した（`slider.css` の `--rail: 0.25rem` とガイド O11 が正で、6px は進捗バー O12 の値）。テキストだけのボタン（`atoms.LinkButton`）の見た目を `linkButtonClass`（atoms）と `LINK_BUTTON`（`lib/button.ts`）の 1 か所にし、Lit の複製 4 か所と絞り込みボタンを置き換えた。検査 `TestSources_LinkButtonLookIsWrittenOnce`（`a11y/shape_test.go`）を足し、`TestSources_ButtonLookIsWrittenOnce` の手書きサブボタンの検出を `hover:` 抜きに広げた | #1200: 部品・オーバーレイ（O）の指摘 |
+| 0.42 | 2026-11-22 | §1 の文字の行に、JS が組み立てる一覧の行・コピーして使うコマンドの `pre`・カードや表の主たる値の `code` を 14px 以上と書いた。`a11y/typography_test` に、`.ts` の `className` / `classList.add` の文字列を見る検査と `pre` の `text-xs` の検査を足した | #1202: タイポグラフィ（T）の指摘 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 
