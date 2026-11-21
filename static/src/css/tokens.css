@@ -166,6 +166,11 @@
     font-size: var(--text-base);
     line-height: 1.8;
   }
+
+  /* Emphasis inside a text (T2): Tailwind's preflight sets strong to `bolder` (700); the guide has only Regular and SemiBold. */
+  strong {
+    font-weight: 600;
+  }
 }
 
 /* The focus ring (C3): 2px solid --focus, offset 2. A utility so that every control says it the same way
