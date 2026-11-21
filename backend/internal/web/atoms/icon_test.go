@@ -58,13 +58,12 @@ func TestIcon_ClassIsTheSizeAndDefaultsToTwentyPixels(t *testing.T) {
 	assert.Contains(t, renderIcon(t, atoms.IconChart, "h-4 w-4"), `class="h-4 w-4"`)
 }
 
-// The star is an outline (fill="none" on the <svg>); a caller that wants it filled puts fill-current in the class, which
-// reaches the <svg> as it is and beats the presentation attribute.
-func TestIcon_StarIsAnOutlineThatTheClassCanFill(t *testing.T) {
-	html := renderIcon(t, atoms.IconStar, "h-4 w-4 fill-current")
+// The star is an outline (I2): the <svg> is fill="none" and a call site tells a state by the colour of the line, not by a fill.
+func TestIcon_StarIsAnOutline(t *testing.T) {
+	html := renderIcon(t, atoms.IconStar, "h-4 w-4")
 
 	assert.Contains(t, html, `fill="none"`)
-	assert.Contains(t, html, `class="h-4 w-4 fill-current"`)
+	assert.Contains(t, html, `stroke="currentColor"`)
 }
 
 func TestIcon_UnknownNameDrawsNothing(t *testing.T) {

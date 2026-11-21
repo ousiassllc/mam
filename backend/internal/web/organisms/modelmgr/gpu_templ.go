@@ -393,7 +393,7 @@ func variantLabel(g GPU, value string) string {
 
 func recommendedMark(v Variant) string {
 	if v.Recommended {
-		return " ★推奨"
+		return "（推奨）"
 	}
 	return ""
 }

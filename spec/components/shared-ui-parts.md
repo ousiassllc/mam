@@ -147,7 +147,7 @@
 | `IconJobs` | `list-checks` | 左メニュー: ジョブ | #980 |
 | `IconPlay`・`IconPause`・`IconSkipPrev`・`IconSkipNext` | `play`・`pause`・`skip-prev`・`skip-next`（Iconoir） | プレーヤーの操作（`atoms/icon_player.templ`） | #1179 |
 | `IconArrowUp`・`IconArrowDown`・`IconChevronLeft` | `arrow-up`・`arrow-down`・`nav-arrow-left` | 並べ替え・戻る | #1179 |
-| `IconStar` | `star`（輪郭。塗りは呼び出し側が Tailwind の `fill-*` をクラスで付ける。`<svg>` の `fill="none"` は属性なのでクラスが勝つ） | お気に入り | #1179 |
+| `IconStar` | `star`（輪郭のまま。塗らない。状態は線の色（`text-ink` ↔ `text-mute`）と `aria-pressed` で示す） | お気に入り | #1179 |
 | （`IconMedia`・`IconReview`・`IconChart`・`IconSettings` などは左メニューでも再利用） | | Scene / Shot・レビュー・制作指標・設定 | #915 |
 
 - 16 個で、#846 の 8 個 + #847 の 8 個。Issue の「10 個前後」より多いのは、#847 が概要のカードにもアイコンを付けるため（§8 の質問 1。付けないなら #847 は `x` と `copy` の 2 個）。`IconClose`（`x`）はモーダルの部品が使うので、どちらの Issue が持つかはモーダルの担当（§8 の質問 7）に従う。表の「#847」は決定のとおり。
@@ -297,6 +297,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.27 | 2026-11-22 | §1 のスライダーの行から、ホバー・ドラッグ中のつまみの塗り替えを外し、つまみの縁を `--border` 1px にした。進捗バー（`progress.css`）の行を足した | #1181: 部品・オーバーレイ（O）の指摘 |
 | 0.28 | 2026-11-22 | §1 の文字の行を、表の本体・一覧・警告・入力欄・リンク型ボタンの文字は 14px 以上（`text-xs` は注記・バッジ・表の見出し・`dt` のラベルだけ）、行の見出しと `<legend>` は Regular に改めた。`a11y/typography_test` に、`<th scope="row">`・`<legend>` に `font-semibold` を付けない検査を足した | #1185: タイポグラフィ（T）の指摘 |
 | 0.29 | 2026-11-22 | §1 の余白の行に、リストのインデントは `pl-5` でなく `pl-4` か `pl-6` と書いた。`a11y/shape_test` の 20px 検査を `pl`・`pr`・`ml`・`mr` に広げ、`<main>` の `p-8` も落とす | #1186: 形・余白・線（S）の指摘 |
+| 0.30 | 2026-11-22 | §2 のアイコン一覧の `IconStar` を、塗らない輪郭のままに改めた（状態は線の色と `aria-pressed`）。文字グリフ ⚠ ● ▼ ★ をやめ、⚠ は `icon('warning')`、▼ は `icon('arrow-down')`、● ★ は文言だけにした | #1187: アイコン（I）の指摘 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 

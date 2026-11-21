@@ -29,7 +29,7 @@ var colorAllowlist = map[string][]string{
 	"hover surface":   {"hover:bg-accent-soft", "hover:border-mute", "peer-not-checked:hover:border-mute"},
 	"hover text":      {"hover:text-ink"},
 	"primary action":  {"bg-accent", "hover:bg-accent/85", "text-bone"},
-	"link and icon":   {"text-accent", "decoration-mute", "fill-current"},
+	"link and icon":   {"text-accent", "decoration-mute"},
 	"selected":        {"border-accent", "has-[:checked]:border-accent", "peer-checked:border-accent", "peer-checked:bg-accent-soft", "hover:border-accent", "border-t-accent", "border-accent-soft"},
 	"danger":          {"text-danger", "border-danger/40", "bg-danger/10", "hover:bg-danger/10"},
 	"warning":         {"text-warning", "border-warning/40", "bg-warning/10"},

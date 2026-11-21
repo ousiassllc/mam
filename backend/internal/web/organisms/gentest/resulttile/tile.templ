@@ -67,7 +67,7 @@ templ favoriteMark(id string, on bool, oob bool) {
 	>
 		if on {
 			<span class="sr-only">お気に入り</span>
-			@atoms.Icon(atoms.IconStar, "block h-5 w-5 fill-current")
+			@atoms.Icon(atoms.IconStar, "block h-5 w-5")
 		}
 	</span>
 }
@@ -88,7 +88,7 @@ templ FavoriteButton(id string, on bool) {
 	<button
 		type="button"
 		id={ "gt-favorite-" + id }
-		class="inline-flex items-center justify-center rounded-md p-1 hover:bg-accent-soft"
+		class={ "inline-flex items-center justify-center rounded-md p-1 hover:bg-accent-soft", templ.KV("text-ink", on), templ.KV("text-mute", !on) }
 		hx-post={ paths.GenerationTestPart("results", id, "favorite") }
 		hx-vals={ favoriteVals(!on) }
 		hx-swap="outerHTML"
@@ -97,11 +97,7 @@ templ FavoriteButton(id string, on bool) {
 		data-testid="gt-favorite"
 		data-on={ boolText(on) }
 	>
-		if on {
-			@atoms.Icon(atoms.IconStar, "h-5 w-5 fill-current")
-		} else {
-			@atoms.Icon(atoms.IconStar, "h-5 w-5")
-		}
+		@atoms.Icon(atoms.IconStar, "h-5 w-5")
 	</button>
 }
 

@@ -41,7 +41,7 @@
 | ホバー面 | `hover:bg-accent-soft` / `hover:border-mute` / `peer-not-checked:hover:border-mute` | §1・`peer-not-checked:` は選ぶカード（選んだカードの枠をホバーで灰色に戻さない）。`/60` の薄めはガイドに無いので使わない |
 | ホバーの文字 | `hover:text-ink` | §1 |
 | 主アクション（実ボタン） | `bg-accent` / `hover:bg-accent/85` / `text-bone` | `TonePrimary` |
-| リンク・アイコン強調 | `text-accent` / `decoration-mute`（リンクは `underline` を添える）/ `fill-current`（輪郭のアイコン `IconStar` を、オンのとき文字色で塗る） | §1・`Icon` 周り・お気に入りの星 |
+| リンク・アイコン強調 | `text-accent` / `decoration-mute`（リンクは `underline` を添える） | §1・`Icon` 周り |
 | 選択・現在地 | `border-accent` / `has-[:checked]:border-accent` / `peer-checked:border-accent` / `peer-checked:bg-accent-soft` / `hover:border-accent` / `border-t-accent` / `border-accent-soft` | 選ぶカード・ナビ・スピナーの回る弧（`border-t-accent`）と、スピナーの輪の残り（`border-accent-soft`。共通ガイド O12） |
 | 危険 | 文字 `text-danger`、枠/面 `border-danger/40`・`bg-danger/10`・`hover:bg-danger/10`（`ToneDanger` のホバー） | `ToneDanger`・`BadgeError` |
 | 警告 | 文字 `text-warning`、枠/面 `border-warning/40`・`bg-warning/10` | `BadgeWarn` |
@@ -143,3 +143,4 @@
 | 2.8 | 2026-11-22 | §3 の「リンク・アイコン強調」に `fill-current` を足した（輪郭のアイコン `IconStar` を、お気に入りがオンのとき文字色で塗る。`Icon` は `fill="none"` なので、塗りはクラスで上書きする）。新しい色は足していない | #1179: アイコン（I）の指摘（★ ☆ の文字を Iconoir の star に） |
 | 2.9 | 2026-11-22 | §4.1 のスライダーのつまみを、面 `--surface`・縁 `--border` 1px に改めた（共通ガイド O11）。ホバー・ドラッグ中のつまみの塗り替えは外した。新しい色は足していない。スピナーの輪の残りに `border-accent-soft` を許可した（O12）。§4 の `accent-*` の行は、予算の `<progress>` だけの例外と明記した（共通の進捗バー `progress.css` が塗りを描く） | #1181: 部品・オーバーレイ（O）の指摘 |
 | 2.10 | 2026-11-22 | §3 の「ホバー面」から `hover:bg-accent-soft/60` を外し、`hover:bg-accent-soft` だけにした（ガイドに無い薄め方）。§1 のフォーカスの輪に、クラスを付けない要素向けの `tokens.css` の `@layer base` の規則を足した。トークンの出典を `5d816f8` に改めた | #1184: 色（C）の指摘 |
+| 2.11 | 2026-11-22 | §3 の「リンク・アイコン強調」から `fill-current` を外した（2.8 を戻す）。お気に入りの星は輪郭のままで、状態は線の色（`text-ink` ↔ `text-mute`）と `aria-pressed` で示す（ガイド I2: 塗りのアイコンは逸脱） | #1187: アイコン（I）の指摘 |
