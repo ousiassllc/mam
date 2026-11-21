@@ -42,7 +42,7 @@
 | ホバーの文字 | `hover:text-ink` | §1 |
 | 主アクション（実ボタン） | `bg-accent` / `hover:bg-accent/85` / `text-bone` | `TonePrimary` |
 | リンク・アイコン強調 | `text-accent` / `decoration-mute`（リンクは `underline` を添える）/ `fill-current`（輪郭のアイコン `IconStar` を、オンのとき文字色で塗る） | §1・`Icon` 周り・お気に入りの星 |
-| 選択・現在地 | `border-accent` / `has-[:checked]:border-accent` / `peer-checked:border-accent` / `peer-checked:bg-accent-soft` / `hover:border-accent` / `border-t-accent` | 選ぶカード・ナビ・スピナーの回る弧 |
+| 選択・現在地 | `border-accent` / `has-[:checked]:border-accent` / `peer-checked:border-accent` / `peer-checked:bg-accent-soft` / `hover:border-accent` / `border-t-accent` / `border-accent-soft` | 選ぶカード・ナビ・スピナーの回る弧（`border-t-accent`）と、スピナーの輪の残り（`border-accent-soft`。共通ガイド O12） |
 | 危険 | 文字 `text-danger`、枠/面 `border-danger/40`・`bg-danger/10`・`hover:bg-danger/10`（`ToneDanger` のホバー） | `ToneDanger`・`BadgeError` |
 | 警告 | 文字 `text-warning`、枠/面 `border-warning/40`・`bg-warning/10` | `BadgeWarn` |
 | 成功 | 文字 `text-success`、枠/面 `border-success/40`・`bg-success/10` | `BadgeOK` |
@@ -141,4 +141,4 @@
 | 2.6 | 2026-11-22 | §3・§3.1 に状態色の枠 `border-{danger,warning,success,info}/40`（ガイド brand-guide `5d816f8` の枠 40%・地 10%）を足した。`/60`・`/20` は移行中として残す | #1179 #1176: 状態色をガイドに合わせる下準備 |
 | 2.7 | 2026-11-22 | §3・§3.1 から状態色の `/60`（枠）・`/20`（バッジの地）を外し、枠 `/40`・地 `/10` だけにした。バッジに 1px の枠 `/40` を足し、LOCK の選択面は `bg-accent-soft text-accent` にした | #1176: 色（C）の指摘 |
 | 2.8 | 2026-11-22 | §3 の「リンク・アイコン強調」に `fill-current` を足した（輪郭のアイコン `IconStar` を、お気に入りがオンのとき文字色で塗る。`Icon` は `fill="none"` なので、塗りはクラスで上書きする）。新しい色は足していない | #1179: アイコン（I）の指摘（★ ☆ の文字を Iconoir の star に） |
-| 2.9 | 2026-11-22 | §4.1 のスライダーのつまみを、面 `--surface`・縁 `--border` 1px に改めた（共通ガイド O11）。ホバー・ドラッグ中のつまみの塗り替えは外した。新しい色は足していない。§4 の `accent-*` の行は、予算の `<progress>` だけの例外と明記した（共通の進捗バー `progress.css` が塗りを描く） | #1181: 部品・オーバーレイ（O）の指摘 |
+| 2.9 | 2026-11-22 | §4.1 のスライダーのつまみを、面 `--surface`・縁 `--border` 1px に改めた（共通ガイド O11）。ホバー・ドラッグ中のつまみの塗り替えは外した。新しい色は足していない。スピナーの輪の残りに `border-accent-soft` を許可した（O12）。§4 の `accent-*` の行は、予算の `<progress>` だけの例外と明記した（共通の進捗バー `progress.css` が塗りを描く） | #1181: 部品・オーバーレイ（O）の指摘 |
