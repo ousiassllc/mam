@@ -187,7 +187,7 @@ func (h Handlers) saveModel(c *gin.Context, edit bool) {
 	if edit {
 		changed = view.ModelRowOOB(endpoint, row)
 	}
-	toast := atoms.ToastOOB("モデル「" + service.ModelID(kind, endpoint, f.Name) + "」を保存しました。すぐに使え、「画像・動画モデル」で選べます")
+	toast := atoms.ToastOOB("モデル「" + service.ModelID(kind, endpoint, f.Name) + "」を保存しました")
 	settingshttp.Render(c, http.StatusOK, templ.Join(changed, view.EndpointCardOOB(e, true), toast))
 }
 

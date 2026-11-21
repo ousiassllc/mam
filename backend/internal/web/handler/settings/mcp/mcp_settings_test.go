@@ -209,7 +209,7 @@ func TestMCPSettings_BindAddressSwitchRefusalsAndFailures(t *testing.T) {
 
 	rec := s.act(http.MethodPut, paths.MCPBind(), url.Values{"bind_address": {" 100.101.102.103 "}}, true)
 	assert.Equal(t, http.StatusOK, rec.Code)
-	assert.Contains(t, rec.Body.String(), "100.101.102.103 に切り替えました")
+	assert.Contains(t, rec.Body.String(), "100.101.102.103 に切り替えました</span>", "the toast is one short sentence")
 	assert.Contains(t, rec.Body.String(), "http://100.101.102.103:8788/mcp")
 	assert.Equal(t, "100.101.102.103", s.listener.saved)
 

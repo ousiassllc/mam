@@ -95,7 +95,7 @@ func TestLLMSettings_ASavedAgentIsWhatTheNextStartLoadsAndTheAnswerIsItsRow(t *t
 	assert.Contains(t, body, "google / gemini-x")
 	assert.Contains(t, body, "変更あり")
 	assert.NotContains(t, body, "再起動で反映", "a saved route is in effect at once: the row does not wait for a restart")
-	assert.Contains(t, body, savedNoticeFor("Director（Scene / Shot の計画）"))
+	assert.Contains(t, body, savedNoticeFor("Director（Scene / Shot の計画）")+"</span>", "the toast is one short sentence")
 	assert.NotContains(t, body, `id="llm-row-writer"`, "only the row that was saved")
 
 	cfg, err := llm.LoadConfig(s.file)

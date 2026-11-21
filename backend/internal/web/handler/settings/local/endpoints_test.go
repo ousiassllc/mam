@@ -39,7 +39,7 @@ func TestEndpoint_CreateShowsItAndSavesTheFileAndTheKeyAppearsAsStatusOnly(t *te
 	})
 	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
 	body := rec.Body.String()
-	assert.Contains(t, body, "接続先「gpu-box」を追加しました")
+	assert.Contains(t, body, "接続先「gpu-box」を追加しました</span>", "the toast is one short sentence")
 	assert.Contains(t, body, `data-endpoint="gpu-box"`)
 	assert.Contains(t, body, "http://100.101.102.103:8188")
 	assert.Contains(t, body, "同時実行 2")
