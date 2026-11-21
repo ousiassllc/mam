@@ -52,7 +52,7 @@ func (d Data) modes() []domain.LockMode {
 // lockModeClass is the face of a mode button: the selected one is --accent-soft (the selection of a segment, brand guide), whatever the mode;
 // the words (LOCK / 手動 / 自動) and aria-pressed say which it is, not a state colour.
 func lockModeClass(active bool) string {
-	base := "px-2 py-1 text-xs font-semibold transition-colors "
+	base := "px-2 py-1 text-sm font-semibold transition-colors "
 	if !active {
 		return base + "text-ink hover:bg-accent-soft"
 	}
