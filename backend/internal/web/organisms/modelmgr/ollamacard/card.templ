@@ -47,7 +47,7 @@ templ OllamaSection(s Section) {
 templ others(items []Other) {
 	<div class="flex flex-col gap-1" data-testid="mm-ollama-others">
 		<h3 class="text-sm font-semibold text-ink">そのほかのモデル</h3>
-		<p class="text-xs text-mute">この Ollama に、ほかの手段で入れたモデルです。Nefos Video はここから消したり、取得したりしません。</p>
+		<p class="text-sm text-mute">この Ollama に、ほかの手段で入れたモデルです。Nefos Video はここから消したり、取得したりしません。</p>
 		<ul role="list" class="flex flex-col gap-1 text-sm text-ink">
 			for _, o := range items {
 				<li data-testid="mm-ollama-other" data-model={ o.Name }>{ o.Name }（{ o.Size }）</li>

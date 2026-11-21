@@ -167,7 +167,7 @@ func generationShell(title, csrfToken, current, lead string) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<p id=\"gentest-vs-main-line\" class=\"text-xs text-mute\">単発生成は試用の経路です。ここで作った動画は、プロジェクトの Scene / Shot（制作の本線）の Take にはなりません。本線の Shot は、プロジェクトの「Scene / Shot」から「生成」を押して作ります。</p>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "<p id=\"gentest-vs-main-line\" class=\"text-sm text-mute\">単発生成は試用の経路です。ここで作った動画は、プロジェクトの Scene / Shot（制作の本線）の Take にはなりません。本線の Shot は、プロジェクトの「Scene / Shot」から「生成」を押して作ります。</p>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

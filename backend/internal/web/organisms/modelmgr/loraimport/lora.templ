@@ -66,7 +66,7 @@ templ pickForm(p Panel) {
 		>
 			<label for="mm-lora-file" class="inline-flex cursor-pointer items-center rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bone hover:bg-accent/85" data-testid="mm-lora-choose">ファイルを追加</label>
 			<span class="text-mute">またはここに .safetensors のファイルをドロップ（{ p.MaxText } まで）</span>
-			<span class="text-xs text-mute">手元に保存した LoRA を、この PC の中の Nefos Video に取り込みます。ネットには送りません。取り込んだだけでは生成は始まりません。</span>
+			<span class="text-sm text-mute">手元に保存した LoRA を、この PC の中の Nefos Video に取り込みます。ネットには送りません。取り込んだだけでは生成は始まりません。</span>
 		</div>
 		<p class="mt-2 text-sm text-danger" role="alert" data-lora-error data-testid="mm-lora-client-error" hidden></p>
 		<div class="mt-2 flex flex-col gap-1" role="status" aria-live="polite" data-lora-progress data-testid="mm-lora-progress" hidden>
@@ -96,13 +96,13 @@ templ stagedForm(s Staged) {
 				<p class="text-xs text-mute">ファイルのタイトル: { s.Title }</p>
 			}
 			if len(s.BaseRaw) > 0 {
-				<p class="text-xs text-mute" data-testid="mm-lora-base-raw">ファイルに書かれたベースモデル: { strings.Join(s.BaseRaw, " / ") }</p>
+				<p class="text-sm text-mute" data-testid="mm-lora-base-raw">ファイルに書かれたベースモデル: { strings.Join(s.BaseRaw, " / ") }</p>
 			}
 			if s.Network != "" {
 				<p class="text-xs text-mute">{ s.Network }</p>
 			}
 			if s.Renamed {
-				<p class="text-xs text-warning" data-testid="mm-lora-renamed">使えない文字を置き換えたため、{ s.SavedAs } の名前で保存します。</p>
+				<p class="text-sm text-warning" data-testid="mm-lora-renamed">使えない文字を置き換えたため、{ s.SavedAs } の名前で保存します。</p>
 			}
 		</div>
 		if s.Conflict != nil {
@@ -147,9 +147,9 @@ templ metaFields(s Staged) {
 			}
 		</div>
 		if s.FromFile {
-			<p class="text-xs text-mute" data-testid="mm-lora-base-note">ファイルの情報から読み取りました。違うときは直してください。</p>
+			<p class="text-sm text-mute" data-testid="mm-lora-base-note">ファイルの情報から読み取りました。違うときは直してください。</p>
 		} else {
-			<p class="text-xs text-mute" data-testid="mm-lora-base-note">ファイルに書かれていないため、未設定です（選ばなければ未設定のまま追加します）。</p>
+			<p class="text-sm text-mute" data-testid="mm-lora-base-note">ファイルに書かれていないため、未設定です（選ばなければ未設定のまま追加します）。</p>
 		}
 	</fieldset>
 	<label class="flex flex-col gap-1 text-xs text-mute" for="mm-lora-strength">
