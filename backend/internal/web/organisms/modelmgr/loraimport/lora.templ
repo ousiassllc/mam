@@ -35,7 +35,7 @@ templ PanelView(p Panel) {
 		}
 		switch  {
 			case p.Unsupported != "":
-				<p class="text-sm text-mute" data-testid="mm-lora-unsupported">{ p.Unsupported }</p>
+				<p class="text-sm text-ink" data-testid="mm-lora-unsupported">{ p.Unsupported }</p>
 			case p.Staged != nil:
 				@stagedForm(*p.Staged)
 			default:
@@ -66,7 +66,7 @@ templ pickForm(p Panel) {
 		>
 			<label for="mm-lora-file" class={ atoms.ButtonClass(atoms.TonePrimary), "cursor-pointer peer-focus-visible:focus-ring" } data-testid="mm-lora-choose">ファイルを追加</label>
 			<span class="text-mute">またはここに .safetensors のファイルをドロップ（{ p.MaxText } まで）</span>
-			<span class="text-sm text-mute">手元に保存した LoRA を、この PC の中の Nefos Video に取り込みます。ネットには送りません。取り込んだだけでは生成は始まりません。</span>
+			<span class="text-sm text-ink">手元に保存した LoRA を、この PC の中の Nefos Video に取り込みます。ネットには送りません。取り込んだだけでは生成は始まりません。</span>
 		</div>
 		<p class="mt-2 text-sm text-danger" role="alert" data-lora-error data-testid="mm-lora-client-error" hidden></p>
 		<div class="mt-2 flex flex-col gap-1" role="status" aria-live="polite" data-lora-progress data-testid="mm-lora-progress" hidden>

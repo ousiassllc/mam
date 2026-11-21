@@ -30,13 +30,13 @@ templ UseSection(u Use) {
 							if c.State != "" {
 								<span class="text-mute">（{ c.State }）</span>
 							}
-							<span class="block text-xs text-mute">{ c.About }</span>
+							<span class="block text-sm text-ink">{ c.About }</span>
 						</span>
 					</label>
 				}
 			</fieldset>
 			if u.NoManaged != "" {
-				<p class="text-sm text-mute" data-testid="mm-llm-use-nomanaged">{ u.NoManaged }</p>
+				<p class="text-sm text-ink" data-testid="mm-llm-use-nomanaged">{ u.NoManaged }</p>
 			}
 			if u.Pinned {
 				<p class="text-sm text-warning" data-testid="mm-llm-use-pinned">起動オプション（--llm-config / MAM_LLM_CONFIG）で設定ファイルが固定されているため、使うサーバーはこの画面では変えられません。</p>

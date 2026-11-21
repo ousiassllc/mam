@@ -294,7 +294,7 @@ func Box(f Form) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</label></div><fieldset class=\"flex flex-wrap items-end gap-3 text-xs text-mute\"><legend class=\"mb-1\">続けてスロットに割り当てる（省略可。種類が合うものだけ。LOCK されたスロットは変えられません）</legend> <label class=\"flex flex-col gap-1\" for=\"gt-assign-target\"><span>対象</span>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</label></div><fieldset class=\"flex flex-wrap items-end gap-3 text-xs text-ink\"><legend class=\"mb-1\">続けてスロットに割り当てる（省略可。種類が合うものだけ。LOCK されたスロットは変えられません）</legend> <label class=\"flex flex-col gap-1\" for=\"gt-assign-target\"><span>対象</span>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -63,7 +63,7 @@ templ pickerDialog(c Compose) {
 // Picker lists images that can be added to the inputs: each has an "追加" button that appends its thumbnail to the grid.
 templ Picker(rows []Ref, empty string) {
 	if len(rows) == 0 {
-		<p class="text-sm text-mute" data-testid="gt-picker-empty">{ empty }</p>
+		<p class="text-sm text-ink" data-testid="gt-picker-empty">{ empty }</p>
 	}
 	<ul class="grid grid-cols-2 gap-2 sm:grid-cols-4">
 		for _, r := range rows {

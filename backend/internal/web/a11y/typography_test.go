@@ -111,7 +111,9 @@ func TestSources_EverySummaryTakesTheSummaryClass(t *testing.T) {
 }
 
 var (
-	smallText = regexp.MustCompile(`(?:^|[^\w:-])text-xs(?:[^\w-]|$)`)
+	interpolated = regexp.MustCompile(`\$\{[^}]*\}|\{[^}]*\}`)
+	markup       = regexp.MustCompile(`<[^>]+>`)
+	smallText    = regexp.MustCompile(`(?:^|[^\w:-])text-xs(?:[^\w-]|$)`)
 	// A tag is read up to its first `>`, which is where a class list and the attributes before it end.
 	openTag  = regexp.MustCompile(`(?s)<(ul|ol|li|input|select|textarea|button|p|pre|dd|a)\b([^<>]*)>`)
 	alerting = regexp.MustCompile(`(?:^|[^\w:-])text-(?:warning|danger)(?:[^\w-]|$)`)

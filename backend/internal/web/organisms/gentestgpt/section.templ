@@ -48,8 +48,8 @@ templ Section(d Data) {
 						</label>
 					</div>
 				</div>
-				<p class="text-sm text-mute" hidden?={ !d.GIF() } data-gt-gpt-hint="gif" data-testid="gt-gpt-gif-hint">{ GIFHint }</p>
-				<p class="text-sm text-mute" hidden?={ d.Format != FormatSVG } data-gt-gpt-hint="svg" data-testid="gt-gpt-svg-hint">{ SVGHint }</p>
+				<p class="text-sm text-ink" hidden?={ !d.GIF() } data-gt-gpt-hint="gif" data-testid="gt-gpt-gif-hint">{ GIFHint }</p>
+				<p class="text-sm text-ink" hidden?={ d.Format != FormatSVG } data-gt-gpt-hint="svg" data-testid="gt-gpt-svg-hint">{ SVGHint }</p>
 				<p class="text-sm text-ink" data-testid="gt-gpt-markup-hint">{ MarkupHint }</p>
 			</div>
 			<ul class="flex flex-col gap-1 text-sm text-warning" hidden?={ len(d.Notes) == 0 } role="status" data-gt-gpt-notes data-testid="gt-gpt-notes">

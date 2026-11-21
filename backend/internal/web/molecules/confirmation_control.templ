@@ -59,7 +59,7 @@ templ ConfirmationControl(p domain.Project) {
 			</fieldset>
 		}
 		if p.Mode == domain.ModeAuto {
-			<p class="basis-full text-mute" data-testid="auto-start-level-notice">{ mainline.AutoStartAtAnyLevel }</p>
+			<p class="basis-full text-ink" data-testid="auto-start-level-notice">{ mainline.AutoStartAtAnyLevel }</p>
 		}
 	</form>
 }

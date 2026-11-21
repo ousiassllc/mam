@@ -48,7 +48,7 @@ templ Section(c Card) {
 						<code class="text-mute">{ f.Name }</code>
 						<span class="text-mute">・<span class="font-mono tabular-nums">{ f.Size }</span>・{ f.StateText }</span>
 					</p>
-					<p class="text-mute">{ f.Description }</p>
+					<p>{ f.Description }</p>
 					<p class="break-all text-mute">取得元: <a class="underline" href={ templ.SafeURL(f.SourceURL) } target="_blank" rel="noopener noreferrer">{ f.SourceName }</a></p>
 				</li>
 			}
@@ -60,7 +60,7 @@ templ Section(c Card) {
 						<span class="">{ l.Name }</span>
 						@commercial.Badge(l.Answer)
 					</p>
-					<p class="text-mute">{ l.Summary }</p>
+					<p>{ l.Summary }</p>
 					@commercial.Note(l.Answer)
 					if l.Notice != "" {
 						<p class="rounded-md border border-warning/40 bg-warning/10 p-2 text-warning" role="note" data-testid="mm-face-models-license-notice">{ l.Notice }</p>
