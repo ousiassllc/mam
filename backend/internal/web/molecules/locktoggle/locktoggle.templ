@@ -40,13 +40,12 @@ func (d Data) modes() []domain.LockMode {
 	return domain.LockModes()
 }
 
-func lockModeClass(active bool, m domain.LockMode) string {
+// lockModeClass is the face of a mode button: the selected one is --accent-soft (the selection of a segment, brand guide), whatever the mode;
+// the words (LOCK / 手動 / 自動) and aria-pressed say which it is, not a state colour.
+func lockModeClass(active bool) string {
 	base := "px-2 py-1 text-xs font-semibold transition-colors "
 	if !active {
 		return base + "text-ink hover:bg-accent-soft"
-	}
-	if m == domain.LockLocked {
-		return base + "bg-warning/20 text-warning"
 	}
 	return base + "bg-accent-soft text-accent"
 }
@@ -68,7 +67,7 @@ templ Toggle(d Data) {
 		<span class="w-40 shrink-0 text-ink">{ d.label() }</span>
 		<span role="group" aria-label={ d.label() + " の制御" } class="inline-flex overflow-hidden rounded-md border border-border">
 			for _, m := range d.modes() {
-				<button type="submit" name="mode" value={ string(m) } aria-pressed={ boolText(d.Mode == m) } class={ lockModeClass(d.Mode == m, m) }>{ m.Label() }</button>
+				<button type="submit" name="mode" value={ string(m) } aria-pressed={ boolText(d.Mode == m) } class={ lockModeClass(d.Mode == m) }>{ m.Label() }</button>
 			}
 		</span>
 		if d.Model.ID != "" {

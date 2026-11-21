@@ -191,7 +191,7 @@ Shot の Take のスコアを比べ、1 つを選ぶ・除外する、また複�
 **TC-1〜TC-7 は Issue #1092 で解消した**（実装を規定に合わせた。差分として残したものは無い）。表の「実装」欄は解消前の状態の記録で、直した先は次のとおり。
 
 - TC-1・TC-7: 「選択」「除外」「選び直す」は `text-xs text-mute underline hover:text-ink focus-visible:focus-ring`（リップルなし）。「この区間で合成」「言葉で合成」は `min-h-8 text-sm font-semibold`＋`transition-colors motion-reduce:transition-none`＋`data-ripple`＋`focus-visible:focus-ring`、「×」は `min-h-6 min-w-6`＋`data-ripple`、言葉の入力は `text-ink focus-visible:focus-ring`、選択パネルは `bg-surface` のカード
-- TC-2・TC-3: Status は `rounded-full px-2 py-1 text-xs`＋ Shot カードの `TakeStatusBadge` と同じ色（候補 = `bg-warning/20 text-warning`・AI Pick = `bg-info/20 text-info`・採用 = `bg-success/20 text-success`・除外 = `bg-accent-soft text-ink`。取り消し線は無し）。「使用中」は `bg-success/20` のバッジ（括弧は無し）。レーンの区間の番号は `text-xs`
+- TC-2・TC-3: Status は `rounded-full px-2 py-1 text-xs`＋ Shot カードの `TakeStatusBadge` と同じ色（候補 = `border-warning/40 bg-warning/10 text-warning`・AI Pick = `border-info/40 bg-info/10 text-info`・採用 = `border-success/40 bg-success/10 text-success`（色は `lib/badge.ts` の `BADGE_TONE`）・除外 = `bg-accent-soft text-ink`。取り消し線は無し）。「使用中」は採用と同じ色のバッジ（括弧は無し）。レーンの区間の番号は `text-xs`
 - TC-4: スコアのセルは `text-right font-mono tabular-nums`、Product〜Continuity の列の見出しも右寄せ
 - TC-5: エラーは `#alert-region` のエラーのアラート、区間の上限・短すぎる区間は注意のアラート（`appendAlert(region, message, 'warning')`）。ウィジェットは通知の箱を持たない
 - TC-6: 空状態は `rounded-lg border border-dashed border-border p-6`（`data-empty`）

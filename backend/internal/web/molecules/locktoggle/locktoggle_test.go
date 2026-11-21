@@ -72,14 +72,14 @@ func TestLockToggle_CarriesTheHiddenFieldsOfAWorldStateSwitchAndReplacesOnlyItse
 	assert.NotContains(t, html, `value="manual"`)
 }
 
-// The current mode is not only aria-pressed: it is the one that looks set (a tinted face; LOCK is amber, the others indigo),
-// and the modes that are not current look like plain buttons. The page then shows what is stored in both the tree and the
-// eye (color-rules.md: the selection is indigo, a warning is amber).
+// The current mode is not only aria-pressed: it is the one that looks set (a tinted face, --accent-soft for every mode: the selection
+// of a segment is not a state colour), and the modes that are not current look like plain buttons. The page then shows what is stored
+// in both the tree and the eye.
 func TestLockToggle_OnlyTheCurrentModeLooksSet(t *testing.T) {
 	for mode, tint := range map[domain.LockMode]string{
 		domain.LockAuto:   "bg-accent-soft text-accent",
 		domain.LockManual: "bg-accent-soft text-accent",
-		domain.LockLocked: "bg-warning/20 text-warning",
+		domain.LockLocked: "bg-accent-soft text-accent",
 	} {
 		html := render(t, locktoggle.Toggle(locktoggle.Data{
 			DOMID: "lock-s1-camera", URL: "/shots/s1/locks", Parameter: domain.ParamCamera, Mode: mode,
@@ -97,7 +97,6 @@ func TestLockToggle_OnlyTheCurrentModeLooksSet(t *testing.T) {
 			}
 			assert.Equal(t, "false", pressed, "%s: %s is not pressed", mode, value)
 			assert.Contains(t, class, "text-ink hover:bg-accent-soft", "%s: %s is a plain button", mode, value)
-			assert.NotContains(t, class, "bg-warning/20", "%s: %s is not tinted", mode, value)
 			assert.NotContains(t, strings.Fields(class), "bg-accent-soft", "%s: %s is not tinted (the hover is not the tint)", mode, value)
 		}
 	}

@@ -1,5 +1,6 @@
 import { html, nothing } from 'lit';
 import { live } from 'lit/directives/live.js';
+import { BADGE_TONE } from '../lib/badge';
 import { CLIP_KIND_LABEL, TRANSITION_LABEL, type EditClip, type TransitionType } from '../lib/edit-model';
 import type { EditTimelineBody } from './timeline-api';
 
@@ -56,7 +57,7 @@ export function renderClipRow(c: EditClip, i: number, body: EditTimelineBody, vi
       ${c.thumbnail_url ? html`<img class="h-10 w-auto rounded-md" src=${c.thumbnail_url} alt="" />` : nothing}
       <div class="min-w-40 flex-1">
         <p class="text-sm">
-          ${c.label}${c.kind && c.kind !== 'main' ? html` <span class="rounded-full bg-info/20 px-2 py-1 text-xs text-info" data-kind=${c.kind}>${CLIP_KIND_LABEL[c.kind]}</span>` : nothing}
+          ${c.label}${c.kind && c.kind !== 'main' ? html` <span class="rounded-full px-2 py-1 text-xs ${BADGE_TONE.info}" data-kind=${c.kind}>${CLIP_KIND_LABEL[c.kind]}</span>` : nothing}
         </p>
         ${c.objective ? html`<p class="text-xs text-mute">${c.objective}</p>` : nothing}
       </div>

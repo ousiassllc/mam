@@ -49,7 +49,7 @@ describe('mam-timeline-editor: accessible names', () => {
 
     expect(el.querySelector('[data-clip="a"]')!.classList.contains('bg-surface')).to.equal(true);
     const badge = el.querySelector('[data-kind="insert"]')!;
-    for (const name of ['rounded-full', 'px-2', 'py-1', 'text-xs', 'bg-info/20', 'text-info']) {
+    for (const name of ['rounded-full', 'px-2', 'py-1', 'text-xs', 'border-info/40', 'bg-info/10', 'text-info']) {
       expect(badge.classList.contains(name), name).to.equal(true);
     }
     expect(badge.className).to.not.contain('text-[10px]');
@@ -70,7 +70,15 @@ describe('mam-timeline-editor: accessible names', () => {
     stub = stubFetch({ [`GET ${API}`]: { body: timeline('e1', three(), { readonly: true }) } });
     const readonly = await editor();
     const warn = readonly.querySelector('[data-readonly]')!;
-    for (const name of ['rounded-full', 'px-2', 'py-1', 'text-xs', 'bg-warning/20', 'text-warning']) {
+    for (const name of [
+      'rounded-full',
+      'px-2',
+      'py-1',
+      'text-xs',
+      'border-warning/40',
+      'bg-warning/10',
+      'text-warning',
+    ]) {
       expect(warn.classList.contains(name), name).to.equal(true);
     }
     expect(readonly.querySelector('[data-dirty]')).to.equal(null);
@@ -83,7 +91,7 @@ describe('mam-timeline-editor: accessible names', () => {
     await waitUntil(() => order(el).join() === 'a,c,b');
     const info = el.querySelector('[data-dirty]')!;
     expect(info.textContent).to.equal('未保存の変更あり');
-    for (const name of ['rounded-full', 'px-2', 'py-1', 'text-xs', 'bg-info/20', 'text-info']) {
+    for (const name of ['rounded-full', 'px-2', 'py-1', 'text-xs', 'border-info/40', 'bg-info/10', 'text-info']) {
       expect(info.classList.contains(name), name).to.equal(true);
     }
     expect(el.querySelector('[data-total]')!.textContent).to.not.contain('未保存');

@@ -1,7 +1,8 @@
 import { html, nothing } from 'lit';
 import type { TakeScore } from './take-model';
 import { describeTake, renderScore } from './take-cells';
-import { BADGE, STATUS_CLASS } from './take-status';
+import { BADGE } from '../lib/badge';
+import { STATUS_CLASS } from './take-status';
 
 /** A button of a row: the text of `atoms.LinkButton` (W3), with the focus ring. */
 const ROW_BUTTON = 'text-xs text-mute underline hover:text-ink focus-visible:focus-ring';
@@ -37,7 +38,7 @@ export function renderTakeTable(takes: TakeScore[], minAxis: number, actions: Ta
 function renderRow(t: TakeScore, minAxis: number, actions: TakeActions) {
   return html`<tr class="border-t border-border ${t.status === 'rejected' ? 'text-mute' : ''}" data-take=${t.id}>
     <th scope="row" class="px-2 py-2 font-semibold">
-      Take ${t.label}${t.adopted ? html` <span class="${BADGE} bg-success/20 font-normal text-success" data-adopted>使用中</span>` : nothing}
+      Take ${t.label}${t.adopted ? html` <span class="${BADGE} ${STATUS_CLASS.selected} font-normal" data-adopted>使用中</span>` : nothing}
       <div class="text-xs font-normal text-mute">${describeTake(t)}</div>
     </th>
     <td class="${NUMBER}" data-score="product">${renderScore(t.scores?.product, minAxis)}</td>

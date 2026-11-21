@@ -34,19 +34,20 @@ describe('mam-take-comparator: the look (lit-widgets-guide §4, #1092)', () => {
       expect(parseFloat(style(id).borderTopLeftRadius), `${id} is a pill`).to.be.greaterThan(10);
       expect(parseFloat(style(id).fontSize), `${id} is 12px at least`).to.be.at.least(12);
       expect(style(id).textDecorationLine, `${id} is not struck through`).to.equal('none');
-      expect(style(id).borderTopWidth).to.equal('0px');
+      expect(style(id).borderTopWidth, `${id} has the 1px edge of the Badge`).to.equal('1px');
     }
     // candidate = warning, AI Pick = info, selected = success, rejected = neutral (the ink of the page).
     const colours = ['t1', 't2', 't3', 't4'].map((id) => style(id).color);
     expect(new Set(colours).size, 'the four states differ').to.equal(4);
     expect(status('t3').className).to.contain('text-ink');
-    expect(status('t4').className).to.contain('bg-warning/20');
-    expect(status('t1').className).to.contain('bg-info/20');
-    expect(status('t2').className).to.contain('bg-success/20');
+    expect(status('t4').className).to.contain('border-warning/40');
+    expect(status('t4').className).to.contain('bg-warning/10');
+    expect(status('t1').className).to.contain('bg-info/10');
+    expect(status('t2').className).to.contain('bg-success/10');
 
     const adopted = el.querySelector<HTMLElement>('[data-take="t2"] [data-adopted]')!; // 使用中 is a BadgeOK
     expect(parseFloat(getComputedStyle(adopted).borderTopLeftRadius)).to.be.greaterThan(10);
-    expect(adopted.className).to.contain('bg-success/20');
+    expect(adopted.className).to.contain('bg-success/10');
   });
 
   it('right-aligns the scores in digits of one width, under right-aligned column headings (TC-4)', async () => {

@@ -1,4 +1,5 @@
 import { html, nothing } from 'lit';
+import { BADGE, BADGE_TONE } from '../lib/badge';
 import { isDirty, timelineSeconds, type EditClip } from '../lib/edit-model';
 
 /** What the toolbar under the clips shows and does: the editor owns the save, the reload and their focus. */
@@ -11,9 +12,6 @@ export interface ToolbarView {
   save(): void;
   revert(): void;
 }
-
-/** The shape of `atoms.Badge` (W6). */
-const BADGE = 'inline-block rounded-full px-2 py-1 text-xs';
 
 export function renderToolbar(view: ToolbarView) {
   const { clips } = view;
@@ -39,7 +37,7 @@ export function renderToolbar(view: ToolbarView) {
       変更を戻す
     </button>
     <span class="text-xs text-mute" data-total>合計 <span class="font-mono tabular-nums">${timelineSeconds(clips).toFixed(1)}</span> 秒 / <span class="font-mono tabular-nums">${clips.length}</span> クリップ</span>
-    ${dirty ? html`<span class="${BADGE} bg-info/20 text-info" data-dirty>未保存の変更あり</span>` : nothing}
-    ${view.readonly ? html`<span class="${BADGE} bg-warning/20 text-warning" data-readonly>この段階では編集できません</span>` : nothing}
+    ${dirty ? html`<span class="${BADGE} ${BADGE_TONE.info}" data-dirty>未保存の変更あり</span>` : nothing}
+    ${view.readonly ? html`<span class="${BADGE} ${BADGE_TONE.warning}" data-readonly>この段階では編集できません</span>` : nothing}
   </div>`;
 }
