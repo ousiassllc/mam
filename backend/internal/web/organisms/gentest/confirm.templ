@@ -48,15 +48,15 @@ templ ConfirmBox(c Confirm) {
 		}
 		<table class="w-full text-left text-sm" data-testid="gt-confirm-lines">
 			<thead class="text-xs text-mute">
-				<tr><th class="py-1 pr-2 font-normal">モデル</th><th class="py-1 pr-2 font-normal">件数</th><th class="py-1 pr-2 font-normal">単価</th><th class="py-1 font-normal">小計</th></tr>
+				<tr><th class="py-1 pr-2 font-normal">モデル</th><th class="py-1 pr-2 text-right font-normal">件数</th><th class="py-1 pr-2 text-right font-normal">単価</th><th class="py-1 text-right font-normal">小計</th></tr>
 			</thead>
 			<tbody>
 				for _, l := range c.Lines {
 					<tr class="border-t border-border" data-testid="gt-confirm-line">
 						<td class="py-1 pr-2">{ l.Label }</td>
-						<td class="py-1 pr-2">{ itoa(l.Items) }</td>
-						<td class="py-1 pr-2">{ l.Unit }</td>
-						<td class="py-1">{ l.Subtotal }</td>
+						<td class="py-1 pr-2 text-right font-mono tabular-nums">{ itoa(l.Items) }</td>
+						<td class="py-1 pr-2 text-right font-mono tabular-nums">{ l.Unit }</td>
+						<td class="py-1 text-right font-mono tabular-nums">{ l.Subtotal }</td>
 					</tr>
 				}
 			</tbody>

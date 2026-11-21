@@ -56,11 +56,11 @@ templ TakeTracePanel(t domain.TakeTrace) {
 							<tr class="text-mute">
 								<th class="pr-2 font-normal">候補</th>
 								<th class="pr-2 font-normal">実績（Take・平均点・合格率）</th>
-								<th class="pr-2 font-normal">コスト/Take</th>
-								<th class="pr-2 font-normal">quality</th>
-								<th class="pr-2 font-normal">cost</th>
-								<th class="pr-2 font-normal">fit</th>
-								<th class="pr-2 font-normal">score</th>
+								<th class="pr-2 text-right font-normal">コスト/Take</th>
+								<th class="pr-2 text-right font-normal">quality</th>
+								<th class="pr-2 text-right font-normal">cost</th>
+								<th class="pr-2 text-right font-normal">fit</th>
+								<th class="pr-2 text-right font-normal">score</th>
 								<th class="font-normal">除外理由</th>
 							</tr>
 						</thead>
@@ -69,11 +69,11 @@ templ TakeTracePanel(t domain.TakeTrace) {
 								<tr>
 									<td class="pr-2">{ routingCandidateName(c) }</td>
 									<td class="pr-2">{ routingRecordText(c) }</td>
-									<td class="pr-2">{ fmt.Sprintf("$%.2f", c.CostPerTake) }</td>
-									<td class="pr-2">{ fmt.Sprintf("%.2f", c.Quality) }</td>
-									<td class="pr-2">{ fmt.Sprintf("%.2f", c.Cost) }</td>
-									<td class="pr-2">{ fmt.Sprintf("%.2f", c.Fit) }</td>
-									<td class="pr-2">{ fmt.Sprintf("%.2f", c.Score) }</td>
+									<td class="pr-2 text-right font-mono tabular-nums">{ fmt.Sprintf("$%.2f", c.CostPerTake) }</td>
+									<td class="pr-2 text-right font-mono tabular-nums">{ fmt.Sprintf("%.2f", c.Quality) }</td>
+									<td class="pr-2 text-right font-mono tabular-nums">{ fmt.Sprintf("%.2f", c.Cost) }</td>
+									<td class="pr-2 text-right font-mono tabular-nums">{ fmt.Sprintf("%.2f", c.Fit) }</td>
+									<td class="pr-2 text-right font-mono tabular-nums">{ fmt.Sprintf("%.2f", c.Score) }</td>
 									<td>{ routingExcludedLabel(c.Excluded) }</td>
 								</tr>
 							}
