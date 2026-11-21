@@ -116,6 +116,7 @@ func Modal(f Form) templ.Component {
 				templ_7745c5c3_Err = atoms.Button(atoms.ToneNeutral, "この Agent を既定に戻す", templ.Attributes{
 					"type":            "button",
 					"hx-delete":       paths.LLMAgent(f.Row.Agent),
+					"hx-confirm":      "この Agent の LLM の割り当てを既定に戻します。よろしいですか？",
 					"hx-target":       "#" + modal.BodyID,
 					"hx-swap":         "innerHTML",
 					"hx-sync":         "closest form:drop", // a save and a reset never run together
@@ -183,7 +184,7 @@ func targetFields(f Form, role, roleLabel string, t Target, m ModelField) templ.
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(roleLabel)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/modal.templ`, Line: 54, Col: 42}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/modal.templ`, Line: 55, Col: 42}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -204,7 +205,7 @@ func targetFields(f Form, role, roleLabel string, t Target, m ModelField) templ.
 		var templ_7745c5c3_Var8 string
 		templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.ResolveAttributeValue("llm-" + m.Role + "-default")
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/modal.templ`, Line: 56, Col: 73}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/modal.templ`, Line: 57, Col: 73}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var8)
 		if templ_7745c5c3_Err != nil {
@@ -217,7 +218,7 @@ func targetFields(f Form, role, roleLabel string, t Target, m ModelField) templ.
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(m.Default.Summary())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/modal.templ`, Line: 56, Col: 105}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/modal.templ`, Line: 57, Col: 105}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {
@@ -235,7 +236,7 @@ func targetFields(f Form, role, roleLabel string, t Target, m ModelField) templ.
 			var templ_7745c5c3_Var10 string
 			templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue("llm-" + m.Role + "-unusable")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/modal.templ`, Line: 58, Col: 78}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/modal.templ`, Line: 59, Col: 78}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 			if templ_7745c5c3_Err != nil {
@@ -248,7 +249,7 @@ func targetFields(f Form, role, roleLabel string, t Target, m ModelField) templ.
 			var templ_7745c5c3_Var11 string
 			templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(m.Provider)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/modal.templ`, Line: 59, Col: 16}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/modal.templ`, Line: 60, Col: 16}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 			if templ_7745c5c3_Err != nil {
@@ -261,7 +262,7 @@ func targetFields(f Form, role, roleLabel string, t Target, m ModelField) templ.
 			var templ_7745c5c3_Var12 string
 			templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinStringErrs(m.Unusable)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/modal.templ`, Line: 59, Col: 57}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/modal.templ`, Line: 60, Col: 57}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 			if templ_7745c5c3_Err != nil {
@@ -279,7 +280,7 @@ func targetFields(f Form, role, roleLabel string, t Target, m ModelField) templ.
 				var templ_7745c5c3_Var13 templ.SafeURL
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(m.Route))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/modal.templ`, Line: 61, Col: 55}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/modal.templ`, Line: 62, Col: 55}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
@@ -292,7 +293,7 @@ func targetFields(f Form, role, roleLabel string, t Target, m ModelField) templ.
 				var templ_7745c5c3_Var14 string
 				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue("llm-" + m.Role + "-route")
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/modal.templ`, Line: 61, Col: 98}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/modal.templ`, Line: 62, Col: 98}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 				if templ_7745c5c3_Err != nil {
@@ -316,7 +317,7 @@ func targetFields(f Form, role, roleLabel string, t Target, m ModelField) templ.
 			var templ_7745c5c3_Var15 string
 			templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue("llm-" + m.Role + "-model-unlisted")
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/modal.templ`, Line: 66, Col: 84}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/modal.templ`, Line: 67, Col: 84}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 			if templ_7745c5c3_Err != nil {
@@ -329,7 +330,7 @@ func targetFields(f Form, role, roleLabel string, t Target, m ModelField) templ.
 			var templ_7745c5c3_Var16 string
 			templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(m.Selected)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/modal.templ`, Line: 66, Col: 102}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/modal.templ`, Line: 67, Col: 102}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 			if templ_7745c5c3_Err != nil {
@@ -342,7 +343,7 @@ func targetFields(f Form, role, roleLabel string, t Target, m ModelField) templ.
 			var templ_7745c5c3_Var17 string
 			templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(m.Provider)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/modal.templ`, Line: 66, Col: 123}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/modal.templ`, Line: 67, Col: 123}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 			if templ_7745c5c3_Err != nil {
@@ -360,7 +361,7 @@ func targetFields(f Form, role, roleLabel string, t Target, m ModelField) templ.
 		var templ_7745c5c3_Var18 string
 		templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.ResolveAttributeValue(fieldID(m.Role, "model-custom"))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/modal.templ`, Line: 68, Col: 100}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/settings/llm/modal.templ`, Line: 69, Col: 100}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var18)
 		if templ_7745c5c3_Err != nil {

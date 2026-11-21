@@ -67,6 +67,7 @@ func TestLLMSettings_TheModalOfAnAgentHoldsItsTwoTargetsAndTheirDefaults(t *test
 	assert.Equal(t, 1, strings.Count(body, "autofocus"), "one control to start with")
 	assert.Contains(t, body, `hx-put="`+paths.LLMAgent("director")+`"`)
 	assert.Contains(t, body, `hx-delete="`+paths.LLMAgent("director")+`"`)
+	assert.Regexp(t, `hx-delete="`+paths.LLMAgent("director")+`"[^>]*hx-confirm=|hx-confirm="[^"]*"[^>]*hx-delete="`+paths.LLMAgent("director")+`"`, body, "putting an Agent back to its default asks first (O2)")
 	for _, id := range []string{"llm-primary-model", "llm-fallback-model"} {
 		assert.Contains(t, body, `id="`+id+`-button"`)
 	}
