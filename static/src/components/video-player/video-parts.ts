@@ -109,7 +109,14 @@ export function renderPlaceholder(progress: ShotProgress | null) {
     ${
       fraction === null
         ? nothing
-        : html`<div class="h-1 w-1/2 overflow-hidden rounded-md bg-accent-soft">
+        : html`<div
+          class="h-1.5 w-1/2 overflow-hidden rounded-full bg-accent-soft"
+          role="progressbar"
+          aria-label=${describeProgress(progress)}
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow=${Math.round(fraction * 100)}
+        >
           <div class="h-full bg-info/70" style="width:${fraction * 100}%" data-progress-bar></div>
         </div>`
     }

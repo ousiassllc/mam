@@ -127,7 +127,7 @@ templ ResultBlock(r Result) {
 			}
 		</div>
 		if !r.Finished {
-			<progress class="h-2 w-full" max="100" value={ itoa(r.Percent) } aria-label="生成の進み具合"></progress>
+			<progress class="h-1.5 w-full" max="100" value={ itoa(r.Percent) } aria-label="生成の進み具合"></progress>
 		}
 		if r.Error != "" {
 			<p class="break-words text-sm text-danger">{ r.Error }</p>

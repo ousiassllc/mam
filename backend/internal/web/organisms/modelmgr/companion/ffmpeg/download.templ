@@ -47,7 +47,7 @@ templ DownloadPanel(d Download) {
 		}
 		if d.Install.Running {
 			<div class="flex flex-col gap-1" role="status" data-testid="ffmpeg-download-progress">
-				<progress class="w-full" max="100" value={ fmt.Sprintf("%d", d.Install.Percent) }></progress>
+				<progress class="h-1.5 w-full" max="100" value={ fmt.Sprintf("%d", d.Install.Percent) } aria-label="ffmpeg のダウンロードの進み具合"></progress>
 				<p class="text-sm">{ d.Install.Message }（{ fmt.Sprintf("%d", d.Install.Percent) }%）</p>
 				<form hx-post={ paths.FFmpegDownloadCancel() } hx-target={ "#" + DownloadID } hx-swap="outerHTML" hx-sync="this:drop" hx-params="none" hx-disabled-elt="find button[type=submit]">
 					@atoms.SmallButtonFor(atoms.ToneNeutral, "中断", "ffmpeg のダウンロード", templ.Attributes{"type": "submit", "data-testid": "ffmpeg-download-cancel"})

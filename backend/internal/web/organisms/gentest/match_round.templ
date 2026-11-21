@@ -51,7 +51,7 @@ templ matchRound(r MatchRound, target int) {
 			}
 			if r.Score != "" {
 				<progress
-					class={ "h-1.5 w-full", templ.KV("accent-success", r.Reached), templ.KV("accent-warning", !r.Reached) }
+					class="h-1.5 w-full"
 					max="100"
 					value={ itoa(r.Percent) }
 					aria-label={ "似てる度 " + r.Score }

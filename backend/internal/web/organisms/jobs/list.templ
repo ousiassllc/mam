@@ -122,7 +122,7 @@ templ row(r Row) {
 	if r.Progress != nil {
 		<div class="flex flex-col gap-1" data-testid="jobs-progress">
 			if r.Progress.Known() {
-				<progress class="h-2 w-full" max="100" value={ itoa(r.Progress.Percent) } aria-label={ r.name() + "の進み具合" }></progress>
+				<progress class="h-1.5 w-full" max="100" value={ itoa(r.Progress.Percent) } aria-label={ r.name() + "の進み具合" }></progress>
 				<p class="break-words text-sm text-ink">{ itoa(r.Progress.Percent) }%<span class="text-mute">{ progressText(r.Progress.Text) }</span></p>
 			} else {
 				<p class="break-words text-sm text-ink">{ r.Progress.Text }</p>

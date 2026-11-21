@@ -303,7 +303,7 @@ func pickForm(p Panel) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, " まで）</span> <span class=\"text-sm text-mute\">手元に保存した LoRA を、この PC の中の Nefos Video に取り込みます。ネットには送りません。取り込んだだけでは生成は始まりません。</span></div><p class=\"mt-2 text-sm text-danger\" role=\"alert\" data-lora-error data-testid=\"mm-lora-client-error\" hidden></p><div class=\"mt-2 flex flex-col gap-1\" role=\"status\" aria-live=\"polite\" data-lora-progress data-testid=\"mm-lora-progress\" hidden><progress class=\"w-full\" max=\"100\" value=\"0\" aria-label=\"アップロードの進み具合\"></progress><p class=\"text-sm text-ink\" data-lora-progress-text></p></div></form>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, " まで）</span> <span class=\"text-sm text-mute\">手元に保存した LoRA を、この PC の中の Nefos Video に取り込みます。ネットには送りません。取り込んだだけでは生成は始まりません。</span></div><p class=\"mt-2 text-sm text-danger\" role=\"alert\" data-lora-error data-testid=\"mm-lora-client-error\" hidden></p><div class=\"mt-2 flex flex-col gap-1\" role=\"status\" aria-live=\"polite\" data-lora-progress data-testid=\"mm-lora-progress\" hidden><progress class=\"h-1.5 w-full\" max=\"100\" value=\"0\" aria-label=\"アップロードの進み具合\"></progress><p class=\"text-sm text-ink\" data-lora-progress-text></p></div></form>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

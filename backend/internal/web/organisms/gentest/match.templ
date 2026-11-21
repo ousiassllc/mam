@@ -190,7 +190,7 @@ templ MatchBox(b MatchBatch) {
 			<p class="text-sm text-ink" data-testid="gt-match-stop">{ b.StopText }</p>
 		}
 		if !b.Finished {
-			<progress class="h-2 w-full" max="100" value={ itoa(b.Percent) } aria-label="進み具合" data-testid="gt-match-progressbar"></progress>
+			<progress class="h-1.5 w-full" max="100" value={ itoa(b.Percent) } aria-label="進み具合" data-testid="gt-match-progressbar"></progress>
 		}
 		if b.BestPrompt != "" {
 			@matchBestPrompt(b)

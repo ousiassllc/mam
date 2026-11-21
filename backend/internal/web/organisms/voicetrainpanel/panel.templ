@@ -50,7 +50,7 @@ templ Panel(d Data) {
 		}
 		if d.running() {
 			<div class="flex flex-col gap-1" data-testid="voice-train-progress">
-				<progress class="h-2 w-full" max="100" value={ d.percent() } aria-label={ d.Name + " の学習の進み具合" }></progress>
+				<progress class="h-1.5 w-full" max="100" value={ d.percent() } aria-label={ d.Name + " の学習の進み具合" }></progress>
 				<p class="break-words text-sm text-ink">{ d.percent() }%<span class="text-mute">· { d.Text }</span></p>
 				<p class="text-sm text-mute">学習は Nefos Video を再起動すると途中から再開せず、やり直しになります。中止すると途中までの結果は残りません。</p>
 			</div>

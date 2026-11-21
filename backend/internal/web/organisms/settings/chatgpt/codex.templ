@@ -148,7 +148,7 @@ templ codexEngine(c Codex) {
 templ codexProgress(e CodexEngine) {
 	if e.Install.Running {
 		<div class="flex flex-col gap-1" role="status" data-testid="chatgpt-codex-install">
-			<progress class="w-full" max="100" value={ percentText(e.Install.Percent) }></progress>
+			<progress class="h-1.5 w-full" max="100" value={ percentText(e.Install.Percent) } aria-label={ codexTitle + "のダウンロードの進み具合" }></progress>
 			<p class="break-words text-sm">{ e.Install.Message }（{ percentText(e.Install.Percent) }%）</p>
 			<form hx-post={ paths.ChatGPTCodexInstallCancel() } hx-target={ panelTarget } hx-swap="outerHTML" hx-sync="this:drop" hx-params="none" hx-disabled-elt="find button[type=submit]">
 				@atoms.SmallButtonFor(atoms.ToneNeutral, "中断", codexTitle, templ.Attributes{"type": "submit", "data-testid": "chatgpt-codex-install-cancel"})
