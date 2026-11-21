@@ -1,4 +1,4 @@
-import { aTimeout, expect } from '@open-wc/testing';
+import { aTimeout, expect, waitUntil } from '@open-wc/testing';
 import { appendAlert, createAlert, dedupeAlertsOnSwap, dismissAlertsOnClick } from './alert';
 
 // The markup of atoms/alert.templ, as AppLayout embeds it in #alert-template.
@@ -53,9 +53,26 @@ describe('error alert', () => {
     expect(region.querySelector('[data-alert]')!.getAttribute('role')).to.equal('alert');
 
     (region.querySelector('[data-alert-close]') as HTMLButtonElement).click();
-    expect(region.querySelectorAll('[data-alert]').length).to.equal(1);
+    await waitUntil(() => region.querySelectorAll('[data-alert]').length === 1, 'the alert was not removed');
     expect(region.textContent).to.contain('LOCK されています');
     expect(region.textContent).not.to.contain('予算を超えています');
+  });
+
+  it('fades out before it is removed: it is marked as leaving and stays until the transition is over (M5)', async () => {
+    const style = document.createElement('style');
+    style.textContent = '[data-alert]{opacity:1;transition:opacity 200ms linear}[data-alert][data-leaving]{opacity:0}';
+    document.head.append(style);
+    try {
+      region.append(createAlert('予算を超えています')!);
+      const alert = region.querySelector('[data-alert]')!;
+      expect(getComputedStyle(alert).opacity).to.equal('1'); // the style the fade starts from
+      (alert.querySelector('[data-alert-close]') as HTMLButtonElement).click();
+      expect(alert.hasAttribute('data-leaving')).to.equal(true);
+      expect(alert.isConnected).to.equal(true);
+      await waitUntil(() => !alert.isConnected, 'the alert was not removed after the fade');
+    } finally {
+      style.remove();
+    }
   });
 
   it('raises a warning from its own template, and says when the page has none', () => {
@@ -71,19 +88,20 @@ describe('error alert', () => {
     expect(alert.querySelector('[data-alert-message]')!.textContent).to.equal('破棄しました');
   });
 
-  it('closes a alert that the server swapped in', () => {
+  it('closes a alert that the server swapped in', async () => {
     region.innerHTML = ALERT;
     (region.querySelector('[data-alert-close]') as HTMLButtonElement).click();
-    expect(region.children.length).to.equal(0);
+    await waitUntil(() => region.children.length === 0, 'the alert was not removed');
   });
 
-  it('appends a message once however often it is raised, and again after the alert was closed', () => {
+  it('appends a message once however often it is raised, and again after the alert was closed', async () => {
     for (let i = 0; i < 5; i++) appendAlert(region, '通信に失敗しました');
     appendAlert(region, '別のエラー');
     expect(region.querySelectorAll('[data-alert]').length).to.equal(2);
 
     (region.querySelector('[data-alert-close]') as HTMLButtonElement).click();
     appendAlert(region, '通信に失敗しました');
+    await waitUntil(() => region.querySelectorAll('[data-alert]').length === 2, 'the closed alert was not removed');
     expect(Array.from(region.querySelectorAll('[data-alert-message]')).map((m) => m.textContent)).to.deep.equal([
       '別のエラー',
       '通信に失敗しました',

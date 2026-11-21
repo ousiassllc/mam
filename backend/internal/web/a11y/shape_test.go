@@ -104,7 +104,7 @@ func TestMotionCSS_FadesTheOverlaysAndClipsTheRipple(t *testing.T) {
 	for _, want := range []string{
 		"opacity var(--motion-fade-out) var(--ease-in)", "opacity var(--motion-fade-in) var(--ease-out)",
 		"allow-discrete", "@starting-style", "dialog::backdrop", "var(--scrim)",
-		"[data-toast][data-leaving]", "[data-ripple]", "overflow: hidden", "@media (prefers-reduced-motion: reduce)",
+		"[data-toast][data-leaving]", "[data-alert][data-leaving]", "[data-ripple]", "overflow: hidden", "@media (prefers-reduced-motion: reduce)",
 	} {
 		assert.Contains(t, css, want)
 	}

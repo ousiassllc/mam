@@ -57,7 +57,8 @@ dialog[open]::backdrop {
   }
 }
 
-/* A toast comes in with the fade and, when toast.ts marks it as leaving, goes out with the fade-out. An alert (an error that stays) comes in with it too. */
+/* A toast comes in with the fade and, when toast.ts marks it as leaving, goes out with the fade-out. An alert (an error that stays) comes in with it
+   too, and goes out with it when its close button was pressed (alert.ts marks it as leaving and removes it when the fade is over). */
 [data-toast] {
   opacity: 1;
   transition: opacity var(--motion-fade-in) var(--ease-out);
@@ -75,7 +76,8 @@ dialog[open]::backdrop {
   }
 }
 
-[data-toast][data-leaving] {
+[data-toast][data-leaving],
+[data-alert][data-leaving] {
   opacity: 0;
   transition: opacity var(--motion-fade-out) var(--ease-in);
 }
@@ -98,7 +100,8 @@ dialog[open]::backdrop {
   dialog[open]::backdrop,
   [data-toast],
   [data-toast][data-leaving],
-  [data-alert] {
+  [data-alert],
+  [data-alert][data-leaving] {
     transition-duration: 100ms;
   }
 }

@@ -1,4 +1,5 @@
 import { requestFailureMessage, type RequestFailure } from '../lib/errors';
+import { whenFaded } from '../lib/fade';
 
 /**
  * The filter and the picker of the models (#1011), one component for every screen that lists models or chooses one
@@ -173,7 +174,10 @@ export function installModelPick(root: Document = document): void {
     (event) => {
       const dlg = dialog();
       if (!dlg || event.target !== dlg) return;
-      dlg.querySelector(BODY)?.replaceChildren();
+      // The dialog fades out (motion.css, M5), so it is emptied when the fade is over; one that was opened again meanwhile keeps its new body.
+      void whenFaded(dlg).then(() => {
+        if (!dlg.open) dlg.querySelector(BODY)?.replaceChildren();
+      });
       const failure = dlg.querySelector<HTMLElement>(FAILURE);
       if (failure) {
         failure.hidden = true;

@@ -90,8 +90,26 @@ describe('modal dialog (spec/components/shared-ui-parts.md §4)', () => {
     await sendKeys({ press: 'Escape' });
     await waitUntil(() => !dialog().open, 'Esc did not close the dialog', { timeout: 2000 });
 
-    expect(body().children.length).to.equal(0);
+    await waitUntil(() => body().children.length === 0, 'the body was not emptied', { timeout: 2000 });
     expect(document.activeElement === opener).to.equal(true);
+  });
+
+  it('keeps what it shows while it fades out and empties it when the fade is over (M5)', async () => {
+    const style = document.createElement('style');
+    style.textContent =
+      'dialog[data-modal]{opacity:0;transition:opacity 600ms linear,display 600ms allow-discrete,overlay 600ms allow-discrete}dialog[data-modal][open]{opacity:1}';
+    document.head.append(style);
+    try {
+      await open();
+      expect(getComputedStyle(dialog()).opacity).to.equal('1'); // the style the fade starts from
+      const closed = new Promise((resolve) => dialog().addEventListener('close', resolve, { once: true }));
+      dialog().close();
+      await closed;
+      expect(body().children.length).to.be.greaterThan(0);
+      await waitUntil(() => body().children.length === 0, 'the body was not emptied after the fade', { timeout: 2000 });
+    } finally {
+      style.remove();
+    }
   });
 
   it('closes on the cancel button and on the close button', async () => {
@@ -116,7 +134,7 @@ describe('modal dialog (spec/components/shared-ui-parts.md §4)', () => {
     expect(byId('opener') !== oldOpener).to.equal(true);
     expect(oldOpener.isConnected).to.equal(false);
     expect(document.activeElement === byId('opener')).to.equal(true);
-    expect(body().children.length).to.equal(0);
+    await waitUntil(() => body().children.length === 0, 'the body was not emptied', { timeout: 2000 });
   });
 
   it('keeps the dialog open on 422, shows the reason, keeps what was typed and focuses the field to blame', async () => {
@@ -210,7 +228,7 @@ describe('modal dialog (spec/components/shared-ui-parts.md §4)', () => {
     await waitUntil(() => !dialog().open, 'Esc did not close the dialog', { timeout: 2000 });
 
     expect(held.aborted).to.equal(true);
-    expect(body().children.length).to.equal(0);
+    await waitUntil(() => body().children.length === 0, 'the body was not emptied', { timeout: 2000 });
   });
 
   it('lets the answer of a POST that is in flight arrive after the dialog is closed: its rows are swapped, the token is not kept', async () => {
@@ -230,7 +248,7 @@ describe('modal dialog (spec/components/shared-ui-parts.md §4)', () => {
 
     expect(byId('token-count').textContent).to.equal('1 件');
     expect(dialog().open).to.equal(false);
-    expect(body().children.length).to.equal(0);
+    await waitUntil(() => body().children.length === 0, 'the body was not emptied', { timeout: 2000 });
     expect(dialog().textContent).to.not.contain('secret-token-value');
     expect(host.innerHTML).to.not.contain('secret-token-value');
   });
