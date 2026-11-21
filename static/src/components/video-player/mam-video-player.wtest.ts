@@ -292,6 +292,11 @@ describe('mam-video-player: generation placeholder', () => {
     await waitUntil(() => placeholder(el)?.textContent?.includes('再生できません') === true, 'no error shown', {
       timeout: 5000,
     });
+    // A failure is an error: the state colour (--danger, edge 40% / ground 10%) and an icon, not the muted text of a wait.
+    const box = placeholder(el)!;
+    expect(box.getAttribute('role')).to.equal('alert');
+    expect(box.className).to.contain('border-danger/40').and.contain('bg-danger/10').and.contain('text-danger');
+    expect(box.querySelector('svg[aria-hidden="true"]')).to.not.equal(null);
   });
 });
 
