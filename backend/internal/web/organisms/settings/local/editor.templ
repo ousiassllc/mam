@@ -60,7 +60,7 @@ templ startForm(s ModelStart, templates []TemplateOption, errMsg string) {
 						<span class="">{ t.Label }</span>
 						<span class="ml-1 text-xs text-mute">（{ mediaLabel(t.Media) }）</span>
 					</span>
-					<span class="text-xs text-mute">{ t.Description }</span>
+					<span class="text-sm text-ink">{ t.Description }</span>
 				}
 			}
 			@pick.Card(templ.Attributes{"type": "radio", "name": FieldTemplate, "value": "", "checked": s.TemplateID == ""}, "rounded-lg p-3 text-sm") {
@@ -78,12 +78,13 @@ templ startForm(s ModelStart, templates []TemplateOption, errMsg string) {
 				}
 			</div>
 		</fieldset>
-		<label class="flex flex-col gap-1 text-xs text-mute" for="local-workflow-json">
-			<span>ワークフローの JSON（ComfyUI の「Save (API Format)」で保存したもの。エディタ形式は取り込めません）</span>
+		<div class="flex flex-col gap-1">
+			<label class="text-xs text-mute" for="local-workflow-json">ワークフローの JSON</label>
 			@atoms.Textarea(atoms.FieldMd, "h-40 w-full font-mono text-sm", templ.Attributes{
-				"id": "local-workflow-json", "name": FieldWorkflowText, "spellcheck": "false",
+				"id": "local-workflow-json", "name": FieldWorkflowText, "spellcheck": "false", "aria-describedby": "local-workflow-json-help",
 			}, s.WorkflowText)
-		</label>
+			<p id="local-workflow-json-help" class="text-sm text-ink">ComfyUI の「Save (API Format)」で保存したものを貼り付けます。エディタ形式は取り込めません。</p>
+		</div>
 		<div class="flex flex-wrap items-center gap-2">
 			@atoms.Button(atoms.TonePrimary, "次へ（割り当てを設定）", templ.Attributes{"type": "submit"})
 			@closeButton(s.Endpoint)

@@ -1,0 +1,20 @@
+package a11y_test
+
+import (
+	"testing"
+
+	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/local"
+)
+
+// localEditorScreens is the first step of a ComfyUI model (the choice of a built-in workflow) over the real catalog of templates: the description of each is a
+// sentence or more of its JSON, so the size and the colour it is set in are the ones of a text to read (T3, C6), whatever the length of the file it came from.
+func localEditorScreens(t *testing.T) map[string]string {
+	t.Helper()
+	var d local.Data
+	for _, tpl := range localcfg.Templates() {
+		d.Templates = append(d.Templates, local.TemplateOption{ID: tpl.ID, Label: tpl.Label, Media: string(tpl.Media), Description: tpl.Description})
+	}
+	d.Editor.Start = &local.ModelStart{Endpoint: "gpu-box", Media: local.MediaImage, TemplateID: d.Templates[0].ID}
+	return map[string]string{"settings/local-models/endpoint/models/new": render(t, local.EditorBody(d))}
+}
