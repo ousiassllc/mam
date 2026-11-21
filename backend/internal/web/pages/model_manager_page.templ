@@ -26,7 +26,7 @@ templ ModelManagerPage(csrfToken string, o modelmgr.Overview) {
 templ ModelManagerCategoryPage(csrfToken string, c mmcat.Category, cats []mmcat.Category, d modelmgr.Data) {
 	@layout.AppLayout(c.Name+" - モデルマネージャー", csrfToken, sidenav.InModelManager(c.Slug, cats)) {
 		@pagehead.Main(categoryWidth(c)) {
-			@atoms.BackLinkWith(paths.ModelManager(), "← モデルマネージャー", templ.Attributes{"data-testid": "mm-back"})
+			@atoms.BackLinkWith(paths.ModelManager(), "モデルマネージャー", templ.Attributes{"data-testid": "mm-back"})
 			@pagehead.Header(c.Name, "モデルマネージャー", "")
 			@modelmgr.Body(c.Slug, d)
 		}

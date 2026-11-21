@@ -31,7 +31,7 @@ func TestChatComposer_MessageInputHasAnAccessibleName(t *testing.T) {
 	assert.Contains(t, textarea, `aria-label="メッセージ"`)
 }
 
-// The label "＋" is only a glyph: the file input is named for what it does (#780), and, being sr-only, its
+// The label is only an icon (the plus of Iconoir): the file input is named for what it does (#780), and, being sr-only, its
 // keyboard focus shows on the label that follows it (peer).
 func TestChatComposer_AttachmentInputIsNamedAndItsFocusIsVisible(t *testing.T) {
 	html := renderHTML(t, organisms.ChatComposer(domain.Project{ID: "p1"}))

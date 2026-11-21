@@ -30,7 +30,7 @@ func TestIcon_EveryIconIsADecorativeSVGWithItsOwnShape(t *testing.T) {
 		atoms.IconBadgeCheck, atoms.IconBadgeAlert, atoms.IconBadgeHelp, atoms.IconBan, atoms.IconFilter, atoms.IconCheck, atoms.IconDownload,
 		atoms.IconVideo, atoms.IconVoice, atoms.IconLipSync,
 		atoms.IconSuccess, atoms.IconWarning, atoms.IconDanger, atoms.IconInfo, atoms.IconTheme,
-		atoms.IconPlay, atoms.IconPause, atoms.IconSkipPrev, atoms.IconSkipNext, atoms.IconArrowUp, atoms.IconArrowDown, atoms.IconStar, atoms.IconChevronLeft,
+		atoms.IconPlay, atoms.IconPause, atoms.IconSkipPrev, atoms.IconSkipNext, atoms.IconArrowUp, atoms.IconArrowDown, atoms.IconStar, atoms.IconChevronLeft, atoms.IconPlus,
 	}
 	shapes := map[string]atoms.IconName{}
 	for _, name := range names {

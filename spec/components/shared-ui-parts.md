@@ -148,7 +148,8 @@
 | `IconPanelOpen` | `panel-left-open` | 〃 開くボタン | #915 |
 | `IconJobs` | `list-checks` | 左メニュー: ジョブ | #980 |
 | `IconPlay`・`IconPause`・`IconSkipPrev`・`IconSkipNext` | `play`・`pause`・`skip-prev`・`skip-next`（Iconoir） | プレーヤーの操作（`atoms/icon_player.templ`） | #1179 |
-| `IconArrowUp`・`IconArrowDown`・`IconChevronLeft` | `arrow-up`・`arrow-down`・`nav-arrow-left` | 並べ替え・戻る | #1179 |
+| `IconArrowUp`・`IconArrowDown`・`IconChevronLeft` | `arrow-up`・`arrow-down`・`nav-arrow-left` | 並べ替え・戻る（`atoms.BackLink` が前置する。ラベルは「← 」を付けない言葉だけ） | #1179・#1198 |
+| `IconPlus` | `plus` | チャットの添付ボタン（`sr-only` の「添付」を添える） | #1198 |
 | `IconStar` | `star`（輪郭のまま。塗らない。状態は線の色（`text-ink` ↔ `text-mute`）と `aria-pressed` で示す） | お気に入り | #1179 |
 | （`IconMedia`・`IconReview`・`IconChart`・`IconSettings` などは左メニューでも再利用） | | Scene / Shot・レビュー・制作指標・設定 | #915 |
 
@@ -308,6 +309,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.36 | 2026-11-22 | O1: スクラムは押し始めもスクラム上のときだけ閉じる。モデルピッカーの閉じるボタンを `sticky` の箱に。O3: 接続通知の位置・幅・折り返し。O7: リンク・リンク型ボタンの下線色を `tokens.css` の `:where(a, button).underline` の 1 か所に（`--mute`）、手書きのボタンの class を `atoms.ButtonClass`・`lib/button.ts` に寄せた。O12: 更新ボタンの待ち中は `atoms.Spinner`、動画のプレースホルダの進捗の塗りは `bg-accent` | #1194: 部品・オーバーレイ（O）の指摘 |
 | 0.37 | 2026-11-22 | §1 の文字の行に、`text-xs` は子に継承されるので外枠に付けず個別に付けると書き、検査を祖先の `text-xs` と描画結果まで広げた（`a11y/typography_test.go`）。ポーズ選択・音声の設定・接続テスト・AUTO の注記・重みバーの警告・こだわりの「元に戻す」（`lib/button.ts` の `BUTTON`）などを 14px 以上にした | #1196: タイポグラフィ（T）の指摘 |
 | 0.38 | 2026-11-22 | §1 の角丸の行に、選ぶ枠（`pick.Card`）は角を持たず呼び出しが `rounded-md`（チップ）か `rounded-lg`（カード）を決めると書いた。参照画像の行・画像のドロップ領域・動画の生成中プレースホルダと再生失敗の枠を `rounded-lg` にした。検査 `TestSources_CardsAreRoundedLg`（`a11y/shape_test.go`）を足した | #1197: 形・余白・線（S）の指摘 |
+| 0.39 | 2026-11-22 | §2 のアイコン一覧に `IconPlus`（Iconoir の `plus`）を足し、戻るリンクの矢印（`←`）とチャットの添付の `＋` を文字でなく Icon にした。`BackLink` のラベルは矢印抜きの言葉だけ | #1198: アイコン（I）の指摘 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 

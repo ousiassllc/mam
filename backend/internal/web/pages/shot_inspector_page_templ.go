@@ -103,9 +103,9 @@ func ShotInspectorPage(csrfToken string, d shotinspector.Data) templ.Component {
 // page for a Branch Shot (a Branch's Scenes are not on the trunk's Scene pages, so that link is a 404).
 func shotInspectorBack(d shotinspector.Data) (string, string) {
 	if d.Scene.BranchID != "" {
-		return paths.Branch(d.Scene.BranchID), "← Branch に戻る"
+		return paths.Branch(d.Scene.BranchID), "Branch に戻る"
 	}
-	return paths.Project(d.Project.ID, "scenes", d.Scene.ID), "← Scene / Shot に戻る"
+	return paths.Project(d.Project.ID, "scenes", d.Scene.ID), "Scene / Shot に戻る"
 }
 
 var _ = templruntime.GeneratedTemplate

@@ -18,8 +18,8 @@ func TestShotInspectorPage_BackLinkFollowsTheBranchOfTheScene(t *testing.T) {
 	tests := []struct {
 		name, branchID, href, label string
 	}{
-		{"trunk", "", `href="/projects/p1/scenes/sc1"`, "← Scene / Shot に戻る"},
-		{"branch", "b1", `href="/branches/b1"`, "← Branch に戻る"},
+		{"trunk", "", `href="/projects/p1/scenes/sc1"`, "Scene / Shot に戻る"},
+		{"branch", "b1", `href="/branches/b1"`, "Branch に戻る"},
 	}
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {

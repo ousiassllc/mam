@@ -184,3 +184,25 @@ func TestSources_ButtonLookIsWrittenOnce(t *testing.T) {
 		}
 	}
 }
+
+// An icon is an Icon (Iconoir, I1), not a character that stands for one: the arrow of a back link, the plus of an attachment, the star of a favourite, the
+// cross of a close. A label that starts with an arrow, or a button whose only content is a plus, is a glyph a screen reader reads as "左矢印" and whose line
+// does not follow the scale. Texts that use an arrow to say "to" (→ in a sentence) are prose and not held here.
+func TestSources_IconsAreNotGlyphs(t *testing.T) {
+	glyph := regexp.MustCompile(`["'>（]\s*[←↑↓×＋✕✖★☆]\s*(?:[^\s"'<）]|["'<）])`)
+	for _, path := range colorSources(t) {
+		if strings.HasSuffix(path, ".css") || strings.HasSuffix(path, "-fixtures.ts") { // a fixture is a stand-in for markup the server renders
+			continue
+		}
+		raw, err := os.ReadFile(path)
+		require.NoError(t, err)
+		for n, line := range strings.Split(string(raw), "\n") {
+			if text := strings.TrimSpace(line); strings.HasPrefix(text, "//") || strings.HasPrefix(text, "/*") || strings.HasPrefix(text, "*") {
+				continue
+			}
+			if m := glyph.FindString(line); m != "" {
+				t.Errorf("%s:%d: %q: a glyph is used as an icon: use atoms.Icon / lib/icon.ts (Iconoir, I1)", path, n+1, m)
+			}
+		}
+	}
+}

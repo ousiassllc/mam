@@ -210,7 +210,7 @@ func ReviewPage(csrfToken string, i domain.ReviewInbox) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = atoms.BackLink(paths.Reviews(), "← レビュー一覧").Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = atoms.BackLink(paths.Reviews(), "レビュー一覧").Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

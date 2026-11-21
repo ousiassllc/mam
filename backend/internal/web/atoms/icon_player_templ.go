@@ -12,7 +12,7 @@ import templruntime "github.com/a-h/templ/runtime"
 // line limit). iconStatus hands every name it does not know to iconPlayer. The star is an outline: the caller fills it (a favourite that is on) with the
 // fill utility of Tailwind in the class, which beats the fill="none" of the <svg>.
 
-// Icons of the player controls, the arrows of a list and the star of a favourite.
+// Icons of the player controls, the arrows of a list, the star of a favourite, the chevron of a back link and the plus of an attachment.
 const (
 	IconPlay        IconName = "play"
 	IconPause       IconName = "pause"
@@ -22,6 +22,7 @@ const (
 	IconArrowDown   IconName = "arrow-down"
 	IconStar        IconName = "star"
 	IconChevronLeft IconName = "chevron-left"
+	IconPlus        IconName = "plus"
 )
 
 // iconPlayer draws the icons of the player controls, the arrows and the star; an unknown name draws nothing.
@@ -260,6 +261,33 @@ func iconPlayer(name IconName, class string) templ.Component {
 				return nil
 			})
 			templ_7745c5c3_Err = iconSVG(class).Render(templ.WithChildren(ctx, templ_7745c5c3_Var9), templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+		case IconPlus:
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, " ")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Var10 := templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
+				templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
+				templ_7745c5c3_Buffer, templ_7745c5c3_IsBuffer := templruntime.GetBuffer(templ_7745c5c3_W)
+				if !templ_7745c5c3_IsBuffer {
+					defer func() {
+						templ_7745c5c3_BufErr := templruntime.ReleaseBuffer(templ_7745c5c3_Buffer)
+						if templ_7745c5c3_Err == nil {
+							templ_7745c5c3_Err = templ_7745c5c3_BufErr
+						}
+					}()
+				}
+				ctx = templ.InitializeContext(ctx)
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<path d=\"M6 12H12M18 12H12M12 12V6M12 12V18\" stroke-linecap=\"round\" stroke-linejoin=\"round\"></path>")
+				if templ_7745c5c3_Err != nil {
+					return templ_7745c5c3_Err
+				}
+				return nil
+			})
+			templ_7745c5c3_Err = iconSVG(class).Render(templ.WithChildren(ctx, templ_7745c5c3_Var10), templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
