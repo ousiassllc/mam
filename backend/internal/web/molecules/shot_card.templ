@@ -213,7 +213,7 @@ func storyboardRows(f domain.ShotStoryboard) [][2]string {
 templ ShotCard(d ShotCardData) {
 	<li
 		id={ "shot-" + d.Shot.ID }
-		class={ "rounded-md border p-3", templ.KV("border-accent bg-accent-soft", d.Selected), templ.KV("border-border bg-surface", !d.Selected) }
+		class={ "rounded-lg border p-3", templ.KV("border-accent bg-accent-soft", d.Selected), templ.KV("border-border bg-surface", !d.Selected) }
 		if d.Selected {
 			aria-current="true"
 		}

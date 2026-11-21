@@ -43,7 +43,7 @@ templ Slot(d Data) {
 // Panel is the notice with the buttons. It draws nothing when there is nothing to say.
 templ Panel(d Data) {
 	if d.Visible() {
-		<section id="restart-panel" class="mb-4 flex flex-col gap-2 rounded-md border border-warning/40 bg-warning/10 px-4 py-3" aria-label="再起動して反映" data-testid="restart-panel">
+		<section id="restart-panel" class="mb-4 flex flex-col gap-2 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3" aria-label="再起動して反映" data-testid="restart-panel">
 			if len(d.Pending) > 0 {
 				<p class="text-sm text-warning" data-testid="restart-pending">
 					保存した設定のうち、再起動すると反映されるものがあります:

@@ -113,7 +113,7 @@ templ partField(p Part) {
 // installSteps is how to install FaceFusion by hand: the five steps of its official guide (https://docs.facefusion.io/installation), each command in a block of its
 // own. It is open while FaceFusion is not found. mam fetches nothing: it says so before the steps.
 templ installSteps(d Data) {
-	<details id={ StepsID } class="rounded-md border border-border px-3 py-2" data-testid="mm-facefusion-steps" open?={ !d.Ready }>
+	<details id={ StepsID } class="rounded-lg border border-border px-3 py-2" data-testid="mm-facefusion-steps" open?={ !d.Ready }>
 		<summary class="cursor-pointer text-sm font-semibold text-ink">FaceFusion の入れ方</summary>
 		<div class="mt-2 flex flex-col gap-3 text-sm">
 			<p class="text-mute">

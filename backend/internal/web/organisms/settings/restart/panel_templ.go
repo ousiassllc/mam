@@ -141,7 +141,7 @@ func Panel(d Data) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if d.Visible() {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<section id=\"restart-panel\" class=\"mb-4 flex flex-col gap-2 rounded-md border border-warning/40 bg-warning/10 px-4 py-3\" aria-label=\"再起動して反映\" data-testid=\"restart-panel\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<section id=\"restart-panel\" class=\"mb-4 flex flex-col gap-2 rounded-lg border border-warning/40 bg-warning/10 px-4 py-3\" aria-label=\"再起動して反映\" data-testid=\"restart-panel\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

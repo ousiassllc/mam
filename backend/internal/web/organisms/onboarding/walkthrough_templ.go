@@ -83,7 +83,7 @@ func flowStage(number, title, text string) templ.Component {
 			templ_7745c5c3_Var2 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<li class=\"flex gap-3 rounded-md border border-border px-3 py-2\"><span class=\"mt-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-border text-xs\" aria-hidden=\"true\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<li class=\"flex gap-3 rounded-lg border border-border px-3 py-2\"><span class=\"mt-1 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-md border border-border text-xs\" aria-hidden=\"true\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -152,7 +152,7 @@ func ModesBody() templ.Component {
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<p class=\"text-sm text-ink\">進め方は 2 つあります。同じプロジェクトで、いつでも切り替えられます。</p><div class=\"grid grid-cols-1 gap-4 md:grid-cols-2\" data-testid=\"onboarding-modes\"><section class=\"rounded-md border border-border px-4 py-3\" aria-labelledby=\"onboarding-mode-auto\"><h3 id=\"onboarding-mode-auto\" class=\"text-base font-semibold\">AUTO MODE（自動生成）</h3><p class=\"mt-1 text-sm text-ink\">作りたい動画を指定すると、AI が完成まで自律的に進めます。まず初稿を作りたいときに向いています。</p></section><section class=\"rounded-md border border-border px-4 py-3\" aria-labelledby=\"onboarding-mode-director\"><h3 id=\"onboarding-mode-director\" class=\"text-base font-semibold\">DIRECTOR MODE（監督）</h3><p class=\"mt-1 text-sm text-ink\">自分が監督になります。プロンプトを書く代わりに、「もう少し寄って」「この瞬間だけ不安そうな顔にして」のように、自然な言葉で演出を指示します。</p></section></div><p class=\"text-sm text-ink\">たとえば、AUTO で初稿を 8 割まで作り、気になる Scene だけ DIRECTOR で直し、また AUTO に戻して、編集・音声・最終 QC に進む、という使い方ができます。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<p class=\"text-sm text-ink\">進め方は 2 つあります。同じプロジェクトで、いつでも切り替えられます。</p><div class=\"grid grid-cols-1 gap-4 md:grid-cols-2\" data-testid=\"onboarding-modes\"><section class=\"rounded-lg border border-border px-4 py-3\" aria-labelledby=\"onboarding-mode-auto\"><h3 id=\"onboarding-mode-auto\" class=\"text-base font-semibold\">AUTO MODE（自動生成）</h3><p class=\"mt-1 text-sm text-ink\">作りたい動画を指定すると、AI が完成まで自律的に進めます。まず初稿を作りたいときに向いています。</p></section><section class=\"rounded-lg border border-border px-4 py-3\" aria-labelledby=\"onboarding-mode-director\"><h3 id=\"onboarding-mode-director\" class=\"text-base font-semibold\">DIRECTOR MODE（監督）</h3><p class=\"mt-1 text-sm text-ink\">自分が監督になります。プロンプトを書く代わりに、「もう少し寄って」「この瞬間だけ不安そうな顔にして」のように、自然な言葉で演出を指示します。</p></section></div><p class=\"text-sm text-ink\">たとえば、AUTO で初稿を 8 割まで作り、気になる Scene だけ DIRECTOR で直し、また AUTO に戻して、編集・音声・最終 QC に進む、という使い方ができます。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

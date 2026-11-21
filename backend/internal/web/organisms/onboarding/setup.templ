@@ -55,13 +55,13 @@ templ ModelsBody(text llm.Data, images media.Data) {
 		既定の割り当てのままでも進めます。変えたいときだけ開いてください。たとえば ChatGPT のログインだけで使うときは、テキスト生成のプロバイダーに「chatgpt-subscription」を選ぶと、そのログインが使われます。
 	</p>
 	<p class="text-sm text-mute">保存した内容は、設定画面と同じく、テキスト生成は llm.json、画像・動画は models.json に書かれます。</p>
-	<details class="rounded-md border border-border px-3 py-2" data-testid="onboarding-llm">
+	<details class="rounded-lg border border-border px-3 py-2" data-testid="onboarding-llm">
 		<summary class="cursor-pointer text-sm font-semibold">テキスト生成（LLM）の割り当て</summary>
 		<div class="mt-3">
 			@llm.Section(text)
 		</div>
 	</details>
-	<details class="rounded-md border border-border px-3 py-2" data-testid="onboarding-media">
+	<details class="rounded-lg border border-border px-3 py-2" data-testid="onboarding-media">
 		<summary class="cursor-pointer text-sm font-semibold">画像・動画モデルの割り当て</summary>
 		<div class="mt-3">
 			@media.Section(images)
@@ -173,7 +173,7 @@ const CodexResultID = "onboarding-codex-result"
 // into "ローカル・代替モデル". mam bundles no ComfyUI.
 templ MacBody(m Mac) {
 	if m.Codex {
-		<section class="flex flex-col gap-2 rounded-md border border-border px-4 py-3" aria-labelledby="onboarding-codex-title" data-testid="onboarding-codex">
+		<section class="flex flex-col gap-2 rounded-lg border border-border px-4 py-3" aria-labelledby="onboarding-codex-title" data-testid="onboarding-codex">
 			<h3 id="onboarding-codex-title" class="text-base font-semibold">Codex の場所（任意）</h3>
 			<p class="text-sm text-ink">ChatGPT の組織のアカウントを Codex 経由で使うとき、自分で入れた codex の実行ファイルの場所を指定します。ターミナルで <code class={ codeClass }>which codex</code> を実行すると分かります。使わないなら飛ばしてください。</p>
 			<form class="flex flex-wrap items-center gap-2" hx-put={ paths.OnboardingCodexPath() } hx-target={ "#" + CodexResultID } hx-swap="innerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
@@ -184,7 +184,7 @@ templ MacBody(m Mac) {
 			<p id={ CodexResultID } class="text-sm"></p>
 		</section>
 	}
-	<section class="flex flex-col gap-2 rounded-md border border-border px-4 py-3" aria-labelledby="onboarding-comfy-title" data-testid="onboarding-comfy">
+	<section class="flex flex-col gap-2 rounded-lg border border-border px-4 py-3" aria-labelledby="onboarding-comfy-title" data-testid="onboarding-comfy">
 		<h3 id="onboarding-comfy-title" class="text-base font-semibold">ComfyUI は外部のものを使います</h3>
 		<p class="text-sm text-ink">
 			Nefos Video は ComfyUI を同梱しません。ローカルで画像・動画を作りたいときは、公式の <strong>Comfy Desktop</strong>（macOS 13 以降・Apple Silicon）を入れて、その接続先の URL を Nefos Video に入れます。Comfy Desktop は、.dmg から入れるだけで、Python と MPS の設定まで自動で行います。
