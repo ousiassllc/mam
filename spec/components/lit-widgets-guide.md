@@ -84,7 +84,7 @@ Shot の Take のスコアを比べ、1 つを選ぶ・除外する、また複�
 | Status | `atoms.Badge`（Shot カードの `molecules.TakeStatusBadge` と同じ色: 候補 = `BadgeWarn`・AI Pick = `BadgeInfo`・採用 = `BadgeOK`・除外 = `BadgeNeutral`）。文字は `status_label`（サーバーが返す。クライアントは持たない）。除外は取り消し線を使わず、行の `text-mute` と文言で伝える。Judge の判定（PASS / FAIL）は印の隣の `text-xs text-mute` |
 | 行の操作 | 「選択」「除外」は W3 の補助（`atoms.LinkButtonFor` と同じ形。名前は「選択: Take A」「除外: Take A」）。出すかどうかは `select_url` / `reject_url` の有無（`status` は見ない） |
 | 区間で採用 | `<section aria-label="区間指定">`、見出し「区間で採用（Partial Take Use）」。Take ごとに、「Take A」・`mam-video-player`（`max-w-md`）・区間を選ぶレーン |
-| レーン | 高さ 28（`h-7`）・`rounded-md bg-accent-soft`・`cursor-crosshair`。幅は Take の長さを最長の Take（または Shot の計画尺）に対する割合にして、長さの違いが見えるようにする。選んだ区間 = `bg-success/70`（番号は `text-xs text-bone`）、ドラッグ中 = `bg-info/70`（どちらも [color-rules.md](color-rules.md) §4 の重ね塗りの例外）。`role="group"`・`aria-label="Take A の区間を選ぶ"` |
+| レーン | 高さ 28（`h-7`）・`rounded-md bg-accent-soft`・`cursor-crosshair`。幅は Take の長さを最長の Take（または Shot の計画尺）に対する割合にして、長さの違いが見えるようにする。選んだ区間 = `bg-success/70`（番号は透ける塗りの上に直接置かず、`bg-surface text-ink` の小さなチップに入れる。`text-bone` は Light で 4.5:1 に届かない）、ドラッグ中 = `bg-info/70`（どちらも [color-rules.md](color-rules.md) §4 の重ね塗りの例外）。`role="group"`・`aria-label="Take A の区間を選ぶ"` |
 | 選択パネル | W2 のカード（`tabindex="-1"`。フォーカスの戻し先）。選んだ区間が無いときは「Take の帯をドラッグして区間を選ぶと、選んだ順につなぎます。」。あるときは区間のチップ（`rounded-sm bg-accent-soft`、「Take A の 0.0-2.0秒」と、名前付きの × ボタン「区間 n を外す」）と「合計 N 秒（つなぎ目はクロスフェード）」 |
 | 合成のボタン | 「この区間で合成」（主）= 区間が 2 つ以上・処理中でないときだけ有効。「選び直す」（W3 のテキストボタン）= 区間が無いと無効。「言葉で合成」（サブ）= 入力が空・処理中のとき無効 |
 | 言葉の入力 | `<input type="text" name="instruction">`（W5。`aria-label="区間を言葉で指定"`。例「Take A の 0-2秒 + Take B の 2-4秒」）。解釈はサーバー。**レーンのドラッグに代わる入力**（W12） |
@@ -247,3 +247,4 @@ Shot の Take のスコアを比べ、1 つを選ぶ・除外する、また複�
 | 1.7 | 2026-11-22 | W5 に、入力欄の文字は `text-sm` と書いた（クリップの in / out・トランジション・字幕・言葉で合成の入力欄を 12px から 14px に）。`mam-weight-note` の注意の文も `text-sm` | #1192: タイポグラフィ（T）の指摘 |
 | 1.8 | 2026-11-22 | W3 のボタンの class を `components/lib/button.ts`（`BUTTON`・`BUTTON_TONE`）の 1 か所にまとめた（マスク・重み調整・タイムライン・Take 比較のボタンの手書きの複製をやめた） | #1194: 部品・オーバーレイ（O）の指摘 |
 | 1.9 | 2026-11-22 | W3 の行の中の補助の操作（テキストボタン）の class を `lib/button.ts` の `LINK_BUTTON`（atoms の `linkButtonClass` と同じ語）の 1 か所にし、Take 比較の行・タイムラインの行とツールバーの複製を置き換えた。タイムラインの読み込み失敗の案内は 2 文なので `text-ink`（C6）。こだわりの「元に戻す」は `BUTTON` + `BUTTON_TONE.neutral` | #1196・#1200 |
+| 1.10 | 2026-11-22 | W5 の Take 比較のレーン: 選んだ区間の番号を、`bg-success/70` の上に直接置かず `bg-surface text-ink` のチップに入れた（Light の AA） | #1201: 色（C）の指摘 |

@@ -46,6 +46,8 @@ func TestSteps_EveryStepIsAWholePageWithItsTitleAndProgress(t *testing.T) {
 			}
 			assert.Contains(t, body, "ステップ "+strconv.Itoa(i+1)+" / 6")
 			assert.Regexp(t, `aria-current="step"[^>]*>\s*`+strconv.Itoa(i+1)+`\. `+regexp.QuoteMeta(tc.title), body, "the progress numbers the current step like the heading")
+			assert.Regexp(t, `<span aria-current="step" class="[^"]*\bfont-semibold\b[^"]*"`, body, "only the current step name is SemiBold (guide §7 P1)")
+			assert.Equal(t, 1, strings.Count(body[strings.Index(body, `data-testid="onboarding-progress"`):strings.Index(body, `</nav>`)], "font-semibold"), "the other steps are Regular")
 			assert.Contains(t, body, ">6. ffmpeg の確認<", "and the last one is 6 of 6")
 			if i < len(want)-1 {
 				assert.Contains(t, body, `data-testid="onboarding-skip"`, "any page but the last closes the guide")

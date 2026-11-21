@@ -121,6 +121,12 @@ describe('mam-take-comparator: the look (lit-widgets-guide §4, #1092)', () => {
 
     const picked = el.querySelector<HTMLElement>('[data-picked]')!;
     expect(parseFloat(getComputedStyle(picked).fontSize)).to.be.at.least(12);
+    // The number is on a chip of its own (--surface, --ink: AA in both themes), not on the see-through green of the bar (C5; spec/components/color-rules.md §4).
+    const number = picked.querySelector<HTMLElement>('[data-picked-number]')!;
+    expect(number.textContent).to.equal('1');
+    expect(number.className).to.contain('bg-surface');
+    expect(number.className).to.contain('text-ink');
+    expect(picked.className).to.not.contain('text-bone');
   });
 
   it('draws the empty state as a dashed frame (TC-6)', async () => {

@@ -33,7 +33,7 @@
 | 項目 | 決まり |
 |------|--------|
 | フォント（T1） | 英字・UI・日本語は `font-sans`（Sora → Noto Sans JP）、コードと桁を揃える数値は `font-mono`（JetBrains Mono）。いずれも SIL OFL。`static/fonts.mjs` が `@fontsource-variable/*` から `dist/fonts.css` と `dist/fonts/*.woff2` を作り、レイアウトが `paths.StaticFontsCSS` を読む（ネットワークからは取らない）。ライセンス全文は `THIRD_PARTY_NOTICES.md` |
-| サイズ（T3） | `text-xs` 12 · `text-sm` 14 · `text-base` 16 · `text-lg` 18 · `text-xl` 24（h3）· `text-2xl` 32（h2）· `text-3xl` 40（h1）。Tailwind の既定の大きさ（20・30・36）は無効。本文（文章として読ませる `<p>`・表の本体・一覧（`ul` / `ol` / `li`）・警告とエラーの文（`text-warning` / `text-danger`）・入力欄（`input` / `select` / `textarea`。`type=file` と Lit の入力も）・リンク型ボタンの文字）は `text-sm` 以上、`text-xs` は 1 文の注記・バッジ・表の見出し・`dt` のラベルだけ。**2 文以上の `<p>` は `text-xs` にしない**。**`text-xs` は子に継承される**ので、`text-xs` の外枠（`div` / `label` / `details` / `form`）の中に本文・入力欄・警告・ボタンを置かない（外枠から外し、短い注記・ラベルにだけ個別に付ける）（`a11y/typography_test.go` の `TestSources_TextToReadIsAtLeast14px`・`TestSources_TextToReadIsNot12pxByInheritance`・`TestRendered_TextToReadIsNot12px` が検査。後の 2 つは祖先の `text-xs` と描画した HTML を見る） |
+| サイズ（T3） | `text-xs` 12 · `text-sm` 14 · `text-base` 16 · `text-lg` 18 · `text-xl` 24（h3）· `text-2xl` 32（h2）· `text-3xl` 40（h1）。Tailwind の既定の大きさ（20・30・36）は無効。本文（文章として読ませる `<p>`・表の本体・一覧（`ul` / `ol` / `li`。JS が `createElement` で組み立てる行も）・コピーして使うコマンドの `pre`・カードや表の主たる値（接続先 URL・モデル ID の `code`）・警告とエラーの文（`text-warning` / `text-danger`）・入力欄（`input` / `select` / `textarea`。`type=file` と Lit の入力も）・リンク型ボタンの文字）は `text-sm` 以上、`text-xs` は 1 文の注記・バッジ・表の見出し・`dt` のラベルだけ。**2 文以上の `<p>` は `text-xs` にしない**。**`text-xs` は子に継承される**ので、`text-xs` の外枠（`div` / `label` / `details` / `form`）の中に本文・入力欄・警告・ボタンを置かない（外枠から外し、短い注記・ラベルにだけ個別に付ける）（`a11y/typography_test.go` の `TestSources_TextToReadIsAtLeast14px`・`TestSources_TextToReadIsNot12pxByInheritance`・`TestRendered_TextToReadIsNot12px` が検査。後の 2 つは祖先の `text-xs` と描画した HTML を見る） |
 | 行間（T4） | サイズごとに `xs` 1.6 · `sm` 1.7 · `base` 1.8 · `lg` 1.7 · `xl` 1.5 · `2xl` 1.4 · `3xl` 1.3。`body` は 16px・1.8 |
 | ウェイト（T2） | Regular（400）と SemiBold（600）の 2 段だけ。SemiBold は見出し（`h1`〜`h4`）・ボタン・`<summary>`・表の見出し行だけ。ナビ・リンク・ラベル・数値には付けない（現在地は色と背景で示す）。`font-medium` は使わない |
 | 数値（T5） | 桁を揃える数値（金額・容量）は `font-mono tabular-nums`、表の数値列は右寄せ（件数・実績・日時の列も `font-mono tabular-nums`。日時は左寄せのままでよい）。表の見出し行（列の見出し `<th scope="col">` すべて）は `text-xs font-semibold text-mute`（`font-normal` にしない。`TestSources_HeaderRowOfATableIsSemiBold`）、行の見出し（`<th scope="row">`）と `<legend>` は Regular（`font-normal`） |
@@ -49,6 +49,8 @@
 | 影（S3） | 影はモーダルの `<dialog>` の `shadow-modal`（`0 1px 2px rgba(0,0,0,.06)`）だけ。カード・パネル・トースト・通知は影なしで、`border border-border` で区切る。ホバーの光る縁取りは使わない（色・背景・枠の色だけ） |
 | レイヤー（O4） | `z-dropdown` 100 · `z-sticky` 200 · `z-drawer` 300 · `z-modal` 400 · `z-toast` 500。カードの中で、全面を覆うクリック領域の上に出す部品だけ `z-raised`（部品の中の積み順で、ページのレイヤーではない）。`z-10` などの数字は使わない |
 | 動き（M1） | `transition-colors`（既定で `--motion-base` 180ms・`--ease-out`）と `motion-reduce:transition-none`。`transition`（すべての値）・`transition-shadow`・`transition-transform` は使わない |
+| ドロップ領域（O8） | 破線の `border-border`・`rounded-lg`・`p-6`（24px。ガイド §7 P1 の 24–28）。ファイルをドラッグしている間は `border-border` を外してから `border-accent bg-accent-soft` を付ける（`lib/dropzone.ts` の `highlightZone`。Tailwind の出力では `border-border` が後ろにあり、外さないと枠が変わらない）。ドロップ・ドラッグ終了で戻す。入力画像（`gentest/inputs`）・プロンプトマッチ（`gentest/match`）・LoRA の取り込み（`loraimport`）の 3 つが同じ形 |
+| 切替のセグメント（O8） | 地（トラック）が `bg-accent-soft`（`p-1`・`gap-1`・`rounded-md`）、選択中の面が `bg-surface text-ink`（`rounded-sm`）。選ばれていない側は地が見える（面を持たない）。文字は `font-semibold`。`molecules/locktoggle` の AUTO / MANUAL / LOCK |
 
 ### 動き（Issue #1040）
 
@@ -312,6 +314,8 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.39 | 2026-11-22 | §2 のアイコン一覧に `IconPlus`（Iconoir の `plus`）を足し、戻るリンクの矢印（`←`）とチャットの添付の `＋` を文字でなく Icon にした。`BackLink` のラベルは矢印抜きの言葉だけ | #1198: アイコン（I）の指摘 |
 | 0.40 | 2026-11-22 | §1 のリップルの行に、ボタンの外見の `<label>`・`<a>`（ファイル選択・ページ送り）にも `data-ripple` を付けると書いた。LOCK 切替・左メニューの `transition-colors` に `motion-reduce:transition-none` を揃え、検査 `TestSources_ButtonLookedElementsHaveTheRipple`・`TestSources_TransitionsStopForReducedMotion` を足した | #1199: モーション（M）の指摘 |
 | 0.41 | 2026-11-22 | §1 のスライダーの行のレールを 6px から 4px に直した（`slider.css` の `--rail: 0.25rem` とガイド O11 が正で、6px は進捗バー O12 の値）。テキストだけのボタン（`atoms.LinkButton`）の見た目を `linkButtonClass`（atoms）と `LINK_BUTTON`（`lib/button.ts`）の 1 か所にし、Lit の複製 4 か所と絞り込みボタンを置き換えた。検査 `TestSources_LinkButtonLookIsWrittenOnce`（`a11y/shape_test.go`）を足し、`TestSources_ButtonLookIsWrittenOnce` の手書きサブボタンの検出を `hover:` 抜きに広げた | #1200: 部品・オーバーレイ（O）の指摘 |
+| 0.42 | 2026-11-22 | §1 の文字の行に、JS が組み立てる一覧の行・コピーして使うコマンドの `pre`・カードや表の主たる値の `code` を 14px 以上と書いた。`a11y/typography_test` に、`.ts` の `className` / `classList.add` の文字列を見る検査と `pre` の `text-xs` の検査を足した | #1202: タイポグラフィ（T）の指摘 |
+| 0.43 | 2026-11-22 | §1 に、ドロップ領域（`p-6`・ドラッグ中は `border-border` を外して `border-accent bg-accent-soft`。3 か所が `lib/dropzone.ts` を使う）と切替のセグメント（地 `bg-accent-soft`・選択面 `bg-surface text-ink`）の行を足した | #1203: 部品・オーバーレイ（O）の指摘 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 

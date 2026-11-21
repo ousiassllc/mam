@@ -18,7 +18,7 @@ import (
 )
 
 // renderedScreens is the pages of the app as a browser gets them, from the real router over fakes: the model manager (the overview and every category, with
-// the catalogs of models, assets, runtimes and nodes it lists), the settings categories, the pages of a Project in AUTO and the generation test.
+// the catalogs of models, assets, runtimes and nodes it lists), the settings categories, the pages of a Project in AUTO, the generation test, its pose picker and its chat (the lines of the app that a refused estimate puts in the thread).
 func renderedScreens(t *testing.T) map[string]string {
 	t.Helper()
 	s := screentest.NewAll(t)
@@ -42,6 +42,8 @@ func renderedScreens(t *testing.T) map[string]string {
 	for _, path := range []string{paths.Home(), paths.Analytics(), paths.Reviews(), paths.Jobs(), paths.GenerationTest(), paths.GenerationTestHistory(), paths.GenerationTestPrompts(), paths.GenerationTestInpaint()} {
 		pages[path] = s.PageAt(path)
 	}
+	maps.Copy(pages, posePickerScreens(t, s))
+	maps.Copy(pages, chatScreens(t))
 	// The dialogs the model manager opens (the detail of a model, an asset, a runtime, a node): each is a fragment the page links to.
 	detail := regexp.MustCompile(`hx-get="(/model-manager/[^"?]*/detail)"`)
 	for name, page := range maps.Clone(pages) {

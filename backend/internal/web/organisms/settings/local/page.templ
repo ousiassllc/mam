@@ -86,7 +86,7 @@ templ modelRow(pinned bool, note, endpoint string, m Model, oob bool) {
 			@atoms.Badge(atoms.BadgeNeutral, mediaLabel(m.Media))
 		}
 		@settingsui.Cell("") {
-			<code class="break-all text-xs text-ink" data-testid="local-model-id">{ m.ID }</code>
+			<code class="break-all text-sm text-ink" data-testid="local-model-id">{ m.ID }</code>
 			<span class="block text-xs text-mute">{ m.Summary }</span>
 			if len(m.UsedBy) > 0 {
 				<span class="block text-xs text-mute" data-testid="local-model-used-by">使用中: { joinNames(m.UsedBy) }</span>

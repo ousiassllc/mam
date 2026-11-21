@@ -349,7 +349,7 @@ func modelRow(pinned bool, note, endpoint string, m Model, oob bool) templ.Compo
 					}()
 				}
 				ctx = templ.InitializeContext(ctx)
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<code class=\"break-all text-xs text-ink\" data-testid=\"local-model-id\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<code class=\"break-all text-sm text-ink\" data-testid=\"local-model-id\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

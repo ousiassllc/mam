@@ -177,7 +177,7 @@ func progress(f Frame) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if i == f.Index {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<span aria-current=\"step\" class=\"inline-block rounded-md border border-accent bg-accent-soft px-2 py-1 text-ink\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<span aria-current=\"step\" class=\"inline-block rounded-md border border-accent bg-accent-soft px-2 py-1 font-semibold text-ink\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

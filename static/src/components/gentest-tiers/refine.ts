@@ -207,7 +207,7 @@ function render(section: HTMLElement): void {
 
 function row(item: Item): HTMLElement {
   const li = document.createElement('li');
-  li.className = 'flex flex-wrap items-center justify-between gap-2 text-xs text-ink';
+  li.className = 'flex flex-wrap items-center justify-between gap-2 text-sm text-ink';
   li.dataset.gtRefineItem = item.key;
   const text = document.createElement('span');
   text.className = 'break-words';

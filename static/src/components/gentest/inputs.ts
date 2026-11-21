@@ -1,4 +1,5 @@
-import { highlight, markAdded, releasePicker, RowReorder } from './inputs-dom';
+import { highlightZone } from '../lib/dropzone';
+import { markAdded, releasePicker, RowReorder } from './inputs-dom';
 import { applyModels } from './inputs-models';
 import { defaultStrength, isUploadRef, moveItem, takeFiles, uploadRef } from './inputs-model';
 import { syncSliders } from '../slider/slider';
@@ -14,10 +15,6 @@ import { syncSliders } from '../slider/slider';
  */
 
 const inited = new WeakSet<HTMLElement>();
-
-// The drop highlight of the zone: classes of the colour table (spec/components/color-rules.md), swapped in by the script.
-const ZONE_REST = 'border-border';
-const ZONE_ACTIVE = ['border-accent', 'bg-accent-soft'];
 
 class Inputs {
   private readonly form: HTMLElement;
@@ -67,15 +64,15 @@ class Inputs {
     zone.addEventListener('dragover', (e) => {
       if (!hasFiles(e)) return;
       e.preventDefault();
-      highlight(zone, true, ZONE_REST, ZONE_ACTIVE);
+      highlightZone(zone, true);
     });
     zone.addEventListener('dragleave', (e) => {
       // Moving from the zone onto something inside it is not leaving it (the highlight would flicker).
       if (e.relatedTarget instanceof Node && zone.contains(e.relatedTarget)) return;
-      highlight(zone, false, ZONE_REST, ZONE_ACTIVE);
+      highlightZone(zone, false);
     });
     zone.addEventListener('drop', (e) => {
-      highlight(zone, false, ZONE_REST, ZONE_ACTIVE);
+      highlightZone(zone, false);
       if (!hasFiles(e)) return;
       e.preventDefault();
       this.add([...(e.dataTransfer?.files ?? [])]);
