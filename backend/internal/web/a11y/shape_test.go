@@ -206,3 +206,50 @@ func TestSources_IconsAreNotGlyphs(t *testing.T) {
 		}
 	}
 }
+
+// An element drawn as a button gives the press of a button (M4): a <label>, <a> or <button> whose class is a button's (atoms.ButtonClass /
+// SmallButtonClass, or the bordered box of the pagination links) has data-ripple, the same as atoms.Button and ButtonLink. A face of a button without the ripple
+// is the one that a reader finds does not answer.
+func TestSources_ButtonLookedElementsHaveTheRipple(t *testing.T) {
+	element := regexp.MustCompile(`(?s)<(?:label|a|button|span)\b(?:[^<>"'{]|"[^"]*"|'[^']*'|\{[^}]*\})*>`)
+	look := regexp.MustCompile(`atoms\.(?:Small)?ButtonClass\(`)
+	paginationLook := regexp.MustCompile(`\blinkClass\b|\bcurrentClass\b`) // the bordered box of molecules/pagination (another package's linkClass is a text link)
+	for _, path := range colorSources(t) {
+		if !strings.HasSuffix(path, ".templ") || strings.HasSuffix(path, "atoms/button.templ") {
+			continue
+		}
+		raw, err := os.ReadFile(path)
+		require.NoError(t, err)
+		src := string(raw)
+		for _, m := range element.FindAllStringIndex(src, -1) {
+			tag := src[m[0]:m[1]]
+			if strings.HasPrefix(tag, "<span") && strings.Contains(tag, "aria-current") { // the mark of the current page is not pressed
+				continue
+			}
+			if (look.MatchString(tag) || strings.HasSuffix(path, "pagination/pagination.templ") && paginationLook.MatchString(tag)) && !strings.Contains(tag, "data-ripple") {
+				t.Errorf("%s:%d: an element that looks like a button has no data-ripple (M4)", path, strings.Count(src[:m[0]], "\n")+1)
+			}
+		}
+	}
+}
+
+// A transition is for a user who does not ask for less motion (M3): every `transition-colors` has `motion-reduce:transition-none` in the same class string.
+func TestSources_TransitionsStopForReducedMotion(t *testing.T) {
+	for _, path := range colorSources(t) {
+		if strings.HasSuffix(path, ".css") {
+			continue
+		}
+		raw, err := os.ReadFile(path)
+		require.NoError(t, err)
+		lines := strings.Split(string(raw), "\n")
+		for n, line := range lines {
+			if !regexp.MustCompile(`(?:^|[^\w:-])transition-colors(?:[^\w-]|$)`).MatchString(line) {
+				continue
+			}
+			end := min(n+3, len(lines)) // a class string that runs over lines (lib/button.ts) says it within its next two
+			if !strings.Contains(strings.Join(lines[n:end], "\n"), "motion-reduce:transition-none") {
+				t.Errorf("%s:%d: transition-colors without motion-reduce:transition-none (M3)", path, n+1)
+			}
+		}
+	}
+}

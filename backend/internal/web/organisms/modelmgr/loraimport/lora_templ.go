@@ -312,7 +312,7 @@ func pickForm(p Panel) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "\" data-testid=\"mm-lora-choose\">ファイルを追加</label> <span class=\"text-mute\">またはここに .safetensors のファイルをドロップ（")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "\" data-ripple data-testid=\"mm-lora-choose\">ファイルを追加</label> <span class=\"text-mute\">またはここに .safetensors のファイルをドロップ（")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -58,7 +58,7 @@
 |------|--------|
 | ホバー・フォーカス（M1） | 色・背景だけ、`--motion-base` 180ms（フォーカスは即時〜`--motion-fast` 120ms）。`transition-colors` が既定でこの値を取る。光彩・拡大はしない |
 | 処理中表示（M3） | スピナー（`atoms.Spinner`）と、更新ボタンの待ち中に出る同じスピナー（矢印のアイコンは回さず、待ち中だけスピナーに替える）は、`prefers-reduced-motion: reduce` でも回す（`motion-reduce:animate-none` を付けない）。移動・スライドの飾りだけを止める（`motion-reduce:transition-none`）。オーバーレイのフェードは reduce で 100ms 以内 |
-| リップル（M4） | `data-ripple` の付いたボタン（`atoms.Button` / `SmallButton` / `ButtonLink` / `…For` / `IconButton`・モーダルとトーストの閉じる・左メニューのボタン）の押下で、押した点から円が広がって消える（`--motion-slow` 280ms・`--ease-out`。円は `currentColor` の 20%）。無効なボタンと reduced-motion では出ない |
+| リップル（M4） | **ボタンの外見（`atoms.ButtonClass` / `SmallButtonClass`・ページ送りのリンク）を使う `<label>`・`<a>` にも `data-ripple` を付ける**（`a11y/shape_test.go` の `TestSources_ButtonLookedElementsHaveTheRipple`。`transition-colors` には必ず `motion-reduce:transition-none` を添える: `TestSources_TransitionsStopForReducedMotion`）。`data-ripple` の付いたボタン（`atoms.Button` / `SmallButton` / `ButtonLink` / `…For` / `IconButton`・モーダルとトーストの閉じる・左メニューのボタン）の押下で、押した点から円が広がって消える（`--motion-slow` 280ms・`--ease-out`。円は `currentColor` の 20%）。無効なボタンと reduced-motion では出ない |
 | 出現・退出（M5） | `<dialog>`・popover・トーストは、出現がフェードイン `--motion-fade-in` 320ms（`--ease-out`）、退出がフェードアウト `--motion-fade-out` 240ms（`--ease-in`）。スクラム（`dialog::backdrop`）は `--scrim` を同じ時間でフェードする。移動は付けない。インラインアラートも同じで、閉じるボタンで `data-leaving` が付き、フェードアウトしてから取り除く。接続断の通知（`atoms.ConnectionNotice`。`[data-connection-lost]`）も同じで、つながり直すと `connection-notice.ts` の `hide()` が `data-leaving` を付け、フェードが終わってから取り除く。確認モーダル（`confirm.ts`）の取り除きと、モーダル・モデル選択・インラインダイアログの中身の消去は、このフェードが終わってから行う（待つのは `getAnimations()` の transition。固定時間のタイマーは使わない。`components/lib/fade.ts`）。reduced-motion では 100ms 以内 |
 
 ### 部品・オーバーレイ（Issue #1041）
@@ -310,6 +310,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.37 | 2026-11-22 | §1 の文字の行に、`text-xs` は子に継承されるので外枠に付けず個別に付けると書き、検査を祖先の `text-xs` と描画結果まで広げた（`a11y/typography_test.go`）。ポーズ選択・音声の設定・接続テスト・AUTO の注記・重みバーの警告・こだわりの「元に戻す」（`lib/button.ts` の `BUTTON`）などを 14px 以上にした | #1196: タイポグラフィ（T）の指摘 |
 | 0.38 | 2026-11-22 | §1 の角丸の行に、選ぶ枠（`pick.Card`）は角を持たず呼び出しが `rounded-md`（チップ）か `rounded-lg`（カード）を決めると書いた。参照画像の行・画像のドロップ領域・動画の生成中プレースホルダと再生失敗の枠を `rounded-lg` にした。検査 `TestSources_CardsAreRoundedLg`（`a11y/shape_test.go`）を足した | #1197: 形・余白・線（S）の指摘 |
 | 0.39 | 2026-11-22 | §2 のアイコン一覧に `IconPlus`（Iconoir の `plus`）を足し、戻るリンクの矢印（`←`）とチャットの添付の `＋` を文字でなく Icon にした。`BackLink` のラベルは矢印抜きの言葉だけ | #1198: アイコン（I）の指摘 |
+| 0.40 | 2026-11-22 | §1 のリップルの行に、ボタンの外見の `<label>`・`<a>`（ファイル選択・ページ送り）にも `data-ripple` を付けると書いた。LOCK 切替・左メニューの `transition-colors` に `motion-reduce:transition-none` を揃え、検査 `TestSources_ButtonLookedElementsHaveTheRipple`・`TestSources_TransitionsStopForReducedMotion` を足した | #1199: モーション（M）の指摘 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
 
