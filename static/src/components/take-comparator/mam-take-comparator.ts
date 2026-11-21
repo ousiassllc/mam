@@ -283,7 +283,7 @@ export class MamTakeComparator extends LitElement {
       >
         ${this.selection.map((s, i) =>
           s.take_id === t.id
-            ? html`<div class="pointer-events-none absolute top-0 h-full rounded-sm bg-success/70 text-xs leading-7 text-bone" style=${bar(s)} data-picked>${i + 1}</div>`
+            ? html`<div class="pointer-events-none absolute top-0 h-full rounded-sm bg-success/70 text-xs leading-7" style=${bar(s)} data-picked><span class="inline-block rounded-sm bg-surface px-1 leading-5 text-ink" data-picked-number>${i + 1}</span></div>`
             : nothing,
         )}
         ${preview ? html`<div class="pointer-events-none absolute top-0 h-full rounded-sm bg-info/70" style=${bar(preview)} data-drag></div>` : nothing}

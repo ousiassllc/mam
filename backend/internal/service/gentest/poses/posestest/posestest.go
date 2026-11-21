@@ -127,12 +127,19 @@ func pictureFiles(adult bool) map[string]map[string][]byte {
 	return out
 }
 
+// realSummary is the summary of the first license of the shipped asset set id (a text of several sentences, as the screens show it): the screens that render
+// the library are then checked with the length and the sentences of the real catalog, not with a one-letter stand-in.
+func realSummary(id string) string {
+	set, _ := catalog.Default().ResourceSet(id) // a set the catalog lacks has no license: the index panics, loudly
+	return set.Licenses[0].Summary
+}
+
 // assetSet is the asset set of the rig: a zip per kind of picture, served at <prefix><kind>.zip, and (the general set) the pose catalog.
 func assetSet(id, prefix, serverURL string, files map[string]map[string][]byte, zips map[string][]byte, cat []byte) catalog.ResourceSet {
 	source := catalog.ResourceSource{Name: "Shisei", URL: "https://github.com/wquguru/shisei"}
 	set := catalog.ResourceSet{
 		Runtime:  id,
-		Licenses: []catalog.ResourceLicense{{ID: "cc0", Name: "CC0 1.0", URL: "https://example.com/cc0", Summary: "s", Commercial: "yes"}},
+		Licenses: []catalog.ResourceLicense{{ID: "cc0", Name: "CC0 1.0", URL: "https://example.com/cc0", Summary: realSummary(id), Commercial: "yes"}},
 	}
 	for _, kind := range []string{"line", "depth", "normal"} {
 		var members []catalog.ResourceMember

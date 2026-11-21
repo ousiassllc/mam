@@ -85,7 +85,7 @@
 | `bg-black` | 動画・画像のプレビューの背景（`<video>`・`<img>` の余白）と動画プレイヤーの舞台 | 映像のレターボックスは黒でないと映像が浮く（どちらのテーマでも黒）。モーダルの背後（スクラム）はクラスでなく `tokens.css` の `--scrim`（`static/src/css/motion.css` が `dialog::backdrop` に当てる） |
 | `border-transparent` | 現在地でないナビ・ステップの枠（`border-l-2` の幅を取っておく） | 枠の幅を保って現在地の切り替えで文字がずれないようにする（色はない） |
 | `accent-danger`・`accent-warning`・`accent-success` | 予算の `<progress>`（危険・警告・成功） | メーターの塗りの色（`accent-*`。共通の `<progress>` の CSS `static/src/css/progress.css` が、このクラスの付いた `<progress>` の塗りを状態色にする）で、表の文字用・面用のクラスは使えない。**予算の `<progress>` だけ**で、似てる度などほかの進捗は `--accent` の塗りのまま（状態は文言で伝える）。意味は状態色（危険 = danger・警告 = warning・成功 = success）を表と揃える。推定コストと上限の文字を添える（色だけで伝えない） |
-| `bg-danger/70`・`bg-warning/70`・`bg-success/70`・`bg-info/70` | 動画の上・Take のレーンの上に重ねる塗り（Judge の指摘の位置・選んだ区間・ドラッグ中の区間・読み込みの進捗） | 映像・レーンが透けて見える**重ね塗り**で、`/20`（バッジ）では映像の上で見えない。意味は表と同じ（danger = 重大・warning = 中・info = 軽い／ドラッグ中・success = 選んだ） |
+| `bg-danger/70`・`bg-warning/70`・`bg-success/70`・`bg-info/70` | 動画の上・Take のレーンの上に重ねる塗り（Judge の指摘の位置・選んだ区間・ドラッグ中の区間・読み込みの進捗） | 映像・レーンが透けて見える**重ね塗り**で、`/20`（バッジ）では映像の上で見えない。意味は表と同じ（danger = 重大・warning = 中・info = 軽い／ドラッグ中・success = 選んだ）。**文字は重ね塗りの上に直接置かない**（下の色が映像・レーンで決まり、AA が保てない）。選んだ区間の番号は `bg-surface text-ink` のチップ |
 
 <!-- color-exceptions:end -->
 
@@ -147,3 +147,4 @@
 | 2.12 | 2026-11-22 | §1 のフォーカスの輪の `:where()` に `input` の checkbox / radio / file と `video[controls]` を足し、`:root { accent-color: var(--accent) }` を足した。§3 の「補助・説明の文字」を、2 文以上の説明は `text-ink` と明記した（`a11y/mute_text_test.go` が検査）。新しいクラスは足していない | #1191: 色（C）の指摘 |
 | 2.13 | 2026-11-22 | §3 の「リンク・アイコン強調」に、下線の色は `tokens.css` の `:where(a, button).underline` が `--mute` にすることを書いた。動画のプレースホルダの進捗の塗りを `bg-info/70` から `bg-accent` にした（§4 の重ね塗りの例外は、動画の上・レーンの上だけ） | #1194: 部品・オーバーレイ（O）の指摘 |
 | 2.14 | 2026-11-22 | §1 のフォーカスの輪の `:where()` に `audio[controls]` を足した（`video[controls]` と同じ輪）。§3 の「補助・説明の文字」の検査を、タグ（p / li のほか td・span・label・div）と祖先の `text-mute` の継承、Go 定数・カタログ JSON 由来の文言（描画した HTML）まで広げた（`a11y/mute_text_test.go`・`mute_rendered_test.go`）。2 文以上のモーダルの説明・設定の説明・導入前のライセンス同意文・AUTO の同意文などを `text-ink` にした。新しいクラスは足していない | #1195: 色（C）の指摘 |
+| 2.15 | 2026-11-22 | §4 の重ね塗りの例外（`bg-success/70` 等）の上には文字を直接置かないと書いた（Take 比較の選んだ区間の番号は `bg-surface text-ink` のチップ。`text-bone` は Light で 4.5:1 未満だった。`contrast_test`）。ポーズ素材のライセンス概要（カタログ JSON 由来の複数文）とチャットの見積り拒否の状態行を `text-ink` にし、`mute_rendered_test` の描画対象にポーズ選択の 3 状態とチャットのスレッドを足した | #1201: 色（C）の指摘 |
