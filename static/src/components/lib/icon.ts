@@ -36,7 +36,7 @@ export const PATHS = {
 
 export type IconName = keyof typeof PATHS;
 
-/** A decorative icon of `name`; `size` is the Tailwind size classes (h-4 w-4 by default, as in the buttons of the widgets). */
-export function icon(name: IconName, size = 'h-4 w-4'): TemplateResult {
+/** A decorative icon of `name`; `size` is the Tailwind size classes (size-icon-sm by default, 16px, as in the buttons of the widgets). */
+export function icon(name: IconName, size = 'size-icon-sm'): TemplateResult {
   return html`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false" class=${size}>${PATHS[name].map((d) => svg`<path d=${d}></path>`)}</svg>`;
 }

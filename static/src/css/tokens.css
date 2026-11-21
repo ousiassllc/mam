@@ -161,6 +161,14 @@
   --shadow-modal: 0 1px 2px rgb(0 0 0 / 0.06);
 }
 
+/* The sizes of an icon (I2): 16 / 20 / 24, and 32 for an empty state only. A source says size-icon-sm / -md / -lg / -xl (the utilities below), never h-4 w-4. */
+@theme {
+  --icon-sm: 1rem;
+  --icon-md: 1.25rem;
+  --icon-lg: 1.5rem;
+  --icon-xl: 2rem;
+}
+
 @theme inline {
   --default-transition-duration: var(--motion-base);
   --default-transition-timing-function: var(--ease-out);
@@ -209,6 +217,27 @@
 @utility focus-ring {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
+}
+
+/* The sizes of an icon (I2): width and height from --icon-*, so that one change of a token moves every icon. */
+@utility size-icon-sm {
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+}
+
+@utility size-icon-md {
+  width: var(--icon-md);
+  height: var(--icon-md);
+}
+
+@utility size-icon-lg {
+  width: var(--icon-lg);
+  height: var(--icon-lg);
+}
+
+@utility size-icon-xl {
+  width: var(--icon-xl);
+  height: var(--icon-xl);
 }
 
 /* The layers of the page (O4): a utility per layer, so that no source writes a bare z-10. */

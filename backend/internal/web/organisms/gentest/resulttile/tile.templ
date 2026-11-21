@@ -36,7 +36,7 @@ templ Tile(c Card, pick bool) {
 			if c.FileURL != "" && c.Video {
 				<video class="h-full w-full object-cover" src={ c.FileURL } preload="metadata" muted playsinline tabindex="-1" aria-hidden="true"></video>
 				<span class="absolute bottom-2 right-2 rounded-md bg-surface p-1 text-ink" aria-hidden="true" data-testid="gt-tile-video">
-					@atoms.Icon(atoms.IconVideo, "h-4 w-4")
+					@atoms.Icon(atoms.IconVideo, "size-icon-sm")
 				</span>
 			} else if c.FileURL != "" {
 				<img class="h-full w-full object-cover" src={ c.FileURL } alt="" loading="lazy"/>
@@ -67,7 +67,7 @@ templ favoriteMark(id string, on bool, oob bool) {
 	>
 		if on {
 			<span class="sr-only">お気に入り</span>
-			@atoms.Icon(atoms.IconStar, "block h-5 w-5")
+			@atoms.Icon(atoms.IconStar, "block size-icon-md")
 		}
 	</span>
 }
@@ -98,7 +98,7 @@ templ FavoriteButton(id string, on bool) {
 		data-ripple
 		data-on={ boolText(on) }
 	>
-		@atoms.Icon(atoms.IconStar, "h-5 w-5")
+		@atoms.Icon(atoms.IconStar, "size-icon-md")
 	</button>
 }
 

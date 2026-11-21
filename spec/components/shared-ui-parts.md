@@ -113,7 +113,7 @@
 ## 2. `atoms.Icon`
 
 - 署名の案: `templ Icon(name IconName, class string)`。`IconName` は文字列型の定数（綴りの間違いはコンパイルで落ちる）。未知の名前は描かない。
-- 出力: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false" class="{class}">…</svg>`（`stroke-linecap` / `stroke-linejoin` は各形に付く）。`<title>` は付けない。大きさは `class`（既定 `h-5 w-5 shrink-0`。ガイドの 16 / 20 / 24 = `h-4` / `h-5` / `h-6` だけ。スピナーは 20px）。色は `currentColor`（親の `text-*`）。
+- 出力: `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true" focusable="false" class="{class}">…</svg>`（`stroke-linecap` / `stroke-linejoin` は各形に付く）。`<title>` は付けない。大きさは `class`（既定 `size-icon-md shrink-0`。ガイドの 16 / 20 / 24 = `size-icon-sm` / `size-icon-md` / `size-icon-lg` だけで、`h-4 w-4` などは書かない。`size-icon-xl`（32）は空状態だけ。トークンは `tokens.css` の `@theme` の `--icon-sm` / `--icon-md` / `--icon-lg` / `--icon-xl`（1 / 1.25 / 1.5 / 2rem）で、`@utility size-icon-*` が幅と高さを両方決める。Lit の `lib/icon.ts` の既定は `size-icon-sm`。スピナーは `size-icon-md`）。色は `currentColor`（親の `text-*`）。
 - アイコンだけで意味を持つボタンは作らない。必要ならボタンに `aria-label`（`IconButton`。子に `Icon` を置く）。このリポジトリのアイコンはすべて飾りで、意味は文字が持つ。文字のグリフ（× ✓ ★ ↑ ↓ ‹ ›）をアイコンの代わりにしない。Lit のウィジェットは `components/lib/icon.ts` の `icon()`（`atoms.Icon` と同じ path）を使う。
 - 入手元は #846 決定事項 3(a) を #1039 で改めた: **Iconoir（MIT。Ousiass 共通デザインガイド I1）の SVG のパスを `atoms/icon.templ` にコピー**する（npm の依存は足さない。`regular` 版・線 1.5）。`atoms` の行数は約 414 行で、約 16 個で 150 行前後の見込み（1 ファイル 300 行以内に収める）。コピー元の版は `icon.templ` の先頭のコメントに固定する。
 
@@ -317,6 +317,7 @@ type StatusLine struct{ Tone atoms.BadgeTone; Text string } // Text は Badge �
 | 0.42 | 2026-11-22 | §1 の文字の行に、JS が組み立てる一覧の行・コピーして使うコマンドの `pre`・カードや表の主たる値の `code` を 14px 以上と書いた。`a11y/typography_test` に、`.ts` の `className` / `classList.add` の文字列を見る検査と `pre` の `text-xs` の検査を足した | #1202: タイポグラフィ（T）の指摘 |
 | 0.43 | 2026-11-22 | §1 の文字の行に、`label` / `legend` の説明は名前だけにし、2 文以上の説明は入力欄の下の `<p class="text-sm text-ink">` に出して `aria-describedby` で結ぶと書いた。`a11y/typography_test` の対象タグに `span` / `label` / `legend` / `fieldset` を足した。見出しの階層（ファイル群の `h3`、単発生成のカードの `h2`）と、ComfyUI ノード入力の表の値・型の `font-mono`（int/float は右寄せ `tabular-nums`）を揃えた | #1205: タイポグラフィ（T）の指摘 |
 | 0.44 | 2026-11-22 | プロジェクトチャットの見出し行（`chat_workspace.templ`）・スレッド（`chat_thread.templ`）・入力欄（`chat_composer.templ`）の左右の余白を `px-4` から `px-4 md:px-6` にした（S5: ガターはモバイル 16・デスクトップ 24。アラート領域と端が揃う）。検査 `TestSources_ChatGutterIsSixteenThenTwentyFour` を足した | #1206: 形・余白・線（S）の指摘 |
+| 0.45 | 2026-11-22 | §2 のアイコンの大きさを `h-4 w-4` / `h-5 w-5` / `h-6 w-6` から、`tokens.css` の `--icon-sm` / `--icon-md` / `--icon-lg`（`--icon-xl`）と `@utility size-icon-*` に改めた（見た目は 16 / 20 / 24px のまま）。`iconDefaultClass`・`lib/icon.ts` の既定・各 Icon の呼び出し・スピナーを寄せ、検査 `TestSources_IconsAreAtTheGuidesSizes` を `size-icon-*` の検査に、`TestTokens_IconSizesAreNamed` を足した | #1207: アイコン（I）の指摘 |
 | 0.43 | 2026-11-22 | §1 に、ドロップ領域（`p-6`・ドラッグ中は `border-border` を外して `border-accent bg-accent-soft`。3 か所が `lib/dropzone.ts` を使う）と切替のセグメント（地 `bg-accent-soft`・選択面 `bg-surface text-ink`）の行を足した | #1203: 部品・オーバーレイ（O）の指摘 |
 
 ## 8. オーナーへの確認事項と決定（2026-10-25: すべて推奨する既定で決定）
