@@ -83,10 +83,12 @@ func TestMotionCSS_FadesTheOverlaysAndClipsTheRipple(t *testing.T) {
 	for _, want := range []string{
 		"opacity var(--motion-fade-out) var(--ease-in)", "opacity var(--motion-fade-in) var(--ease-out)",
 		"allow-discrete", "@starting-style", "dialog::backdrop", "var(--scrim)",
-		"[data-toast][data-leaving]", "[data-alert][data-leaving]", "[data-connection-lost][data-leaving]", "[data-ripple]", "overflow: hidden", "@media (prefers-reduced-motion: reduce)",
+		"[data-toast][data-leaving]", "[data-alert][data-leaving]", "[data-connection-lost][data-leaving]", "[data-appear]", "[data-ripple]", "overflow: hidden", "@media (prefers-reduced-motion: reduce)",
 	} {
 		assert.Contains(t, css, want)
 	}
+	assert.Regexp(t, `(?s)@starting-style \{[^@]*\[data-appear\],[^@]*opacity: 0;`, css, "a box that a swap puts in starts from nothing (M5)")
+	assert.Regexp(t, `(?s)@media \(prefers-reduced-motion: reduce\) \{[^@]*\[data-appear\],[^@]*transition-duration: 100ms;`, css, "and under reduced motion fades in 100ms")
 	assert.NotRegexp(t, `animation|@keyframes|translate|scale`, css, "an overlay fades; it does not move or bounce (M2)")
 }
 

@@ -2,6 +2,7 @@ package pages_test
 
 import (
 	"context"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -42,6 +43,7 @@ func TestAuxiliaryPages_HaveOneH1(t *testing.T) {
 
 			assert.Equal(t, 1, strings.Count(sb.String(), "<h1 "), "number of h1")
 			assert.Contains(t, sb.String(), ">"+tc.h1+"</h1>")
+			assert.Empty(t, skippedHeadingLevels(sb.String()), "a heading level is not skipped (T7)")
 		})
 	}
 }
@@ -55,4 +57,18 @@ func TestGenerationTestPage_SaysItIsNotTheMainLine(t *testing.T) {
 	assert.Contains(t, html, `id="gentest-vs-main-line"`)
 	assert.Contains(t, html, "Take にはなりません")
 	assert.Contains(t, html, "「生成」を押して作ります")
+}
+
+// skippedHeadingLevels lists the headings that go down more than one level from the one before ("h1" then "h3"): the tag is the structure, the size is a class.
+func skippedHeadingLevels(page string) []string {
+	var found []string
+	prev := 0
+	for _, m := range regexp.MustCompile(`<h([1-6])[ >]`).FindAllStringSubmatch(page, -1) {
+		level := int(m[1][0] - '0')
+		if prev != 0 && level > prev+1 {
+			found = append(found, "h"+m[1]+" after h"+string(rune('0'+prev)))
+		}
+		prev = level
+	}
+	return found
 }

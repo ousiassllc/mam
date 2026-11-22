@@ -188,4 +188,5 @@ func TestAResultSaysWhichInputImagesItWasNotGiven(t *testing.T) {
 	history := s.page(paths.GenerationTestHistory())
 	assert.Contains(t, history, `data-testid="gt-tile-unused"`)
 	assert.Contains(t, history, "画像 1 枚が未使用")
+	assert.Regexp(t, `class="[^"]*\brounded-full\b[^"]*\btext-warning\b[^"]*"[^>]*data-testid="gt-tile-unused"`, history, "the mark of the unused images is a status badge: a pill (S1)")
 }

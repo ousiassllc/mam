@@ -95,7 +95,7 @@ func ConfirmFailed(msg string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" class=\"rounded-lg border border-danger/40 bg-danger/10 p-4\" data-testid=\"gt-confirm-failed\"><p class=\"text-sm text-danger\" role=\"alert\" data-testid=\"gt-confirm-error\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "\" class=\"rounded-lg border border-danger/40 bg-danger/10 p-4\" data-appear data-testid=\"gt-confirm-failed\"><p class=\"text-sm text-danger\" role=\"alert\" data-testid=\"gt-confirm-error\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -202,7 +202,7 @@ func ConfirmNote(msg string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" class=\"rounded-lg border border-success/40 bg-success/10 p-4\" data-testid=\"gt-confirm-note\"><p class=\"text-sm text-success\" role=\"status\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" class=\"rounded-lg border border-success/40 bg-success/10 p-4\" data-appear data-testid=\"gt-confirm-note\"><p class=\"text-sm text-success\" role=\"status\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

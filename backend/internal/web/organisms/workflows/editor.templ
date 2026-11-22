@@ -23,7 +23,7 @@ templ editor(e Editor) {
 		autocomplete="off"
 		data-testid="workflow-editor-form"
 	>
-		<h3 class="text-sm font-semibold">ワークフロー「{ e.Name }」を編集（現在 v{ itoa(e.Version) }）</h3>
+		<h2 class="text-sm font-semibold">ワークフロー「{ e.Name }」を編集（現在 v{ itoa(e.Version) }）</h2>
 		<p class="text-sm text-ink">グラフか入力の割り当てを変えて保存すると、版が上がります（v{ itoa(e.Version + 1) }）。過去の Take は、作ったときの版の識別子を残します。名前や接続先だけの変更では版は上がりません。</p>
 		if e.Error != "" {
 			<p class="text-sm text-danger" role="alert" data-testid="workflow-form-error">{ e.Error }</p>

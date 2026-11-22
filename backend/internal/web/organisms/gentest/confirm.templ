@@ -16,7 +16,7 @@ templ ConfirmEmpty() {
 
 // ConfirmFailed is the confirmation of a request that could not be priced: the reason, in the place of the estimate.
 templ ConfirmFailed(msg string) {
-	<div id={ ConfirmID } class="rounded-lg border border-danger/40 bg-danger/10 p-4" data-testid="gt-confirm-failed">
+	<div id={ ConfirmID } class="rounded-lg border border-danger/40 bg-danger/10 p-4" data-appear data-testid="gt-confirm-failed">
 		<p class="text-sm text-danger" role="alert" data-testid="gt-confirm-error">{ msg }</p>
 	</div>
 }
@@ -30,7 +30,7 @@ templ ConfirmBlocked(v apperr.View) {
 
 // ConfirmNote is a calm notice in the place of the confirmation (words that were added to a match that is running).
 templ ConfirmNote(msg string) {
-	<div id={ ConfirmID } class="rounded-lg border border-success/40 bg-success/10 p-4" data-testid="gt-confirm-note">
+	<div id={ ConfirmID } class="rounded-lg border border-success/40 bg-success/10 p-4" data-appear data-testid="gt-confirm-note">
 		<p class="text-sm text-success" role="status">{ msg }</p>
 	</div>
 }

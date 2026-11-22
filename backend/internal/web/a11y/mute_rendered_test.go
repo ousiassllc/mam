@@ -46,6 +46,7 @@ func renderedScreens(t *testing.T) map[string]string {
 	maps.Copy(pages, posePickerScreens(t, s))
 	maps.Copy(pages, chatScreens(t))
 	maps.Copy(pages, localEditorScreens(t))
+	maps.Copy(pages, workflowScreens(t))
 	// The dialogs the model manager opens (the detail of a model, an asset, a runtime, a node): each is a fragment the page links to.
 	detail := regexp.MustCompile(`hx-get="(/model-manager/[^"?]*/detail)"`)
 	for name, page := range maps.Clone(pages) {
@@ -72,6 +73,9 @@ func TestRendered_TextOfSeveralSentencesIsNotMute(t *testing.T) {
 		require.NoError(t, err)
 		for _, found := range mutedSentences(root) {
 			t.Errorf("%s: %s is text-mute: a text to read is text-ink (C6)", name, found)
+		}
+		for _, found := range mutedLists(root) {
+			t.Errorf("%s: %s: the items say their own colour, the list does not (C6)", name, found)
 		}
 	}
 }

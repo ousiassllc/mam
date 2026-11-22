@@ -21,7 +21,7 @@ type Props struct {
 // Box is the error box. role="alert": a box that is swapped in is read out at once. The detail is a readonly field, so that it can be
 // selected by hand when the clipboard is refused (static/src/components/copy).
 templ Box(p Props) {
-	<div class="flex flex-col gap-2 rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-ink" role="alert" data-testid="error-box" data-error-code={ string(p.View.Code) }>
+	<div class="flex flex-col gap-2 rounded-lg border border-danger/40 bg-danger/10 p-3 text-sm text-ink" role="alert" data-appear data-testid="error-box" data-error-code={ string(p.View.Code) }>
 		<p class="text-danger">{ apperr.Text(p.Lang, "ui.title", nil) }</p>
 		<p data-testid="error-cause"><span class="mr-2 text-xs text-mute">{ apperr.Text(p.Lang, "ui.cause", nil) }</span>{ p.View.Cause }</p>
 		if p.View.Remedy != "" {
