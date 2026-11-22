@@ -76,17 +76,19 @@ templ DetailSection(d Detail, inModal bool) {
 		@gentestresult.Row(d.Actions)
 		@gentestresult.Panel(d.Used)
 		@commercial.Note(d.Answer)
-		<div class="flex flex-wrap items-center gap-2">
-			@resulttile.FavoriteButton(d.Card.ID, d.Card.Favorite)
-			if d.Card.FileURL != "" {
-				@atoms.ButtonLink(atoms.ToneNeutral, "ファイルをダウンロード", templ.SafeURL(d.Card.FileURL+"?download=1"), templ.Attributes{"data-testid": "gt-download"})
-			}
-			if d.UseURL != "" {
-				@atoms.ButtonLink(atoms.ToneNeutral, "入力画像として使う", templ.SafeURL(d.UseURL), templ.Attributes{"data-testid": "gt-use"})
-			}
-			if d.MatchURL != "" {
-				@atoms.ButtonLink(atoms.ToneNeutral, "画像から似せる", templ.SafeURL(d.MatchURL), templ.Attributes{"data-testid": "gt-match-link"})
-			}
+		<div class="flex flex-wrap items-center gap-3">
+			<div class="flex flex-wrap items-center gap-2">
+				@resulttile.FavoriteButton(d.Card.ID, d.Card.Favorite)
+				if d.Card.FileURL != "" {
+					@atoms.ButtonLink(atoms.ToneNeutral, "ファイルをダウンロード", templ.SafeURL(d.Card.FileURL+"?download=1"), templ.Attributes{"data-testid": "gt-download"})
+				}
+				if d.UseURL != "" {
+					@atoms.ButtonLink(atoms.ToneNeutral, "入力画像として使う", templ.SafeURL(d.UseURL), templ.Attributes{"data-testid": "gt-use"})
+				}
+				if d.MatchURL != "" {
+					@atoms.ButtonLink(atoms.ToneNeutral, "画像から似せる", templ.SafeURL(d.MatchURL), templ.Attributes{"data-testid": "gt-match-link"})
+				}
+			</div>
 			if inModal && d.CanPick && d.Card.FileURL != "" {
 				<label class="flex items-center gap-2 text-sm">
 					<input type="checkbox" data-gt-modal-pick={ d.Card.ID } data-testid="gt-modal-pick"/>
