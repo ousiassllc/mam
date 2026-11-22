@@ -242,7 +242,7 @@ templ MatchWords(f MatchWordsForm) {
 					"name": FieldMatchInstruction, "rows": "2", "maxlength": itoa(f.MaxInstruction),
 					"aria-label": "言葉の指示", "placeholder": "例: もう少し明るく", "data-testid": "gt-match-adjust-text",
 				}, "")
-				<div class="flex flex-wrap items-center gap-3">
+				<div class="flex flex-wrap items-center gap-2">
 					@atoms.Button(atoms.TonePrimary, "1回直す", templ.Attributes{"type": "submit", "name": FieldMatchMode, "value": MatchAdjust, "data-testid": "gt-match-adjust-submit"})
 					@atoms.Button(atoms.ToneNeutral, "自動で続ける", templ.Attributes{"type": "submit", "name": FieldMatchMode, "value": MatchAuto, "data-testid": "gt-match-continue-submit"})
 				</div>

@@ -51,7 +51,7 @@ function renderRow(t: TakeScore, minAxis: number, actions: TakeActions) {
     <td class="px-2 py-2">
       ${
         t.select_url || t.reject_url
-          ? html`<span class="flex gap-3">
+          ? html`<span class="flex gap-2">
             ${
               t.select_url
                 ? html`<button type="button" aria-label="選択: Take ${t.label}" class=${LINK_BUTTON} data-action="select" ?disabled=${actions.busy} @click=${() => actions.select(t)}>選択</button>`

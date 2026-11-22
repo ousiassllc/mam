@@ -76,7 +76,7 @@ templ DetailSection(d Detail, inModal bool) {
 		@gentestresult.Row(d.Actions)
 		@gentestresult.Panel(d.Used)
 		@commercial.Note(d.Answer)
-		<div class="flex flex-wrap items-center gap-3">
+		<div class="flex flex-wrap items-center gap-2">
 			@resulttile.FavoriteButton(d.Card.ID, d.Card.Favorite)
 			if d.Card.FileURL != "" {
 				@atoms.ButtonLink(atoms.ToneNeutral, "ファイルをダウンロード", templ.SafeURL(d.Card.FileURL+"?download=1"), templ.Attributes{"data-testid": "gt-download"})

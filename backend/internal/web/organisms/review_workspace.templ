@@ -74,7 +74,7 @@ templ ReviewWorkspace(i domain.ReviewInbox) {
 		<video class="w-full rounded-md bg-black" aria-label="レビュー対象の動画" controls preload="metadata" src={ paths.Review(i.ID, "video") }></video>
 		if i.Note != "" {
 			<section class="rounded-lg border border-border p-3" aria-label="オーナーからのメモ">
-				<h2 class="mb-1 text-sm font-semibold">オーナーからのメモ</h2>
+				<h2 class="mb-2 text-sm font-semibold">オーナーからのメモ</h2>
 				<p class="whitespace-pre-wrap text-sm text-ink">{ i.Note }</p>
 			</section>
 		}

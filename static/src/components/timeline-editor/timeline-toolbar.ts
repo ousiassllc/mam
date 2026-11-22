@@ -18,25 +18,27 @@ export function renderToolbar(view: ToolbarView) {
   const { clips } = view;
   const dirty = isDirty(view.saved, clips);
   return html`<div class="flex flex-wrap items-center gap-3">
-    <button
-      type="button"
-      data-action="save"
-      data-ripple
-      class="${BUTTON} ${BUTTON_TONE.primary}"
-      ?disabled=${view.busy || view.readonly || !dirty}
-      @click=${() => view.save()}
-    >
-      保存
-    </button>
-    <button
-      type="button"
-      data-action="revert"
-      class="${LINK_BUTTON}"
-      ?disabled=${view.busy || !dirty}
-      @click=${() => view.revert()}
-    >
-      変更を戻す
-    </button>
+    <div class="flex items-center gap-2">
+      <button
+        type="button"
+        data-action="save"
+        data-ripple
+        class="${BUTTON} ${BUTTON_TONE.primary}"
+        ?disabled=${view.busy || view.readonly || !dirty}
+        @click=${() => view.save()}
+      >
+        保存
+      </button>
+      <button
+        type="button"
+        data-action="revert"
+        class="${LINK_BUTTON}"
+        ?disabled=${view.busy || !dirty}
+        @click=${() => view.revert()}
+      >
+        変更を戻す
+      </button>
+    </div>
     <span class="text-xs text-mute" data-total>合計 <span class="font-mono tabular-nums">${timelineSeconds(clips).toFixed(1)}</span> 秒 / <span class="font-mono tabular-nums">${clips.length}</span> クリップ</span>
     ${dirty ? html`<span class="${BADGE} ${BADGE_TONE.info}" data-dirty>未保存の変更あり</span>` : nothing}
     ${view.readonly ? html`<span class="${BADGE} ${BADGE_TONE.warning}" data-readonly>この段階では編集できません</span>` : nothing}

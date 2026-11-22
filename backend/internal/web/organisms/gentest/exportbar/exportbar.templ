@@ -12,7 +12,7 @@ import "github.com/ousiassllc/mam/backend/internal/web/atoms"
 // HX-Redirect of the answer, so the page stays where it is.
 templ Bar(d Data) {
 	<div class="flex flex-wrap items-center gap-3" data-testid="gt-export" data-gt-export-bar>
-		<form method="get" action={ templ.SafeURL(d.URL) } class="flex items-center gap-1" data-testid="gt-export-selected" data-gt-export-selected hx-get={ d.URL } hx-target={ "#" + StatusID } hx-swap="innerHTML" hx-sync="this:drop">
+		<form method="get" action={ templ.SafeURL(d.URL) } class="flex items-center gap-2" data-testid="gt-export-selected" data-gt-export-selected hx-get={ d.URL } hx-target={ "#" + StatusID } hx-swap="innerHTML" hx-sync="this:drop">
 			<button
 				type="submit"
 				class={ atoms.SmallButtonClass(atoms.ToneNeutral) + " gap-2" }
@@ -39,7 +39,7 @@ templ Bar(d Data) {
 				@atoms.Icon(atoms.IconClose, "size-icon-sm")
 			</button>
 		</form>
-		<form method="get" action={ templ.SafeURL(d.URL) } class="flex items-center gap-1" data-testid="gt-export-latest" hx-get={ d.URL } hx-target={ "#" + StatusID } hx-swap="innerHTML" hx-sync="this:drop">
+		<form method="get" action={ templ.SafeURL(d.URL) } class="flex items-center gap-2" data-testid="gt-export-latest" hx-get={ d.URL } hx-target={ "#" + StatusID } hx-swap="innerHTML" hx-sync="this:drop">
 			if d.Model != "" {
 				<input type="hidden" name="model" value={ d.Model }/>
 			}

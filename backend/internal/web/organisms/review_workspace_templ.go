@@ -233,7 +233,7 @@ func ReviewWorkspace(i domain.ReviewInbox) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if i.Note != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<section class=\"rounded-lg border border-border p-3\" aria-label=\"オーナーからのメモ\"><h2 class=\"mb-1 text-sm font-semibold\">オーナーからのメモ</h2><p class=\"whitespace-pre-wrap text-sm text-ink\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<section class=\"rounded-lg border border-border p-3\" aria-label=\"オーナーからのメモ\"><h2 class=\"mb-2 text-sm font-semibold\">オーナーからのメモ</h2><p class=\"whitespace-pre-wrap text-sm text-ink\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

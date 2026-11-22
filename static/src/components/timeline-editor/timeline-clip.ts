@@ -62,9 +62,11 @@ export function renderClipRow(c: EditClip, i: number, body: EditTimelineBody, vi
         ${c.objective ? html`<p class="text-xs text-mute">${c.objective}</p>` : nothing}
       </div>
       <span class="text-xs text-mute" data-start><span class=${NUM}>${c.start.toFixed(1)}</span> 秒〜 / <span class=${NUM}>${(c.out_point - c.in_point).toFixed(1)}</span> 秒</span>
-      <button type="button" aria-label="${c.label} を上へ" data-action="up" data-ripple class=${ICON_BUTTON} ?disabled=${locked || i === 0} @click=${() => view.move(i, i - 1)}>${icon('arrow-up')}</button>
-      <button type="button" aria-label="${c.label} を下へ" data-action="down" data-ripple class=${ICON_BUTTON} ?disabled=${locked || i === view.count - 1} @click=${() => view.move(i, i + 1)}>${icon('arrow-down')}</button>
-      <button type="button" aria-label="外す: ${c.label}" data-action="remove" class=${LINK_BUTTON} ?disabled=${locked || view.count <= 1} @click=${() => view.remove(i)}>外す</button>
+      <div class="flex items-center gap-2">
+        <button type="button" aria-label="${c.label} を上へ" data-action="up" data-ripple class=${ICON_BUTTON} ?disabled=${locked || i === 0} @click=${() => view.move(i, i - 1)}>${icon('arrow-up')}</button>
+        <button type="button" aria-label="${c.label} を下へ" data-action="down" data-ripple class=${ICON_BUTTON} ?disabled=${locked || i === view.count - 1} @click=${() => view.move(i, i + 1)}>${icon('arrow-down')}</button>
+        <button type="button" aria-label="外す: ${c.label}" data-action="remove" class=${LINK_BUTTON} ?disabled=${locked || view.count <= 1} @click=${() => view.remove(i)}>外す</button>
+      </div>
     </div>
     <div class="flex flex-wrap items-end gap-3 text-xs text-mute">
       <label class="flex flex-col gap-1">

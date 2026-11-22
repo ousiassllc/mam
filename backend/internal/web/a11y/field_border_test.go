@@ -16,6 +16,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/web/a11y/uisrc"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/molecules/modelpick"
 )
 
 // tokenValue is the colour of a design token (--mute, --bone, ...) in a theme, read from static/src/css/tokens.css, the one place
@@ -65,7 +66,7 @@ func contrast(a, b [3]float64) float64 {
 }
 
 var (
-	borderRe = regexp.MustCompile(`\bborder-(mute|border)\b`)
+	borderRe = regexp.MustCompile(`\bborder-(mute|border|danger)(/\d+)?\b`)
 	bgRe     = regexp.MustCompile(`\bbg-(bone|surface)\b`)
 )
 
@@ -76,6 +77,7 @@ func assertFieldBorder(t *testing.T, class, where string) {
 	b := borderRe.FindStringSubmatch(class)
 	f := bgRe.FindStringSubmatch(class)
 	require.NotNil(t, b, "%s has a token border: %s", where, class)
+	require.Empty(t, b[2], "%s: a border with an opacity is not the field's edge, which is opaque: %s", where, class)
 	require.NotNil(t, f, "%s has a token fill: %s", where, class)
 	for _, theme := range []string{"light", "dark"} {
 		for _, bg := range []string{f[1], "surface", "bone"} {
@@ -126,6 +128,17 @@ func TestLitFields_BorderIs3To1(t *testing.T) {
 func TestContrast_IsTheWCAGRatio(t *testing.T) {
 	assert.InDelta(t, 21.0, contrast([3]float64{0, 0, 0}, [3]float64{255, 255, 255}), 0.01)
 	assert.InDelta(t, 1.0, contrast([3]float64{139, 139, 142}, [3]float64{139, 139, 142}), 0.01)
+}
+
+// The field of the model picker draws its edge in --danger when a refusal is about it; that edge is a field border like any
+// other, so it keeps the 3:1 (a --danger/40 edge was 1.9:1 and fainter than the --mute edge it replaces, #1216).
+func TestModelPickField_BorderIs3To1WhenInvalid(t *testing.T) {
+	for _, invalid := range []bool{false, true} {
+		html := uisrc.Render(t, modelpick.Field(modelpick.FieldData{ID: "f", Label: "LoRA", URL: "/model-picker/lora", Invalid: invalid}))
+		m := regexp.MustCompile(`<button\b[^>]*?\bclass="([^"]*)"`).FindStringSubmatch(html)
+		require.NotNil(t, m)
+		assertFieldBorder(t, m[1], "model picker field")
+	}
 }
 
 // The border that is the cue of a field (--mute) is under 3:1 on no surface of either theme, and the lighter --border (a hairline for

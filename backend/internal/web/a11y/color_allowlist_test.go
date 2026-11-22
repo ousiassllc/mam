@@ -38,7 +38,7 @@ var colorAllowlist = map[string][]string{
 }
 
 var colorExceptions = map[string][]string{
-	"field border":   {"border-mute"},
+	"field border":   {"border-mute", "border-danger"},
 	"video backdrop": {"bg-black"},
 	"reserved edge":  {"border-transparent"},
 	"meter fill":     {"accent-danger", "accent-warning", "accent-success"},

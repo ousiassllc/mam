@@ -83,6 +83,7 @@
 | クラス | 使う場所 | 理由 |
 |--------|---------|------|
 | `border-mute` | 入力欄（`atoms.fieldClass`）と、Lit が出す `<input>`・`<select>`・`<textarea>`（Take の指示欄・タイムラインのクリップ）と、実行の確認カード（`gentest/confirm.templ`・`gentest/chat/proposal.templ`・`gentestinpaint/form.templ`。ガイド S4 の強調枠 = 1px `--mute`。`border-accent` は選択・現在位置だけ） | 入力欄の枠は、面に対して **3:1 以上**（WCAG 1.4.11）が必要で、`--border`（罫線用の薄い線）では足りない。`--mute` はライト・ダークのどちらでも 3:1 を超える（`a11y/field_border_test.go`） |
+| `border-danger` | モデル選択欄（`modelpick/field.go` の `fieldBorder`）の、拒否されて `aria-invalid` になった状態の枠（不透明の 1px。`/40` を付けない） | 入力欄の枠は 3:1 以上が必要で、状態色の枠 `border-danger/40`（バッジ・アラート用）は面に対して 2:1 前後で足りず、通常の `border-mute` より薄くなる。不透明の `--danger` はライト約 7:1・ダーク約 8:1（`a11y/field_border_test.go`）。エラー文と `aria-invalid` も添える（色だけで伝えない） |
 | `bg-black` | 動画・画像のプレビューの背景（`<video>`・`<img>` の余白）と動画プレイヤーの舞台 | 映像のレターボックスは黒でないと映像が浮く（どちらのテーマでも黒）。モーダルの背後（スクラム）はクラスでなく `tokens.css` の `--scrim`（`static/src/css/motion.css` が `dialog::backdrop` に当てる） |
 | `border-transparent` | 現在地でないナビ・ステップの枠（`border-l-2` の幅を取っておく） | 枠の幅を保って現在地の切り替えで文字がずれないようにする（色はない） |
 | `accent-danger`・`accent-warning`・`accent-success` | 予算の `<progress>`（危険・警告・成功） | メーターの塗りの色（`accent-*`。共通の `<progress>` の CSS `static/src/css/progress.css` が、このクラスの付いた `<progress>` の塗りを状態色にする）で、表の文字用・面用のクラスは使えない。**予算の `<progress>` だけ**で、似てる度などほかの進捗は `--accent` の塗りのまま（状態は文言で伝える）。意味は状態色（危険 = danger・警告 = warning・成功 = success）を表と揃える。推定コストと上限の文字を添える（色だけで伝えない） |

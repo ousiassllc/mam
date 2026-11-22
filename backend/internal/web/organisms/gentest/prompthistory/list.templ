@@ -49,10 +49,12 @@ templ List(p Data) {
 					}
 					<div class="flex flex-wrap items-center gap-3 text-xs text-mute">
 						<span>{ strconv.Itoa(r.Uses) } 回使用・最後 { r.LastUsed }</span>
-						@atoms.ButtonLink(atoms.ToneNeutral, "生成画面で使う", templ.SafeURL(r.UseURL), templ.Attributes{"aria-label": "このプロンプトを生成画面で使う"})
-						<form hx-delete={ paths.GenerationTestPart("prompts", r.ID) } hx-target={ "#" + ID } hx-swap="outerHTML" hx-confirm="このプロンプトを履歴から削除しますか？（生成した結果は消えません）">
-							@atoms.SmallButtonFor(atoms.ToneDanger, "削除", "プロンプト "+r.Text, templ.Attributes{"type": "submit"})
-						</form>
+						<div class="flex items-center gap-2">
+							@atoms.ButtonLink(atoms.ToneNeutral, "生成画面で使う", templ.SafeURL(r.UseURL), templ.Attributes{"aria-label": "このプロンプトを生成画面で使う"})
+							<form hx-delete={ paths.GenerationTestPart("prompts", r.ID) } hx-target={ "#" + ID } hx-swap="outerHTML" hx-confirm="このプロンプトを履歴から削除しますか？（生成した結果は消えません）">
+								@atoms.SmallButtonFor(atoms.ToneDanger, "削除", "プロンプト "+r.Text, templ.Attributes{"type": "submit"})
+							</form>
+						</div>
 					</div>
 				</li>
 			}
