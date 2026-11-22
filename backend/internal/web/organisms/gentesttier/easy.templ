@@ -20,7 +20,7 @@ templ Easy(e EasyData, card templ.Component) {
 		@help.Row(help.ID("やりたいこと"), "やりたいこと", help.Text(easyHelp)) {
 			<span id="gt-intents-title" class="text-sm text-ink">やりたいこと</span>
 		}
-		<div class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+		<div class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 			for _, i := range e.Intents {
 				@pick.Card(templ.Attributes{
 					"type": "radio", "name": FieldIntent, "value": i.ID, "checked": i.Selected,
@@ -34,7 +34,7 @@ templ Easy(e EasyData, card templ.Component) {
 		</div>
 		if len(e.Recipes) > 0 {
 			<span class="mt-1 text-xs text-mute" id="gt-recipe-choices-title">保存したレシピ（選ぶと、そのモデルと設定で作ります）</span>
-			<div class="grid grid-cols-2 gap-2 sm:grid-cols-4" role="group" aria-labelledby="gt-recipe-choices-title" data-testid="gt-recipe-choices">
+			<div class="grid grid-cols-2 gap-3 sm:grid-cols-4" role="group" aria-labelledby="gt-recipe-choices-title" data-testid="gt-recipe-choices">
 				for _, i := range e.Recipes {
 					@pick.Card(templ.Attributes{
 						"type": "radio", "name": FieldIntent, "value": i.ID, "checked": i.Selected,

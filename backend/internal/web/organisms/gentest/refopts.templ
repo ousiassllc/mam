@@ -65,7 +65,7 @@ templ Picker(rows []Ref, empty string) {
 	if len(rows) == 0 {
 		<p class="text-sm text-ink" data-testid="gt-picker-empty">{ empty }</p>
 	}
-	<ul class="grid grid-cols-2 gap-2 sm:grid-cols-4">
+	<ul class="grid grid-cols-2 gap-3 sm:grid-cols-4">
 		for _, r := range rows {
 			<li class="flex flex-col gap-1 rounded-lg border border-border p-2 text-sm" data-testid="gt-pick">
 				if r.ThumbURL != "" {

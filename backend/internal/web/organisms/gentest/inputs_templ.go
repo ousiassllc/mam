@@ -293,7 +293,7 @@ func inputFields(c Compose) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" class=\"grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5\" data-testid=\"gt-refs\" data-gt-list>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" class=\"grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4\" data-testid=\"gt-refs\" data-gt-list>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

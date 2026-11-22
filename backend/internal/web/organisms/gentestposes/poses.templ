@@ -294,7 +294,7 @@ templ ResultsList(w Wire, r Results) {
 		if len(r.Cards) == 0 {
 			<p class="text-sm text-ink" data-testid="gt-pose-empty">条件に合うポーズがありません。検索の言葉や分類を変えてください。</p>
 		}
-		<ul class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+		<ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
 			for _, c := range r.Cards {
 				@card(w, c)
 			}
