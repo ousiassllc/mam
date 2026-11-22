@@ -530,7 +530,7 @@ func HistoryCard(c resulttile.Card) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "\" class=\"absolute left-2 top-2 z-raised flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-border bg-surface text-accent hover:border-accent peer-checked:border-accent peer-checked:bg-accent-soft [&_svg]:opacity-0 peer-checked:[&_svg]:opacity-100\" aria-hidden=\"true\" data-testid=\"gt-pick-mark\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "\" class=\"absolute left-2 top-2 z-raised flex h-6 w-6 cursor-pointer items-center justify-center rounded-sm border border-border bg-surface text-accent hover:border-accent peer-checked:border-accent peer-checked:bg-accent-soft [&_svg]:opacity-0 peer-checked:[&_svg]:opacity-100\" aria-hidden=\"true\" data-testid=\"gt-pick-mark\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

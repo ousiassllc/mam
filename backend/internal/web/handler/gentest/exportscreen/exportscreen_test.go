@@ -187,6 +187,7 @@ func TestHistoryHasTheExportBarAndOffersOnlyResultsWithAFile(t *testing.T) {
 	}
 	assert.Equal(t, 2, strings.Count(all, `data-gt-pick-input`), "a checkbox for the keyboard and a screen reader on each")
 	assert.Equal(t, 2, strings.Count(all, `data-testid="gt-pick-mark"`), "and the mark in the corner of the tile that the mouse taps (a tap on the tile opens the detail)")
+	assert.Regexp(t, `class="[^"]*\brounded-sm\b[^"]*"[^>]*data-testid="gt-pick-mark"`, all, "the mark is a check box: a tag's corner, rounded-sm (S1)")
 	assert.Equal(t, 3, strings.Count(all, `hx-vals="{&#34;pick&#34;:&#34;1&#34;}"`), "every tile asks for the detail with the choice for the export")
 
 	live := s.get(paths.GenerationTestHistory()+"?live=1", "HX-Request", "true").Body.String()
