@@ -4,8 +4,8 @@ import "github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 
 // The commercial-use answer of a model (#928) is drawn in one way everywhere: an icon with its short word (CommercialBadge), or the
 // icon alone where the room is tight (CommercialMark). The colours follow the meaning rules of spec/components/color-rules.md:
-// 商用OK is success, 条件つき warning, 商用NG danger, and 不明 is the warning colour with an edge, so that it
-// is the one that is not missed.
+// 商用OK is success, 条件つき warning, 商用NG danger, and 不明 warning too: every badge has the 40% edge of its state colour
+// (badgeColors), so 不明 has no edge of its own; the word and the icon tell it from 条件つき.
 
 func commercialTone(c modellicense.Commercial) BadgeTone {
 	switch c {
