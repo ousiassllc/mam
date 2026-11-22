@@ -21,7 +21,7 @@
 |----|------|------|
 | 1 | `<h1>` Nefos Video・「Autonomous Shot Studio」 | |
 | 2 | 新しいプロジェクトのフォーム（`organisms.NewProjectForm`） | |
-| 3 | バンドルの読み込み（`organisms.ProjectImportForm`） | |
+| 3 | バンドルの読み込み（`projectimport.Form`（`organisms/projectimport/`）） | |
 | 4 | `<h2>` プロジェクト・`organisms.ProjectList` | プロジェクトが 0 件のときは一覧の空の文言 |
 
 - 見出しは h1（Nefos Video）→ h2（プロジェクト）の順（#781。段を飛ばさない）。

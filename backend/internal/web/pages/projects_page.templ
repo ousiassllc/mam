@@ -5,6 +5,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagehead"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/projectimport"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 )
 
@@ -15,7 +16,7 @@ templ ProjectsPage(csrfToken string, projects []domain.Project, form organisms.N
 		@pagehead.Main(pagehead.Wide) {
 			@pagehead.Header("Nefos Video", "Autonomous Shot Studio", "")
 			@organisms.NewProjectForm(form)
-			@organisms.ProjectImportForm(organisms.ProjectImportFormData{})
+			@projectimport.Form(projectimport.Data{})
 			<h2 class="text-sm font-semibold text-ink">プロジェクト</h2>
 			@organisms.ProjectList(projects)
 		}

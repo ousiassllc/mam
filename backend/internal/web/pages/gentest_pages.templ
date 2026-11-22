@@ -5,6 +5,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/modal"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagehead"
 	gentest "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/prompthistory"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentestinpaint"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentesttier"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
@@ -100,8 +101,8 @@ templ GenerationResultPage(csrfToken string, d gentest.Detail) {
 }
 
 // GenerationPromptsPage is GET /generation-test/prompts.
-templ GenerationPromptsPage(csrfToken string, p gentest.Prompts) {
+templ GenerationPromptsPage(csrfToken string, p prompthistory.Data) {
 	@generationShell("プロンプト履歴", csrfToken, "prompts", "単発生成で使ったプロンプト（同じ組は 1 件）。生成結果とは別に、削除するまで残ります。") {
-		@gentest.PromptHistory(p)
+		@prompthistory.List(p)
 	}
 }

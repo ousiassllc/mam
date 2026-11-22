@@ -1,4 +1,4 @@
-package a11y_test
+package texttest_test
 
 import (
 	"os"
@@ -7,6 +7,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+
+	"github.com/ousiassllc/mam/backend/internal/web/a11y/uisrc"
 )
 
 var (
@@ -40,7 +42,7 @@ func TestSources_ScriptBuiltTextToReadIsAtLeast14px(t *testing.T) {
 		}
 	}
 	scanned := 0
-	for _, path := range colorSources(t) {
+	for _, path := range uisrc.ColorSources(t) {
 		if !strings.HasSuffix(path, ".ts") {
 			continue
 		}

@@ -1,6 +1,6 @@
 import { expect, waitUntil } from '@open-wc/testing';
 import htmx from 'htmx.org';
-import '../../main';
+import '../../../main';
 
 // #932: a tile of the history is chosen for the ZIP export by the check box in its corner (the peer of its glowing frame; a tap on the tile itself opens the
 // detail in the modal, #1004), and the choice survives the refresh of the history, which draws the tiles again every 2 s while a result runs (#925). The pages are what the handler renders

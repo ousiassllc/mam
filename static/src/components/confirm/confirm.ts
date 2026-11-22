@@ -8,7 +8,7 @@
  * - The button that goes on is the danger button 「実行する」 (O2: the danger colour is for what cannot be taken back). A question that is not about a
  *   destruction says so on the element that asks: `data-confirm-tone="primary"` and `data-confirm-label="コピーする"` give a primary button with that word.
  */
-import { whenFaded } from '../lib/fade';
+import { whenFaded } from '../lib/ui/fade';
 import { createLogger } from '../lib/logger';
 
 const log = createLogger('confirm');

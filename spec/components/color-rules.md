@@ -35,7 +35,7 @@
 | ページ背景・本文 | `bg-bone` / `text-ink` | §1・`AppLayout` |
 | トースト | `bg-ink` / `text-bone` | O3（インク地にボーン字のピル。`atoms.Toast`） |
 | カード・モーダルの面 | `bg-surface` / `border-border` | §1 |
-| 補助・説明の文字 | `text-mute`（1 行の補足・キャプションだけ。2 文以上の説明・注意・手順・空状態の案内は `text-ink`） | §1・`contrast_test`・`a11y/mute_text_test.go`（ソースの文言）・`a11y/mute_rendered_test.go`（描画した HTML） |
+| 補助・説明の文字 | `text-mute`（1 行の補足・キャプションだけ。2 文以上の説明・注意・手順・空状態の案内は `text-ink`） | §1・`contrast_test`・`a11y/texttest/mute_text_test.go`（ソースの文言）・`a11y/texttest/mute_rendered_test.go`（描画した HTML） |
 | 入力欄のプレースホルダー | `--mute`・不透明度 1（`tokens.css` の `::placeholder`）。Light・Dark のどちらも `--surface`・`--bone` 上で AA 4.5:1 |
 | 枠・区切り | `border-border` / `divide-border` | §1・一覧 |
 | 据え置きの面（現在地・コード欄・チップ） | `bg-accent-soft` | ガイドの `--accent-soft` |
@@ -53,7 +53,7 @@
 
 警告・成功・情報・危険は、**文字は状態色、枠は `-/40`、地は `/10`**（バッジ・アラート・注意の箱とも同じ。表の読み。新しい色・不透明度は足さない）。
 
-**ガイド（brand-guide `5d816f8`）の枠は 40%・地は 10%** なので、状態色は枠 `border-{danger,warning,success,info}/40`・地 `bg-…/10` の 1 通りにした（2026-11-22。旧 `border-…/60`・`bg-…/20` は呼び出し側をすべて直して許可から外した）。バッジ（`atoms.Badge`・Lit の `lib/badge.ts`）・インラインアラート・注意書きの箱・接続の通知・ステータスの帯がこれを使う。
+**ガイド（brand-guide `5d816f8`）の枠は 40%・地は 10%** なので、状態色は枠 `border-{danger,warning,success,info}/40`・地 `bg-…/10` の 1 通りにした（2026-11-22。旧 `border-…/60`・`bg-…/20` は呼び出し側をすべて直して許可から外した）。バッジ（`atoms.Badge`・Lit の `lib/ui/badge.ts`）・インラインアラート・注意書きの箱・接続の通知・ステータスの帯がこれを使う。
 
 <!-- color-allowlist:end -->
 
@@ -145,9 +145,9 @@
 | 2.9 | 2026-11-22 | §4.1 のスライダーのつまみを、面 `--surface`・縁 `--border` 1px に改めた（共通ガイド O11）。ホバー・ドラッグ中のつまみの塗り替えは外した。新しい色は足していない。スピナーの輪の残りに `border-accent-soft` を許可した（O12）。§4 の `accent-*` の行は、予算の `<progress>` だけの例外と明記した（共通の進捗バー `progress.css` が塗りを描く） | #1181: 部品・オーバーレイ（O）の指摘 |
 | 2.10 | 2026-11-22 | §3 の「ホバー面」から `hover:bg-accent-soft/60` を外し、`hover:bg-accent-soft` だけにした（ガイドに無い薄め方）。§1 のフォーカスの輪に、クラスを付けない要素向けの `tokens.css` の `@layer base` の規則を足した。トークンの出典を `5d816f8` に改めた | #1184: 色（C）の指摘 |
 | 2.11 | 2026-11-22 | §3 の「リンク・アイコン強調」から `fill-current` を外した（2.8 を戻す）。お気に入りの星は輪郭のままで、状態は線の色（`text-ink` ↔ `text-mute`）と `aria-pressed` で示す（ガイド I2: 塗りのアイコンは逸脱） | #1187: アイコン（I）の指摘 |
-| 2.12 | 2026-11-22 | §1 のフォーカスの輪の `:where()` に `input` の checkbox / radio / file と `video[controls]` を足し、`:root { accent-color: var(--accent) }` を足した。§3 の「補助・説明の文字」を、2 文以上の説明は `text-ink` と明記した（`a11y/mute_text_test.go` が検査）。新しいクラスは足していない | #1191: 色（C）の指摘 |
+| 2.12 | 2026-11-22 | §1 のフォーカスの輪の `:where()` に `input` の checkbox / radio / file と `video[controls]` を足し、`:root { accent-color: var(--accent) }` を足した。§3 の「補助・説明の文字」を、2 文以上の説明は `text-ink` と明記した（`a11y/texttest/mute_text_test.go` が検査）。新しいクラスは足していない | #1191: 色（C）の指摘 |
 | 2.13 | 2026-11-22 | §3 の「リンク・アイコン強調」に、下線の色は `tokens.css` の `:where(a, button).underline` が `--mute` にすることを書いた。動画のプレースホルダの進捗の塗りを `bg-info/70` から `bg-accent` にした（§4 の重ね塗りの例外は、動画の上・レーンの上だけ） | #1194: 部品・オーバーレイ（O）の指摘 |
-| 2.14 | 2026-11-22 | §1 のフォーカスの輪の `:where()` に `audio[controls]` を足した（`video[controls]` と同じ輪）。§3 の「補助・説明の文字」の検査を、タグ（p / li のほか td・span・label・div）と祖先の `text-mute` の継承、Go 定数・カタログ JSON 由来の文言（描画した HTML）まで広げた（`a11y/mute_text_test.go`・`mute_rendered_test.go`）。2 文以上のモーダルの説明・設定の説明・導入前のライセンス同意文・AUTO の同意文などを `text-ink` にした。新しいクラスは足していない | #1195: 色（C）の指摘 |
+| 2.14 | 2026-11-22 | §1 のフォーカスの輪の `:where()` に `audio[controls]` を足した（`video[controls]` と同じ輪）。§3 の「補助・説明の文字」の検査を、タグ（p / li のほか td・span・label・div）と祖先の `text-mute` の継承、Go 定数・カタログ JSON 由来の文言（描画した HTML）まで広げた（`a11y/texttest/mute_text_test.go`・`mute_rendered_test.go`）。2 文以上のモーダルの説明・設定の説明・導入前のライセンス同意文・AUTO の同意文などを `text-ink` にした。新しいクラスは足していない | #1195: 色（C）の指摘 |
 | 2.15 | 2026-11-22 | §4 の重ね塗りの例外（`bg-success/70` 等）の上には文字を直接置かないと書いた（Take 比較の選んだ区間の番号は `bg-surface text-ink` のチップ。`text-bone` は Light で 4.5:1 未満だった。`contrast_test`）。ポーズ素材のライセンス概要（カタログ JSON 由来の複数文）とチャットの見積り拒否の状態行を `text-ink` にし、`mute_rendered_test` の描画対象にポーズ選択の 3 状態とチャットのスレッドを足した | #1201: 色（C）の指摘 |
 | 2.16 | 2026-11-22 | §3 に、入力欄のプレースホルダー（`::placeholder`）は `tokens.css` の `@layer base` で `--mute`・不透明度 1 にすると書いた（Tailwind の既定は `currentcolor` の 50% で、Light の `--bone` 上 3.8:1 だった）。検査 `TestTokens_PlaceholderIsMute`（`a11y/contrast_test.go`）を足した | #1204: 色（C）の指摘 |
 | 2.17 | 2026-11-22 | §4 の `border-mute` の使う場所に、実行の確認カード 3 件（強調枠）を足した（`border-accent` だった。accent の枠は選択・現在位置だけ）。検査 `TestSources_ConfirmCardsHaveTheEmphasisBorder`（`a11y/gutter_emphasis_test.go`）を足した | #1206: 形・余白・線（S）の指摘 |

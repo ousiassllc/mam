@@ -1,5 +1,5 @@
 import { html, nothing } from 'lit';
-import { icon } from '../lib/icon';
+import { icon } from '../lib/ui/icon';
 import { describeProgress, progressFraction, type ShotProgress } from '../lib/shot';
 import { formatTimecode, issueRange, type JudgeIssue, type TimeRange } from '../lib/video';
 import { sliderStyle } from '../slider/slider-model';

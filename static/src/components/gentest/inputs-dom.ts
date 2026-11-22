@@ -1,4 +1,4 @@
-import { highlight } from '../lib/dropzone';
+import { highlight } from '../lib/ui/dropzone';
 import { dropSide } from './inputs-model';
 
 // The DOM parts of the input images that do not depend on the rest of the state (inputs.ts keeps that): the

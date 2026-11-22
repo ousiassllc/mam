@@ -1,4 +1,4 @@
-import { highlightZone } from '../lib/dropzone';
+import { highlightZone } from '../lib/ui/dropzone';
 import { markAdded, releasePicker, RowReorder } from './inputs-dom';
 import { applyModels } from './inputs-models';
 import { defaultStrength, isUploadRef, moveItem, takeFiles, uploadRef } from './inputs-model';

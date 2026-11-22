@@ -1,4 +1,4 @@
-package a11y_test
+package texttest_test
 
 import (
 	"fmt"
@@ -9,19 +9,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ousiassllc/mam/backend/internal/web/a11y/uisrc"
 )
 
 // The type of the Ousiass UI guide (T1-T4): the fonts, the size scale with its line heights and the two weights. The values are written once, in
 // static/src/css/tokens.css; the sources only name them.
-func readTokens(t *testing.T) string {
-	t.Helper()
-	raw, err := os.ReadFile("../../../../static/src/css/tokens.css")
-	require.NoError(t, err)
-	return string(raw)
-}
-
 func TestTokens_FontsAndSizesAreTheGuides(t *testing.T) {
-	css := readTokens(t)
+	css := uisrc.ReadTokens(t)
 	assert.Contains(t, css, `--font-sans: Sora, "Noto Sans JP", sans-serif;`)
 	assert.Contains(t, css, `--font-mono: "JetBrains Mono", ui-monospace, monospace;`)
 	assert.Contains(t, css, "--text-*: initial;", "Tailwind's own scale is off: text-4xl does not compile")
@@ -41,11 +36,11 @@ var (
 
 // brandNameWeight is the one place that has a weight outside Regular (400) and SemiBold (600): the product name in nav.templ is font-light
 // for the brand wordmark (Sora Light 300), the thinness of the words of the logo it replaced (#1171). No other exception is allowed.
-const brandNameWeight = "../organisms/sidenav/nav.templ|light"
+const brandNameWeight = "organisms/sidenav/nav.templ|light"
 
 // A size that is not in the guide's scale, and a weight that is not Regular (400) or SemiBold (600), do not come back (T2, T3), but for brandNameWeight.
 func TestSources_UseOnlyTheGuidesSizesAndWeights(t *testing.T) {
-	for _, path := range colorSources(t) {
+	for _, path := range uisrc.ColorSources(t) {
 		if strings.HasSuffix(path, ".css") {
 			continue
 		}
@@ -58,7 +53,7 @@ func TestSources_UseOnlyTheGuidesSizesAndWeights(t *testing.T) {
 				}
 				t.Errorf("%s:%d: text-%s is not in the size scale of the guide (xs sm base lg xl 2xl 3xl)", path, n+1, m[2])
 			}
-			if m := weight.FindStringSubmatch(line); m != nil && path+"|"+m[1] != brandNameWeight {
+			if m := weight.FindStringSubmatch(line); m != nil && !strings.HasSuffix(path+"|"+m[1], brandNameWeight) {
 				t.Errorf("%s:%d: font-%s: the weights are Regular (400) and SemiBold (600, headings and buttons only)", path, n+1, m[1])
 			}
 		}
@@ -67,7 +62,7 @@ func TestSources_UseOnlyTheGuidesSizesAndWeights(t *testing.T) {
 
 // <strong> is SemiBold (T2): Tailwind's preflight would make it bolder (700), and the class check above does not see an element's default weight.
 func TestTokens_StrongIsSemiBold(t *testing.T) {
-	assert.Regexp(t, `(?s)@layer base \{.*\bstrong \{\s*font-weight: 600;`, readTokens(t))
+	assert.Regexp(t, `(?s)@layer base \{.*\bstrong \{\s*font-weight: 600;`, uisrc.ReadTokens(t))
 }
 
 // A <th scope="row"> and a <legend> are Regular (T2): SemiBold is for headings, buttons and the header row of a table, and the first column
@@ -75,7 +70,7 @@ func TestTokens_StrongIsSemiBold(t *testing.T) {
 func TestSources_RowHeadsAndLegendsAreRegular(t *testing.T) {
 	semibold := regexp.MustCompile(`(?:^|[^\w-])font-semibold(?:[^\w-]|$)`)
 	element := regexp.MustCompile(`<(?:th\b[^>]*scope="row"|legend\b)[^>]*>`)
-	for _, path := range colorSources(t) {
+	for _, path := range uisrc.ColorSources(t) {
 		if strings.HasSuffix(path, ".css") {
 			continue
 		}
@@ -95,7 +90,7 @@ func TestSources_RowHeadsAndLegendsAreRegular(t *testing.T) {
 // a class of its own is the same part reading two ways.
 func TestSources_EverySummaryTakesTheSummaryClass(t *testing.T) {
 	summary := regexp.MustCompile(`<summary\b[^>]*>`)
-	for _, path := range colorSources(t) {
+	for _, path := range uisrc.ColorSources(t) {
 		if strings.HasSuffix(path, ".css") {
 			continue
 		}
@@ -125,7 +120,7 @@ var (
 // (text-warning / text-danger on a p / pre / li / dd), nor a paragraph of two sentences or more. A label, a legend, a fieldset and a span in text-xs are a
 // name, not an explanation: two sentences in one are a text to read, set below the field in a text-sm <p> that aria-describedby ties to it (#1205).
 func TestSources_TextToReadIsAtLeast14px(t *testing.T) {
-	for _, path := range colorSources(t) {
+	for _, path := range uisrc.ColorSources(t) {
 		if strings.HasSuffix(path, ".css") {
 			continue
 		}
@@ -174,7 +169,7 @@ func TestSources_TextToReadIsAtLeast14px(t *testing.T) {
 // TestSources_RowHeadsAndLegendsAreRegular holds that one.
 func TestSources_HeaderRowOfATableIsSemiBold(t *testing.T) {
 	normal := regexp.MustCompile(`<th\b[^>]*\bfont-normal\b[^>]*>`)
-	for _, path := range colorSources(t) {
+	for _, path := range uisrc.ColorSources(t) {
 		if strings.HasSuffix(path, ".css") {
 			continue
 		}
@@ -252,7 +247,7 @@ func smallInherited(root *muteNode) []string {
 
 // The 12px of a parent is the 12px of its children (T3): the size a text is set in is the nearest text-xs / text-sm / ... on it or above it, not only its own class.
 func TestSources_TextToReadIsNot12pxByInheritance(t *testing.T) {
-	for _, path := range colorSources(t) {
+	for _, path := range uisrc.ColorSources(t) {
 		if strings.HasSuffix(path, ".css") || strings.HasSuffix(path, ".go") {
 			continue
 		}

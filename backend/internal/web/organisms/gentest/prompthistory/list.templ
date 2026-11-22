@@ -1,0 +1,61 @@
+// Package prompthistory draws the prompt history of the generation test (organisms/gentest/ is over the line limit of a directory).
+package prompthistory
+
+import (
+	"strconv"
+
+	"github.com/ousiassllc/mam/backend/internal/web/atoms"
+	"github.com/ousiassllc/mam/backend/internal/web/paths"
+)
+
+// ID is the DOM id of the prompt history list.
+const ID = "gt-prompt-history"
+
+// Row is an entry of the prompt history.
+type Row struct {
+	ID       string
+	Text     string
+	Negative string
+	Uses     int
+	LastUsed string
+	UseURL   string
+}
+
+// Data is the prompt history; Notice and Error are the green and the red line above it.
+type Data struct {
+	Notice, Error string
+	Items         []Row
+}
+
+// List is the prompts that were used, once each however many results they made. A prompt goes away only when it is
+// deleted here: deleting results does not touch it, and deleting it does not touch the results.
+templ List(p Data) {
+	<section id={ ID } class="flex flex-col gap-3" data-testid="gt-prompt-history">
+		if p.Notice != "" {
+			<p class="text-sm text-success" role="status" data-testid="gt-prompts-notice">{ p.Notice }</p>
+		}
+		if p.Error != "" {
+			<p class="text-sm text-danger" role="alert" data-testid="gt-prompts-error">{ p.Error }</p>
+		}
+		if len(p.Items) == 0 {
+			<p class="text-sm text-mute" data-testid="gt-prompts-empty">まだプロンプトの履歴はありません。</p>
+		}
+		<ul class="flex flex-col gap-2">
+			for _, r := range p.Items {
+				<li class="flex flex-col gap-2 rounded-lg border border-border p-3" data-testid="gt-prompt-item">
+					<p class="whitespace-pre-wrap break-words text-sm text-ink">{ r.Text }</p>
+					if r.Negative != "" {
+						<p class="whitespace-pre-wrap break-words text-sm text-mute">ネガティブ: { r.Negative }</p>
+					}
+					<div class="flex flex-wrap items-center gap-3 text-xs text-mute">
+						<span>{ strconv.Itoa(r.Uses) } 回使用・最後 { r.LastUsed }</span>
+						@atoms.ButtonLink(atoms.ToneNeutral, "生成画面で使う", templ.SafeURL(r.UseURL), templ.Attributes{"aria-label": "このプロンプトを生成画面で使う"})
+						<form hx-delete={ paths.GenerationTestPart("prompts", r.ID) } hx-target={ "#" + ID } hx-swap="outerHTML" hx-confirm="このプロンプトを履歴から削除しますか？（生成した結果は消えません）">
+							@atoms.SmallButtonFor(atoms.ToneDanger, "削除", "プロンプト "+r.Text, templ.Attributes{"type": "submit"})
+						</form>
+					</div>
+				</li>
+			}
+		</ul>
+	</section>
+}

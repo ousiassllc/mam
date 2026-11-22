@@ -1,6 +1,6 @@
 import { html, nothing } from 'lit';
-import { BADGE, BADGE_TONE } from '../lib/badge';
-import { BUTTON, BUTTON_TONE, LINK_BUTTON } from '../lib/button';
+import { BADGE, BADGE_TONE } from '../lib/ui/badge';
+import { BUTTON, BUTTON_TONE, LINK_BUTTON } from '../lib/ui/button';
 import { isDirty, timelineSeconds, type EditClip } from '../lib/edit-model';
 
 /** What the toolbar under the clips shows and does: the editor owns the save, the reload and their focus. */

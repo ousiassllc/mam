@@ -1,5 +1,5 @@
 import { requestFailureMessage, type RequestFailure } from '../lib/errors';
-import { whenFaded } from '../lib/fade';
+import { whenFaded } from '../lib/ui/fade';
 
 /**
  * The filter and the picker of the models (#1011), one component for every screen that lists models or chooses one

@@ -1,6 +1,6 @@
 import { html } from 'lit';
-import { BUTTON, BUTTON_TONE, LINK_BUTTON } from '../lib/button';
-import { icon } from '../lib/icon';
+import { BUTTON, BUTTON_TONE, LINK_BUTTON } from '../lib/ui/button';
+import { icon } from '../lib/ui/icon';
 import { describeSegments, totalSeconds, type Clip, type Segment } from '../lib/timeline-model';
 
 /** What the picked parts show and do: the component owns the selection, the instruction and the requests. */

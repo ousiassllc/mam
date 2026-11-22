@@ -1,17 +1,17 @@
-package organisms
+package projectimport
 
 import (
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
-// ProjectImportFormData is the state of the bundle import form.
-type ProjectImportFormData struct {
+// Data is the state of the bundle import form.
+type Data struct {
 	Error string
 }
 
-// ProjectImportForm imports a project bundle (paths.ProjectImport): the archive of the settings screen's bundle export.
-templ ProjectImportForm(d ProjectImportFormData) {
+// Form imports a project bundle (paths.ProjectImport): the archive of the settings screen's bundle export.
+templ Form(d Data) {
 	<form
 		id="project-import-form"
 		class="mt-4 flex flex-wrap items-center gap-2 rounded-lg border border-border p-3 text-sm"

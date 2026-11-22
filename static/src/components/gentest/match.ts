@@ -4,7 +4,7 @@
  * are in match-model.ts. The listeners are on the document: the form may arrive in a swapped body.
  */
 
-import { highlightZone } from '../lib/dropzone';
+import { highlightZone } from '../lib/ui/dropzone';
 import { imageProblem, showsLimits, targetText } from './match-model';
 
 const FORM = '[data-gt-match]';

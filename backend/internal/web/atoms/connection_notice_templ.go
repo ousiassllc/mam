@@ -10,7 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 // ConnectionNotice is the one definition of the "connection lost" notice's markup, shown when a
 // WebSocket has used up its reconnection attempts. The page shell embeds it once as
-// <template id="connection-notice-template">; static/src/components/lib/connection-notice.ts clones
+// <template id="connection-notice-template">; static/src/components/lib/ui/connection-notice.ts clones
 // it, fills data-connection-lost-message and wires the two buttons (data-action).
 func ConnectionNotice() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {

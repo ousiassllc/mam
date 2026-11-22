@@ -7,6 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ousiassllc/mam/backend/internal/web/a11y/uisrc"
 )
 
 // The scrollbar of the Ousiass UI guide (§10, B1-B6): one rule for every scrolling area in static/src/css/scrollbar.css, in the order that works
@@ -35,6 +37,6 @@ func TestScrollbarCSS_IsTheGuidesDesign(t *testing.T) {
 		"--scrollbar-thumb-hover: color-mix(in srgb, var(--ink) 35%, var(--mute));",
 		"--scrollbar-thumb-active: color-mix(in srgb, var(--ink) 65%, var(--mute));",
 	} {
-		assert.Contains(t, readTokens(t), want)
+		assert.Contains(t, uisrc.ReadTokens(t), want)
 	}
 }

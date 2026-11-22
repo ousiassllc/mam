@@ -1,4 +1,4 @@
-import { BADGE_TONE } from '../lib/badge';
+import { BADGE_TONE } from '../lib/ui/badge';
 
 /** The status of a Take as the server names it; the comparator colours it (the label is the server's `status_label`). */
 export type TakeStatus = 'candidate' | 'ai_pick' | 'selected' | 'rejected';

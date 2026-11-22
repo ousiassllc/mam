@@ -6,7 +6,7 @@
  * The rules are in refine-model.ts. The listeners are on the document: the form may arrive in a swapped body.
  */
 
-import { BUTTON, BUTTON_TONE } from '../lib/button';
+import { BUTTON, BUTTON_TONE } from '../lib/ui/button';
 import { changed, changedItems, droppedKeys, line, resetLabel, type Item } from './refine-model';
 
 const ROOT = '[data-gt-refine]';

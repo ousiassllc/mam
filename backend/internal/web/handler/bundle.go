@@ -8,7 +8,7 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/service"
-	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/projectimport"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
 )
 
@@ -42,7 +42,7 @@ func ImportBundle(svc *service.BundleService) gin.HandlerFunc {
 			if errors.Is(err, service.ErrConflict) {
 				message = "このプロジェクトはすでにあります（同じ ID のプロジェクトは読み込めません）"
 			}
-			render(c, status, organisms.ProjectImportForm(organisms.ProjectImportFormData{Error: message}))
+			render(c, status, projectimport.Form(projectimport.Data{Error: message}))
 			return
 		}
 		c.Header("HX-Redirect", paths.Project(project.ID))

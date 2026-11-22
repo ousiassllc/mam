@@ -6,6 +6,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/a11y/uisrc"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 )
 
@@ -14,7 +15,7 @@ func TestQuestionCard_SubjectHasNoDelegateButton(t *testing.T) {
 	card := func(f domain.BriefField) string {
 		m := openCard(domain.KindQuestion, "q1", f.Question())
 		m.RefType, m.RefID = domain.RefBriefField, string(f)
-		return render(t, molecules.QuestionCard(m))
+		return uisrc.Render(t, molecules.QuestionCard(m))
 	}
 
 	assert.NotContains(t, card(domain.BriefSubject), domain.DelegateOption)

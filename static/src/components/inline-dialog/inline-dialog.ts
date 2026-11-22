@@ -20,7 +20,7 @@
  *
  * Install it before `installFocusRestore`: the focus that is back on a control is not touched by that one.
  */
-import { whenFaded } from '../lib/fade';
+import { whenFaded } from '../lib/ui/fade';
 
 const DIALOG = '[data-inline-dialog]';
 const HOST = 'dialog[data-inline-dialog-host]';

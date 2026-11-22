@@ -9,6 +9,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ousiassllc/mam/backend/internal/web/a11y/uisrc"
 )
 
 var (
@@ -82,7 +84,7 @@ func templRoots(t *testing.T, dir string) map[string]string {
 // of cards with gap-2 puts the frames 8px from each other. gap-2 stays for chips, toggles, a row of buttons, menu items and the fields of a form.
 func TestSources_CardGridsAreNotGap2(t *testing.T) {
 	roots := map[string]map[string]string{}
-	for _, path := range colorSources(t) {
+	for _, path := range uisrc.ColorSources(t) {
 		if !strings.HasSuffix(path, ".templ") {
 			continue
 		}

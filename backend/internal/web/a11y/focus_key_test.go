@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/a11y/uisrc"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/notecard"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/reviewlist"
@@ -18,7 +19,7 @@ import (
 
 func TestReviewList_ResolveToggleKeepsItsFocusKeyWhenTheLabelFlips(t *testing.T) {
 	card := func(resolved bool) string {
-		return render(t, reviewlist.Card("p1", reviewlist.Item{Item: domain.ReviewItem{
+		return uisrc.Render(t, reviewlist.Card("p1", reviewlist.Item{Item: domain.ReviewItem{
 			Request: domain.ReviewRequest{ID: "rr1", CreatedAt: time.Now()},
 			Responses: []domain.ReviewResponseRecord{{ID: "r1", ReviewerName: "Ren", Comments: []domain.ReviewComment{
 				{ID: "c1", Body: "色が暗い"},
@@ -36,7 +37,7 @@ func TestReviewList_ResolveToggleKeepsItsFocusKeyWhenTheLabelFlips(t *testing.T)
 func TestNoteCard_ArchiveToggleKeepsItsFocusKeyWhenTheLabelFlips(t *testing.T) {
 	archived := time.Now()
 	card := func(archivedAt *time.Time) string {
-		return render(t, notecard.Card(domain.NoteView{
+		return uisrc.Render(t, notecard.Card(domain.NoteView{
 			Note:    domain.Note{ID: "n1", ArchivedAt: archivedAt},
 			Version: domain.NoteVersion{Number: 1, Title: "世界観"},
 		}))
@@ -50,7 +51,7 @@ func TestNoteCard_ArchiveToggleKeepsItsFocusKeyWhenTheLabelFlips(t *testing.T) {
 // changes the button's accessible name, so the focus must not be found again by its place or its label (#809).
 func TestNoteCard_SaveKeepsItsFocusKeyWhenTheTitleChanges(t *testing.T) {
 	card := func(id, title string) string {
-		return render(t, notecard.Card(domain.NoteView{
+		return uisrc.Render(t, notecard.Card(domain.NoteView{
 			Note:    domain.Note{ID: id},
 			Version: domain.NoteVersion{Number: 1, Title: title},
 		}))
@@ -70,7 +71,7 @@ func TestVersionHistoryPanel_RestoreKeepsItsFocusKeyPerPanelAndVersion(t *testin
 		for n := newest; n >= 1; n-- {
 			entries = append(entries, domain.VersionEntry{Number: n, CreatedAt: now})
 		}
-		return render(t, organisms.VersionHistoryPanel(organisms.VersionHistoryData{
+		return uisrc.Render(t, organisms.VersionHistoryPanel(organisms.VersionHistoryData{
 			DOMID: "note-history-" + id, Title: "履歴", BasePath: "/notes/" + id, Entries: entries,
 		}))
 	}

@@ -2,7 +2,7 @@ package atoms
 
 // ConnectionNotice is the one definition of the "connection lost" notice's markup, shown when a
 // WebSocket has used up its reconnection attempts. The page shell embeds it once as
-// <template id="connection-notice-template">; static/src/components/lib/connection-notice.ts clones
+// <template id="connection-notice-template">; static/src/components/lib/ui/connection-notice.ts clones
 // it, fills data-connection-lost-message and wires the two buttons (data-action).
 templ ConnectionNotice() {
 	<div class="pointer-events-auto flex max-w-full flex-wrap items-center gap-3 rounded-md border border-warning/40 bg-warning/10 px-4 py-2 text-sm text-warning" role="alert" data-connection-lost="">

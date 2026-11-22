@@ -3,7 +3,7 @@ package exportbar
 import "github.com/ousiassllc/mam/backend/internal/web/atoms"
 
 // Bar saves results as a ZIP (#932): the icon button with the number saves the results the reader tapped (the cards of the
-// list; static/src/components/gentest/export-pick.ts keeps the choice and fills the hidden ids), the other saves the newest N of
+// list; static/src/components/gentest/export/export-pick.ts keeps the choice and fills the hidden ids), the other saves the newest N of
 // the list's filter. It sits outside of the part of the history that polls (organisms/gentest HistoryLive), so that a poll never swaps it away.
 //
 // Both are GET forms that the server answers with the ZIP; with htmx they ask first (hx-get to the same URL): a choice that cannot be

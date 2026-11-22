@@ -4,7 +4,7 @@ import { PATHS } from './icon';
 
 // The Lit widgets draw the icons of atoms.Icon (Iconoir v7.12.2): every path here is a path of one of its templates.
 const ATOMS = ['icon.templ', 'icon_player.templ', 'icon_status.templ'].map((f) =>
-  readFileSync(new URL(`../../../../backend/internal/web/atoms/${f}`, import.meta.url), 'utf8'),
+  readFileSync(new URL(`../../../../../backend/internal/web/atoms/${f}`, import.meta.url), 'utf8'),
 );
 
 describe('icon paths', () => {
