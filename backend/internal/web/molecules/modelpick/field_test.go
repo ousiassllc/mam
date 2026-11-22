@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/a-h/templ"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -37,4 +38,23 @@ func TestFieldInputsWithoutANameAreNotPostedAndADisabledFieldIsClosed(t *testing
 func TestFieldOpenButtonIsMarkedForTheRipple(t *testing.T) {
 	html := fieldHTML(t, modelpick.FieldData{ID: "f", Label: "LoRA", URL: "/model-picker/lora"})
 	assert.Equal(t, 1, strings.Count(html, "data-ripple"))
+}
+
+// The close button comes first in the dialog (it sticks to the top while the cards scroll), so the dialog would open on it: the search box of the picker
+// is the control to start with (autofocus). The bar of a page is not: it must not take the focus when the page loads.
+func TestPickerBodyOpensOnTheSearchBoxButABarInAPageDoesNot(t *testing.T) {
+	render := func(c templ.Component) string {
+		var sb strings.Builder
+		require.NoError(t, c.Render(context.Background(), &sb))
+		return sb.String()
+	}
+	search := regexp.MustCompile(`<input[^>]*data-mp-search[^>]*>`)
+
+	body := search.FindString(render(modelpick.PickerBody(modelpick.Picker{Bar: modelpick.Filter{ID: "bar"}})))
+	assert.Contains(t, body, " autofocus", "the dialog opens on the search box")
+	assert.Equal(t, 1, strings.Count(render(modelpick.PickerBody(modelpick.Picker{Bar: modelpick.Filter{ID: "bar"}})), "autofocus"), "and on nothing else")
+
+	page := search.FindString(render(modelpick.Bar(modelpick.Filter{ID: "bar"})))
+	assert.NotEmpty(t, page)
+	assert.NotContains(t, page, "autofocus")
 }

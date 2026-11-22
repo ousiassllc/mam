@@ -92,7 +92,7 @@ templ Host() {
 templ PickerBody(p Picker) {
 	<div class="flex flex-col gap-4 p-6" data-mp-picker data-testid="model-pick-picker">
 		<h2 id={ TitleID } class="pr-8 text-lg font-semibold">{ p.Title }</h2>
-		@Bar(p.Bar)
+		@Bar(p.Bar.withSearchFocus())
 		@PickerResults(p)
 	</div>
 }
