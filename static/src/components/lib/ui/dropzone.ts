@@ -7,6 +7,11 @@
 const ZONE_REST = 'border-border';
 const ZONE_ACTIVE = ['border-accent', 'bg-accent-soft'];
 
+/** Whether a drag carries files (and not, say, selected text or a link): only then is a drop zone a target. */
+export function hasFiles(e: DragEvent): boolean {
+  return [...(e.dataTransfer?.types ?? [])].includes('Files');
+}
+
 /** Swaps the colour classes of a drop target: `active` on while `on`, `rest` otherwise. */
 export function highlight(el: Element, on: boolean, rest: string, active: string[]): void {
   el.classList.toggle(rest, !on);

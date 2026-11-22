@@ -73,6 +73,17 @@ describe('the prompt match form of the generation test (spec/components/gentest-
     expect(zone.classList.contains('border-border')).to.equal(true);
   });
 
+  it('ignores a drag that carries no file: no highlight, and the browser keeps its own behaviour', () => {
+    const zone = q('[data-gt-match-zone]');
+    const data = new DataTransfer();
+    data.setData('text/plain', 'a dragged sentence');
+    const over = new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: data });
+    zone.dispatchEvent(over);
+    expect(over.defaultPrevented, 'the browser keeps its own behaviour').to.equal(false);
+    expect(zone.classList.contains('border-accent')).to.equal(false);
+    expect(zone.classList.contains('border-border')).to.equal(true);
+  });
+
   it('refuses a file that is not a PNG, JPEG or WebP, or is too large, and says why in one line', () => {
     const input = q<HTMLInputElement>('[data-gt-match-file]');
     choose(input, pngFile(10, 'image/gif'));
