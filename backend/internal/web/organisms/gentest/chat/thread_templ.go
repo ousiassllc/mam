@@ -525,7 +525,7 @@ func optionCards(session string, opts []Option) templ.Component {
 			templ_7745c5c3_Var22 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<ul class=\"grid grid-cols-1 gap-2 data-answered:opacity-60 sm:grid-cols-2\" data-gtc-options data-testid=\"gtc-options\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "<ul class=\"grid grid-cols-1 gap-3 data-answered:opacity-60 sm:grid-cols-2\" data-gtc-options data-testid=\"gtc-options\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

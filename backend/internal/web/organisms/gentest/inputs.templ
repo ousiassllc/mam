@@ -87,7 +87,7 @@ templ inputFields(c Compose) {
 		<div class="flex items-center justify-between text-xs text-mute">
 			<span data-gt-count data-testid="gt-count" aria-live="polite">{ itoa(len(c.Picked)) } / { itoa(c.MaxReferences) }</span>
 		</div>
-		<ul id={ RefsID } class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-5" data-testid="gt-refs" data-gt-list>
+		<ul id={ RefsID } class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4" data-testid="gt-refs" data-gt-list>
 			for _, r := range c.Picked {
 				@RefRow(r, c.Media, c.RefUI())
 			}

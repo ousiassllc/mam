@@ -95,7 +95,7 @@ func Easy(e EasyData, card templ.Component) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<div class=\"grid grid-cols-2 gap-2 sm:grid-cols-4\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<div class=\"grid grid-cols-2 gap-3 sm:grid-cols-4\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -158,7 +158,7 @@ func Easy(e EasyData, card templ.Component) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(e.Recipes) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<span class=\"mt-1 text-xs text-mute\" id=\"gt-recipe-choices-title\">保存したレシピ（選ぶと、そのモデルと設定で作ります）</span><div class=\"grid grid-cols-2 gap-2 sm:grid-cols-4\" role=\"group\" aria-labelledby=\"gt-recipe-choices-title\" data-testid=\"gt-recipe-choices\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<span class=\"mt-1 text-xs text-mute\" id=\"gt-recipe-choices-title\">保存したレシピ（選ぶと、そのモデルと設定で作ります）</span><div class=\"grid grid-cols-2 gap-3 sm:grid-cols-4\" role=\"group\" aria-labelledby=\"gt-recipe-choices-title\" data-testid=\"gt-recipe-choices\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
