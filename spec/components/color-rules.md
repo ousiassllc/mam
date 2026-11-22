@@ -6,7 +6,7 @@
 
 ## 1. 方針
 
-- **色は Ousiass 共通デザインガイド（brand-guide `5d816f8`）のトークンだけ。** `static/src/css/tokens.css` が唯一の「値を書く場所」で、`--ink` `--bone` `--mute` `--surface` `--border` `--accent` `--accent-soft` `--focus` と状態色 `--success` `--warning` `--danger` `--info` を、ライト（`:root`）とダーク（`:root[data-theme="dark"]`）の両方で定義する。写真の上に重ねる塗りだけは、写真が下地でテーマの面ではないので、テーマで変わらない専用のトークン `--overlay-deep`・`--overlay-pale` を `:root` に 1 組だけ持つ（§4.2）。Tailwind 4 の `@theme inline` が `--color-*: initial` で既定のパレットを消し、トークンを `bg-bone` `text-ink` `border-border` のクラスにする。**`bg-neutral-900` や `text-indigo-300` のような既定パレットのクラスは、コンパイルされず、テストも落とす。**
+- **色は Ousiass 共通デザインガイド（brand-guide `5d816f8`）のトークンだけ。** `static/src/css/tokens.css` が唯一の「値を書く場所」で、`--ink` `--bone` `--mute` `--surface` `--border` `--accent` `--accent-soft` `--focus` と状態色 `--success` `--warning` `--danger` `--info` を、ライト（`:root`）とダーク（`:root[data-theme="dark"]`）の両方で定義する。写真の上に重ねる塗りだけは、写真が下地でテーマの面ではないので、テーマで変わらない専用のトークン `--overlay-deep`・`--overlay-pale` を `:root` に 1 組だけ持つ（§4.2）。スクロールバーのトークン `--scrollbar-thumb`・`--scrollbar-thumb-hover`・`--scrollbar-thumb-active` も `tokens.css` が持つ（`scrollbar.css` が使う）。**`color-mix()` を書いてよいのは `tokens.css` だけ**（つまみのホバー・押下は `--mute` と `--ink` を混ぜた値。クラスや他のファイルには書かない。`a11y/color_allowlist_test.go` の `rawColor` が `color-mix(` を `tokens.css` の外で拒む）。Tailwind 4 の `@theme inline` が `--color-*: initial` で既定のパレットを消し、トークンを `bg-bone` `text-ink` `border-border` のクラスにする。**`bg-neutral-900` や `text-indigo-300` のような既定パレットのクラスは、コンパイルされず、テストも落とす。**
 - **ライト / ダークの切り替え**: `<html data-theme="light|dark">`（左メニューのテーマボタンが `mam_theme` クッキーと `data-theme` を書き、サーバーが次のページを同じテーマで描く。`backend/internal/web/themestate`）。クッキーが無いときは OS の設定（`prefers-color-scheme`）に従う。クラスに `dark:` は付けない（トークンが切り替わる）。
 - 意味は色相でなく**トークン**で決める: **危険 = `danger`・警告 = `warning`・成功 = `success`・情報／進行中 = `info`・主アクション／リンク／選択 = `accent`（インク色）・それ以外 = `ink` / `mute` / `border` / `surface` / `bone`**。状態色は彩度を落とした無彩色寄りで、色だけで意味を伝えない（文言とアイコン `atoms.Icon` を添える）。
 - **同じ意味に新しいクラスや `/opacity` を足さない。** 枠は `-/40`、地は `/10`（ガイドの状態色は文字・枠 40%・地 10%）。足したいときは、画面のクラスを変えるのでなく、この文書の表を変える（テストの `colorAllowlist` も同じ版で変える）。
@@ -119,7 +119,7 @@
 - 写真の上にあり、テーマの面の上ではないので、**ライト・ダークで値は同じ**。クラスには使わず（Tailwind の `@theme` に足さない）、キャンバスが `getComputedStyle` で読む。直書きの原色は使わない（§2）。
 - **限界**: 半透明の 1 色で、あらゆる下地に 3:1 を保つことはできない（中間のグレーでは .55 のどんな色でも届かない）。2 つの切り替え（0.11）は、2 つが同じ見え方になる輝度で、中間調（輝度 0.02〜0.4）の写真では 3:1 に届かない。色相（赤）で見分けられることは変わらない。不透明度を上げる・縁取りを足す案は、写真の見えやすさと部品の形が変わるので採っていない。
 - 検査: `backend/internal/web/a11y/overlay_test.go`（値・切り替えの位置）、`mam-mask-paint-look.wtest.ts`（写真の明るさでトークンを選ぶこと）。
-- 共通ガイド（brand-guide `622ea73`）の本体には、この 2 つのトークンはまだ無い。Nefos Video の `tokens.css` が先に持ち、ガイドへの追加は別に提案する。
+- 共通ガイド（brand-guide `622ea73` 時点）の本体には、この 2 つのトークンは無かった（`5d816f8` でも無い）。Nefos Video の `tokens.css` が先に持ち、ガイドへの追加は別に提案する。
 
 ## 5. #865・#866 の UI もこの表に従う
 
@@ -151,3 +151,4 @@
 | 2.15 | 2026-11-22 | §4 の重ね塗りの例外（`bg-success/70` 等）の上には文字を直接置かないと書いた（Take 比較の選んだ区間の番号は `bg-surface text-ink` のチップ。`text-bone` は Light で 4.5:1 未満だった。`contrast_test`）。ポーズ素材のライセンス概要（カタログ JSON 由来の複数文）とチャットの見積り拒否の状態行を `text-ink` にし、`mute_rendered_test` の描画対象にポーズ選択の 3 状態とチャットのスレッドを足した | #1201: 色（C）の指摘 |
 | 2.16 | 2026-11-22 | §3 に、入力欄のプレースホルダー（`::placeholder`）は `tokens.css` の `@layer base` で `--mute`・不透明度 1 にすると書いた（Tailwind の既定は `currentcolor` の 50% で、Light の `--bone` 上 3.8:1 だった）。検査 `TestTokens_PlaceholderIsMute`（`a11y/contrast_test.go`）を足した | #1204: 色（C）の指摘 |
 | 2.17 | 2026-11-22 | §4 の `border-mute` の使う場所に、実行の確認カード 3 件（強調枠）を足した（`border-accent` だった。accent の枠は選択・現在位置だけ）。検査 `TestSources_ConfirmCardsHaveTheEmphasisBorder`（`a11y/gutter_emphasis_test.go`）を足した | #1206: 形・余白・線（S）の指摘 |
+| 2.18 | 2026-11-22 | §1 に、スクロールバーのトークン `--scrollbar-thumb*` と `color-mix()` は `tokens.css` だけに置くことを足した。§4.2 の末尾の `622ea73` を「622ea73 時点」と明記した | レビュー指摘: スクロールバーの値の置き場所が書かれていなかった |

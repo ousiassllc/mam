@@ -76,12 +76,12 @@
 ## 4. 画面の枠・ナビ
 
 ```
-        1440×900 の枠（max-w-6xl＝1152 px、p-8。内側 1088 px）
+        1440×900 の枠（max-w-6xl＝1152 px、p-4 md:p-6＝24px。内側 1104 px）
 ┌────────────────────────────────────────────────────────────────────────────────────────┐
 │ ← プロジェクト一覧に戻る                                                              │
 │ 設定                                         ← h1（全ページ共通）                      │
 │ すべてのプロジェクトで共通の設定です。                                                  │
-│ ┌ nav aria-label="設定" 224px ┐ ┌ main（残り 832px）───────────────────────────────┐ │
+│ ┌ nav aria-label="設定" 224px ┐ ┌ main（残り 848px）───────────────────────────────┐ │
 │ │ ▌概要            ←current   │ │ 概要                       ← h2                   │ │
 │ │  API キーとログイン         │ │ ┌ [🔑]API キーと… ┐ ┌ [💬]テキスト生成 ┐        │ │
 │ │  テキスト生成（LLM）        │ │ │ API キー 3 / 18 件│ │ 変更 2 / 14 Agent │        │ │
@@ -93,9 +93,9 @@
 └────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-**1024×700 の変形**: 枠の幅は 960 px（`p-8`）。nav 224 px ＋ すき間 32 px ＋ main 704 px。概要は 2 列のまま（カード 344 px 幅）。表は列を詰めて折り返す（切り詰めない）。縦は main だけがスクロールし、nav は `lg:sticky lg:top-8`。1024 px 未満（ブラウザ版の狭い窓）は nav が上に出て（`flex-col`）、リンクが折り返して並ぶ。
+**1024×700 の変形**: 枠の内側の幅は 976 px（`p-4 md:p-6` の 24px を引いた幅）。nav 224 px ＋ すき間 32 px ＋ main 720 px。概要は 2 列のまま（カード 352 px 幅）。表は列を詰めて折り返す（切り詰めない）。縦は main だけがスクロールし、nav は `lg:sticky lg:top-8`。1024 px 未満（ブラウザ版の狭い窓）は nav が上に出て（`flex-col`）、リンクが折り返して並ぶ。
 
-- **構造**: `<main class="mx-auto max-w-6xl p-8">` の中に、戻るリンク・`<h1>設定</h1>`・説明（「すべてのプロジェクトで共通の設定です。」の 1 行。動かさない）・`<div class="mt-6 flex flex-col gap-8 lg:flex-row">`（`nav` と `<div class="min-w-0 flex-1">`）。分類の見出しは `<h2>` で、その横に分類の説明を開く「?」ボタン（`settingsui.Category(title, explanation)`。説明は常時表示せず、ポップオーバーのヘルプに入る。[shared-ui-parts.md](shared-ui-parts.md) §9・§10）。同じ分類の中の区画の見出しは `<h3>`（`molecules.SettingsSection` に見出しのレベルを渡す。ステージ ① で、API キーの分類の「API キー」「ChatGPT でログイン」が `h3` になる。分類名と区画名が同じ分類（LLM・画像動画・MCP・バージョン）は、区画の見出しを出さず説明だけにする）。
+- **構造**: `pagehead.Main(pagehead.Wider)`＝`<main class="mx-auto flex w-full flex-col gap-6 p-4 md:p-6 max-w-6xl">` の中に、戻るリンク・`<h1>設定</h1>`・説明（「すべてのプロジェクトで共通の設定です。」の 1 行。動かさない）・`<div class="mt-6 flex flex-col gap-8 lg:flex-row">`（`nav` と `<div class="min-w-0 flex-1">`）。分類の見出しは `<h2>` で、その横に分類の説明を開く「?」ボタン（`settingsui.Category(title, explanation)`。説明は常時表示せず、ポップオーバーのヘルプに入る。[shared-ui-parts.md](shared-ui-parts.md) §9・§10）。同じ分類の中の区画の見出しは `<h3>`（`molecules.SettingsSection` に見出しのレベルを渡す。ステージ ① で、API キーの分類の「API キー」「ChatGPT でログイン」が `h3` になる。分類名と区画名が同じ分類（LLM・画像動画・MCP・バージョン）は、区画の見出しを出さず説明だけにする）。
 - **ナビ（`molecules/settingsui.SettingsNav`）**: `<nav aria-label="設定"><ul role="list">`。項目は `<a href class="block rounded-md px-3 py-2 text-sm …">`。**今の分類**は `aria-current="page"`・`bg-accent-soft font-medium text-ink`・左に `border-l-2 border-accent`（色だけにせず、太さの変化と枠で示す）。ほかは `text-ink hover:bg-surface hover:text-ink`。フォーカスは [shared-ui-parts.md](shared-ui-parts.md) §1 の輪。アイコンは付けない（文字を優先。§11 の質問 3）。
 - 状態のバッジをナビの項目に出さない（概要で見る）。
 - 戻るリンクは持たない。左メニューの「プロジェクト」が戻り道（#915。`pagehead.Header`）。
@@ -226,3 +226,4 @@
 | 0.18 | 2026-11-07 | §2 の分類「ffmpeg」「FaceFusion」と §5 の概要のカード 2 枚を外し、概要に「付随ソフト」の 1 枚を足した（#1106）。状態は「実装済み」 | Issue #1106 |
 | 0.19 | 2026-11-11 | §4 の概要の図と §5 の概要のカードの表の「API キー n / 14 件」を 18 件（`len(service.CredentialProviders)`）に直した | PR #1141 のレビュー指摘 |
 | 0.20 | 2026-11-19 | 本文の製品名の表示を「MAM」から「Nefos Video」に改めた（過去の改訂履歴の文は当時のまま） | #1170: 製品名を MAM から Nefos Video に変更（表示名のみ。識別子・パス・実行ファイル名は変更しない） |
+| 0.21 | 2026-11-22 | 概要の図の枠・1024×700 の変形・構造の余白と幅の数値を、実装の `pagehead.Main(pagehead.Wider)`（`p-4 md:p-6`＝24px）に合わせて計算し直した（内側 1104 px・main 848 px。1024 では内側 976 px・main 720 px・カード 352 px。旧 `p-8`） | レビュー指摘: 余白の数値が実装と食い違っていた |

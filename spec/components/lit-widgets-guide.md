@@ -5,7 +5,7 @@
 ## 1. 位置づけ
 
 - 共通ガイドの正は https://ousiassllc.github.io/brand-guide/ 。ガイドの P3「メディア・エディタ」は「独自ウィジェットは共通ガイドに置かず、そのプロダクトの案件ガイドで定義する。UI クロムにプリズムを使わない」と定めている。3 つのウィジェットはこの P3 に当たる。
-- 参照した時点: 2026-11-06（要約の取り込み時点は brand-guide `73d8cf6`。色のトークンの版は [color-rules.md](color-rules.md) が `622ea73` と書いている）。食い違ったらガイドが正。
+- 参照した時点: 2026-11-06（要約の取り込み時点は brand-guide `73d8cf6`。色のトークンの版は [color-rules.md](color-rules.md) が `5d816f8` と書いている）。食い違ったらガイドが正。
 - **この文書は値を複製しない。** 色・文字・角丸・余白・動きは、トークンの名前とそれを出す Tailwind のクラス（[color-rules.md](color-rules.md) §3・§4、[shared-ui-parts.md](shared-ui-parts.md) §1）で書く。クラスの許可リストは `a11y/color_allowlist_test.go`・`shape_test.go`・`texttest/typography_test.go` が守る。
 - ガイドにない部品・値・モーションは足さない。この文書が決めたのは、ガイドの既存の部品（ボタン・入力・ステータスピル・インラインアラート・トースト・テーブル・カード・スライダー・空状態）を、3 つのウィジェットのどこにどう使うかである。**共通ガイドへの追加提案は無い**（§7）。
 - 対象外: `mam-video-player`（P3 の「動画」。別に決める）、`mam-comfy-frame`（iframe の枠）、`mam-prompt-weight`（Issue #1046）。
