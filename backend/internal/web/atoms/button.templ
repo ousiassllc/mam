@@ -13,7 +13,7 @@ const (
 )
 
 // linkButtonClass is the look of a LinkButton that is not the main action: text with a --mute underline, Regular, disabled at opacity .4 (O7). The same string is
-// LINK_BUTTON of static/src/components/lib/button.ts, for the Lit parts (a11y/shape_test.go holds the two together).
+// LINK_BUTTON of static/src/components/lib/ui/button.ts, for the Lit parts (a11y/shape_test.go holds the two together).
 const linkButtonClass = "text-sm text-mute underline transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none"
 
 func buttonClass(tone ButtonTone, small bool) string {

@@ -4,7 +4,7 @@
  * are in match-model.ts. The listeners are on the document: the form may arrive in a swapped body.
  */
 
-import { highlightZone } from '../lib/dropzone';
+import { hasFiles, highlightZone } from '../lib/ui/dropzone';
 import { imageProblem, showsLimits, targetText } from './match-model';
 
 const FORM = '[data-gt-match]';
@@ -69,7 +69,7 @@ export function initGentestMatch(root: Document = document): void {
   // A file dropped on the zone is the chosen one; anywhere else the browser keeps its own behaviour. The zone shows it is a drop target while a file is over it.
   root.addEventListener('dragover', (event) => {
     const zone = (event.target as Element | null)?.closest('[data-gt-match-zone]');
-    if (!zone) return;
+    if (!zone || !hasFiles(event)) return; // a dragged text or link is not a file: no highlight, and the browser keeps its own behaviour
     event.preventDefault();
     highlightZone(zone, true);
   });

@@ -4,7 +4,7 @@
  * read at the reader's own pace or by a screen reader (WCAG 2.2.1). The markup is defined once, in atoms/alert.templ; the page shell embeds it as
  * #alert-template and this module clones it.
  */
-import { whenFaded } from '../lib/fade';
+import { whenFaded } from '../lib/ui/fade';
 import { createLogger } from '../lib/logger';
 
 const log = createLogger('alert');

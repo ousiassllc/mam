@@ -1,5 +1,5 @@
 import { html, nothing } from 'lit';
-import { BUTTON, BUTTON_TONE } from '../lib/button';
+import { BUTTON, BUTTON_TONE } from '../lib/ui/button';
 
 /**
  * What the editor shows when its first load failed (not a 404): the reason is the alert in #alert-region, so this says where to look and

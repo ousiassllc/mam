@@ -1,6 +1,6 @@
 import { expect, waitUntil } from '@open-wc/testing';
 import { createConnectionNotice } from './connection-notice';
-import { installConnectionNoticeTemplate } from '../testdata/fakes';
+import { installConnectionNoticeTemplate } from '../../testdata/fakes';
 
 describe('connection notice', () => {
   let removeTemplate: () => void;

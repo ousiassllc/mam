@@ -1,8 +1,8 @@
 import { html, nothing } from 'lit';
 import type { TakeScore } from './take-model';
 import { describeTake, renderScore } from './take-cells';
-import { BADGE } from '../lib/badge';
-import { LINK_BUTTON } from '../lib/button';
+import { BADGE } from '../lib/ui/badge';
+import { LINK_BUTTON } from '../lib/ui/button';
 import { STATUS_CLASS } from './take-status';
 
 /** A number of the table (W7): right-aligned, digits of one width. */

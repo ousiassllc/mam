@@ -34,7 +34,7 @@ import { initGentestExposed } from './components/gentest-tiers/exposed';
 import { initGentestRecipe } from './components/gentest-tiers/recipe';
 import { installKeepScroll } from './components/scroll/keep-scroll';
 import { installPollGuard } from './components/poll/poll-guard';
-import { installExportPick } from './components/gentest/export-pick';
+import { installExportPick } from './components/gentest/export/export-pick';
 import { installGentestChat } from './components/gentest-chat/chat';
 import { installSlider } from './components/slider/slider';
 import { installRestartRefresh } from './components/restart/refresh';

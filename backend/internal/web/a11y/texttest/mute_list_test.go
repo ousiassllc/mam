@@ -1,6 +1,8 @@
-package a11y_test
+package texttest_test
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // mutedLists lists the <ul>/<ol> that say text-mute themselves: a list is a run of items, each of which says its own colour, because what the items say
 // (a constraint's text, a version) is only a caption when its own element says so. A list that is --mute makes every text in it --mute without anyone looking

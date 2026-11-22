@@ -1,16 +1,16 @@
 package a11y_test
 
 import (
-	"io/fs"
 	"os"
 	"path/filepath"
 	"regexp"
-	"sort"
 	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ousiassllc/mam/backend/internal/web/a11y/uisrc"
 )
 
 // spec/components/color-rules.md is the source of the colour rules. colorAllowlist is its §3 table and
@@ -67,87 +67,6 @@ var colorUtility = regexp.MustCompile(`^(?:bg|text|border(?:-[xyselrtb])?|divide
 // #865 in a comment), or a colour function.
 var rawColor = regexp.MustCompile(`#[0-9a-fA-F]{6}(?:[0-9a-fA-F]{2})?\b|\b(?:rgba?|hsla?|oklch|oklab|lab|lch|hwb|color-mix)\(`)
 
-// tokens splits a line into class-like words. A word ends at a space, a quote, a backtick, a brace, a comma,
-// a parenthesis, a semicolon or an angle bracket, except inside [...] where an arbitrary variant such as
-// has-[:checked]: or [&_a]: may hold any of them.
-func tokens(line string) []string {
-	var out []string
-	depth, start := 0, -1
-	flush := func(end int) {
-		if start >= 0 {
-			out = append(out, strings.Trim(line[start:end], ".,:;!"))
-			start = -1
-		}
-	}
-	for i, r := range line {
-		switch {
-		case r == '[':
-			depth++
-		case r == ']' && depth > 0:
-			depth--
-		}
-		if depth == 0 && strings.ContainsRune(" \t\"'`{}(),;<>=$|", r) {
-			flush(i)
-			continue
-		}
-		if start < 0 {
-			start = i
-		}
-	}
-	flush(len(line))
-	return out
-}
-
-// utilityOf returns the class without its variants (hover:, has-[...]:, ...).
-func utilityOf(token string) string {
-	depth, cut := 0, 0
-	for i, r := range token {
-		switch {
-		case r == '[':
-			depth++
-		case r == ']':
-			depth--
-		case r == ':' && depth == 0:
-			cut = i + 1
-		}
-	}
-	return strings.TrimPrefix(token[cut:], "!")
-}
-
-// colorSources walks the sources Tailwind reads for class names: the Go and templ files of the web package and the
-// TypeScript and CSS of the front end, without tests, generated *_templ.go, fixtures and the build output.
-func colorSources(t *testing.T) []string {
-	t.Helper()
-	var files []string
-	for root, exts := range map[string][]string{
-		"..":                     {".templ", ".go"},
-		"../../../../static/src": {".ts", ".css"},
-	} {
-		require.NoError(t, filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {
-			if err != nil {
-				return err
-			}
-			if d.IsDir() {
-				if d.Name() == "testdata" || d.Name() == "dist" || d.Name() == "node_modules" {
-					return filepath.SkipDir
-				}
-				return nil
-			}
-			name := d.Name()
-			skip := strings.HasSuffix(name, "_test.go") || strings.HasSuffix(name, "_templ.go") ||
-				strings.HasSuffix(name, ".test.ts") || strings.HasSuffix(name, ".wtest.ts")
-			for _, ext := range exts {
-				if !skip && strings.HasSuffix(name, ext) {
-					files = append(files, path)
-				}
-			}
-			return nil
-		}))
-	}
-	sort.Strings(files)
-	return files
-}
-
 // tokensFile is the one source that writes colours as values: the design tokens of both themes.
 const tokensFile = "tokens.css"
 
@@ -156,14 +75,14 @@ const tokensFile = "tokens.css"
 // shade (bg-neutral-900, text-indigo-300, ...) is never in it.
 func TestSources_ColorUtilitiesAreInTheAllowlist(t *testing.T) {
 	allowed, excepted := classSet(colorAllowlist), classSet(colorExceptions)
-	files := colorSources(t)
+	files := uisrc.ColorSources(t)
 	require.Greater(t, len(files), 100, "the walk found the sources")
 	for _, path := range files {
 		src, err := os.ReadFile(path)
 		require.NoError(t, err)
 		for n, line := range strings.Split(string(src), "\n") {
-			for _, token := range tokens(line) {
-				if colorUtility.MatchString(utilityOf(token)) && !allowed[token] && !excepted[token] {
+			for _, token := range uisrc.Tokens(line) {
+				if colorUtility.MatchString(uisrc.UtilityOf(token)) && !allowed[token] && !excepted[token] {
 					t.Errorf("%s:%d: %q is not in the colour allowlist of spec/components/color-rules.md: map it onto the table (same meaning, same class) or list it there as an exception with its reason", path, n+1, token)
 				}
 			}
@@ -182,9 +101,9 @@ func TestColorUtility_RecognisesColoursAndNotSizes(t *testing.T) {
 	for _, c := range []string{"text-[10px]", "text-sm", "border-2", "border-l-2", "bg-clip-text", "rounded-md", "ring-2", "shadow-lg", "outline-hidden", "divide-y", "bg-linear-to-r", "font-semibold", "text-xl", "border-collapse"} {
 		assert.False(t, colorUtility.MatchString(c), c)
 	}
-	assert.Equal(t, []string{"has-[:checked]:border-indigo-400", "text-red-200"}, tokens(`class={ "a", templ.KV("has-[:checked]:border-indigo-400 text-red-200", x) }`)[3:5])
-	assert.Equal(t, "border-indigo-400", utilityOf("has-[:checked]:border-indigo-400"))
-	assert.Equal(t, "bg-neutral-800", utilityOf("hover:bg-neutral-800"))
+	assert.Equal(t, []string{"has-[:checked]:border-indigo-400", "text-red-200"}, uisrc.Tokens(`class={ "a", templ.KV("has-[:checked]:border-indigo-400 text-red-200", x) }`)[3:5])
+	assert.Equal(t, "border-indigo-400", uisrc.UtilityOf("has-[:checked]:border-indigo-400"))
+	assert.Equal(t, "bg-neutral-800", uisrc.UtilityOf("hover:bg-neutral-800"))
 }
 
 // specClasses returns the colour classes written in backticks between the begin and end markers of the spec: in
@@ -204,7 +123,7 @@ func specClasses(t *testing.T, spec, name string, firstColumn bool) map[string]b
 			row = strings.SplitN(row, "|", 3)[1]
 		}
 		for _, m := range regexp.MustCompile("`([^`]+)`").FindAllStringSubmatch(row, -1) {
-			if colorUtility.MatchString(utilityOf(m[1])) {
+			if colorUtility.MatchString(uisrc.UtilityOf(m[1])) {
 				set[m[1]] = true
 			}
 		}

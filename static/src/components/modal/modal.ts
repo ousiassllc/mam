@@ -1,5 +1,5 @@
 import { requestFailureMessage, type RequestFailure } from '../lib/errors';
-import { whenFaded } from '../lib/fade';
+import { whenFaded } from '../lib/ui/fade';
 
 /**
  * The modal dialog of the settings screen (spec/components/shared-ui-parts.md §4): one native <dialog id="mam-modal"

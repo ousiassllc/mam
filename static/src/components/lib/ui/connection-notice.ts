@@ -1,8 +1,8 @@
 /** The notice shown when a WebSocket has given up reconnecting: what stopped updating and how to get it back. */
 
 import { whenFaded } from './fade';
-import { createLogger } from './logger';
-import { CONNECTION_LOST_MESSAGE, type Connection } from './ws';
+import { createLogger } from '../logger';
+import { CONNECTION_LOST_MESSAGE, type Connection } from '../ws';
 
 const REGION_ID = 'connection-lost-region';
 const TEMPLATE_ID = 'connection-notice-template';

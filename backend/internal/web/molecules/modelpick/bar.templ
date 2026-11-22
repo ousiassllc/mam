@@ -29,7 +29,7 @@ templ Bar(b Filter) {
 			<label class="sr-only" for={ b.searchID() }>モデルを探す（名前・タグ）</label>
 			@atoms.Input(atoms.FieldMd, "min-w-0 flex-1 sm:max-w-sm", templ.Attributes{
 				"id": b.searchID(), "type": "search", "name": "q", "form": FormNone, "value": b.Cond.Text, "autocomplete": "off",
-				"placeholder": "モデル名・タグで探す", "data-mp-search": true, "data-testid": "model-pick-search",
+				"placeholder": "モデル名・タグで探す", "data-mp-search": true, "data-testid": "model-pick-search", "autofocus": b.Autofocus,
 			})
 			<button
 				type="button"

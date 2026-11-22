@@ -1,9 +1,9 @@
 import { html, nothing } from 'lit';
 import { live } from 'lit/directives/live.js';
-import { BADGE_TONE } from '../lib/badge';
-import { LINK_BUTTON } from '../lib/button';
+import { BADGE_TONE } from '../lib/ui/badge';
+import { LINK_BUTTON } from '../lib/ui/button';
 import { CLIP_KIND_LABEL, TRANSITION_LABEL, type EditClip, type TransitionType } from '../lib/edit-model';
-import { icon } from '../lib/icon';
+import { icon } from '../lib/ui/icon';
 import type { EditTimelineBody } from './timeline-api';
 
 const RING = 'focus-visible:focus-ring';

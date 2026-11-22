@@ -149,7 +149,7 @@ func Bar(b Filter) templ.Component {
 		}
 		templ_7745c5c3_Err = atoms.Input(atoms.FieldMd, "min-w-0 flex-1 sm:max-w-sm", templ.Attributes{
 			"id": b.searchID(), "type": "search", "name": "q", "form": FormNone, "value": b.Cond.Text, "autocomplete": "off",
-			"placeholder": "モデル名・タグで探す", "data-mp-search": true, "data-testid": "model-pick-search",
+			"placeholder": "モデル名・タグで探す", "data-mp-search": true, "data-testid": "model-pick-search", "autofocus": b.Autofocus,
 		}).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err

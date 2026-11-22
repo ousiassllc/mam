@@ -1,6 +1,6 @@
 import { LitElement, html, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
-import { BUTTON, BUTTON_TONE } from '../lib/button';
+import { BUTTON, BUTTON_TONE } from '../lib/ui/button';
 import { chosenFacts } from './chosen-models';
 import { type Facts, notesOf } from './weight-facts';
 import { adjust, read, WEIGHT_MAX, WEIGHT_MIN, type Direction, type Reading } from './weight-model';

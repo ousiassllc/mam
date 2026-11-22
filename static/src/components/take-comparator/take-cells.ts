@@ -1,5 +1,5 @@
 import { html } from 'lit';
-import { icon } from '../lib/icon';
+import { icon } from '../lib/ui/icon';
 import type { TakeScore } from './take-model';
 
 /**

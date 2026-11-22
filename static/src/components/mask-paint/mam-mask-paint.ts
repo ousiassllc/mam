@@ -1,7 +1,7 @@
 import { LitElement, html } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { confirmDialog } from '../confirm/confirm';
-import { BUTTON, BUTTON_TONE } from '../lib/button';
+import { BUTTON, BUTTON_TONE } from '../lib/ui/button';
 import { sliderStyle } from '../slider/slider-model';
 import { meanLuminance, overlayToken, overlayWhite, strokeLine, type Point } from './mask-draw';
 import { canvasSize } from './mask-size';

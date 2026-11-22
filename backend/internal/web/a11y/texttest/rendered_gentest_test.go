@@ -1,4 +1,4 @@
-package a11y_test
+package texttest_test
 
 import (
 	"context"

@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/a11y/uisrc"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/notecard"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
@@ -21,7 +22,7 @@ func TestTakeRow_JudgeAndRepairAreNamedAfterTheirTake(t *testing.T) {
 	var html string
 	for n, model := range []string{"kling", "veo"} {
 		take := domain.Take{ID: "t", ShotID: "s1", ModelName: model, Status: domain.TakeCandidate, FilePath: "a.mp4"}
-		html += render(t, molecules.TakeRow(take, n, false, true, true))
+		html += uisrc.Render(t, molecules.TakeRow(take, n, false, true, true))
 	}
 
 	assert.Equal(t, []string{"Judge: Take A · kling", "Judge: Take B · veo"}, buttonNames(html, "Judge"))
@@ -30,7 +31,7 @@ func TestTakeRow_JudgeAndRepairAreNamedAfterTheirTake(t *testing.T) {
 
 func TestReviewComments_DeleteButtonsAreNamedAfterTheirComment(t *testing.T) {
 	ms := int64(12000)
-	html := render(t, organisms.ReviewComments(domain.ReviewInbox{ID: "r1", Comments: []domain.ReviewInboxComment{
+	html := uisrc.Render(t, organisms.ReviewComments(domain.ReviewInbox{ID: "r1", Comments: []domain.ReviewInboxComment{
 		{ID: "c1", TimecodeMs: &ms, Body: "色が暗い"},
 		{ID: "c2", Body: "全体に長い"},
 	}}))
@@ -39,7 +40,7 @@ func TestReviewComments_DeleteButtonsAreNamedAfterTheirComment(t *testing.T) {
 }
 
 func TestReferenceLibrary_RemoveButtonsAreNamedAfterTheirImage(t *testing.T) {
-	html := render(t, organisms.ReferenceLibrary(organisms.ReferenceLibraryData{
+	html := uisrc.Render(t, organisms.ReferenceLibrary(organisms.ReferenceLibraryData{
 		Project: domain.Project{ID: "p1"},
 		Items: []domain.ReferenceItem{
 			{ID: "i1", Kind: domain.LibraryKinds()[0], Name: "主人公", Source: domain.SourceUploaded},
@@ -52,7 +53,7 @@ func TestReferenceLibrary_RemoveButtonsAreNamedAfterTheirImage(t *testing.T) {
 
 func TestVersionHistoryPanel_RestoreButtonsAreNamedAfterTheirVersion(t *testing.T) {
 	now := time.Now()
-	html := render(t, organisms.VersionHistoryPanel(organisms.VersionHistoryData{
+	html := uisrc.Render(t, organisms.VersionHistoryPanel(organisms.VersionHistoryData{
 		DOMID: "vh", Title: "履歴", BasePath: "/x",
 		Entries: []domain.VersionEntry{{Number: 3, CreatedAt: now}, {Number: 2, CreatedAt: now}, {Number: 1, CreatedAt: now}},
 	}))
@@ -61,7 +62,7 @@ func TestVersionHistoryPanel_RestoreButtonsAreNamedAfterTheirVersion(t *testing.
 }
 
 func TestCredentialPanel_OpenAndDeleteButtonsAreNamedAfterTheirProvider(t *testing.T) {
-	html := render(t, credentials.Panel(credentials.Data{Providers: []credentials.ProviderView{
+	html := uisrc.Render(t, credentials.Panel(credentials.Data{Providers: []credentials.ProviderView{
 		{Provider: "kling", Label: "Kling", Configured: true},
 		{Provider: "veo", Label: "Veo", Configured: true},
 		{Provider: "runway", Label: "Runway"},
@@ -74,7 +75,7 @@ func TestCredentialPanel_OpenAndDeleteButtonsAreNamedAfterTheirProvider(t *testi
 
 // The buttons of the three login cards are named after their card: "ログアウト" and "利用できるモデルを表示" repeat.
 func TestChatGPTCards_ButtonsAreNamedAfterTheirLoginSystem(t *testing.T) {
-	html := render(t, chatgpt.Panel(chatgpt.Data{
+	html := uisrc.Render(t, chatgpt.Panel(chatgpt.Data{
 		Official:     chatgpt.Account{SignedIn: true, PlanUsageGranted: true},
 		Image:        chatgpt.Account{SignedIn: true},
 		ImageEnabled: true,
@@ -97,9 +98,9 @@ func TestNoteCard_ButtonsAreNamedAfterTheirNote(t *testing.T) {
 	card := func(id, title string, archivedAt *time.Time) domain.NoteView {
 		return domain.NoteView{Note: domain.Note{ID: id, ArchivedAt: archivedAt}, Version: domain.NoteVersion{Number: 1, Title: title}}
 	}
-	html := render(t, notecard.Card(card("n1", "世界観", nil))) +
-		render(t, notecard.Card(card("n2", "口調", nil))) +
-		render(t, notecard.Card(card("n3", "禁止事項", &archived)))
+	html := uisrc.Render(t, notecard.Card(card("n1", "世界観", nil))) +
+		uisrc.Render(t, notecard.Card(card("n2", "口調", nil))) +
+		uisrc.Render(t, notecard.Card(card("n3", "禁止事項", &archived)))
 
 	assert.Equal(t, []string{"保存: 世界観", "保存: 口調", "保存: 禁止事項"}, buttonNames(html, "保存"))
 	assert.Equal(t, []string{"アーカイブ: 世界観", "アーカイブ: 口調"}, buttonNames(html, "アーカイブ"))
@@ -109,7 +110,7 @@ func TestNoteCard_ButtonsAreNamedAfterTheirNote(t *testing.T) {
 func TestReplyButton_IsNamedAfterItsCard(t *testing.T) {
 	var html string
 	for _, text := range []string{"どちらにしますか", "予算を超えます"} {
-		html += render(t, molecules.ReplyButton(domain.ThreadMessage{ChatMessage: domain.ChatMessage{
+		html += uisrc.Render(t, molecules.ReplyButton(domain.ThreadMessage{ChatMessage: domain.ChatMessage{
 			ID: text, Kind: domain.KindApproval, Content: text,
 		}}))
 	}

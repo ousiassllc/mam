@@ -3,25 +3,17 @@
 package a11y_test
 
 import (
-	"context"
 	"regexp"
 	"strings"
 	"testing"
 
-	"github.com/a-h/templ"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/a11y/uisrc"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
 )
-
-func render(t *testing.T, c templ.Component) string {
-	t.Helper()
-	var sb strings.Builder
-	require.NoError(t, c.Render(context.Background(), &sb))
-	return sb.String()
-}
 
 // buttonNames returns the accessible name of every button whose visible text is label: the aria-label
 // when it has one, the text otherwise.
@@ -42,7 +34,7 @@ func buttonNames(html, label string) []string {
 
 // The delete button of every constraint has its own name, led by its visible text (#783).
 func TestBrandConstraintList_DeleteButtonsAreNamedAfterTheirConstraint(t *testing.T) {
-	html := render(t, organisms.BrandConstraintItems(organisms.BrandConstraintListData{
+	html := uisrc.Render(t, organisms.BrandConstraintItems(organisms.BrandConstraintListData{
 		ProjectID: "p1",
 		Constraints: domain.BrandConstraints{
 			{ID: "c1", Type: domain.BrandGuideline, Level: domain.EnforceLock, Text: "ロゴを歪めない"},
@@ -54,7 +46,7 @@ func TestBrandConstraintList_DeleteButtonsAreNamedAfterTheirConstraint(t *testin
 }
 
 func TestStoragePanel_ArchiveButtonsAreNamedAfterTheirTake(t *testing.T) {
-	html := render(t, organisms.StoragePanel(organisms.StoragePanelData{
+	html := uisrc.Render(t, organisms.StoragePanel(organisms.StoragePanelData{
 		ProjectID: "p1",
 		Storage: domain.StorageSummary{Takes: []domain.StoredTake{
 			{TakeID: "t1", SceneIndex: 0, ShotIndex: 0, ModelName: "kling", Status: domain.TakeRejected, SizeBytes: 1 << 20, Archivable: true},
@@ -73,7 +65,7 @@ func TestStoragePanel_ArchiveButtonsAreNamedAfterTheirTake(t *testing.T) {
 // A chat thread that scrolls is reached by the keyboard even when it holds nothing but text (B6): it takes the focus (tabindex="0"), shows it, and
 // has the name it is read by.
 func TestChatThread_ScrollsAndTakesTheKeyboardFocus(t *testing.T) {
-	html := render(t, organisms.ChatThread(nil))
+	html := uisrc.Render(t, organisms.ChatThread(nil))
 
 	assert.Regexp(t, `<div id="chat-thread"[^>]*\boverflow-y-auto\b[^>]*\bfocus-visible:focus-ring\b[^>]* tabindex="0"`, html)
 	assert.Contains(t, html, `aria-label="チャットスレッド"`)

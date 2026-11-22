@@ -6,7 +6,7 @@
  */
 
 import { html, nothing, render } from 'lit';
-import { icon } from '../lib/icon';
+import { icon } from '../lib/ui/icon';
 import { syncSliders } from '../slider/slider';
 import {
   commercialOf,

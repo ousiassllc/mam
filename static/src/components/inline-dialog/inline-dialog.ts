@@ -20,7 +20,7 @@
  *
  * Install it before `installFocusRestore`: the focus that is back on a control is not touched by that one.
  */
-import { whenFaded } from '../lib/fade';
+import { whenFaded } from '../lib/ui/fade';
 
 const DIALOG = '[data-inline-dialog]';
 const HOST = 'dialog[data-inline-dialog-host]';
@@ -64,13 +64,16 @@ export function installInlineDialog(root: Document = document): void {
   /** The question is gone: the page goes back to where it was, and the focus to the control that asked (or to the place of its card). */
   function gone(): void {
     if (!shown) return;
+    const inHost = shown.closest(HOST);
     shown = null;
     const from = opener;
     opener = null;
     if (origin) window.scrollTo({ left: origin.left, top: origin.top, behavior: 'instant' });
     origin = null;
-    // The focus the user (or htmx) put somewhere else is not ours; the dialog's own control that had it is gone.
-    if (document.activeElement && document.activeElement !== document.body) return;
+    // The focus the user (or htmx) put somewhere else is not ours. The dialog's own control that has it is: the host that was closed (the scrim) still holds the
+    // question while it fades out, so its control is still the active element, though nobody moved the focus there after the dialog closed.
+    const active = document.activeElement;
+    if (active && active !== document.body && !inHost?.contains(active)) return;
     if (focusOn(from as HTMLElement | null)) return;
     const place = returnTo ? document.querySelector(returnTo) : null;
     focusOn(place?.querySelector<HTMLElement>(CONTROL));

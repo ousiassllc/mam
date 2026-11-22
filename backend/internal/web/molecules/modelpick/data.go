@@ -72,6 +72,8 @@ type Filter struct {
 	// DefaultCommercial is what the setting 「商用OKのモデルだけを使う」 says: the choice of the panel that equals it follows the setting (it is sent as the empty word).
 	DefaultCommercial modellicense.Filter
 	Facets            Facets
+	// Autofocus gives the search box the focus when the dialog that holds the bar opens (the close button is the first control of the dialog, so it would take it). A bar in a page never has it.
+	Autofocus bool
 	// Sync draws the panel out of band too (the answer to a chip, which changed the condition without the panel; the script keeps the panel as open or closed
 	// as it was).
 	Sync bool
@@ -92,3 +94,9 @@ func (b Filter) panelID() string { return b.ID + "-panel" }
 func (b Filter) countID() string { return b.ID + "-count" }
 
 func (b Filter) searchID() string { return b.ID + "-q" }
+
+// withSearchFocus is the bar as the picker's dialog draws it: its search box is the control the dialog opens on.
+func (b Filter) withSearchFocus() Filter {
+	b.Autofocus = true
+	return b
+}

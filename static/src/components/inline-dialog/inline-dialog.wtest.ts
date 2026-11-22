@@ -133,3 +133,50 @@ describe('inline dialog host: the fade-out of a question that was closed (M5)', 
     expect(host.open).to.equal(false);
   });
 });
+
+describe('inline dialog host: closed by the scrim while the opener is gone', () => {
+  let host: HTMLDialogElement;
+  let page: HTMLElement;
+  let style: HTMLStyleElement;
+
+  beforeEach(() => {
+    style = document.createElement('style');
+    style.textContent =
+      'dialog[data-inline-dialog-host]{opacity:0;transition:opacity 200ms linear,display 200ms allow-discrete,overlay 200ms allow-discrete}dialog[data-inline-dialog-host][open]{opacity:1}';
+    document.head.append(style);
+    page = document.createElement('div');
+    page.innerHTML = '<div id="card"><button type="button" id="card-off">表示する</button></div>';
+    document.body.append(page);
+    host = document.createElement('dialog');
+    host.setAttribute('data-inline-dialog-host', '');
+    host.innerHTML =
+      '<section role="dialog" tabindex="-1" data-inline-dialog data-return-focus="#card" aria-label="確認"><button type="button" id="dlg-inner">確認</button></section>';
+    document.body.append(host);
+  });
+  afterEach(() => {
+    host.remove();
+    page.remove();
+    style.remove();
+  });
+
+  it('gives the focus to the place named by data-return-focus even when the focus was inside the dialog while it faded', async () => {
+    document.body.dispatchEvent(new CustomEvent('htmx:afterSwap', { bubbles: true, detail: {} }));
+    expect(host.open).to.equal(true);
+    (document.getElementById('dlg-inner') as HTMLButtonElement).focus();
+    const closed = new Promise((resolve) => host.addEventListener('close', resolve, { once: true }));
+    host.close(); // what a click on the scrim does
+    await closed;
+    expect(document.activeElement === document.getElementById('card-off')).to.equal(true);
+  });
+
+  it('leaves a focus that the user put outside the dialog alone', async () => {
+    document.body.dispatchEvent(new CustomEvent('htmx:afterSwap', { bubbles: true, detail: {} }));
+    const other = document.createElement('button');
+    page.append(other);
+    const closed = new Promise((resolve) => host.addEventListener('close', resolve, { once: true }));
+    host.close();
+    other.focus(); // the page is inert while the dialog is open: the focus moves once it is closed, before the close event
+    await closed;
+    expect(document.activeElement === other).to.equal(true);
+  });
+});

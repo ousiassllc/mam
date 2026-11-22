@@ -14,6 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ousiassllc/mam/backend/internal/web/a11y/uisrc"
 	"github.com/ousiassllc/mam/backend/internal/web/atoms"
 )
 
@@ -88,9 +89,9 @@ func assertFieldBorder(t *testing.T, class, where string) {
 func TestAtomFields_BorderIs3To1(t *testing.T) {
 	attrs := templ.Attributes{}
 	for name, html := range map[string]string{
-		"Input":    render(t, atoms.Input(atoms.FieldMd, "", attrs)),
-		"Select":   render(t, atoms.Select(atoms.FieldSm, "w-full", attrs)),
-		"Textarea": render(t, atoms.Textarea(atoms.FieldLg, "", attrs, "")),
+		"Input":    uisrc.Render(t, atoms.Input(atoms.FieldMd, "", attrs)),
+		"Select":   uisrc.Render(t, atoms.Select(atoms.FieldSm, "w-full", attrs)),
+		"Textarea": uisrc.Render(t, atoms.Textarea(atoms.FieldLg, "", attrs, "")),
 	} {
 		m := regexp.MustCompile(`class="([^"]*)"`).FindStringSubmatch(html)
 		require.NotNil(t, m, name)

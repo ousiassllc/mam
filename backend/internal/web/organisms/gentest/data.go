@@ -300,19 +300,3 @@ type Detail struct {
 	// CanPick says the detail was opened from a grid that has the choice for the ZIP export (the history, #932), so the modal offers it too.
 	CanPick bool
 }
-
-// PromptRow is an entry of the prompt history.
-type PromptRow struct {
-	ID       string
-	Text     string
-	Negative string
-	Uses     int
-	LastUsed string
-	UseURL   string
-}
-
-// Prompts is the prompt history.
-type Prompts struct {
-	Message
-	Items []PromptRow
-}

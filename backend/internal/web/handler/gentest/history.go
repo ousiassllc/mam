@@ -25,6 +25,7 @@ import (
 	view "github.com/ousiassllc/mam/backend/internal/web/organisms/gentest"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/exportbar"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/importbox"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/prompthistory"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/gentest/resulttile"
 	"github.com/ousiassllc/mam/backend/internal/web/pages"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -282,18 +283,18 @@ func (h Handlers) DeleteResult(c *gin.Context) {
 
 // Prompts answers GET /generation-test/prompts: the prompt history.
 func (h Handlers) Prompts(c *gin.Context) {
-	gtshare.Render(c, http.StatusOK, pages.GenerationPromptsPage(middleware.CSRFToken(c), h.prompts(c.Request.Context(), view.Message{})))
+	gtshare.Render(c, http.StatusOK, pages.GenerationPromptsPage(middleware.CSRFToken(c), h.prompts(c.Request.Context(), "", "")))
 }
 
-func (h Handlers) prompts(ctx context.Context, m view.Message) view.Prompts {
-	p := view.Prompts{Message: m}
+func (h Handlers) prompts(ctx context.Context, notice, errText string) prompthistory.Data {
+	p := prompthistory.Data{Notice: notice, Error: errText}
 	list, err := h.Svc.Prompts(ctx)
 	if err != nil {
 		p.Error = "プロンプトの履歴を読み込めませんでした。Nefos Video のログを確認してください"
 		return p
 	}
 	for _, e := range list {
-		p.Items = append(p.Items, view.PromptRow{
+		p.Items = append(p.Items, prompthistory.Row{
 			ID: e.ID, Text: e.Prompt, Negative: e.NegativePrompt, Uses: e.UseCount, LastUsed: timeText(e.LastUsedAt),
 			UseURL: paths.GenerationTest() + "?prompt=" + url.QueryEscape(e.ID),
 		})
@@ -304,11 +305,10 @@ func (h Handlers) prompts(ctx context.Context, m view.Message) view.Prompts {
 // DeletePrompt answers DELETE /generation-test/prompts/:id: only the prompt goes; the results made with it stay.
 func (h Handlers) DeletePrompt(c *gin.Context) {
 	err := h.Svc.DeletePrompt(c.Request.Context(), c.Param("id"))
-	m := view.Message{Notice: "プロンプトを履歴から削除しました（結果は残っています）"}
-	status := http.StatusOK
+	notice, errText, status := "プロンプトを履歴から削除しました（結果は残っています）", "", http.StatusOK
 	if err != nil {
-		status, m.Error = refuse(c, err)
-		m.Notice = ""
+		status, errText = refuse(c, err)
+		notice = ""
 	}
-	gtshare.Render(c, status, view.PromptHistory(h.prompts(c.Request.Context(), m)))
+	gtshare.Render(c, status, prompthistory.List(h.prompts(c.Request.Context(), notice, errText)))
 }

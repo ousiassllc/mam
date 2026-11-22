@@ -4,7 +4,7 @@
  * the document: the section may arrive in a swapped body.
  */
 
-import { highlightZone } from '../lib/dropzone';
+import { highlightZone } from '../lib/ui/dropzone';
 import { fileProblem, progressText } from './lora-import-model';
 
 const FORM = '[data-lora-pick]';

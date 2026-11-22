@@ -1,4 +1,4 @@
-import { highlightZone } from '../lib/dropzone';
+import { hasFiles, highlightZone } from '../lib/ui/dropzone';
 import { markAdded, releasePicker, RowReorder } from './inputs-dom';
 import { applyModels } from './inputs-models';
 import { defaultStrength, isUploadRef, moveItem, takeFiles, uploadRef } from './inputs-model';
@@ -281,10 +281,6 @@ class Inputs {
     for (const f of files) dt.items.add(f);
     this.fileInput.files = dt.files;
   }
-}
-
-function hasFiles(e: DragEvent): boolean {
-  return [...(e.dataTransfer?.types ?? [])].includes('Files');
 }
 
 /** Starts the input images of every form below `root` that has not been started. */

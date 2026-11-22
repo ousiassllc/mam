@@ -8,12 +8,14 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ousiassllc/mam/backend/internal/web/a11y/uisrc"
 )
 
 // The shape, the layers and the motion of the Ousiass UI guide (S1-S3, O4, M1). The values are in static/src/css/tokens.css; a class that is not
 // one of them does not compile there, and the sources are held to the same names here.
 func TestTokens_RadiiShadowLayersAndMotionAreTheGuides(t *testing.T) {
-	css := readTokens(t)
+	css := uisrc.ReadTokens(t)
 	for _, want := range []string{
 		"--radius-*: initial;", "--radius-sm: 0.25rem;", "--radius-md: 0.5rem;", "--radius-lg: 0.75rem;", "--radius-xl: 1rem;",
 		"--shadow-*: initial;", "--shadow-modal: 0 1px 2px rgb(0 0 0 / 0.06);",
@@ -45,7 +47,7 @@ var (
 // rounded-xl), the shadow is the modal's, the layers are the z-* names, a transition says what it moves (colour and background) and the gaps are
 // steps of 4px.
 func TestSources_UseOnlyTheGuidesShapeLayersAndMotion(t *testing.T) {
-	for _, path := range colorSources(t) {
+	for _, path := range uisrc.ColorSources(t) {
 		if strings.HasSuffix(path, ".css") || strings.HasSuffix(path, ".go") && !strings.Contains(path, "format") && !strings.Contains(path, "button") {
 			continue
 		}
@@ -96,7 +98,7 @@ func TestMotionCSS_FadesTheOverlaysAndClipsTheRipple(t *testing.T) {
 // card (an input, a button, a nested face, an alert). A panel with a neutral border and rounded-md on one of these tags is the 2nd-run miss.
 func TestSources_PanelsOfTheirOwnAreRoundedLg(t *testing.T) {
 	panel := regexp.MustCompile(`(?s)<(?:ul|ol|form|section|table)\b[^<>]*\brounded-md\b[^<>]*\bborder-border\b[^<>]*>|<(?:ul|ol|form|section|table)\b[^<>]*\bborder-border\b[^<>]*\brounded-md\b[^<>]*>`)
-	for _, path := range colorSources(t) {
+	for _, path := range uisrc.ColorSources(t) {
 		if strings.HasSuffix(path, ".css") {
 			continue
 		}
@@ -121,7 +123,7 @@ func TestSources_CardsAreRoundedLg(t *testing.T) {
 	padded := regexp.MustCompile(`[ "'](?:p|px|py)-[2-9][ "']`)
 	// The bar of the weight of a word sits against the text it edits and is a toolbar, not a card: its frame is rounded-md by spec/components/shared-ui-parts.md §W1.
 	const weightBar = "prompt-weight/mam-prompt-weight.ts"
-	for _, path := range colorSources(t) {
+	for _, path := range uisrc.ColorSources(t) {
 		if strings.HasSuffix(path, ".css") || strings.HasSuffix(path, ".go") || strings.HasSuffix(path, weightBar) {
 			continue
 		}
@@ -145,22 +147,22 @@ func TestSources_CardsAreRoundedLg(t *testing.T) {
 	assert.NotContains(t, string(frame), `"block rounded-md border border-border"`, "the corner of a pick.Card is the caller's")
 }
 
-// The look of a button is written once (O7): atoms/button.templ for the templates and components/lib/button.ts for the Lit parts. A line that spells the
+// The look of a button is written once (O7): atoms/button.templ for the templates and components/lib/ui/button.ts for the Lit parts. A line that spells the
 // main button (`bg-accent text-bone`) or the sub one (`border-border … hover:bg-accent-soft`) with the shape of a button (rounded-md font-semibold) again is a
 // copy that a change to the guide would miss.
 func TestSources_ButtonLookIsWrittenOnce(t *testing.T) {
 	shape := regexp.MustCompile(`rounded-md[^"` + "`" + `]*font-semibold|font-semibold[^"` + "`" + `]*rounded-md`)
 	main := regexp.MustCompile(`\bbg-accent\b[^"` + "`" + `]*\btext-bone\b`)
 	sub := regexp.MustCompile(`\bborder-border\b[^"` + "`" + `]*\bhover:bg-accent-soft\b|\bborder-border\b[^"` + "`" + `]*\btext-ink\b|\btext-ink\b[^"` + "`" + `]*\bborder-border\b`)
-	for _, path := range colorSources(t) {
-		if strings.HasSuffix(path, ".css") || strings.HasSuffix(path, "atoms/button.templ") || strings.HasSuffix(path, "lib/button.ts") {
+	for _, path := range uisrc.ColorSources(t) {
+		if strings.HasSuffix(path, ".css") || strings.HasSuffix(path, "atoms/button.templ") || strings.HasSuffix(path, "lib/ui/button.ts") {
 			continue
 		}
 		src, err := os.ReadFile(path)
 		require.NoError(t, err)
 		for n, line := range strings.Split(string(src), "\n") {
 			if shape.MatchString(line) && (main.MatchString(line) || sub.MatchString(line)) {
-				t.Errorf("%s:%d: a button class written by hand: use atoms.ButtonClass / atoms.SmallButtonClass (templ) or BUTTON + BUTTON_TONE of lib/button.ts (Lit) (O7)", path, n+1)
+				t.Errorf("%s:%d: a button class written by hand: use atoms.ButtonClass / atoms.SmallButtonClass (templ) or BUTTON + BUTTON_TONE of lib/ui/button.ts (Lit) (O7)", path, n+1)
 			}
 		}
 	}
@@ -171,7 +173,7 @@ func TestSources_ButtonLookIsWrittenOnce(t *testing.T) {
 // does not follow the scale. Texts that use an arrow to say "to" (→ in a sentence) are prose and not held here.
 func TestSources_IconsAreNotGlyphs(t *testing.T) {
 	glyph := regexp.MustCompile(`["'>（]\s*[←↑↓×＋✕✖★☆]\s*(?:[^\s"'<）]|["'<）])`)
-	for _, path := range colorSources(t) {
+	for _, path := range uisrc.ColorSources(t) {
 		if strings.HasSuffix(path, ".css") || strings.HasSuffix(path, "-fixtures.ts") { // a fixture is a stand-in for markup the server renders
 			continue
 		}
@@ -182,7 +184,7 @@ func TestSources_IconsAreNotGlyphs(t *testing.T) {
 				continue
 			}
 			if m := glyph.FindString(line); m != "" {
-				t.Errorf("%s:%d: %q: a glyph is used as an icon: use atoms.Icon / lib/icon.ts (Iconoir, I1)", path, n+1, m)
+				t.Errorf("%s:%d: %q: a glyph is used as an icon: use atoms.Icon / lib/ui/icon.ts (Iconoir, I1)", path, n+1, m)
 			}
 		}
 	}
@@ -195,7 +197,7 @@ func TestSources_ButtonLookedElementsHaveTheRipple(t *testing.T) {
 	element := regexp.MustCompile(`(?s)<(?:label|a|button|span)\b(?:[^<>"'{]|"[^"]*"|'[^']*'|\{[^}]*\})*>`)
 	look := regexp.MustCompile(`atoms\.(?:Small)?ButtonClass\(`)
 	paginationLook := regexp.MustCompile(`\blinkClass\b|\bcurrentClass\b`) // the bordered box of molecules/pagination (another package's linkClass is a text link)
-	for _, path := range colorSources(t) {
+	for _, path := range uisrc.ColorSources(t) {
 		if !strings.HasSuffix(path, ".templ") || strings.HasSuffix(path, "atoms/button.templ") {
 			continue
 		}
@@ -216,7 +218,7 @@ func TestSources_ButtonLookedElementsHaveTheRipple(t *testing.T) {
 
 // A transition is for a user who does not ask for less motion (M3): every `transition-colors` has `motion-reduce:transition-none` in the same class string.
 func TestSources_TransitionsStopForReducedMotion(t *testing.T) {
-	for _, path := range colorSources(t) {
+	for _, path := range uisrc.ColorSources(t) {
 		if strings.HasSuffix(path, ".css") {
 			continue
 		}
@@ -227,7 +229,7 @@ func TestSources_TransitionsStopForReducedMotion(t *testing.T) {
 			if !regexp.MustCompile(`(?:^|[^\w:-])transition-colors(?:[^\w-]|$)`).MatchString(line) {
 				continue
 			}
-			end := min(n+3, len(lines)) // a class string that runs over lines (lib/button.ts) says it within its next two
+			end := min(n+3, len(lines)) // a class string that runs over lines (lib/ui/button.ts) says it within its next two
 			if !strings.Contains(strings.Join(lines[n:end], "\n"), "motion-reduce:transition-none") {
 				t.Errorf("%s:%d: transition-colors without motion-reduce:transition-none (M3)", path, n+1)
 			}
@@ -236,12 +238,12 @@ func TestSources_TransitionsStopForReducedMotion(t *testing.T) {
 }
 
 // The look of a text-only button (a LinkButton: --mute text, an underline, Regular, disabled at opacity .4) is written once as well (O7): linkButtonClass in
-// atoms/button.templ for the templates and LINK_BUTTON in components/lib/button.ts for the Lit parts, the same words; a copy in a Lit part (take-table, the
+// atoms/button.templ for the templates and LINK_BUTTON in components/lib/ui/button.ts for the Lit parts, the same words; a copy in a Lit part (take-table, the
 // timeline) drifts: one had no transition, another no cursor-not-allowed.
 func TestSources_LinkButtonLookIsWrittenOnce(t *testing.T) {
 	templ, err := os.ReadFile("../atoms/button.templ")
 	require.NoError(t, err)
-	ts, err := os.ReadFile("../../../../static/src/components/lib/button.ts")
+	ts, err := os.ReadFile("../../../../static/src/components/lib/ui/button.ts")
 	require.NoError(t, err)
 	declared := regexp.MustCompile(`linkButtonClass = "([^"]*)"`).FindStringSubmatch(string(templ))
 	require.NotNil(t, declared, "atoms/button.templ declares linkButtonClass")
@@ -256,18 +258,18 @@ func TestSources_LinkButtonLookIsWrittenOnce(t *testing.T) {
 			words = append(words, w)
 		}
 	}
-	assert.ElementsMatch(t, strings.Fields(declared[1]), words, "LINK_BUTTON of lib/button.ts is linkButtonClass of atoms/button.templ")
+	assert.ElementsMatch(t, strings.Fields(declared[1]), words, "LINK_BUTTON of lib/ui/button.ts is linkButtonClass of atoms/button.templ")
 
 	copied := regexp.MustCompile(`\btext-mute\b[^"'` + "`" + `]*\bunderline\b[^"'` + "`" + `]*\bhover:text-ink\b[^"'` + "`" + `]*\bdisabled:`)
-	for _, path := range colorSources(t) {
-		if strings.HasSuffix(path, ".css") || strings.HasSuffix(path, "atoms/button.templ") || strings.HasSuffix(path, "lib/button.ts") {
+	for _, path := range uisrc.ColorSources(t) {
+		if strings.HasSuffix(path, ".css") || strings.HasSuffix(path, "atoms/button.templ") || strings.HasSuffix(path, "lib/ui/button.ts") {
 			continue
 		}
 		src, err := os.ReadFile(path)
 		require.NoError(t, err)
 		for n, line := range strings.Split(string(src), "\n") {
 			if copied.MatchString(line) {
-				t.Errorf("%s:%d: the look of a text-only button written by hand: use atoms.LinkButton (templ) or LINK_BUTTON of lib/button.ts (Lit) (O7)", path, n+1)
+				t.Errorf("%s:%d: the look of a text-only button written by hand: use atoms.LinkButton (templ) or LINK_BUTTON of lib/ui/button.ts (Lit) (O7)", path, n+1)
 			}
 		}
 	}

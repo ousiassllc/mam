@@ -29,4 +29,3 @@
 475	backend/internal/service/editor_reshoot.go
 361	backend/internal/service/editor_timeline.go
 2776	backend/internal/web/handler/
-2217	backend/internal/web/organisms/

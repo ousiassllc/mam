@@ -8,6 +8,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ousiassllc/mam/backend/internal/web/a11y/uisrc"
 )
 
 // An Icon call that gives a literal class says its size with a token utility: size-icon-sm / -md / -lg (16 / 20 / 24, I2; -xl 32 is for an empty state),
@@ -19,7 +21,7 @@ var (
 )
 
 func TestSources_IconsAreAtTheGuidesSizes(t *testing.T) {
-	for _, path := range colorSources(t) {
+	for _, path := range uisrc.ColorSources(t) {
 		if !strings.HasSuffix(path, ".templ") {
 			continue
 		}
@@ -40,7 +42,7 @@ func TestSources_IconsAreAtTheGuidesSizes(t *testing.T) {
 
 // The sizes are tokens: --icon-* in @theme (16 / 20 / 24 / 32) and a size-icon-* utility for each, and the default of the Go and the Lit Icon is a utility too.
 func TestTokens_IconSizesAreNamed(t *testing.T) {
-	css := readTokens(t)
+	css := uisrc.ReadTokens(t)
 	for _, want := range []string{
 		"--icon-sm: 1rem;", "--icon-md: 1.25rem;", "--icon-lg: 1.5rem;", "--icon-xl: 2rem;",
 		"@utility size-icon-sm {", "@utility size-icon-md {", "@utility size-icon-lg {", "@utility size-icon-xl {",
@@ -51,7 +53,7 @@ func TestTokens_IconSizesAreNamed(t *testing.T) {
 	goIcon, err := os.ReadFile("../atoms/icon.templ")
 	require.NoError(t, err)
 	assert.Contains(t, string(goIcon), `const iconDefaultClass = "size-icon-md shrink-0"`)
-	litIcon, err := os.ReadFile("../../../../static/src/components/lib/icon.ts")
+	litIcon, err := os.ReadFile("../../../../static/src/components/lib/ui/icon.ts")
 	require.NoError(t, err)
 	assert.Contains(t, string(litIcon), "size = 'size-icon-sm'")
 }

@@ -4,7 +4,7 @@
  * (the socket never carries a body), and handles the composer (reply target, attachments, Enter to send).
  */
 import { ajaxChecked, showAlert } from './ajax';
-import { createConnectionNotice, releaseIfDetached } from './components/lib/connection-notice';
+import { createConnectionNotice, releaseIfDetached } from './components/lib/ui/connection-notice';
 import { AJAX_FAILED_MESSAGE } from './components/lib/ajax';
 import { selfAndDescendants } from './components/lib/query';
 import { createSyncer, type Syncer } from './components/lib/sync';
