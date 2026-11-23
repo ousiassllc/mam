@@ -14,9 +14,9 @@ const (
 // Layout is the frame of one step: the h1, the progress, the step (its h2 and body, the children) and the buttons that go
 // on. Every page of the guide is a whole page; the links are plain links.
 templ Layout(f Frame) {
-	<main class="mx-auto max-w-4xl p-8">
-		<h1 class="mb-1 text-3xl font-semibold">はじめに</h1>
-		<p class="text-sm text-mute">Nefos Video を使い始めるための案内です。途中で「ガイドを閉じる」を押すと、そこでやめてプロジェクト一覧に進めます。</p>
+	<main class="mx-auto max-w-4xl p-4 md:p-6">
+		<h1 class="mb-2 text-3xl font-semibold">はじめに</h1>
+		<p class="text-sm text-ink">Nefos Video を使い始めるための案内です。途中で「ガイドを閉じる」を押すと、そこでやめてプロジェクト一覧に進めます。</p>
 		@progress(f)
 		<section aria-labelledby="onboarding-step-title" class="mt-6 flex flex-col gap-4" data-testid="onboarding-step" data-step={ f.Current().Slug }>
 			<p class="text-sm text-mute">ステップ { f.Number() } / { f.Total() }（{ Group(f.Current()) }）</p>
@@ -30,25 +30,48 @@ templ Layout(f Frame) {
 	</main>
 }
 
-// progress lists the steps; the current one is aria-current="step" and, not by colour alone, heavier and framed.
+// progress is the step wizard of the guide (brand guide §7 P1): a 28px circle for each step and a 1px line between them. The circle of the current
+// step is --accent with its number in --bone, a step before it is --accent with a check, and one not reached yet is a 1px frame with its number. The
+// current step is aria-current="step" and the only name in SemiBold; the others are links with the name in --ink. The circle and the line are decoration:
+// the list says the position, and a step before the current one says "完了" to a screen reader.
 templ progress(f Frame) {
 	<nav aria-label="進み具合" class="mt-4" data-testid="onboarding-progress">
-		<ol role="list" class="flex flex-wrap gap-2 text-sm">
+		<ol role="list" class="flex flex-wrap items-center gap-x-2 gap-y-3 text-sm">
 			for i, s := range f.Steps {
-				<li>
+				<li class="flex items-center gap-2">
 					if i == f.Index {
-						<span aria-current="step" class="inline-block rounded-md border border-accent bg-accent-soft px-2 py-1 text-ink">
-							{ num(i) }. { s.Title }
-						</span>
+						@stepCircle(i, f.Index)
+						<span aria-current="step" class="font-semibold text-ink">{ s.Title }</span>
 					} else {
-						<a href={ f.StepHref(i) } class="inline-block rounded-md border border-transparent px-2 py-1 text-ink hover:bg-accent-soft/60 hover:text-ink focus-visible:focus-ring">
-							{ num(i) }. { s.Title }
+						<a href={ f.StepHref(i) } class="flex items-center gap-2 rounded-md text-ink hover:underline focus-visible:focus-ring">
+							@stepCircle(i, f.Index)
+							<span>{ s.Title }</span>
+							if i < f.Index {
+								<span class="sr-only">（完了）</span>
+							}
 						</a>
+					}
+					if i < len(f.Steps)-1 {
+						<span aria-hidden="true" class="w-6 border-t border-border"></span>
 					}
 				</li>
 			}
 		</ol>
 	</nav>
+}
+
+// stepCircle is the circle of the step at index i when the page is the step at index current.
+templ stepCircle(i int, current int) {
+	switch  {
+		case i == current:
+			<span aria-hidden="true" class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-bone" data-state="current">{ num(i) }</span>
+		case i < current:
+			<span aria-hidden="true" class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-accent text-bone" data-state="done">
+				@atoms.Icon(atoms.IconCheck, "size-icon-sm")
+			</span>
+		default:
+			<span aria-hidden="true" class="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-border text-ink" data-state="todo">{ num(i) }</span>
+	}
 }
 
 // controls are the buttons under a step. The walkthrough goes on with "次へ"; a setup step may be left with "あとで"

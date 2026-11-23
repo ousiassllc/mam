@@ -27,7 +27,7 @@ templ entityForm(d Data, e entityView) {
 			@voicetrainpanel.Loader(voicetrainpanel.Placeholder{DOMID: "voice-train-" + e.ID, URL: paths.Project(d.Project.ID, "characters", e.ID, "voice-training")})
 		}
 		<details class="text-sm">
-			<summary class="cursor-pointer text-xs text-mute">LOCK 設定（AUTO: AI が更新 / LOCK: 更新しない）</summary>
+			<summary class={ atoms.SummaryClass }>LOCK 設定（AUTO: AI が更新 / LOCK: 更新しない）</summary>
 			<div class="mt-2 flex flex-col gap-1">
 				for _, f := range domain.LockableFields(e.Target) {
 					@locktoggle.Toggle(d.fieldLockToggle(e.Target, e.ID, f))
@@ -49,7 +49,7 @@ templ entityAttributeForm(d Data, e entityView) {
 		<p class="flex items-center gap-2 text-sm">
 			{ e.Name }
 			if e.Draft {
-				@atoms.BadgeWith(atoms.BadgeWarn, "下書き", templ.Attributes{"data-testid": "character-draft", "title": "Brief の添付画像から作った下書きです。髪型・衣装などを書き足して保存すると、この印は消えます（名前は仮のままです）"})
+				@atoms.BadgeWith(atoms.BadgeNeutral, "下書き", templ.Attributes{"data-testid": "character-draft", "title": "Brief の添付画像から作った下書きです。髪型・衣装などを書き足して保存すると、この印は消えます（名前は仮のままです）"})
 			}
 		</p>
 		<div class="grid gap-2 sm:grid-cols-2">
@@ -83,7 +83,7 @@ templ referenceSlotForm(d Data, e entityView, sf slotForm) {
 			}
 		}
 		if sf.Current != "" {
-			<a class="text-xs text-accent underline decoration-mute" href={ templ.SafeURL(paths.Project(d.Project.ID, "assets", sf.Current)) } target="_blank" rel="noopener">現在の画像</a>
+			<a class="text-sm text-accent underline decoration-mute" href={ templ.SafeURL(paths.Project(d.Project.ID, "assets", sf.Current)) } target="_blank" rel="noopener">現在の画像</a>
 		}
 		@atoms.ButtonFor(atoms.ToneNeutral, "割り当て", e.Name+" の "+slotLabels[sf.Slot.Name], templ.Attributes{"type": "submit"})
 	</form>
@@ -114,7 +114,7 @@ templ View(d Data) {
 		<section aria-label="Characters" class="flex flex-col gap-2">
 			<h2 class="text-sm font-semibold text-ink">Characters</h2>
 			<details class="text-sm" id="ws-add-character">
-				<summary class="cursor-pointer text-xs text-ink">登場人物を追加（AI の企画を待たずに、名前・髪型・衣装・性格・声と顔・全身の参照画像を直接登録する）</summary>
+				<summary class={ atoms.SummaryClass }>登場人物を追加（AI の企画を待たずに、名前・髪型・衣装・性格・声と顔・全身の参照画像を直接登録する）</summary>
 				<div class="mt-2">
 					@molecules.CharacterCreate(d.characterCreate())
 				</div>
@@ -154,7 +154,7 @@ templ View(d Data) {
 // singletonLocks are the LOCK switches of the Camera or the Story.
 templ singletonLocks(d Data, target domain.WorldTarget) {
 	<details class="text-sm">
-		<summary class="cursor-pointer text-xs text-mute">LOCK 設定（AUTO: AI が更新 / LOCK: 更新しない）</summary>
+		<summary class={ atoms.SummaryClass }>LOCK 設定（AUTO: AI が更新 / LOCK: 更新しない）</summary>
 		<div class="mt-2 flex flex-col gap-1">
 			for _, f := range domain.LockableFields(target) {
 				@locktoggle.Toggle(d.fieldLockToggle(target, "", f))

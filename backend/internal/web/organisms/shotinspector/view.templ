@@ -21,7 +21,7 @@ templ SpecSection(d Data) {
 	<section id="shot-spec" aria-label="Canonical Shot Spec" class="flex flex-col gap-2">
 		<h3 class="text-sm font-semibold">Canonical Shot Spec</h3>
 		if d.Spec == nil {
-			<p class="text-sm text-mute">Shot Spec はまだありません。生成を始めると AI が作成します。</p>
+			<p class="text-sm text-ink">Shot Spec はまだありません。生成を始めると AI が作成します。</p>
 		} else {
 			<dl class="grid gap-x-4 gap-y-1 text-sm md:grid-cols-[10rem_1fr]">
 				for _, r := range specRows(*d.Spec) {
@@ -32,7 +32,7 @@ templ SpecSection(d Data) {
 		}
 		if d.Shot.State.CanEditSpec() {
 			<form hx-put={ paths.Shot(d.Shot.ID, "shot-spec") } hx-target="#shot-spec" hx-swap="outerHTML" class="flex flex-col gap-2">
-				<label for="shot-spec-text" class="text-xs text-mute">Shot Spec を直接編集（JSON。英語で記述。LOCK 中の項目は変更できません）</label>
+				<label for="shot-spec-text" class="text-sm text-ink">Shot Spec を直接編集（JSON。英語で記述。LOCK 中の項目は変更できません）</label>
 				@atoms.Textarea(atoms.FieldSm, "font-mono", templ.Attributes{
 					"id":   "shot-spec-text",
 					"name": "shot_spec",
@@ -46,7 +46,7 @@ templ SpecSection(d Data) {
 				</div>
 			</form>
 		} else {
-			<p class="text-sm text-mute" data-spec-edit-blocked>生成・Repair 中は Shot Spec を編集できません。終わってから開き直してください。</p>
+			<p class="text-sm text-ink" data-spec-edit-blocked>生成・Repair 中は Shot Spec を編集できません。終わってから開き直してください。</p>
 		}
 	</section>
 }
@@ -80,7 +80,7 @@ templ ReferencePackSection(d Data) {
 			</ul>
 		}
 		if !d.Shot.State.CanPinReference() {
-			<p class="text-sm text-mute" data-pin-reference-blocked>生成・Repair・Judge 中は Reference Pack に追加できません。終わってから開き直してください。</p>
+			<p class="text-sm text-ink" data-pin-reference-blocked>生成・Repair・Judge 中は Reference Pack に追加できません。終わってから開き直してください。</p>
 		} else if len(d.Library) > 0 {
 			<form hx-post={ paths.Shot(d.Shot.ID, "references") } hx-target="#reference-pack" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]" class="flex flex-wrap items-center gap-2">
 				<label for="pin-reference" class="text-xs text-mute">ライブラリの参照画像を追加</label>
@@ -122,7 +122,7 @@ templ View(d Data) {
 				· { molecules.ShotStateLabel(d.Shot.State) }
 				· MODE { strings.ToUpper(string(d.Project.Mode)) }
 			</p>
-			<a href={ templ.SafeURL(paths.Project(d.Project.ID, "branches")) } class="mt-1 inline-block text-xs text-mute underline hover:text-ink">Branch を作る</a>
+			<a href={ templ.SafeURL(paths.Project(d.Project.ID, "branches")) } class="mt-1 inline-block text-sm text-mute underline hover:text-ink">Branch を作る</a>
 		</header>
 		<section aria-label="AUTO / MANUAL / LOCK" class="flex flex-col gap-2">
 			<h3 class="text-sm font-semibold">Locks</h3>
@@ -136,7 +136,7 @@ templ View(d Data) {
 		<section aria-label="演出指示" class="flex flex-col gap-2">
 			<h3 class="text-sm font-semibold">演出指示</h3>
 			<form hx-post={ paths.Shot(d.Shot.ID, "director-command") } hx-target="#shot-inspector" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]" class="flex flex-col gap-2">
-				<label for="director-command" class="text-xs text-mute">自然言語で指示（例: もう少し寄って。ラベルは固定して）。この Shot だけが再生成されます</label>
+				<label for="director-command" class="text-sm text-ink">自然言語で指示（例: もう少し寄って。ラベルは固定して）。この Shot だけが再生成されます</label>
 				@atoms.Textarea(atoms.FieldMd, "", templ.Attributes{
 					"id":        "director-command",
 					"name":      "content",
@@ -177,7 +177,7 @@ templ View(d Data) {
 									{{ tone, label := judgeSummary(res) }}
 									@atoms.Badge(tone, label)
 									if len(res.Issues) > 0 {
-										<ul class="list-disc pl-5 text-xs text-ink">
+										<ul class="list-disc pl-6 text-sm text-ink">
 											for _, is := range res.Issues {
 												<li>{ issueLine(is) }</li>
 											}

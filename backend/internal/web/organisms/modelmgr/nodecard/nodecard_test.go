@@ -116,7 +116,7 @@ func TestNodeCard_HasNoDescriptionButKeepsWhatDecidesTheInstall(t *testing.T) {
 func TestNodeDetail_DescribesTheDialogWithTheDescription(t *testing.T) {
 	for _, c := range nodecat.Default().Nodes {
 		body := render(t, nodecard.NodeDetail(nodecard.Node{ID: c.ID, Name: c.Name, Description: c.Description}))
-		assert.Contains(t, body, `<p id="mam-modal-desc" class="text-sm text-mute">`+html.EscapeString(c.Description)+`</p>`, c.ID)
+		assert.Contains(t, body, `<p id="mam-modal-desc" class="text-sm text-ink">`+html.EscapeString(c.Description)+`</p>`, c.ID)
 	}
 	n := nodecard.Node{ID: "n", Name: "N", State: "outdated", Detail: "更新が必要です"}
 	assert.Contains(t, render(t, nodecard.NodeCard(n)), `data-testid="mm-node-detail-note"`)

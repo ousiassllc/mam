@@ -20,9 +20,9 @@ templ ReviewInboxList(d ReviewInboxData) {
 	<div id="review-inbox" class="flex flex-col gap-6">
 		<section class="flex flex-col gap-2 rounded-lg border border-border p-3">
 			<h2 class="text-sm font-semibold">レビューパッケージを読み込む</h2>
-			<p class="text-sm text-mute">オーナーから受け取った ZIP（Review Package）を選びます。中身は動画 1 本とオーナーのメモだけです。</p>
+			<p class="text-sm text-ink">オーナーから受け取った ZIP（Review Package）を選びます。中身は動画 1 本とオーナーのメモだけです。</p>
 			<form class="flex flex-wrap items-center gap-2" hx-post={ paths.ReviewImport() } hx-encoding="multipart/form-data" hx-target="#review-inbox" hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]">
-				<input id="review-package-file" type="file" name="package" required accept=".zip,application/zip" aria-label="レビューパッケージ" class="text-xs"/>
+				<input id="review-package-file" type="file" name="package" required accept=".zip,application/zip" aria-label="レビューパッケージ" class="text-sm"/>
 				@atoms.Button(atoms.TonePrimary, "読み込む", templ.Attributes{"type": "submit"})
 			</form>
 		</section>
@@ -74,7 +74,7 @@ templ ReviewWorkspace(i domain.ReviewInbox) {
 		<video class="w-full rounded-md bg-black" aria-label="レビュー対象の動画" controls preload="metadata" src={ paths.Review(i.ID, "video") }></video>
 		if i.Note != "" {
 			<section class="rounded-lg border border-border p-3" aria-label="オーナーからのメモ">
-				<h2 class="mb-1 text-sm font-semibold">オーナーからのメモ</h2>
+				<h2 class="mb-2 text-sm font-semibold">オーナーからのメモ</h2>
 				<p class="whitespace-pre-wrap text-sm text-ink">{ i.Note }</p>
 			</section>
 		}
@@ -115,7 +115,7 @@ templ ReviewComments(i domain.ReviewInbox) {
 templ ReviewCommentForm(i domain.ReviewInbox, oob bool) {
 	<form
 		id="review-comment-form"
-		class="flex flex-col gap-2 rounded-md border border-border p-3"
+		class="flex flex-col gap-2 rounded-lg border border-border p-3"
 		hx-post={ paths.Review(i.ID, "comments") }
 		hx-target="#review-comments"
 		hx-swap="outerHTML"
@@ -144,7 +144,7 @@ templ ReviewCommentForm(i domain.ReviewInbox, oob bool) {
 templ ReviewDecision(i domain.ReviewInbox) {
 	<section id="review-decision" class="flex flex-col gap-2 rounded-lg border border-border p-3" aria-label="判定">
 		<h2 class="text-sm font-semibold">判定</h2>
-		<p class="text-sm text-mute">応答ファイルに入るのは、表示名・判定・全体コメント・上のコメントだけです。表示名は自己申告で、確認はされません。</p>
+		<p class="text-sm text-ink">応答ファイルに入るのは、表示名・判定・全体コメント・上のコメントだけです。表示名は自己申告で、確認はされません。</p>
 		<form class="flex flex-col gap-2" hx-put={ paths.Review(i.ID, "decision") } hx-target="#review-decision" hx-swap="outerHTML">
 			<label class="flex flex-col gap-1 text-xs text-mute" for="review-reviewer-name">
 				表示名（1〜50 文字）
@@ -152,10 +152,10 @@ templ ReviewDecision(i domain.ReviewInbox) {
 			</label>
 			<fieldset class="flex flex-wrap gap-2 text-sm">
 				<legend class="mb-1 text-xs text-mute">判定</legend>
-				@pick.Card(templ.Attributes{"type": "radio", "name": "decision", "value": "approved", "required": true, "checked": i.Decision == domain.DecisionApproved}, "px-4 py-2 text-center") {
+				@pick.Card(templ.Attributes{"type": "radio", "name": "decision", "value": "approved", "required": true, "checked": i.Decision == domain.DecisionApproved}, "rounded-md px-4 py-2 text-center") {
 					承認
 				}
-				@pick.Card(templ.Attributes{"type": "radio", "name": "decision", "value": "changes_requested", "checked": i.Decision == domain.DecisionChangesRequested}, "px-4 py-2 text-center") {
+				@pick.Card(templ.Attributes{"type": "radio", "name": "decision", "value": "changes_requested", "checked": i.Decision == domain.DecisionChangesRequested}, "rounded-md px-4 py-2 text-center") {
 					修正依頼
 				}
 			</fieldset>

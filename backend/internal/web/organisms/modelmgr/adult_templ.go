@@ -138,7 +138,7 @@ func AdultDialog(d AdultConfirm) templ.Component {
 			templ_7745c5c3_Var4 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<section class=\"flex flex-col gap-3 p-5 focus-visible:focus-ring\" role=\"dialog\" aria-labelledby=\"mm-adult-title\" tabindex=\"-1\" data-inline-dialog data-return-focus=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<section class=\"flex flex-col gap-3 p-6 focus-visible:focus-ring\" role=\"dialog\" aria-labelledby=\"mm-adult-title\" tabindex=\"-1\" data-inline-dialog data-return-focus=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -187,7 +187,7 @@ func AdultDialog(d AdultConfirm) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</p><p class=\"text-sm text-mute\">モデルの重みは Nefos Video が再配布するものではありません。モデルごとのライセンスへの同意は、導入のときに別に取ります。生成物の内容は Nefos Video では選別しません。ローカルでの利用はあなたの責任です。</p><form class=\"flex flex-col gap-3\" hx-put=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</p><p class=\"text-sm text-ink\">モデルの重みは Nefos Video が再配布するものではありません。モデルごとのライセンスへの同意は、導入のときに別に取ります。生成物の内容は Nefos Video では選別しません。ローカルでの利用はあなたの責任です。</p><form class=\"flex flex-col gap-3\" hx-put=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -319,7 +319,7 @@ func CommercialCard(c CommercialPanel) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" class=\"flex flex-col gap-2 rounded-md border border-border p-3\" data-testid=\"mm-commercial-setting\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" class=\"flex flex-col gap-2 rounded-lg border border-border p-3\" data-testid=\"mm-commercial-setting\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

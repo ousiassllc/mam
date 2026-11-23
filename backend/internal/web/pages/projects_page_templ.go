@@ -13,6 +13,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/layout"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules/pagehead"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms"
+	"github.com/ousiassllc/mam/backend/internal/web/organisms/projectimport"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/sidenav"
 )
 
@@ -71,7 +72,7 @@ func ProjectsPage(csrfToken string, projects []domain.Project, form organisms.Ne
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = organisms.ProjectImportForm(organisms.ProjectImportFormData{}).Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = projectimport.Form(projectimport.Data{}).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

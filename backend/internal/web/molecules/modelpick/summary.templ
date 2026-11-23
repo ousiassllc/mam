@@ -28,8 +28,9 @@ templ Summary(b Filter) {
 								hx-target={ b.Target }
 								hx-swap="outerHTML"
 								data-testid="model-pick-chip-remove"
+								data-ripple
 							>
-								@atoms.Icon(atoms.IconClose, "h-4 w-4")
+								@atoms.Icon(atoms.IconClose, "size-icon-sm")
 							</button>
 						</span>
 					</li>
@@ -37,12 +38,13 @@ templ Summary(b Filter) {
 				<li>
 					<button
 						type="button"
-						class="cursor-pointer rounded-md px-2 py-1 text-xs text-ink underline hover:text-ink focus-visible:focus-ring"
+						class="cursor-pointer rounded-md px-2 py-1 text-sm text-ink underline hover:text-ink focus-visible:focus-ring"
 						hx-get={ b.URL(b.ClearAll()) }
 						hx-include={ b.clearInclude() }
 						hx-target={ b.Target }
 						hx-swap="outerHTML"
 						data-testid="model-pick-clear-all"
+						data-ripple
 					>すべてクリア</button>
 				</li>
 			</ul>
@@ -63,6 +65,7 @@ templ Summary(b Filter) {
 						hx-target={ b.Target }
 						hx-swap="outerHTML"
 						data-testid="model-pick-show-hidden"
+						data-ripple
 					>使えないものも表示</button>
 				</span>
 			}

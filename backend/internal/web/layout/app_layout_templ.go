@@ -391,7 +391,7 @@ func Shell(nav sidenav.State) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<div id=\"content\" class=\"min-w-0 flex-1\"><div id=\"alert-region\" class=\"sticky top-0 z-sticky flex flex-col gap-2 px-4 pt-4 empty:hidden md:px-8\"></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<div id=\"content\" class=\"min-w-0 flex-1\"><div id=\"alert-region\" class=\"sticky top-0 z-sticky flex flex-col gap-2 px-4 pt-4 empty:hidden md:px-6\"></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -70,12 +70,13 @@ templ VersionHistoryPanel(d VersionHistoryData) {
 							@atoms.Badge(atoms.BadgeNeutral, "現在")
 						} else if d.RestoreBlocked == "" {
 							@atoms.ButtonFor(atoms.ToneNeutral, "このバージョンに復元", fmt.Sprintf("v%d", e.Number), templ.Attributes{
-								"type":           "button",
-								"data-focus-key": "restore-" + d.DOMID + "-" + strconv.Itoa(e.Number),
-								"hx-post":        d.restoreURL(e.Number),
-								"hx-target":      d.target(),
-								"hx-swap":        "outerHTML",
-								"hx-confirm":     fmt.Sprintf("v%d に復元しますか？（新しいバージョンとして追記され、現在の内容も履歴に残ります）", e.Number),
+								"type":              "button",
+								"data-focus-key":    "restore-" + d.DOMID + "-" + strconv.Itoa(e.Number),
+								"hx-post":           d.restoreURL(e.Number),
+								"hx-target":         d.target(),
+								"hx-swap":           "outerHTML",
+								"hx-confirm":        fmt.Sprintf("v%d に復元しますか？（新しいバージョンとして追記され、現在の内容も履歴に残ります）", e.Number),
+								"data-confirm-tone": "primary", "data-confirm-label": "復元する",
 							})
 						}
 					</li>

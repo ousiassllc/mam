@@ -7,7 +7,7 @@ const FORM = `
 <div data-max-bytes="1048576">
   <form data-lora-pick>
     <input type="file" name="file" data-lora-file>
-    <div data-lora-zone>ここにドロップ</div>
+    <div data-lora-zone class="border-border">ここにドロップ</div>
     <p data-lora-error hidden></p>
     <div data-lora-progress hidden><progress max="100" value="0"></progress><p data-lora-progress-text></p></div>
     <button type="submit">send</button>
@@ -73,6 +73,19 @@ describe('the "ファイルを追加" form of the model manager (#1119)', () => 
     expect(event.defaultPrevented).to.equal(true);
     expect(q<HTMLInputElement>('[data-lora-file]').files?.[0]?.name).to.equal('dropped.safetensors');
     expect(submitted).to.equal(1);
+  });
+
+  it('puts the --accent border on the zone while a file is dragged over it: the resting border-border is taken off, as it would win over border-accent', () => {
+    const zone = q('[data-lora-zone]');
+    const data = new DataTransfer();
+    data.items.add(file('a.safetensors', 10));
+    zone.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: data }));
+    expect(zone.classList.contains('border-accent')).to.equal(true);
+    expect(zone.classList.contains('bg-accent-soft')).to.equal(true);
+    expect(zone.classList.contains('border-border')).to.equal(false);
+    zone.dispatchEvent(new DragEvent('dragleave', { bubbles: true, relatedTarget: document.body }));
+    expect(zone.classList.contains('border-accent')).to.equal(false);
+    expect(zone.classList.contains('border-border')).to.equal(true);
   });
 
   it('shows the progress of the transfer that htmx reports', () => {

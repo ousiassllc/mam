@@ -24,9 +24,6 @@ const (
 	appName = "Nefos Video"
 	// uniqueID identifies the single running instance (Wails SingleInstance).
 	uniqueID = "com.ousiassllc.mam"
-	// waitingPage is shown until the server is ready: only the background colour of the app layout
-	// (bg-bone), so there is no white flash before the server answers.
-	waitingPage = `<!doctype html><html><body style="margin:0;background:#050505"></body></html>`
 )
 
 func main() {
@@ -118,8 +115,8 @@ func run(args []string, getenv func(string) string) int {
 		Height:           900,
 		MinWidth:         1024,
 		MinHeight:        700,
-		HTML:             waitingPage,
-		BackgroundColour: application.NewRGB(10, 10, 10),
+		HTML:             desktop.WaitingPage,
+		BackgroundColour: application.NewRGB(desktop.WindowBackground[0], desktop.WindowBackground[1], desktop.WindowBackground[2]),
 	})
 	window.Store(w)
 

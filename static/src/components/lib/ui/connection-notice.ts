@@ -1,7 +1,8 @@
 /** The notice shown when a WebSocket has given up reconnecting: what stopped updating and how to get it back. */
 
-import { createLogger } from './logger';
-import { CONNECTION_LOST_MESSAGE, type Connection } from './ws';
+import { whenFaded } from './fade';
+import { createLogger } from '../logger';
+import { CONNECTION_LOST_MESSAGE, type Connection } from '../ws';
 
 const REGION_ID = 'connection-lost-region';
 const TEMPLATE_ID = 'connection-notice-template';
@@ -10,7 +11,7 @@ const log = createLogger('connection-notice');
 export interface ConnectionNotice {
   /** Shows the notice; "再接続" calls `retry`. */
   show(retry: () => void): void;
-  /** Removes it (the connection is back). */
+  /** Takes it away with the fade-out (the connection is back). */
   hide(): void;
 }
 
@@ -19,7 +20,8 @@ function region(): HTMLElement {
   if (!el) {
     el = document.createElement('div');
     el.id = REGION_ID;
-    el.className = 'pointer-events-none fixed bottom-4 left-4 z-toast flex flex-col gap-2';
+    // Above the toast (bottom-6, one line of min-h-10) so that the two never cover each other, and never wider than the window.
+    el.className = 'pointer-events-none fixed bottom-20 left-4 z-toast flex max-w-[calc(100vw-2rem)] flex-col gap-2';
     document.body.append(el);
   }
   return el;
@@ -51,8 +53,12 @@ export function createConnectionNotice(what: string): ConnectionNotice {
       region().append(notice);
     },
     hide() {
-      notice?.remove();
+      const leaving = notice;
       notice = null;
+      if (!leaving) return;
+      // It fades out (data-leaving, motion.css; M5) and is removed when the fade is over, like an alert that is closed.
+      leaving.setAttribute('data-leaving', '');
+      void whenFaded(leaving).then(() => leaving.remove());
     },
   };
 }

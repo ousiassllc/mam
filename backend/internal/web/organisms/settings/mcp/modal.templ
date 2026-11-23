@@ -141,9 +141,10 @@ templ IssuedModal(t NewToken) {
 				autofocus
 				data-copy-source={ TokenFieldID }
 				data-copy-status={ CopyStatusID }
-				class="inline-flex items-center gap-2 rounded-md border border-border px-3 py-2 text-sm font-semibold text-ink hover:bg-accent-soft focus-visible:focus-ring"
+				data-ripple
+				class={ atoms.ButtonClass(atoms.ToneNeutral) + " gap-2" }
 			>
-				@atoms.Icon(atoms.IconCopy, "h-4 w-4")
+				@atoms.Icon(atoms.IconCopy, "size-icon-sm")
 				コピー
 			</button>
 		</div>

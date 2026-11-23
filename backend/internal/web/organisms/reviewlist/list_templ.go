@@ -96,12 +96,12 @@ func List(d Data) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"review-list\" class=\"flex flex-col gap-6\"><section class=\"flex flex-col gap-2 rounded-lg border border-border p-3\"><h2 class=\"text-sm font-semibold\">レビューを依頼する</h2><p class=\"text-sm text-mute\">選んだ書き出し（動画 1 本）とメモだけを ZIP（Review Package）にして渡します。Project の内容（Brief・チャット・Notes・参照画像・顔データ・設定）と API キーは含まれません。共有される名前は Project 名です。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div id=\"review-list\" class=\"flex flex-col gap-6\"><section class=\"flex flex-col gap-2 rounded-lg border border-border p-3\"><h2 class=\"text-sm font-semibold\">レビューを依頼する</h2><p class=\"text-sm text-ink\">選んだ書き出し（動画 1 本）とメモだけを ZIP（Review Package）にして渡します。Project の内容（Brief・チャット・Notes・参照画像・顔データ・設定）と API キーは含まれません。共有される名前は Project 名です。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if len(d.Exports) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<p class=\"text-sm text-mute\">書き出しがまだありません。編集 / 書き出しで Final Export を作ると、レビューを依頼できます。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<p class=\"text-sm text-ink\">書き出しがまだありません。編集 / 書き出しで Final Export を作ると、レビューを依頼できます。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -111,7 +111,7 @@ func List(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</section><section class=\"flex flex-col gap-2 rounded-lg border border-border p-3\"><h2 class=\"text-sm font-semibold\">レビュアーの応答を取り込む</h2><p class=\"text-sm text-mute\">レビュアーから届いた応答ファイル（JSON）を選びます。レビュアーの名前は本人の自己申告で、確認はされません。</p>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</section><section class=\"flex flex-col gap-2 rounded-lg border border-border p-3\"><h2 class=\"text-sm font-semibold\">レビュアーの応答を取り込む</h2><p class=\"text-sm text-ink\">レビュアーから届いた応答ファイル（JSON）を選びます。レビュアーの名前は本人の自己申告で、確認はされません。</p>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -382,7 +382,7 @@ func reviewImportForm(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" hx-encoding=\"multipart/form-data\" hx-target=\"this\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\"><input id=\"review-response-file\" type=\"file\" name=\"response\" required accept=\".json,application/json\" aria-label=\"応答ファイル\" class=\"text-xs\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "\" hx-encoding=\"multipart/form-data\" hx-target=\"this\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\"><input id=\"review-response-file\" type=\"file\" name=\"response\" required accept=\".json,application/json\" aria-label=\"応答ファイル\" class=\"text-sm\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -463,7 +463,7 @@ func reviewCard(projectID string, it Item, oob bool) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" class=\"flex flex-col gap-3 rounded-md border border-border p-3\" aria-label=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" class=\"flex flex-col gap-3 rounded-lg border border-border p-3\" aria-label=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -575,7 +575,7 @@ func reviewCard(projectID string, it Item, oob bool) templ.Component {
 			}
 		}
 		if len(it.Item.Responses) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<p class=\"text-xs text-mute\">応答はまだ取り込まれていません。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<p class=\"text-sm text-mute\">応答はまだ取り込まれていません。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

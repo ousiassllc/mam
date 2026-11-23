@@ -121,3 +121,15 @@ func TestNotice_HasTheReasonAndACloseButtonThatTakesTheFocus(t *testing.T) {
 	assert.Contains(t, html, `autofocus`)
 	assert.NotContains(t, html, "<form")
 }
+
+// The confirmation modal has the button that goes on in both tones: the danger 実行する, and a hidden primary one that confirm.ts keeps for a question
+// that destroys nothing (data-confirm-tone="primary" on the asking element). Only one of them ever shows (O2).
+func TestConfirm_HasTheButtonThatGoesOnInBothTones(t *testing.T) {
+	html := render(t, modal.Confirm())
+
+	assert.Equal(t, 2, strings.Count(html, "data-confirm-ok"))
+	assert.Contains(t, html, `data-confirm-tone="danger"`)
+	assert.Contains(t, html, `data-confirm-tone="primary" hidden`)
+	assert.Equal(t, 1, strings.Count(html, "text-danger"), "the danger button is the only danger-coloured one")
+	assert.Equal(t, 1, strings.Count(html, "bg-accent text-bone"), "and the primary one is the accent button")
+}

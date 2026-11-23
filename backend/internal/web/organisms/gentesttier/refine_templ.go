@@ -144,7 +144,7 @@ func Refine(d Data) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<p class=\"text-sm text-mute\" data-gt-refine-empty data-testid=\"gt-refine-empty\">変えた項目はまだありません。変えると、ここに並び、元に戻せます。</p><ul class=\"flex flex-col gap-1\" data-gt-refine-list data-testid=\"gt-refine-list\" aria-live=\"polite\"></ul></section>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<p class=\"text-sm text-ink\" data-gt-refine-empty data-testid=\"gt-refine-empty\">変えた項目はまだありません。変えると、ここに並び、元に戻せます。</p><ul class=\"flex flex-col gap-1\" data-gt-refine-list data-testid=\"gt-refine-list\" aria-live=\"polite\"></ul></section>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

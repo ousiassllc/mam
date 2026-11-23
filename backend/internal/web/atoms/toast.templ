@@ -2,11 +2,12 @@ package atoms
 
 // Toast is the one definition of a toast's markup (the UI guide, O3): a short line of what worked ("保存しました"), a pill at the bottom centre, on
 // --ink with --bone text, one at a time (a new one replaces the one that is up: ToastOOB swaps the region's content), gone after 3 seconds
-// (static/src/components/toast/toast.ts). It is not for what went wrong: an error, a refusal and anything that needs reading again is an Alert.
+// (static/src/components/toast/toast.ts). It is one line: the message is one short sentence and the span is truncated, never wrapped, so
+// that 3 seconds are enough to read it; what else there is to say belongs in the body of the screen. It is not for what went wrong: an error, a refusal and anything that needs reading again is an Alert.
 templ Toast(message string) {
-	<div class="pointer-events-auto flex min-h-10 items-center gap-2 rounded-full bg-ink px-4 py-2 text-sm text-bone" role="status" data-toast>
-		@Icon(IconSuccess, "h-4 w-4 shrink-0")
-		<span data-toast-message>{ message }</span>
+	<div class="pointer-events-auto flex min-h-10 max-w-full items-center gap-2 rounded-full bg-ink px-4 py-2 text-sm text-bone" role="status" data-toast>
+		@Icon(IconSuccess, "size-icon-sm shrink-0")
+		<span class="min-w-0 truncate" data-toast-message>{ message }</span>
 	</div>
 }
 

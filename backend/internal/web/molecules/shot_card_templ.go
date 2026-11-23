@@ -258,7 +258,7 @@ func TakeRow(t domain.Take, n int, selected bool, repairable bool, judgeable boo
 			templ_7745c5c3_Var6 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<li class=\"flex items-center justify-between gap-2 text-xs text-ink\"><span class=\"flex min-w-0 items-center gap-1\"><span class=\"truncate\" title=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<li class=\"flex items-center justify-between gap-2 text-sm text-ink\"><span class=\"flex min-w-0 items-center gap-1\"><span class=\"truncate\" title=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -398,7 +398,7 @@ func ShotCard(d ShotCardData) templ.Component {
 			templ_7745c5c3_Var9 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		var templ_7745c5c3_Var10 = []any{"rounded-md border p-3", templ.KV("border-accent bg-accent-soft", d.Selected), templ.KV("border-border bg-surface", !d.Selected)}
+		var templ_7745c5c3_Var10 = []any{"rounded-lg border p-3", templ.KV("border-accent bg-accent-soft", d.Selected), templ.KV("border-border bg-surface", !d.Selected)}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var10...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -674,7 +674,7 @@ func ShotCard(d ShotCardData) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "\" class=\"mt-1 inline-block text-xs text-mute underline hover:text-ink\">Take 比較</a>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 38, "\" class=\"mt-1 inline-block text-sm text-mute underline hover:text-ink\">Take 比較</a>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

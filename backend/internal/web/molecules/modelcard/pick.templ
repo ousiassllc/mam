@@ -44,7 +44,7 @@ templ Summary(c Card) {
 		}
 	</span>
 	if c.Note != "" {
-		<span class={ "break-words text-xs text-warning", templ.KV("opacity-60", c.Reason != nil) } data-testid="model-note">{ c.Note }</span>
+		<span class={ "break-words text-sm text-warning", templ.KV("opacity-60", c.Reason != nil) } data-testid="model-note">{ c.Note }</span>
 	}
 }
 
@@ -70,7 +70,9 @@ templ PickItem(c Card) {
 				<span class={ "flex flex-col gap-2 rounded-lg border border-border bg-surface p-3 pr-8 text-sm", pick.GlowFrame }>
 					@Summary(c)
 				</span>
-				<span class="pointer-events-none absolute right-3 top-3 hidden text-accent peer-checked:block" aria-hidden="true" data-card-mark>✓</span>
+				<span class="pointer-events-none absolute right-3 top-3 hidden text-accent peer-checked:block" aria-hidden="true" data-card-mark>
+					@atoms.Icon(atoms.IconCheck, "block size-icon-sm")
+				</span>
 			</label>
 		} else {
 			<button

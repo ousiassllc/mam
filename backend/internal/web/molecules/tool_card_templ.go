@@ -210,7 +210,7 @@ func ToolCardItem(c ToolCard) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\" class=\"flex h-full min-h-36 flex-col gap-3 rounded-lg border border-border bg-surface p-4 transition-colors hover:border-mute hover:bg-accent-soft/60 focus-visible:focus-ring motion-reduce:transition-none\"><span class=\"flex items-center gap-3\"><span class=\"flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent\" aria-hidden=\"true\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "\" class=\"flex h-full min-h-36 flex-col gap-3 rounded-lg border border-border bg-surface p-4 transition-colors hover:border-mute hover:bg-accent-soft focus-visible:focus-ring motion-reduce:transition-none\"><span class=\"flex items-center gap-3\"><span class=\"flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent\" aria-hidden=\"true\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -298,14 +298,14 @@ func ToolCardItem(c ToolCard) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" class=\"text-pretty text-sm text-mute\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "\" class=\"text-pretty text-sm text-ink\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var14 string
 		templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(c.Description)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/tool_card.templ`, Line: 95, Col: 89}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/tool_card.templ`, Line: 95, Col: 88}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 		if templ_7745c5c3_Err != nil {
@@ -436,7 +436,7 @@ func ToolCardItem(c ToolCard) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = atoms.Icon(atoms.IconChevronRight, "h-4 w-4 shrink-0").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = atoms.Icon(atoms.IconChevronRight, "size-icon-sm shrink-0").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

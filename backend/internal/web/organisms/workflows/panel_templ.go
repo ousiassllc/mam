@@ -188,7 +188,7 @@ func list(d Data) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if len(d.Workflows) == 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<p class=\"text-sm text-mute\" data-testid=\"workflows-empty\">保存したワークフローはまだありません。ノード画面で作って「ComfyUI から取り込む」か、API 形式の JSON を取り込んでください。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<p class=\"text-sm text-ink\" data-testid=\"workflows-empty\">保存したワークフローはまだありません。ノード画面で作って「ComfyUI から取り込む」か、API 形式の JSON を取り込んでください。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -290,7 +290,7 @@ func row(w Row) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</span> <code class=\"break-all text-xs text-ink\" data-testid=\"workflow-model-id\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</span> <code class=\"break-all text-sm text-ink\" data-testid=\"workflow-model-id\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -459,7 +459,7 @@ func row(w Row) templ.Component {
 			}
 		}
 		if len(w.Warnings) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<ul class=\"flex flex-col gap-1 text-xs text-warning\" role=\"status\" data-testid=\"workflow-warnings\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "<ul class=\"flex flex-col gap-1 text-sm text-warning\" role=\"status\" data-testid=\"workflow-warnings\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -529,7 +529,7 @@ func importJSON(d Data) templ.Component {
 			templ_7745c5c3_Var21 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<form class=\"flex flex-col gap-3 rounded-md border border-border p-4\" hx-post=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 43, "<form class=\"flex flex-col gap-3 rounded-lg border border-border p-4\" hx-post=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -555,7 +555,7 @@ func importJSON(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\" autocomplete=\"off\" data-testid=\"workflow-import-json\"><h3 class=\"text-sm font-semibold\">API 形式の JSON から取り込む</h3><p class=\"text-sm text-mute\">ComfyUI の「Save (API Format)」で書き出した JSON（ファイルか貼り付け）を保存します。入力の割り当ては一般的なノードから推測するので、保存後に「編集」で確かめてください。</p><div class=\"flex flex-wrap items-end gap-3\"><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"workflow-import-name\"><span>名前</span>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "\" hx-swap=\"outerHTML\" hx-sync=\"this:drop\" hx-disabled-elt=\"find button[type=submit]\" autocomplete=\"off\" data-testid=\"workflow-import-json\"><h2 class=\"text-sm font-semibold\">API 形式の JSON から取り込む</h2><p class=\"text-sm text-ink\">ComfyUI の「Save (API Format)」で書き出した JSON（ファイルか貼り付け）を保存します。入力の割り当ては一般的なノードから推測するので、保存後に「編集」で確かめてください。</p><div class=\"flex flex-wrap items-end gap-3\"><label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"workflow-import-name\"><span>名前</span>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -628,7 +628,7 @@ func importRemote(d Data) templ.Component {
 			templ_7745c5c3_Var24 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<div class=\"flex flex-col gap-3 rounded-lg border border-border p-4\" data-testid=\"workflow-import-remote\"><h3 class=\"text-sm font-semibold\">ComfyUI から取り込む</h3><p class=\"text-sm text-mute\">ノード画面で作ったワークフローを、ComfyUI に保存してから一度実行してください。ここで ComfyUI の保存済みワークフローを選ぶと、画面の形式と、最後の実行の API 形式を取り込みます。</p><form class=\"flex flex-wrap items-end gap-3\" hx-get=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<div class=\"flex flex-col gap-3 rounded-lg border border-border p-4\" data-testid=\"workflow-import-remote\"><h2 class=\"text-sm font-semibold\">ComfyUI から取り込む</h2><p class=\"text-sm text-ink\">ノード画面で作ったワークフローを、ComfyUI に保存してから一度実行してください。ここで ComfyUI の保存済みワークフローを選ぶと、画面の形式と、最後の実行の API 形式を取り込みます。</p><form class=\"flex flex-wrap items-end gap-3\" hx-get=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

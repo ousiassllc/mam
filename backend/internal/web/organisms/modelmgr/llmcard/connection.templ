@@ -21,7 +21,7 @@ templ ConnectionSection(d Connection) {
 	<ul id={ ConnectionID } role="list" class="flex flex-col gap-4" data-testid="mm-llm-connection">
 		@settingsui.CardItem(d.card()) {
 			if d.Note {
-				<p class="text-sm text-mute" data-testid="mm-llm-connection-note">{ noteText }</p>
+				<p class="text-sm text-ink" data-testid="mm-llm-connection-note">{ noteText }</p>
 			}
 			<form id="mm-llm-connection-form" class="flex w-full flex-col gap-3" hx-put={ paths.ModelManagerLocalLLMConnection() } hx-target={ "#" + ConnectionID } hx-swap="outerHTML" hx-sync="this:drop" hx-disabled-elt="find button[type=submit]" data-testid="mm-llm-connection-form">
 				<div class="flex flex-col gap-1">
@@ -31,7 +31,7 @@ templ ConnectionSection(d Connection) {
 						"autocomplete": "off", "spellcheck": "false", "disabled": d.Pinned, "data-testid": "mm-llm-base-url",
 						"aria-invalid": invalid(d.Blame == "base_url"), "aria-describedby": "mm-llm-base-url-help",
 					})
-					<p id="mm-llm-base-url-help" class="text-sm text-mute">{ baseURLHelp }</p>
+					<p id="mm-llm-base-url-help" class="text-sm text-ink">{ baseURLHelp }</p>
 				</div>
 				<div class="flex flex-col gap-1">
 					<label class="text-sm text-ink" for="mm-llm-api-key">API キー（任意）</label>
@@ -48,7 +48,7 @@ templ ConnectionSection(d Connection) {
 				</div>
 				<label class="flex items-start gap-2 text-sm text-ink">
 					@atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": "unload", "value": "1", "checked": d.Unload, "disabled": d.Pinned, "data-testid": "mm-llm-unload"})
-					<span>画像・動画を作る前に、Ollama のモデルをメモリから降ろす<span class="block text-xs text-mute">ComfyUI と GPU を取り合わないためのスイッチです（Ollama の keep_alive=0）。Ollama 以外のサーバーでは何もしません。使うときは、次の LLM の呼び出しでモデルを読み込み直すため少し待ちます。</span></span>
+					<span>画像・動画を作る前に、Ollama のモデルをメモリから降ろす<span class="block text-sm text-ink">ComfyUI と GPU を取り合わないためのスイッチです（Ollama の keep_alive=0）。Ollama 以外のサーバーでは何もしません。使うときは、次の LLM の呼び出しでモデルを読み込み直すため少し待ちます。</span></span>
 				</label>
 				if !d.Pinned {
 					<input type="hidden" name="unload_present" value="1"/>
@@ -110,10 +110,10 @@ func (d Connection) card() settingsui.Card {
 // Result is the answer of a connection test: what happened, the models the server has, or the common error of the failure.
 templ Result(r TestResult) {
 	if r.OK {
-		<div class="flex flex-col gap-1 rounded-lg border border-success/60 bg-success/10 p-3 text-sm text-ink" role="status" data-testid="mm-llm-test-ok">
+		<div class="flex flex-col gap-1 rounded-lg border border-success/40 bg-success/10 p-3 text-sm text-ink" role="status" data-testid="mm-llm-test-ok">
 			<p>{ r.Message }</p>
 			if len(r.Models) > 0 {
-				<ul class="list-inside list-disc text-xs text-ink" data-testid="mm-llm-models">
+				<ul class="list-inside list-disc text-sm text-ink" data-testid="mm-llm-models">
 					for _, m := range r.Models {
 						<li class="break-all">{ m }</li>
 					}

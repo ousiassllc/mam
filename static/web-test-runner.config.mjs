@@ -130,7 +130,7 @@ async function gentestAnswerMiddleware(ctx, next) {
   ctx.body = await readFile(new URL(`./src/components/testdata/${file}`, import.meta.url));
 }
 
-// The answers of the ZIP export of the history (test: gentest/export-pick): the bar asks through htmx first. A choice with
+// The answers of the ZIP export of the history (test: gentest/export/export-pick): the bar asks through htmx first. A choice with
 // "latest=7" cannot be saved (the fragment of exportbar.Problem, 422); any other is answered with HX-Redirect to a download,
 // which the browser loads without leaving the page. What was downloaded is told by /__export-downloads.
 const exportDownloads = [];

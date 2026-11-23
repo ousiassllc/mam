@@ -40,11 +40,11 @@ templ Host() {
 				aria-label="閉じる"
 				class="absolute right-3 top-3 rounded-md p-1 text-ink hover:bg-accent-soft hover:text-ink focus-visible:focus-ring"
 			>
-				@atoms.Icon(atoms.IconClose, "h-5 w-5")
+				@atoms.Icon(atoms.IconClose, "size-icon-md")
 			</button>
 		</div>
 		<div id={ BodyID }></div>
-		<p id="mam-modal-failure" role="alert" class="px-5 pb-4 text-sm text-danger" hidden></p>
+		<p id="mam-modal-failure" role="alert" class="px-6 pb-4 text-sm text-danger" hidden></p>
 	</dialog>
 }
 
@@ -100,10 +100,10 @@ func OpenLinkAttrs(url, focusKey string) templ.Attributes {
 // the head stays in reach (Issue #1097).
 templ Frame(title, description string) {
 	<div id="mam-modal-content" class="flex flex-col">
-		<h2 id="mam-modal-title" class="sticky top-0 z-raised bg-surface pb-4 pl-5 pr-12 pt-5 text-lg font-semibold">{ title }</h2>
-		<div class="flex flex-col gap-4 px-5 pb-5">
+		<h2 id="mam-modal-title" class="sticky top-0 z-raised bg-surface pb-4 pl-6 pr-12 pt-6 text-lg font-semibold">{ title }</h2>
+		<div class="flex flex-col gap-4 px-6 pb-6">
 			if description != "" {
-				<p id="mam-modal-desc" class="text-sm text-mute">{ description }</p>
+				<p id="mam-modal-desc" class="text-sm text-ink">{ description }</p>
 			}
 			{ children... }
 		</div>
@@ -112,7 +112,7 @@ templ Frame(title, description string) {
 
 // Error is the reason a request was refused; the script moves the focus to it when no field is to blame.
 templ Error(message string) {
-	<p id="mam-modal-error" role="alert" tabindex="-1" class="whitespace-pre-line rounded-md border border-danger/60 px-3 py-2 text-sm text-danger focus-visible:focus-ring">{ message }</p>
+	<p id="mam-modal-error" role="alert" tabindex="-1" data-appear class="whitespace-pre-line rounded-md border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger focus-visible:focus-ring">{ message }</p>
 }
 
 // Actions is the row of buttons at the foot of the modal.
@@ -141,15 +141,18 @@ templ Notice(title, reason string) {
 // Confirm is the confirmation modal (the UI guide, O2: a deletion, a removal and an irreversible step are asked in a centred modal, not in the browser's
 // own confirm() box): a <dialog> with the question, "キャンセル" and the danger button that goes on. A request whose element
 // has hx-confirm raises it (static/src/components/confirm); the page shell embeds one as <template id="confirm-template">, which the script clones,
-// fills with the question and opens. Esc, the scrim and "キャンセル" answer no.
+// fills with the question and opens. Esc, the scrim and "キャンセル" answer no. The button that goes on is the danger button; a question that is not
+// about a destruction says so on the asking element (data-confirm-tone="primary", data-confirm-label="コピーする"), and the script keeps the primary
+// button instead, with that word (confirm.ts).
 templ Confirm() {
 	<dialog data-confirm aria-modal="true" aria-labelledby="mam-confirm-title" aria-describedby="mam-confirm-message" class={ confirmClass }>
-		<div class="flex flex-col gap-4 p-5">
+		<div class="flex flex-col gap-4 p-6">
 			<p id="mam-confirm-title" class="text-lg font-semibold">確認</p>
 			<p id="mam-confirm-message" class="whitespace-pre-line break-words text-sm text-ink" data-confirm-message></p>
 			<div class="flex flex-wrap items-center justify-end gap-2 pt-2">
 				@atoms.Button(atoms.ToneNeutral, "キャンセル", templ.Attributes{"type": "button", "data-confirm-cancel": true, "autofocus": true})
-				@atoms.Button(atoms.ToneDanger, "実行する", templ.Attributes{"type": "button", "data-confirm-ok": true})
+				@atoms.Button(atoms.ToneDanger, "実行する", templ.Attributes{"type": "button", "data-confirm-ok": true, "data-confirm-tone": "danger"})
+				@atoms.Button(atoms.TonePrimary, "実行する", templ.Attributes{"type": "button", "data-confirm-ok": true, "data-confirm-tone": "primary", "hidden": true})
 			</div>
 		</div>
 	</dialog>

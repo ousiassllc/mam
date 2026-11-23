@@ -45,7 +45,7 @@ templ EndpointModal(f EndpointForm, errMsg string) {
 					<span class="text-mute">名前:</span> <code>{ f.Name }</code>
 					<span class="ml-3 text-mute">種類:</span> { kindLabel(f.Kind) }
 				</p>
-				<p class="text-sm text-mute">名前と種類は変えられません（Take とコスト台帳に残る識別子が名前でできているため）。変えたいときは、削除して作り直してください。</p>
+				<p class="text-sm text-ink">名前と種類は変えられません（Take とコスト台帳に残る識別子が名前でできているため）。変えたいときは、削除して作り直してください。</p>
 			} else {
 				<div class="flex flex-wrap items-end gap-3">
 					<label class="flex flex-col gap-1 text-xs text-mute" for="local-endpoint-name">
@@ -78,20 +78,24 @@ templ EndpointModal(f EndpointForm, errMsg string) {
 						"id": "local-endpoint-concurrency", "name": FieldConcurrency, "type": "number", "min": "1", "step": "1", "value": f.MaxConcurrency,
 					})
 				</label>
-				<label class="flex flex-col gap-1 text-xs text-mute" for="local-endpoint-timeout">
-					<span>タイムアウト（秒。ComfyUI は進みが止まってから。空: ComfyUI 10800・互換 900）</span>
+				<div class="flex flex-col gap-1">
+					<label class="text-xs text-mute" for="local-endpoint-timeout">タイムアウト（秒）</label>
 					@atoms.Input(atoms.FieldMd, "w-32", templ.Attributes{
 						"id": "local-endpoint-timeout", "name": FieldTimeout, "type": "number", "min": "1", "step": "1", "value": f.TimeoutSeconds,
+						"aria-describedby": "local-endpoint-timeout-help",
 					})
-				</label>
+					<p id="local-endpoint-timeout-help" class="max-w-prose text-sm text-ink">ComfyUI は進みが止まってから数えます。空: ComfyUI 10800・互換 900。</p>
+				</div>
 			</div>
 			if !f.Edit {
-				<label class="flex flex-col gap-1 text-xs text-mute" for="local-endpoint-key-input">
-					<span>API キー（任意。保存後は設定済みかどうかと末尾 4 文字だけを表示します）</span>
+				<div class="flex flex-col gap-1">
+					<label class="text-xs text-mute" for="local-endpoint-key-input">API キー（任意）</label>
 					@atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
 						"id": "local-endpoint-key-input", "name": FieldAPIKey, "type": "password", "autocomplete": "new-password", "spellcheck": "false",
+						"aria-describedby": "local-endpoint-key-help",
 					})
-				</label>
+					<p id="local-endpoint-key-help" class="text-sm text-mute">保存後は設定済みかどうかと末尾 4 文字だけを表示します。</p>
+				</div>
 			}
 			<div id="local-form-test" role="status" aria-live="polite" class="min-h-5" data-testid="local-form-test"></div>
 			@modal.Actions() {

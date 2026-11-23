@@ -24,19 +24,20 @@ func badgeClass(tone BadgeTone) string {
 	return "inline-block rounded-full px-2 py-1 text-xs " + badgeColors(tone)
 }
 
-// badgeColors are the colours of a tone: the background and the text (the palette of spec/components/color-rules.md).
+// badgeColors are the colours of a tone: the text, a 40% edge and a 10% ground of the state colour (brand guide C4; the palette of
+// spec/components/color-rules.md). The neutral badge keeps a transparent edge, so that it is as big as the others.
 func badgeColors(tone BadgeTone) string {
 	switch tone {
 	case BadgeInfo:
-		return "bg-info/20 text-info"
+		return "border border-info/40 bg-info/10 text-info"
 	case BadgeWarn:
-		return "bg-warning/20 text-warning"
+		return "border border-warning/40 bg-warning/10 text-warning"
 	case BadgeOK:
-		return "bg-success/20 text-success"
+		return "border border-success/40 bg-success/10 text-success"
 	case BadgeError:
-		return "bg-danger/20 text-danger"
+		return "border border-danger/40 bg-danger/10 text-danger"
 	}
-	return "bg-accent-soft text-ink"
+	return "border border-transparent bg-accent-soft text-ink"
 }
 
 // Badge is a small status label.
@@ -124,7 +125,7 @@ func BadgeWith(tone BadgeTone, text string, attrs templ.Attributes) templ.Compon
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/badge.templ`, Line: 41, Col: 53}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/badge.templ`, Line: 42, Col: 53}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {
@@ -190,7 +191,7 @@ func BadgeIcon(tone BadgeTone, icon IconName, text string, attrs templ.Attribute
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = Icon(icon, "h-4 w-4 shrink-0").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Icon(icon, "size-icon-sm shrink-0").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -201,7 +202,7 @@ func BadgeIcon(tone BadgeTone, icon IconName, text string, attrs templ.Attribute
 		var templ_7745c5c3_Var9 string
 		templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/badge.templ`, Line: 48, Col: 14}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/badge.templ`, Line: 49, Col: 14}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 		if templ_7745c5c3_Err != nil {

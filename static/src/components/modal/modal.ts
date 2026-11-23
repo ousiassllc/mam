@@ -1,4 +1,5 @@
 import { requestFailureMessage, type RequestFailure } from '../lib/errors';
+import { whenFaded } from '../lib/ui/fade';
 
 /**
  * The modal dialog of the settings screen (spec/components/shared-ui-parts.md §4): one native <dialog id="mam-modal"
@@ -216,7 +217,10 @@ export function installModal(root: Document = document): void {
       if (!dlg || event.target !== dlg) return;
       const body = dlg.querySelector<HTMLElement>(BODY);
       if (body) body.inert = false;
-      body?.replaceChildren();
+      // The dialog fades out (motion.css, M5), so what it shows is emptied when the fade is over, not before; one that was opened again meanwhile keeps its new body.
+      void whenFaded(dlg).then(() => {
+        if (!dlg.open) body?.replaceChildren();
+      });
       // A GET that is on its way must not come back into the emptied body (one that has arrived is DONE: its handlers
       // are still running, and aborting it would clear its status). A POST / PUT / DELETE is let to arrive: the afterSwap
       // guard empties the body again after the out-of-band parts (the rows) are swapped.

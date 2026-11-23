@@ -45,8 +45,22 @@ func TestSteps_EveryStepIsAWholePageWithItsTitleAndProgress(t *testing.T) {
 				}
 			}
 			assert.Contains(t, body, "ステップ "+strconv.Itoa(i+1)+" / 6")
-			assert.Regexp(t, `aria-current="step"[^>]*>\s*`+strconv.Itoa(i+1)+`\. `+regexp.QuoteMeta(tc.title), body, "the progress numbers the current step like the heading")
-			assert.Contains(t, body, ">6. ffmpeg の確認<", "and the last one is 6 of 6")
+			progress := body[strings.Index(body, `data-testid="onboarding-progress"`):strings.Index(body, `</nav>`)]
+			assert.Regexp(t, `aria-current="step"[^>]*>`+regexp.QuoteMeta(tc.title)+`<`, progress, "the progress names the current step like the heading")
+			assert.Regexp(t, `<span aria-current="step" class="[^"]*\bfont-semibold\b[^"]*"`, progress, "only the current step name is SemiBold (guide §7 P1)")
+			assert.Equal(t, 1, strings.Count(progress, "font-semibold"), "the other steps are Regular")
+			// The wizard of guide §7 P1: a 28px circle for each step (the current one --accent with its number, the ones before it --accent with a check, the
+			// others a 1px frame) and a 1px line between two steps.
+			assert.Equal(t, len(want), strings.Count(progress, "h-7 w-7"), "a circle of 28px for each step")
+			assert.Equal(t, len(want)-1, strings.Count(progress, `w-6 border-t border-border`), "a 1px line between two steps")
+			assert.Equal(t, 1, strings.Count(progress, `data-state="current"`))
+			assert.Equal(t, i, strings.Count(progress, `data-state="done"`), "every step before the current one is done")
+			assert.Equal(t, i, strings.Count(progress, "<svg"), "and each of them has the check, nothing else is an icon")
+			assert.Equal(t, i, strings.Count(progress, "（完了）"), "and says so to a screen reader")
+			assert.Equal(t, len(want)-1-i, strings.Count(progress, `data-state="todo"`), "the ones after it are not reached")
+			assert.Regexp(t, `data-state="current">`+strconv.Itoa(i+1)+`<`, progress, "the circle of the current step holds its number, from 1")
+			assert.Contains(t, progress, `text-bone`, "the current circle is --bone on --accent")
+			assert.NotContains(t, progress, "text-mute", "the names are --ink (C6)")
 			if i < len(want)-1 {
 				assert.Contains(t, body, `data-testid="onboarding-skip"`, "any page but the last closes the guide")
 			}

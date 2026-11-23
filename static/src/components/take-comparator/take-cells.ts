@@ -1,9 +1,10 @@
 import { html } from 'lit';
+import { icon } from '../lib/ui/icon';
 import type { TakeScore } from './take-model';
 
 /**
  * One score of the table. Colour is never the only cue (WCAG 1.4.1): a score below `minAxisScore` (the server's, the
- * one the Judge fails a Take under) is red and also carries a ▼ and a spoken "below the minimum"; a Take with no
+ * one the Judge fails a Take under) is red and also carries a down arrow and a spoken "below the minimum"; a Take with no
  * score yet shows a dash that is read as "no score".
  */
 export function renderScore(value: number | undefined, minAxisScore: number) {
@@ -11,7 +12,7 @@ export function renderScore(value: number | undefined, minAxisScore: number) {
     return html`<span class="text-mute" data-no-score><span aria-hidden="true">—</span><span class="sr-only">スコアなし</span></span>`;
   }
   return value < minAxisScore
-    ? html`<span class="text-danger" data-below-min>${Math.round(value)}<span class="sr-only">（基準 ${minAxisScore} 未満）</span><span aria-hidden="true"> ▼</span></span>`
+    ? html`<span class="text-danger" data-below-min>${Math.round(value)}<span class="sr-only">（基準 ${minAxisScore} 未満）</span><span class="inline-flex align-middle" aria-hidden="true">${icon('arrow-down')}</span></span>`
     : html`<span>${Math.round(value)}</span>`;
 }
 

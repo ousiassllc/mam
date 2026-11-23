@@ -1,9 +1,9 @@
 package pagination
 
 const (
-	linkClass    = "inline-flex min-h-8 min-w-8 items-center justify-center rounded-md border border-border px-2 py-1 text-sm font-semibold text-ink transition-colors hover:bg-accent-soft focus-visible:focus-ring motion-reduce:transition-none"
-	currentClass = "inline-flex min-h-8 min-w-8 items-center justify-center rounded-md bg-accent px-2 py-1 text-sm font-semibold text-bone"
-	offClass     = "inline-flex min-h-8 items-center justify-center rounded-md border border-border px-2 py-1 text-sm text-mute opacity-40"
+	linkClass    = "inline-flex min-h-9 min-w-9 items-center justify-center rounded-md border border-border px-2 py-1 text-sm text-ink transition-colors hover:bg-accent-soft focus-visible:focus-ring motion-reduce:transition-none"
+	currentClass = "inline-flex min-h-9 min-w-9 items-center justify-center rounded-md bg-accent px-2 py-1 text-sm text-bone"
+	offClass     = "inline-flex min-h-9 items-center justify-center rounded-md border border-border px-2 py-1 text-sm text-mute opacity-40"
 )
 
 // Nav is the page navigation: a <nav> named "ページ移動" with the line of what is shown and a list of links (the first, previous, the pages around the
@@ -32,6 +32,7 @@ templ Nav(p Props) {
 								id={ p.pageID(n) }
 								href={ templ.SafeURL(p.Href(n)) }
 								class={ linkClass }
+								data-ripple
 								aria-label={ pageLabel(n) }
 								hx-get={ p.Href(n) }
 								hx-target={ "#" + p.Target }
@@ -59,6 +60,7 @@ templ step(p Props, label, name string, page int, enabled bool) {
 			id={ p.id(name) }
 			href={ templ.SafeURL(p.Href(page)) }
 			class={ linkClass }
+			data-ripple
 			hx-get={ p.Href(page) }
 			hx-target={ "#" + p.Target }
 			hx-swap={ swap(p) }

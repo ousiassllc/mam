@@ -47,7 +47,7 @@ templ RecipePanel(d RecipeData) {
 			</div>
 			<p class="text-sm text-mute">プロンプトの本文と入力画像は保存しません。</p>
 			if len(d.Rows) == 0 {
-				<p class="text-xs text-mute" data-testid="gt-recipes-empty">保存したレシピはまだありません。</p>
+				<p class="text-sm text-mute" data-testid="gt-recipes-empty">保存したレシピはまだありません。</p>
 			} else {
 				<ul class="flex flex-col gap-2" data-testid="gt-recipe-list">
 					for _, r := range d.Rows {

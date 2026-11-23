@@ -12,14 +12,14 @@ import (
 templ ProposalCard(p Proposal) {
 	<section
 		id={ ID(p.ID) }
-		class="flex flex-col gap-3 rounded-lg border border-accent p-3 md:p-4"
+		class="flex flex-col gap-3 rounded-lg border border-mute p-3 md:p-4"
 		data-testid="gtc-proposal"
 		data-state={ p.State }
 		if p.Swap {
 			hx-swap-oob="true"
 		}
 	>
-		<h3 class="text-sm font-semibold">実行の確認</h3>
+		<h2 class="text-sm font-semibold">実行の確認</h2>
 		<dl class="flex flex-col gap-1 text-sm" data-testid="gtc-facts">
 			for _, kv := range p.Facts {
 				<div class="flex flex-wrap gap-x-2">
@@ -39,18 +39,18 @@ templ ProposalCard(p Proposal) {
 			}
 		</ul>
 		<p class="text-sm" data-testid="gtc-items">全部で <strong>{ itoa(p.Items) }</strong> 件を生成します。見積り合計は <strong data-testid="gtc-total">{ p.Total }</strong>（合計は見積りで、実際の請求は提供元で確認してください）。</p>
-		<div class="overflow-x-auto">
+		<div class="overflow-x-auto focus-visible:focus-ring" tabindex="0" role="region" aria-label="見積りの内訳">
 			<table class="w-full min-w-max text-left text-sm" data-testid="gtc-lines">
 				<thead class="text-xs text-mute">
-					<tr><th class="py-1 pr-3 font-normal">モデル</th><th class="py-1 pr-3 font-normal">件数</th><th class="py-1 pr-3 font-normal">単価</th><th class="py-1 font-normal">小計</th></tr>
+					<tr><th class="py-1 pr-3 font-semibold">モデル</th><th class="py-1 pr-3 text-right font-semibold">件数</th><th class="py-1 pr-3 text-right font-semibold">単価</th><th class="py-1 text-right font-semibold">小計</th></tr>
 				</thead>
 				<tbody>
 					for _, l := range p.Lines {
 						<tr class="border-t border-border" data-testid="gtc-line">
 							<td class="py-1 pr-3">{ l.Label }</td>
-							<td class="py-1 pr-3">{ itoa(l.Items) }</td>
-							<td class="py-1 pr-3">{ l.Unit }</td>
-							<td class="py-1">{ l.Subtotal }</td>
+							<td class="py-1 pr-3 text-right font-mono tabular-nums">{ itoa(l.Items) }</td>
+							<td class="py-1 pr-3 text-right font-mono tabular-nums">{ l.Unit }</td>
+							<td class="py-1 text-right font-mono tabular-nums">{ l.Subtotal }</td>
 						</tr>
 					}
 				</tbody>
@@ -60,7 +60,7 @@ templ ProposalCard(p Proposal) {
 			<p class="text-sm text-warning" data-testid="gtc-unknown">{ p.Unknown }</p>
 		}
 		if len(p.Warnings) > 0 {
-			<ul class="list-disc pl-5 text-xs text-warning" data-testid="gtc-warnings">
+			<ul class="list-disc pl-6 text-sm text-warning" data-testid="gtc-warnings">
 				for _, w := range p.Warnings {
 					<li>{ w }</li>
 				}
@@ -119,7 +119,7 @@ templ ResultBlock(r Result) {
 		}
 	>
 		<div class="flex flex-wrap items-center gap-2">
-			<h3 class="text-sm font-semibold">生成の結果</h3>
+			<h2 class="text-sm font-semibold">生成の結果</h2>
 			@atoms.BadgeWith(r.Tone, r.StateTxt, templ.Attributes{"data-testid": "gtc-result-state"})
 			<span class="text-xs text-mute" data-testid="gtc-result-progress">{ itoa(r.Done) } / { itoa(r.Total) } 件（{ r.Counts }）</span>
 			if r.Estimate != "" {
@@ -127,7 +127,7 @@ templ ResultBlock(r Result) {
 			}
 		</div>
 		if !r.Finished {
-			<progress class="h-2 w-full" max="100" value={ itoa(r.Percent) } aria-label="生成の進み具合"></progress>
+			<progress class="h-1.5 w-full" max="100" value={ itoa(r.Percent) } aria-label="生成の進み具合"></progress>
 		}
 		if r.Error != "" {
 			<p class="break-words text-sm text-danger">{ r.Error }</p>
@@ -140,6 +140,6 @@ templ ResultBlock(r Result) {
 				</li>
 			}
 		</ul>
-		<p class="text-xs text-mute">タップすると詳細（プロンプト・設定・取り込み）が開きます。<a class="underline focus-visible:focus-ring" href={ templ.SafeURL(paths.GenerationTestHistory()) }>履歴</a>にも残ります。</p>
+		<p class="text-sm text-ink">タップすると詳細（プロンプト・設定・取り込み）が開きます。<a class="underline focus-visible:focus-ring" href={ templ.SafeURL(paths.GenerationTestHistory()) }>履歴</a>にも残ります。</p>
 	</section>
 }

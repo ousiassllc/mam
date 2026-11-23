@@ -43,7 +43,7 @@ func cloudCardOf(p Provider) settingsui.Card {
 
 // cloudKey is whether the API key of the cloud provider is stored, and where to store it.
 templ cloudKey(p Provider) {
-	<p class="break-words text-sm text-mute" data-testid={ "audio-key-" + p.Field }>
+	<p class="break-words text-sm text-ink" data-testid={ "audio-key-" + p.Field }>
 		if p.CloudKeySet {
 			API キー（{ p.CloudKey }）: 設定済み
 		} else {
@@ -96,7 +96,10 @@ templ chooser(p Provider, value, title string, checked, disabled bool, testID st
 				<span>選べません</span>
 			} else {
 				<span class="group-has-[:checked]:hidden">選ぶ</span>
-				<span class="hidden group-has-[:checked]:inline">✓ 選択中</span>
+				<span class="hidden items-center gap-1 group-has-[:checked]:inline-flex">
+					@atoms.Icon(atoms.IconCheck, "size-icon-sm")
+					選択中
+				</span>
 			}
 		</span>
 	</label>

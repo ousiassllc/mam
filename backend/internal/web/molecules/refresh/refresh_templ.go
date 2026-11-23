@@ -18,7 +18,7 @@ import "github.com/ousiassllc/mam/backend/internal/web/atoms"
 
 // Bar is when a part of the screen was read (small, "15:04:05") and the button that reads it again: the icon only, named
 // "更新" for the screen reader. The button swaps the part it sits in (the element with id target) by what url answers; while
-// the request is out the icon turns. Its id is fixed so that HTMX gives it the focus again when a swap replaces it. A request of the
+// the request is out the icon gives way to the guide's spinner (atoms.Spinner, O12). Its id is fixed so that HTMX gives it the focus again when a swap replaces it. A request of the
 // button is the reader's own: the poll guard (static/src/components/poll/poll-guard.ts) never holds it back, and hx-sync makes it take
 // the place of a poll of the same part that is out. It sits at the end of the line or the column it is put in (ml-auto).
 func Bar(url, target, updatedAt string) templ.Component {
@@ -117,15 +117,23 @@ func Bar(url, target, updatedAt string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" aria-label=\"更新\" title=\"更新\" data-testid=\"refresh\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 8, "\" aria-label=\"更新\" title=\"更新\" data-testid=\"refresh\" data-ripple>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = atoms.Icon(atoms.IconUpdate, "h-4 w-4 group-[.htmx-request]:animate-spin").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = atoms.Icon(atoms.IconUpdate, "size-icon-sm group-[.htmx-request]:hidden").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "</button></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<span class=\"hidden group-[.htmx-request]:inline-flex\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = atoms.Spinner("更新中").Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "</span></button></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

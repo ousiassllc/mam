@@ -4,6 +4,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 
@@ -41,6 +42,36 @@ func TestTokens_MuteIsReadableSupportingText(t *testing.T) {
 		assert.Equal(t, want, tokenValue(t, theme, "mute"), "--mute of the %s theme is the guide's", theme)
 		for _, bg := range []string{"surface", "bone"} {
 			assert.GreaterOrEqual(t, contrast(tokenValue(t, theme, "mute"), tokenValue(t, theme, bg)), 4.5, "text-mute on %s in the %s theme", bg, theme)
+		}
+	}
+}
+
+// A text over a see-through fill (the /70 of spec/components/color-rules.md §4) lies on a colour that the picture or the lane under it decides, so the text
+// does not sit on the fill: it has a chip of its own, text-ink on bg-surface, and the pair is AA (4.5:1) in both themes (the number of a picked part of a take,
+// mam-take-comparator). The pair it replaces, text-bone on bg-success/70, was 3.6:1 in the Light theme (#1201).
+func TestOverlayNumberChipIsReadableInBothThemes(t *testing.T) {
+	for _, theme := range []string{"light", "dark"} {
+		assert.GreaterOrEqual(t, contrast(tokenValue(t, theme, "ink"), tokenValue(t, theme, "surface")), 4.5, "text-ink on bg-surface in the %s theme", theme)
+	}
+	src, err := os.ReadFile("../../../../static/src/components/take-comparator/mam-take-comparator.ts")
+	require.NoError(t, err)
+	picked := regexp.MustCompile(`class="([^"]*bg-success/70[^"]*)"`).FindStringSubmatch(string(src))
+	require.NotNil(t, picked, "the picked part of a take is drawn with bg-success/70")
+	assert.NotRegexp(t, `\btext-(bone|ink|mute|accent)\b`, picked[1], "the number is on its own chip, not on the see-through fill")
+}
+
+// The hint of an empty field (::placeholder) is --mute at full opacity: Tailwind's preflight leaves it at currentcolor 50%, 3.8:1 on --bone in the Light
+// theme. The rule is read from tokens.css, since a stylesheet is not rendered here (#1204).
+func TestTokens_PlaceholderIsMute(t *testing.T) {
+	raw, err := os.ReadFile("../../../../static/src/css/tokens.css")
+	require.NoError(t, err)
+	rule := regexp.MustCompile(`(?s)::placeholder\s*\{([^}]*)\}`).FindStringSubmatch(string(raw))
+	require.NotNil(t, rule, "tokens.css styles ::placeholder")
+	assert.Regexp(t, `color:\s*var\(--mute\)\s*;`, rule[1])
+	assert.Regexp(t, `opacity:\s*1\s*;`, rule[1])
+	for _, theme := range []string{"light", "dark"} {
+		for _, bg := range []string{"surface", "bone"} {
+			assert.GreaterOrEqual(t, contrast(tokenValue(t, theme, "mute"), tokenValue(t, theme, bg)), 4.5, "a placeholder on %s in the %s theme", bg, theme)
 		}
 	}
 }

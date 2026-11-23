@@ -46,7 +46,7 @@ describe('connections of elements that left the document', () => {
     window.dispatchEvent(new Event('online'));
     await aTimeout(20);
     expect(FakeSocket.instances.length).to.equal(before);
-    expect(document.querySelector('[data-connection-lost]')).to.equal(null);
+    expect(document.querySelector('[data-connection-lost]:not([data-leaving])')).to.equal(null);
   }
 
   it('stops following a Shot card that was replaced before the socket gave up', async () => {

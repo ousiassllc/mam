@@ -1,15 +1,11 @@
 import { LitElement, html, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
+import { BUTTON, BUTTON_TONE } from '../lib/ui/button';
 import { chosenFacts } from './chosen-models';
 import { type Facts, notesOf } from './weight-facts';
 import { adjust, read, WEIGHT_MAX, WEIGHT_MIN, type Direction, type Reading } from './weight-model';
 
 const PROMPT = 'textarea[name="prompt"]';
-
-const BUTTON =
-  'inline-flex items-center justify-center rounded-md border border-border min-h-8 px-2 py-1 text-xs font-semibold text-ink transition-colors motion-reduce:transition-none hover:bg-accent-soft ' +
-  'aria-disabled:cursor-not-allowed aria-disabled:opacity-40 ' +
-  'focus-visible:focus-ring';
 
 /**
  * `<mam-prompt-weight>` is the "強める + / 弱める −" of the words of a prompt (spec/components/gentest-tiers.md, Issues #977 and #972).
@@ -149,7 +145,7 @@ export class MamPromptWeight extends LitElement {
   private button(label: string, dir: Direction, off: boolean, noteID: string) {
     return html`<button
       type="button"
-      class=${BUTTON}
+      class="${BUTTON} ${BUTTON_TONE.neutral}"
       aria-disabled=${off ? 'true' : 'false'}
       aria-describedby=${noteID}
       data-gt-weight=${dir > 0 ? 'up' : 'down'}
@@ -185,7 +181,7 @@ export class MamPromptWeight extends LitElement {
         }
       </div>
       <div id=${noteID} role="status" data-testid="gt-weight-note">
-        ${notes.map((n) => html`<p class="text-warning">${n}</p>`)}
+        ${notes.map((n) => html`<p class="text-sm text-warning">${n}</p>`)}
       </div>
     </div>`;
   }

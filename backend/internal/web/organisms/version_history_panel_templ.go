@@ -220,12 +220,13 @@ func VersionHistoryPanel(d VersionHistoryData) templ.Component {
 					}
 				} else if d.RestoreBlocked == "" {
 					templ_7745c5c3_Err = atoms.ButtonFor(atoms.ToneNeutral, "このバージョンに復元", fmt.Sprintf("v%d", e.Number), templ.Attributes{
-						"type":           "button",
-						"data-focus-key": "restore-" + d.DOMID + "-" + strconv.Itoa(e.Number),
-						"hx-post":        d.restoreURL(e.Number),
-						"hx-target":      d.target(),
-						"hx-swap":        "outerHTML",
-						"hx-confirm":     fmt.Sprintf("v%d に復元しますか？（新しいバージョンとして追記され、現在の内容も履歴に残ります）", e.Number),
+						"type":              "button",
+						"data-focus-key":    "restore-" + d.DOMID + "-" + strconv.Itoa(e.Number),
+						"hx-post":           d.restoreURL(e.Number),
+						"hx-target":         d.target(),
+						"hx-swap":           "outerHTML",
+						"hx-confirm":        fmt.Sprintf("v%d に復元しますか？（新しいバージョンとして追記され、現在の内容も履歴に残ります）", e.Number),
+						"data-confirm-tone": "primary", "data-confirm-label": "復元する",
 					}).Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
@@ -248,7 +249,7 @@ func VersionHistoryPanel(d VersionHistoryData) templ.Component {
 				var templ_7745c5c3_Var10 string
 				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(d.RestoreBlocked)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/version_history_panel.templ`, Line: 85, Col: 51}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/version_history_panel.templ`, Line: 86, Col: 51}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 				if templ_7745c5c3_Err != nil {

@@ -54,7 +54,7 @@ templ Node(d NodeData) {
 			<p class="text-sm text-success" role="status" data-testid="nodes-opened">ComfyUI に「{ d.Opened }」を置きました。画面左の「ワークフロー」（w キー）から開いてください。</p>
 		}
 		if d.State == NodeReady || d.State == NodeRejected {
-			<p class="text-sm text-mute">ノードを組んで保存し、一度実行したら、「ワークフロー」画面の「ComfyUI から取り込む」で Nefos Video に保存します。</p>
+			<p class="text-sm text-ink">ノードを組んで保存し、一度実行したら、「ワークフロー」画面の「ComfyUI から取り込む」で Nefos Video に保存します。</p>
 		}
 		if d.State == NodeReady {
 			<mam-comfy-frame
@@ -70,19 +70,21 @@ templ Node(d NodeData) {
 }
 
 templ unavailable(d NodeData) {
-	<div class="flex flex-col gap-3 rounded-lg border border-warning/60 p-4" role="status" data-testid="nodes-unavailable" data-state={ d.State }>
+	<div class="flex flex-col gap-3 rounded-lg border border-warning/40 bg-warning/10 p-4" role="status" data-testid="nodes-unavailable" data-state={ d.State }>
 		<p class="text-sm text-warning">{ d.Reason }</p>
-		<div class="flex flex-wrap items-center gap-3">
-			if d.Bundled && d.Installed && d.State != NodeStarting {
-				@atoms.Button(atoms.TonePrimary, "ComfyUI を起動する", templ.Attributes{
-					"type":            "button",
-					"hx-post":         paths.NodesStart(),
-					"hx-sync":         "this:drop",
-					"hx-disabled-elt": "this",
-				})
-			}
-			if d.State == NodeStarting {
-				@atoms.ButtonLink(atoms.ToneNeutral, "開き直す", templ.SafeURL(paths.Nodes()), templ.Attributes{})
+		<div class="flex flex-wrap items-center gap-2">
+			if (d.Bundled && d.Installed) || d.State == NodeStarting {
+				if d.Bundled && d.Installed && d.State != NodeStarting {
+					@atoms.Button(atoms.TonePrimary, "ComfyUI を起動する", templ.Attributes{
+						"type":            "button",
+						"hx-post":         paths.NodesStart(),
+						"hx-sync":         "this:drop",
+						"hx-disabled-elt": "this",
+					})
+				}
+				if d.State == NodeStarting {
+					@atoms.ButtonLink(atoms.ToneNeutral, "開き直す", templ.SafeURL(paths.Nodes()), templ.Attributes{})
+				}
 			}
 			if d.Bundled && d.ModelManagerURL != "" {
 				<a class="text-sm text-ink underline hover:text-ink" href={ templ.SafeURL(d.ModelManagerURL) } data-testid="nodes-model-manager">モデルマネージャーを開く</a>

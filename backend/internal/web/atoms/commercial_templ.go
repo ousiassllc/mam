@@ -12,8 +12,8 @@ import "github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 
 // The commercial-use answer of a model (#928) is drawn in one way everywhere: an icon with its short word (CommercialBadge), or the
 // icon alone where the room is tight (CommercialMark). The colours follow the meaning rules of spec/components/color-rules.md:
-// 商用OK is success (emerald), 条件つき warning (amber), 商用NG danger (red), and 不明 is the warning colour with an edge, so that it
-// is the one that is not missed.
+// 商用OK is success, 条件つき warning, 商用NG danger, and 不明 warning too: every badge has the 40% edge of its state colour
+// (badgeColors), so 不明 has no edge of its own; the word and the icon tell it from 条件つき.
 
 func commercialTone(c modellicense.Commercial) BadgeTone {
 	switch c {
@@ -37,19 +37,12 @@ func commercialIcon(c modellicense.Commercial) IconName {
 	return IconBadgeHelp
 }
 
-func commercialEdge(c modellicense.Commercial) string {
-	if c == modellicense.Unknown || !c.Valid() {
-		return " border border-warning/60"
-	}
-	return ""
-}
-
 func commercialBadgeClass(c modellicense.Commercial) string {
-	return "inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs " + badgeColors(commercialTone(c)) + commercialEdge(c)
+	return "inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs " + badgeColors(commercialTone(c))
 }
 
 func commercialMarkClass(c modellicense.Commercial) string {
-	return "inline-flex items-center justify-center rounded-full p-1 " + badgeColors(commercialTone(c)) + commercialEdge(c)
+	return "inline-flex items-center justify-center rounded-full p-1 " + badgeColors(commercialTone(c))
 }
 
 // commercialName is the accessible name: the word, then what the license says.
@@ -109,7 +102,7 @@ func CommercialBadge(c modellicense.Commercial, detail string, attrs templ.Attri
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(commercialName(c, detail))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/commercial.templ`, Line: 59, Col: 90}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/commercial.templ`, Line: 52, Col: 90}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 		if templ_7745c5c3_Err != nil {
@@ -122,7 +115,7 @@ func CommercialBadge(c modellicense.Commercial, detail string, attrs templ.Attri
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(detail)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/commercial.templ`, Line: 59, Col: 107}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/commercial.templ`, Line: 52, Col: 107}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 		if templ_7745c5c3_Err != nil {
@@ -135,7 +128,7 @@ func CommercialBadge(c modellicense.Commercial, detail string, attrs templ.Attri
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(string(c))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/commercial.templ`, Line: 59, Col: 143}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/commercial.templ`, Line: 52, Col: 143}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 		if templ_7745c5c3_Err != nil {
@@ -153,7 +146,7 @@ func CommercialBadge(c modellicense.Commercial, detail string, attrs templ.Attri
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = Icon(commercialIcon(c), "h-4 w-4 shrink-0").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Icon(commercialIcon(c), "size-icon-sm shrink-0").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -164,7 +157,7 @@ func CommercialBadge(c modellicense.Commercial, detail string, attrs templ.Attri
 		var templ_7745c5c3_Var7 string
 		templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(c.Label())
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/commercial.templ`, Line: 61, Col: 38}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/commercial.templ`, Line: 54, Col: 38}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 		if templ_7745c5c3_Err != nil {
@@ -226,7 +219,7 @@ func CommercialMark(c modellicense.Commercial, detail string, attrs templ.Attrib
 		var templ_7745c5c3_Var11 string
 		templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(commercialName(c, detail))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/commercial.templ`, Line: 68, Col: 89}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/commercial.templ`, Line: 61, Col: 89}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 		if templ_7745c5c3_Err != nil {
@@ -239,7 +232,7 @@ func CommercialMark(c modellicense.Commercial, detail string, attrs templ.Attrib
 		var templ_7745c5c3_Var12 string
 		templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(c.Label() + ": " + detail)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/commercial.templ`, Line: 68, Col: 125}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/commercial.templ`, Line: 61, Col: 125}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 		if templ_7745c5c3_Err != nil {
@@ -252,7 +245,7 @@ func CommercialMark(c modellicense.Commercial, detail string, attrs templ.Attrib
 		var templ_7745c5c3_Var13 string
 		templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue(string(c))
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/commercial.templ`, Line: 68, Col: 161}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/commercial.templ`, Line: 61, Col: 161}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 		if templ_7745c5c3_Err != nil {
@@ -270,7 +263,7 @@ func CommercialMark(c modellicense.Commercial, detail string, attrs templ.Attrib
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = Icon(commercialIcon(c), "h-4 w-4 shrink-0").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Icon(commercialIcon(c), "size-icon-sm shrink-0").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

@@ -1,4 +1,5 @@
 import { html, nothing } from 'lit';
+import { icon } from '../lib/ui/icon';
 import { describeProgress, progressFraction, type ShotProgress } from '../lib/shot';
 import { formatTimecode, issueRange, type JudgeIssue, type TimeRange } from '../lib/video';
 import { sliderStyle } from '../slider/slider-model';
@@ -53,6 +54,9 @@ function renderMarker(marker: Marker, max: number, seek: (time: number) => void)
   ></button>`;
 }
 
+/** The frame / play buttons: an icon (the aria-label is the name) in a box that keeps its size when the icon changes. */
+const STEP_BUTTON = 'inline-flex items-center justify-center rounded-md border border-border px-2 py-1';
+
 /** The time bar (with the Issue markers) and the frame / play buttons under the video. */
 export function renderTransport(v: TransportView) {
   const { max, rate } = v;
@@ -80,11 +84,11 @@ export function renderTransport(v: TransportView) {
       }
     </div>
     <div class="flex items-center gap-2 text-xs text-ink">
-      <button type="button" data-action="prev-frame" class="rounded-md border border-border px-2 py-1" aria-label="1 コマ戻る" title="1 コマ戻る" @click=${() => v.step(-1)}>◀|</button>
-      <button type="button" data-action="play" class="rounded-md border border-border px-2 py-1" aria-label=${playLabel} title=${playLabel} @click=${v.toggle}>
-        ${v.playing ? '❚❚' : '▶'}
+      <button type="button" data-action="prev-frame" data-ripple class=${STEP_BUTTON} aria-label="1 コマ戻る" title="1 コマ戻る" @click=${() => v.step(-1)}>${icon('skip-prev')}</button>
+      <button type="button" data-action="play" data-ripple class=${STEP_BUTTON} aria-label=${playLabel} title=${playLabel} @click=${v.toggle}>
+        ${icon(v.playing ? 'pause' : 'play')}
       </button>
-      <button type="button" data-action="next-frame" class="rounded-md border border-border px-2 py-1" aria-label="1 コマ進む" title="1 コマ進む" @click=${() => v.step(1)}>|▶</button>
+      <button type="button" data-action="next-frame" data-ripple class=${STEP_BUTTON} aria-label="1 コマ進む" title="1 コマ進む" @click=${() => v.step(1)}>${icon('skip-next')}</button>
       <span class="font-mono" data-timecode>${formatTimecode(v.currentTime, rate)}</span>
       <span class="font-mono text-mute">/ ${formatTimecode(max, rate)}</span>
       <span class="text-mute">${rate.toFixed(rate % 1 === 0 ? 0 : 2)} fps${v.rateKnown ? '' : '（仮）'}</span>
@@ -96,7 +100,7 @@ export function renderTransport(v: TransportView) {
 export function renderPlaceholder(progress: ShotProgress | null) {
   const fraction = progressFraction(progress);
   return html`<div
-    class="flex aspect-video flex-col items-center justify-center gap-2 rounded-md border border-dashed border-border bg-surface text-xs text-mute"
+    class="flex aspect-video flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border bg-surface text-xs text-mute"
     role="status"
     data-placeholder
     data-stage=${progress?.stage ?? 'idle'}
@@ -105,8 +109,15 @@ export function renderPlaceholder(progress: ShotProgress | null) {
     ${
       fraction === null
         ? nothing
-        : html`<div class="h-1 w-1/2 overflow-hidden rounded-md bg-accent-soft">
-          <div class="h-full bg-info/70" style="width:${fraction * 100}%" data-progress-bar></div>
+        : html`<div
+          class="h-1.5 w-1/2 overflow-hidden rounded-full bg-accent-soft"
+          role="progressbar"
+          aria-label=${describeProgress(progress)}
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-valuenow=${Math.round(fraction * 100)}
+        >
+          <div class="h-full bg-accent" style="width:${fraction * 100}%" data-progress-bar></div>
         </div>`
     }
   </div>`;

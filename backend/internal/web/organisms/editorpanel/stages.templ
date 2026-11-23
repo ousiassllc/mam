@@ -14,7 +14,7 @@ templ editorEditStage(d Data, oob bool) {
 	<div id="editor-edit-stage" class="contents" { oobAttr(oob)... }>
 		<section class="flex flex-col gap-2" aria-label="Rough Cut">
 			<h3 class="text-sm font-semibold">1. Rough Cut</h3>
-			<p class="text-sm text-mute">各 Shot の採用 Take（Selected Take）を Scene 順に並べます。作り直すと、手動編集は新しい版に置き換わります。</p>
+			<p class="text-sm text-ink">各 Shot の採用 Take（Selected Take）を Scene 順に並べます。作り直すと、手動編集は新しい版に置き換わります。</p>
 			<div class="flex items-center gap-3">
 				if d.TimelineID == "" {
 					@atoms.Button(atoms.TonePrimary, "Rough Cut を作成", templ.Attributes{
@@ -26,6 +26,7 @@ templ editorEditStage(d Data, oob bool) {
 						"type": "button", "hx-post": paths.Project(d.Project.ID, "edit", "rough-cut"), "hx-vals": branchVals(d.BranchID),
 						"hx-disabled-elt": "this",
 						"hx-confirm":      "Rough Cut を作り直します。手動の編集は新しい版に置き換わります。よろしいですか？", "disabled": !d.CanRoughCut(),
+						"data-confirm-tone": "primary", "data-confirm-label": "作り直す",
 					})
 					<span class="text-xs text-mute">{ fmt.Sprintf("%d クリップ / %.1f 秒", d.Clips, d.Duration) }</span>
 				}
@@ -48,7 +49,7 @@ templ editorEditStage(d Data, oob bool) {
 						<li>
 							<span class="text-xs text-mute">{ clipPosition(f.ClipIndex) }</span> { f.Issue } → { f.Action }
 							if f.Need != nil {
-								<span class="text-xs text-warning" data-need-shot>{ " 追加 Shot: " + needLabel(f.Need) }</span>
+								<span class="text-sm text-warning" data-need-shot>{ " 追加 Shot: " + needLabel(f.Need) }</span>
 							}
 						</li>
 					}
@@ -84,14 +85,14 @@ templ editorAudioStage(d Data, oob bool) {
 			}
 		</div>
 		if d.Audio != nil && len(d.Audio.Timeline.Scenes) > 0 {
-			<ul class="flex flex-col gap-1 text-xs text-ink" data-audio-scenes>
+			<ul class="flex flex-col gap-1 text-sm text-ink" data-audio-scenes>
 				for _, s := range d.Audio.Timeline.Scenes {
 					<li>{ audioSceneText(s) }</li>
 				}
 			</ul>
 		}
 		if d.Audio != nil && len(d.Audio.Timeline.Skipped) > 0 {
-			<ul class="flex flex-col gap-1 text-xs text-warning" data-audio-skipped>
+			<ul class="flex flex-col gap-1 text-sm text-warning" data-audio-skipped>
 				for _, s := range d.Audio.Timeline.Skipped {
 					<li>{ audioSkippedText(s) }</li>
 				}
@@ -127,7 +128,7 @@ templ editorVoiceForm(d Data, oob bool) {
 templ editorVoices(d Data, oob bool) {
 	<div id="editor-voices" class="contents" { oobAttr(oob)... }>
 		if len(d.Voices) > 0 {
-			<ul class="flex flex-col gap-1 text-xs text-ink" data-audio-voices>
+			<ul class="flex flex-col gap-1 text-sm text-ink" data-audio-voices>
 				for _, v := range d.Voices {
 					<li>{ v.Speaker + "（クローン音声）" }</li>
 				}

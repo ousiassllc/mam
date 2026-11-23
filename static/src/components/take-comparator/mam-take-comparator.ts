@@ -208,15 +208,19 @@ export class MamTakeComparator extends LitElement {
     const canMerge = this.selection.length >= 2 && !this.busy;
     return html`
       <div class="flex flex-col gap-4">
-        <div class="overflow-x-auto">${renderTakeTable(this.takes, this.limits?.min_axis_score ?? 0, {
-          busy: this.busy,
-          select: (take) =>
-            void this.act(
-              () => post(take.select_url!),
-              () => rowTargets(this, take.id, 'select'),
-            ),
-          reject: (take) => this.reject(take),
-        })}</div>
+        <div class="overflow-x-auto focus-visible:focus-ring" tabindex="0" role="region" aria-label="Take の比較表">${renderTakeTable(
+          this.takes,
+          this.limits?.min_axis_score ?? 0,
+          {
+            busy: this.busy,
+            select: (take) =>
+              void this.act(
+                () => post(take.select_url!),
+                () => rowTargets(this, take.id, 'select'),
+              ),
+            reject: (take) => this.reject(take),
+          },
+        )}</div>
         ${
           this.partialUrl
             ? html`<section class="flex flex-col gap-3" aria-label="区間指定">
@@ -279,7 +283,7 @@ export class MamTakeComparator extends LitElement {
       >
         ${this.selection.map((s, i) =>
           s.take_id === t.id
-            ? html`<div class="pointer-events-none absolute top-0 h-full rounded-sm bg-success/70 text-xs leading-7 text-bone" style=${bar(s)} data-picked>${i + 1}</div>`
+            ? html`<div class="pointer-events-none absolute top-0 h-full rounded-sm bg-success/70 text-xs leading-7" style=${bar(s)} data-picked><span class="inline-block rounded-sm bg-surface px-1 leading-5 text-ink" data-picked-number>${i + 1}</span></div>`
             : nothing,
         )}
         ${preview ? html`<div class="pointer-events-none absolute top-0 h-full rounded-sm bg-info/70" style=${bar(preview)} data-drag></div>` : nothing}

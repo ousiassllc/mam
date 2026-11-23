@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/a11y/uisrc"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/reviewlist"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/seriesview"
@@ -18,7 +19,7 @@ import (
 // slot, a Series Character) name their row too (#799, #804). Each test renders two rows.
 
 func TestShotInspector_TraceButtonsAreNamedAfterTheirTake(t *testing.T) {
-	html := render(t, shotinspector.View(shotinspector.Data{
+	html := uisrc.Render(t, shotinspector.View(shotinspector.Data{
 		Project: domain.Project{ID: "p"},
 		Shot:    domain.Shot{ID: "s1", SceneID: "sc"},
 		Takes: []domain.Take{
@@ -32,7 +33,7 @@ func TestShotInspector_TraceButtonsAreNamedAfterTheirTake(t *testing.T) {
 
 func TestReviewList_ResolveButtonsAreNamedAfterTheirComment(t *testing.T) {
 	ms := int64(12000)
-	html := render(t, reviewlist.Card("p1", reviewlist.Item{Item: domain.ReviewItem{
+	html := uisrc.Render(t, reviewlist.Card("p1", reviewlist.Item{Item: domain.ReviewItem{
 		Request: domain.ReviewRequest{ID: "rr1", CreatedAt: time.Now()},
 		Responses: []domain.ReviewResponseRecord{{ID: "r1", ReviewerName: "Ren", Comments: []domain.ReviewComment{
 			{ID: "c1", TimecodeMs: &ms, Body: "色が暗い"},
@@ -47,7 +48,7 @@ func TestReviewList_ResolveButtonsAreNamedAfterTheirComment(t *testing.T) {
 func TestShotCard_ActionsAreNamedAfterTheirShot(t *testing.T) {
 	var html string
 	for n, objective := range []string{"街の全景", "主人公の顔"} {
-		html += render(t, molecules.ShotCard(molecules.ShotCardData{
+		html += uisrc.Render(t, molecules.ShotCard(molecules.ShotCardData{
 			ProjectID: "p1",
 			Shot:      domain.Shot{ID: "s", SceneID: "sc", OrderIndex: n, Objective: objective, State: domain.ShotPlanning},
 			Takes:     []domain.Take{{ID: "t", ShotID: "s", Status: domain.TakeCandidate}},
@@ -73,7 +74,7 @@ func worldStateData() worldstate.Data {
 }
 
 func TestWorldState_SaveAndAssignButtonsAreNamedAfterTheirEntity(t *testing.T) {
-	html := render(t, worldstate.View(worldStateData()))
+	html := uisrc.Render(t, worldstate.View(worldStateData()))
 
 	assert.Equal(t, []string{"保存: Mio", "保存: Ren", "保存: ボトル"}, buttonNames(html, "保存"))
 	assigned := buttonNames(html, "割り当て")
@@ -83,20 +84,20 @@ func TestWorldState_SaveAndAssignButtonsAreNamedAfterTheirEntity(t *testing.T) {
 }
 
 func TestWorldState_LockSwitchAnswersASaveButtonNamedAfterItsEntity(t *testing.T) {
-	html := render(t, worldstate.LockSwitched(worldStateData(), domain.TargetCharacter, "c2", "wardrobe"))
+	html := uisrc.Render(t, worldstate.LockSwitched(worldStateData(), domain.TargetCharacter, "c2", "wardrobe"))
 
 	assert.Equal(t, []string{"保存: Ren"}, buttonNames(html, "保存"))
 }
 
 func TestMoleculesWorldStateSave_IsNamedAfterItsSubject(t *testing.T) {
 	fields := []molecules.WorldStateFieldData{{Name: "wardrobe"}}
-	html := render(t, molecules.WorldStateSave("ws-save-x", "Mio", fields, false))
+	html := uisrc.Render(t, molecules.WorldStateSave("ws-save-x", "Mio", fields, false))
 
 	assert.Equal(t, []string{"保存: Mio"}, buttonNames(html, "保存"))
 }
 
 func TestSeriesView_CharacterSaveButtonsAreNamedAfterTheirCharacter(t *testing.T) {
-	html := render(t, seriesview.View(seriesview.Data{
+	html := uisrc.Render(t, seriesview.View(seriesview.Data{
 		Series: domain.Series{ID: "s1", Name: "Mio", Version: 1},
 		Canon:  domain.SeriesCanon{Characters: []domain.WorldCharacter{{ID: "c1", Name: "Mio"}, {ID: "c2", Name: "Ren"}}},
 	}))

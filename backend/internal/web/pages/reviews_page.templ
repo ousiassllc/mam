@@ -37,7 +37,7 @@ templ ReviewPage(csrfToken string, i domain.ReviewInbox) {
 	@layout.AppLayout("レビュー: "+i.ProjectName, csrfToken, sidenav.At(sidenav.Reviews)) {
 		@pagehead.Main(pagehead.Narrow) {
 			<div class="flex flex-col gap-3">
-				@atoms.BackLink(paths.Reviews(), "← レビュー一覧")
+				@atoms.BackLink(paths.Reviews(), "レビュー一覧")
 				@pagehead.Header(i.ProjectName, i.Video.Resolution+" / "+i.Video.AspectRatio+" / "+i.Video.Codec, "")
 			</div>
 			@organisms.ReviewWorkspace(i)

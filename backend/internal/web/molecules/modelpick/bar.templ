@@ -29,17 +29,18 @@ templ Bar(b Filter) {
 			<label class="sr-only" for={ b.searchID() }>モデルを探す（名前・タグ）</label>
 			@atoms.Input(atoms.FieldMd, "min-w-0 flex-1 sm:max-w-sm", templ.Attributes{
 				"id": b.searchID(), "type": "search", "name": "q", "form": FormNone, "value": b.Cond.Text, "autocomplete": "off",
-				"placeholder": "モデル名・タグで探す", "data-mp-search": true, "data-testid": "model-pick-search",
+				"placeholder": "モデル名・タグで探す", "data-mp-search": true, "data-testid": "model-pick-search", "autofocus": b.Autofocus,
 			})
 			<button
 				type="button"
-				class="relative inline-flex cursor-pointer items-center gap-2 rounded-md border border-mute bg-bone px-3 py-1 text-sm text-ink hover:border-accent focus-visible:focus-ring"
+				class={ atoms.SmallButtonClass(atoms.ToneNeutral) + " relative gap-2" }
 				aria-expanded="false"
 				aria-controls={ b.panelID() }
 				data-mp-toggle
 				data-testid="model-pick-toggle"
+				data-ripple
 			>
-				@atoms.Icon(atoms.IconFilter, "h-4 w-4 shrink-0")
+				@atoms.Icon(atoms.IconFilter, "size-icon-sm shrink-0")
 				<span>絞り込み</span>
 				@Count(b, false)
 			</button>
@@ -52,7 +53,7 @@ templ Bar(b Filter) {
 templ Count(b Filter, oob bool) {
 	<span
 		id={ b.countID() }
-		class="inline-flex min-w-5 items-center justify-center rounded-md bg-accent px-2 text-xs text-bone"
+		class="inline-flex min-w-5 items-center justify-center rounded-full bg-accent px-2 text-xs text-bone"
 		hidden?={ b.Active() == 0 }
 		data-testid="model-pick-count"
 		if oob {

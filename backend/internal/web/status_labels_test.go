@@ -103,7 +103,7 @@ func TestProjectStateBadge_IsAnAtomsBadgeWithItsAttributes(t *testing.T) {
 	assert.Contains(t, html, `id="project-state"`)
 	assert.Contains(t, html, `data-state="READY"`)
 	assert.Contains(t, html, `hx-swap-oob="true"`)
-	assert.Contains(t, html, "bg-success/20")
+	assert.Contains(t, html, "bg-success/10")
 
 	plain := renderHTML(t, organisms.ProjectStateBadge(domain.StateDraft, false))
 	assert.NotContains(t, plain, "hx-swap-oob")

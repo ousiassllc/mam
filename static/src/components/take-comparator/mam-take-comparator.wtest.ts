@@ -65,16 +65,16 @@ describe('mam-take-comparator: score table', () => {
       const el = await comparator();
       const cells = [...el.querySelectorAll('[data-take="t1"] [data-score]')];
       const marked = cells.filter((c) => c.querySelector('[data-below-min]') !== null);
-      // What a screen reader and a colour-blind reader get: the score, the reason and a visible ▼.
+      // What a screen reader and a colour-blind reader get: the score, the reason and a visible down arrow (an icon, not a glyph).
       for (const c of marked) {
         expect(c.querySelector('.sr-only')?.textContent).to.equal(`（基準 ${min_axis_score} 未満）`);
-        expect(c.textContent).to.contain('▼');
-        expect(c.querySelector('[aria-hidden="true"]')?.textContent).to.equal(' ▼');
+        expect(c.querySelector('[aria-hidden="true"] svg')).to.not.equal(null);
+        expect(c.textContent).to.not.contain('▼');
       }
       // A passing score is the bare number: no marker, no hidden text.
       for (const c of cells.filter((c) => !marked.includes(c))) {
         expect(c.querySelector('.sr-only')).to.equal(null);
-        expect(c.textContent).to.not.contain('▼');
+        expect(c.querySelector('svg')).to.equal(null);
       }
       stub.restore();
       return marked.map((c) => (c as HTMLElement).dataset.score);

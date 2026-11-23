@@ -117,14 +117,14 @@ templ status(m Message) {
 			}
 		</p>
 	} else {
-		<p id={ "gtc-m-" + m.ID } class="self-start whitespace-pre-wrap break-words text-xs text-mute" data-testid="gtc-status">{ m.Text }</p>
+		<p id={ "gtc-m-" + m.ID } class="self-start whitespace-pre-wrap break-words text-sm text-ink" data-testid="gtc-status">{ m.Text }</p>
 	}
 }
 
 // optionCards are the cards of a question: a tap sends the card's reply as the user's message. A question that has been answered is turned off by
 // the script (the cards of the newest message of the assistant are the only live ones).
 templ optionCards(session string, opts []Option) {
-	<ul class="grid grid-cols-1 gap-2 data-answered:opacity-60 sm:grid-cols-2" data-gtc-options data-testid="gtc-options">
+	<ul class="grid grid-cols-1 gap-3 data-answered:opacity-60 sm:grid-cols-2" data-gtc-options data-testid="gtc-options">
 		for _, o := range opts {
 			<li>
 				<form

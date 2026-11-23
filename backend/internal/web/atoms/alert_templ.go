@@ -29,13 +29,13 @@ func alertClass(kind AlertKind) string {
 	base := "pointer-events-auto flex items-start gap-3 rounded-md border p-3 text-sm "
 	switch kind {
 	case AlertSuccess:
-		return base + "border-success/60 bg-success/10"
+		return base + "border-success/40 bg-success/10"
 	case AlertWarning:
-		return base + "border-warning/60 bg-warning/10"
+		return base + "border-warning/40 bg-warning/10"
 	case AlertError:
-		return base + "border-danger/60 bg-danger/10"
+		return base + "border-danger/40 bg-danger/10"
 	}
-	return base + "border-info/60 bg-info/10"
+	return base + "border-info/40 bg-info/10"
 }
 
 func alertTone(kind AlertKind) string {
@@ -143,7 +143,7 @@ func Alert(kind AlertKind, title, body string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = Icon(alertIcon(kind), "mt-1 h-5 w-5 shrink-0 "+alertTone(kind)).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Icon(alertIcon(kind), "mt-1 size-icon-md shrink-0 "+alertTone(kind)).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -199,7 +199,7 @@ func Alert(kind AlertKind, title, body string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = Icon(IconClose, "h-4 w-4").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Icon(IconClose, "size-icon-sm").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

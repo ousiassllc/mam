@@ -30,7 +30,7 @@ templ Dialog() {
 			@atoms.SmallButton(atoms.ToneNeutral, "閉じる", templ.Attributes{"type": "button", "data-gt-picker-close": ""})
 		</div>
 		<div id={ BodyID } class="mt-3 flex flex-col gap-3" data-testid="gt-pose-body" aria-live="polite">
-			<p class="text-xs text-mute">読み込んでいます…</p>
+			<p class="text-sm text-mute">読み込んでいます…</p>
 		</div>
 	</dialog>
 }
@@ -38,10 +38,10 @@ templ Dialog() {
 // ModelNotes says what the ticked models do with a pose picture. A model that reads it as a pose says whether it may be used commercially,
 // in the words of its card (the Qwen-Image 2.1 family is for research only: 商用NG); one that does not is told to take it as a whole picture.
 templ ModelNotes(n Notes) {
-	<div class="flex flex-col gap-2 text-xs" data-testid="gt-pose-models">
+	<div class="flex flex-col gap-2 text-sm" data-testid="gt-pose-models">
 		switch  {
 			case n.Ticked == 0:
-				<p class="text-mute" data-testid="gt-pose-models-none">
+				<p class="text-ink" data-testid="gt-pose-models-none">
 					モデルを選ぶと、そのモデルがポーズを読めるか・商用で使えるかをここに出します。
 					if len(n.Capable) > 0 {
 						ポーズを読めるモデル: { joinNames(n.Capable) }
@@ -82,14 +82,14 @@ templ InstallPanel(w Wire, in Install) {
 				</span>
 			}
 		</p>
-		<ul class="flex flex-col gap-2 text-xs" data-testid="gt-pose-licenses">
+		<ul class="flex flex-col gap-2 text-sm" data-testid="gt-pose-licenses">
 			for _, l := range in.Licenses {
 				<li class="flex flex-col gap-1 rounded-lg border border-border p-2">
 					<p class="flex flex-wrap items-center gap-2 text-ink">
 						<span class="">{ l.Name }</span>
 						@commercial.Badge(l.Answer)
 					</p>
-					<p class="text-mute">{ l.Summary }</p>
+					<p class="text-ink">{ l.Summary }</p>
 					@commercial.Note(l.Answer)
 				</li>
 			}
@@ -98,15 +98,16 @@ templ InstallPanel(w Wire, in Install) {
 		if in.Error != "" {
 			<p class="text-sm text-danger" role="alert" data-testid="gt-pose-error">{ in.Error }</p>
 		}
-		<label class="flex items-start gap-2 text-xs text-ink">
+		<label class="flex items-start gap-2 text-sm text-ink">
 			@atoms.Choice("mt-1", templ.Attributes{"type": "checkbox", "name": FieldAccept, "value": "on", "form": noForm, "data-gt-pose-install-accept": "", "data-testid": "gt-pose-accept"})
 			<span>上のライセンスと取得元を確認しました。ダウンロードに同意します。</span>
 		</label>
 		<div>
 			<button
 				type="button"
-				class="group inline-flex items-center justify-center rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bone transition-colors hover:bg-accent/85 disabled:cursor-not-allowed disabled:opacity-50"
+				class={ atoms.ButtonClass(atoms.TonePrimary) + " group" }
 				data-testid="gt-pose-install-button"
+				data-ripple
 				hx-post={ w.InstallURL }
 				hx-target={ "#" + BodyID }
 				hx-swap="innerHTML"
@@ -117,7 +118,7 @@ templ InstallPanel(w Wire, in Install) {
 				<span class="hidden group-[.htmx-request]:inline" role="status">ダウンロードしています…</span>
 			</button>
 		</div>
-		<div hx-get={ w.ProgressURL } hx-trigger="every 1s" hx-swap="innerHTML" class="text-xs text-ink" role="status" aria-live="polite" data-testid="gt-pose-progress"></div>
+		<div hx-get={ w.ProgressURL } hx-trigger="every 1s" hx-swap="innerHTML" class="text-sm text-ink" role="status" aria-live="polite" data-testid="gt-pose-progress"></div>
 	</div>
 }
 
@@ -200,7 +201,7 @@ templ GalleryPanel(w Wire, g Gallery) {
 				</div>
 			</fieldset>
 		</div>
-		<p class="text-sm text-mute" data-testid="gt-pose-kinds-note">
+		<p class="text-sm text-ink" data-testid="gt-pose-kinds-note">
 			線画は編集モデル（「ポーズだけ」の参照）向けです。深度・法線は、ControlNet のモデル（深度・法線）に制御画像として渡すマップです。
 			ControlNet のモデルは受け取った画像をそのまま制御画像にするので、モデルに合わせた種類を選んでください（深度のモデルには「深度」、法線のモデルには「法線」）。
 		</p>
@@ -220,10 +221,10 @@ templ GalleryPanel(w Wire, g Gallery) {
 // adultSection is the part of the gallery about the suggestive series (sexy, duo), shown only while the age gate is open (g.Adult is nil otherwise,
 // and nothing of the series is said): the offer to install them (another zip set, with its own agreement), or the button to remove them.
 templ adultSection(w Wire, a AdultOffer) {
-	<section class="flex flex-col gap-2 rounded-lg border border-border p-3 text-xs" data-testid="gt-pose-adult">
+	<section class="flex flex-col gap-2 rounded-lg border border-border p-3 text-sm" data-testid="gt-pose-adult">
 		<h3 class="text-sm font-semibold text-ink">成人向けのポーズ（sexy・二人）</h3>
 		if a.Installed {
-			<p class="text-mute" data-testid="gt-pose-adult-installed">
+			<p class="text-ink" data-testid="gt-pose-adult-installed">
 				成人向けのポーズを導入済みです。モデル管理の年齢確認をオフにすると、一覧にも出なくなります（ファイルは残ります）。
 			</p>
 			<div>
@@ -247,7 +248,7 @@ templ adultSection(w Wire, a AdultOffer) {
 							<span class="">{ l.Name }</span>
 							@commercial.Badge(l.Answer)
 						</p>
-						<p class="text-mute">{ l.Summary }</p>
+						<p class="text-ink">{ l.Summary }</p>
 						@commercial.Note(l.Answer)
 					</li>
 				}
@@ -262,8 +263,9 @@ templ adultSection(w Wire, a AdultOffer) {
 			<div>
 				<button
 					type="button"
-					class="group inline-flex items-center justify-center rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bone transition-colors hover:bg-accent/85 disabled:cursor-not-allowed disabled:opacity-50"
+					class={ atoms.ButtonClass(atoms.TonePrimary) + " group" }
 					data-testid="gt-pose-adult-install-button"
+					data-ripple
 					hx-post={ w.InstallAdultURL }
 					hx-target={ "#" + BodyID }
 					hx-swap="innerHTML"
@@ -290,9 +292,9 @@ templ ResultsList(w Wire, r Results) {
 	<div id={ ResultsID } data-testid="gt-pose-results" class="flex flex-col gap-2">
 		<p class="text-sm text-mute" role="status" aria-live="polite" data-testid="gt-pose-count">{ strconv.Itoa(len(r.Cards)) } / { strconv.Itoa(r.Total) } 種類</p>
 		if len(r.Cards) == 0 {
-			<p class="text-sm text-mute" data-testid="gt-pose-empty">条件に合うポーズがありません。検索の言葉や分類を変えてください。</p>
+			<p class="text-sm text-ink" data-testid="gt-pose-empty">条件に合うポーズがありません。検索の言葉や分類を変えてください。</p>
 		}
-		<ul class="grid grid-cols-2 gap-2 sm:grid-cols-3 md:grid-cols-4">
+		<ul class="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
 			for _, c := range r.Cards {
 				@card(w, c)
 			}
@@ -301,7 +303,7 @@ templ ResultsList(w Wire, r Results) {
 }
 
 templ card(w Wire, c Card) {
-	<li class="flex flex-col gap-1 rounded-lg border border-border p-2 text-xs" data-testid="gt-pick" data-pose-card>
+	<li class="flex flex-col gap-1 rounded-lg border border-border p-2 text-sm" data-testid="gt-pick" data-pose-card>
 		<img
 			class="aspect-[3/4] w-full rounded-md bg-surface object-contain"
 			src={ c.Image }

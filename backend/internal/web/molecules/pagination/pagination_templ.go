@@ -9,9 +9,9 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 const (
-	linkClass    = "inline-flex min-h-8 min-w-8 items-center justify-center rounded-md border border-border px-2 py-1 text-sm font-semibold text-ink transition-colors hover:bg-accent-soft focus-visible:focus-ring motion-reduce:transition-none"
-	currentClass = "inline-flex min-h-8 min-w-8 items-center justify-center rounded-md bg-accent px-2 py-1 text-sm font-semibold text-bone"
-	offClass     = "inline-flex min-h-8 items-center justify-center rounded-md border border-border px-2 py-1 text-sm text-mute opacity-40"
+	linkClass    = "inline-flex min-h-9 min-w-9 items-center justify-center rounded-md border border-border px-2 py-1 text-sm text-ink transition-colors hover:bg-accent-soft focus-visible:focus-ring motion-reduce:transition-none"
+	currentClass = "inline-flex min-h-9 min-w-9 items-center justify-center rounded-md bg-accent px-2 py-1 text-sm text-bone"
+	offClass     = "inline-flex min-h-9 items-center justify-center rounded-md border border-border px-2 py-1 text-sm text-mute opacity-40"
 )
 
 // Nav is the page navigation: a <nav> named "ページ移動" with the line of what is shown and a list of links (the first, previous, the pages around the
@@ -207,14 +207,14 @@ func Nav(p Props) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\" aria-label=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\" data-ripple aria-label=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var13 string
 					templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue(pageLabel(n))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/pagination/pagination.templ`, Line: 35, Col: 33}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/pagination/pagination.templ`, Line: 36, Col: 33}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 					if templ_7745c5c3_Err != nil {
@@ -227,7 +227,7 @@ func Nav(p Props) templ.Component {
 					var templ_7745c5c3_Var14 string
 					templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.Href(n))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/pagination/pagination.templ`, Line: 36, Col: 26}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/pagination/pagination.templ`, Line: 37, Col: 26}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 					if templ_7745c5c3_Err != nil {
@@ -240,7 +240,7 @@ func Nav(p Props) templ.Component {
 					var templ_7745c5c3_Var15 string
 					templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.ResolveAttributeValue("#" + p.Target)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/pagination/pagination.templ`, Line: 37, Col: 34}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/pagination/pagination.templ`, Line: 38, Col: 34}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var15)
 					if templ_7745c5c3_Err != nil {
@@ -253,7 +253,7 @@ func Nav(p Props) templ.Component {
 					var templ_7745c5c3_Var16 string
 					templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.ResolveAttributeValue(swap(p))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/pagination/pagination.templ`, Line: 38, Col: 25}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/pagination/pagination.templ`, Line: 39, Col: 25}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var16)
 					if templ_7745c5c3_Err != nil {
@@ -266,7 +266,7 @@ func Nav(p Props) templ.Component {
 					var templ_7745c5c3_Var17 string
 					templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(pageText(n))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/pagination/pagination.templ`, Line: 40, Col: 21}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/pagination/pagination.templ`, Line: 41, Col: 21}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
 					if templ_7745c5c3_Err != nil {
@@ -338,7 +338,7 @@ func step(p Props, label, name string, page int, enabled bool) templ.Component {
 			var templ_7745c5c3_Var20 string
 			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.id(name))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/pagination/pagination.templ`, Line: 59, Col: 18}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/pagination/pagination.templ`, Line: 60, Col: 18}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var20)
 			if templ_7745c5c3_Err != nil {
@@ -351,7 +351,7 @@ func step(p Props, label, name string, page int, enabled bool) templ.Component {
 			var templ_7745c5c3_Var21 templ.SafeURL
 			templ_7745c5c3_Var21, templ_7745c5c3_Err = templ.JoinURLErrs(templ.SafeURL(p.Href(page)))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/pagination/pagination.templ`, Line: 60, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/pagination/pagination.templ`, Line: 61, Col: 37}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var21))
 			if templ_7745c5c3_Err != nil {
@@ -370,14 +370,14 @@ func step(p Props, label, name string, page int, enabled bool) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "\" hx-get=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "\" data-ripple hx-get=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var23 string
 			templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.ResolveAttributeValue(p.Href(page))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/pagination/pagination.templ`, Line: 62, Col: 24}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/pagination/pagination.templ`, Line: 64, Col: 24}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var23)
 			if templ_7745c5c3_Err != nil {
@@ -390,7 +390,7 @@ func step(p Props, label, name string, page int, enabled bool) templ.Component {
 			var templ_7745c5c3_Var24 string
 			templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.ResolveAttributeValue("#" + p.Target)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/pagination/pagination.templ`, Line: 63, Col: 29}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/pagination/pagination.templ`, Line: 65, Col: 29}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var24)
 			if templ_7745c5c3_Err != nil {
@@ -403,7 +403,7 @@ func step(p Props, label, name string, page int, enabled bool) templ.Component {
 			var templ_7745c5c3_Var25 string
 			templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.ResolveAttributeValue(swap(p))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/pagination/pagination.templ`, Line: 64, Col: 20}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/pagination/pagination.templ`, Line: 66, Col: 20}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var25)
 			if templ_7745c5c3_Err != nil {
@@ -416,7 +416,7 @@ func step(p Props, label, name string, page int, enabled bool) templ.Component {
 			var templ_7745c5c3_Var26 string
 			templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/pagination/pagination.templ`, Line: 66, Col: 10}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/pagination/pagination.templ`, Line: 68, Col: 10}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 			if templ_7745c5c3_Err != nil {
@@ -452,7 +452,7 @@ func step(p Props, label, name string, page int, enabled bool) templ.Component {
 			var templ_7745c5c3_Var29 string
 			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(label)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/pagination/pagination.templ`, Line: 68, Col: 55}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/pagination/pagination.templ`, Line: 70, Col: 55}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 			if templ_7745c5c3_Err != nil {

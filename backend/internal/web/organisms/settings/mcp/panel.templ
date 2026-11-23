@@ -72,7 +72,7 @@ templ bindDetails(d Data) {
 
 templ noTokensRow() {
 	<tr id={ NoRowsID } data-testid="mcp-no-tokens">
-		<td colspan="5" class="px-3 py-3 text-mute">発行済みのトークンはありません。トークンがないと MCP には接続できません。</td>
+		<td colspan="5" class="px-3 py-3 text-ink">発行済みのトークンはありません。トークンがないと MCP には接続できません。</td>
 	</tr>
 }
 
@@ -86,10 +86,10 @@ templ TokenRowItem(t TokenRow, oob bool) {
 			{ t.Name }
 			<code class="block text-xs font-normal text-mute">mam_mcp_{ t.Prefix }…</code>
 		}
-		@settingsui.Cell("whitespace-nowrap") {
+		@settingsui.Cell("whitespace-nowrap font-mono tabular-nums") {
 			{ formatTime(t.CreatedAt) }
 		}
-		@settingsui.Cell("whitespace-nowrap") {
+		@settingsui.Cell("whitespace-nowrap font-mono tabular-nums") {
 			if t.LastUsedAt != nil {
 				{ formatTime(*t.LastUsedAt) }
 			} else {

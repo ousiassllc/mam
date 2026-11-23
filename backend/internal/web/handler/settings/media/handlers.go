@@ -176,7 +176,7 @@ func SaveImage(svc *modelsettings.Service, k Cards) gin.HandlerFunc {
 			return
 		}
 		saved := imageRow(v, p, v.Images[p])
-		done(c, v, media.ImageRowOOB(saved), saved.Label+" の画像モデルを保存しました。すぐに反映されます")
+		done(c, v, media.ImageRowOOB(saved), saved.Label+" の画像モデルを保存しました")
 	}
 }
 
@@ -202,7 +202,7 @@ func SavePolicy(svc *modelsettings.Service, k Cards) gin.HandlerFunc {
 			return
 		}
 		saved := policyRow(v, q, v.Policies[q])
-		done(c, v, media.PolicyRowOOB(saved), saved.Label+" の動画モデルを保存しました。すぐに反映されます")
+		done(c, v, media.PolicyRowOOB(saved), saved.Label+" の動画モデルを保存しました")
 	}
 }
 

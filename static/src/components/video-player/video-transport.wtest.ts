@@ -9,12 +9,17 @@ const ACTIONS = ['prev-frame', 'play', 'next-frame'] as const;
 const button = (el: HTMLElement, action: string) => el.querySelector(`[data-action="${action}"]`) as HTMLButtonElement;
 
 describe('mam-video-player: transport buttons', () => {
-  it('tells the three buttons apart by their visible text and gives each a tooltip equal to its accessible name', async () => {
+  it('tells the three buttons apart by their icon and name, and gives each a tooltip equal to its accessible name', async () => {
     const el = await fixture<MamVideoPlayer>(html`<mam-video-player video-src=${CLIP} fps="25"></mam-video-player>`);
 
-    // The play button shows ▶ while stopped; the frame steps must not repeat it.
-    const visible = ACTIONS.map((a) => button(el, a).textContent!.trim());
-    expect(new Set(visible).size).to.equal(ACTIONS.length);
+    // Each button draws an Iconoir icon (a decoration), no glyph; the play button shows play while stopped, and the frame steps must not repeat it.
+    for (const action of ACTIONS) {
+      const b = button(el, action);
+      expect(b.querySelector('svg[aria-hidden="true"]'), action).to.not.equal(null);
+      expect(b.textContent!.trim(), action).to.equal('');
+    }
+    const shapes = ACTIONS.map((a) => button(el, a).querySelector('svg')!.innerHTML);
+    expect(new Set(shapes).size).to.equal(ACTIONS.length);
 
     for (const action of ACTIONS) {
       const b = button(el, action);
@@ -35,8 +40,8 @@ describe('mam-video-player: transport buttons', () => {
     await waitUntil(() => button(el, 'play').title === '一時停止', 'the tooltip did not follow the state');
 
     expect(button(el, 'play').getAttribute('aria-label')).to.equal('一時停止');
-    const visible = ACTIONS.map((a) => button(el, a).textContent!.trim());
-    expect(new Set(visible).size).to.equal(ACTIONS.length);
+    const shapes = ACTIONS.map((a) => button(el, a).querySelector('svg')!.innerHTML);
+    expect(new Set(shapes).size).to.equal(ACTIONS.length);
     video.pause();
   });
 });

@@ -96,7 +96,7 @@ templ Section(l List) {
 		if l.Error != "" {
 			<p class="text-sm text-danger" role="alert" data-testid="jobs-error">{ l.Error }</p>
 		} else if len(l.Rows) == 0 {
-			<p class="text-sm text-mute" data-testid="jobs-empty">ジョブはまだありません。モデルの導入や単発生成、Shot の生成を始めると、ここに出ます。</p>
+			<p class="text-sm text-ink" data-testid="jobs-empty">ジョブはまだありません。モデルの導入や単発生成、Shot の生成を始めると、ここに出ます。</p>
 		}
 		if len(l.Rows) > 0 {
 			<ul class="flex flex-col gap-3">
@@ -122,7 +122,7 @@ templ row(r Row) {
 	if r.Progress != nil {
 		<div class="flex flex-col gap-1" data-testid="jobs-progress">
 			if r.Progress.Known() {
-				<progress class="h-2 w-full" max="100" value={ itoa(r.Progress.Percent) } aria-label={ r.name() + "の進み具合" }></progress>
+				<progress class="h-1.5 w-full" max="100" value={ itoa(r.Progress.Percent) } aria-label={ r.name() + "の進み具合" }></progress>
 				<p class="break-words text-sm text-ink">{ itoa(r.Progress.Percent) }%<span class="text-mute">{ progressText(r.Progress.Text) }</span></p>
 			} else {
 				<p class="break-words text-sm text-ink">{ r.Progress.Text }</p>

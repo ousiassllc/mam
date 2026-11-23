@@ -4,10 +4,10 @@
  * the document: the section may arrive in a swapped body.
  */
 
+import { highlightZone } from '../lib/ui/dropzone';
 import { fileProblem, progressText } from './lora-import-model';
 
 const FORM = '[data-lora-pick]';
-const ZONE_ACTIVE = ['border-accent', 'bg-accent-soft'];
 
 function say(form: HTMLElement, text: string): void {
   const line = form.querySelector<HTMLElement>('[data-lora-error]');
@@ -56,10 +56,12 @@ export function initLoRAImport(root: Document = document): void {
     const zone = (event.target as Element | null)?.closest('[data-lora-zone]');
     if (!zone) return;
     event.preventDefault();
-    zone.classList.add(...ZONE_ACTIVE);
+    highlightZone(zone, true);
   });
   root.addEventListener('dragleave', (event) => {
-    (event.target as Element | null)?.closest('[data-lora-zone]')?.classList.remove(...ZONE_ACTIVE);
+    const zone = (event.target as Element | null)?.closest('[data-lora-zone]');
+    if (zone && !(event.relatedTarget instanceof Node && zone.contains(event.relatedTarget)))
+      highlightZone(zone, false);
   });
   root.addEventListener('drop', (event) => {
     const zone = (event.target as Element | null)?.closest('[data-lora-zone]');
@@ -67,8 +69,8 @@ export function initLoRAImport(root: Document = document): void {
     const input = form?.querySelector<HTMLInputElement>('[data-lora-file]');
     if (!zone || !form || !input) return;
     event.preventDefault();
+    highlightZone(zone, false);
     if (form.classList.contains('htmx-request')) return; // one file is on its way: a second is not sent beside it
-    zone.classList.remove(...ZONE_ACTIVE);
     const file = event.dataTransfer?.files?.[0];
     if (!file) return;
     const files = new DataTransfer();

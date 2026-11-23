@@ -10,7 +10,8 @@ import templruntime "github.com/a-h/templ/runtime"
 
 // Toast is the one definition of a toast's markup (the UI guide, O3): a short line of what worked ("保存しました"), a pill at the bottom centre, on
 // --ink with --bone text, one at a time (a new one replaces the one that is up: ToastOOB swaps the region's content), gone after 3 seconds
-// (static/src/components/toast/toast.ts). It is not for what went wrong: an error, a refusal and anything that needs reading again is an Alert.
+// (static/src/components/toast/toast.ts). It is one line: the message is one short sentence and the span is truncated, never wrapped, so
+// that 3 seconds are enough to read it; what else there is to say belongs in the body of the screen. It is not for what went wrong: an error, a refusal and anything that needs reading again is an Alert.
 func Toast(message string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -32,22 +33,22 @@ func Toast(message string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pointer-events-auto flex min-h-10 items-center gap-2 rounded-full bg-ink px-4 py-2 text-sm text-bone\" role=\"status\" data-toast>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pointer-events-auto flex min-h-10 max-w-full items-center gap-2 rounded-full bg-ink px-4 py-2 text-sm text-bone\" role=\"status\" data-toast>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = Icon(IconSuccess, "h-4 w-4 shrink-0").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Icon(IconSuccess, "size-icon-sm shrink-0").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<span data-toast-message>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<span class=\"min-w-0 truncate\" data-toast-message>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/toast.templ`, Line: 9, Col: 36}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/atoms/toast.templ`, Line: 10, Col: 61}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {

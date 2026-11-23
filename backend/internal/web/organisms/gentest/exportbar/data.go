@@ -1,5 +1,5 @@
 // Package exportbar is the bar of the history of the generation test that saves results as a ZIP (#932). It is a package of its own for
-// the line limit of organisms/gentest; the tap-to-choose behaviour of the cards it belongs to is static/src/components/gentest/export-pick.ts.
+// the line limit of organisms/gentest; the tap-to-choose behaviour of the cards it belongs to is static/src/components/gentest/export/export-pick.ts.
 package exportbar
 
 // StatusID is the DOM id of the line beside the buttons that says why a choice cannot be saved.

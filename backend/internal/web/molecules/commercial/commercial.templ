@@ -19,7 +19,7 @@ templ Note(v View) {
 	if v.NeedsNote() {
 		<div class={ noteClass(v) } role="note" data-testid="commercial-note" data-commercial-note={ v.Answer() }>
 			<p class="">
-				@atoms.Icon(noteIcon(v), "mr-1 inline h-4 w-4 align-text-bottom")
+				@atoms.Icon(noteIcon(v), "mr-1 inline size-icon-sm align-text-bottom")
 				{ v.Level.Label() }
 				if v.LicenseName != "" {
 					<span class="font-normal">・ { v.LicenseName }</span>
@@ -51,7 +51,7 @@ templ sourceLink(v View) {
 // Choice is the choice 「すべて / 商用OKのみ / 条件つきまで」 of the history, a group of radio buttons that post under the field of the form around it.
 templ Choice(f ChoiceData) {
 	<div class="flex flex-wrap items-center gap-2" role="radiogroup" aria-label="商用利用で絞り込む" data-testid="commercial-choice" id={ f.ID }>
-		@atoms.Icon(atoms.IconFilter, "h-4 w-4 shrink-0 text-mute")
+		@atoms.Icon(atoms.IconFilter, "size-icon-sm shrink-0 text-mute")
 		for _, opt := range filterOptions() {
 			<label class="relative cursor-pointer">
 				<input type="radio" class="peer sr-only" name={ f.Field } value={ string(opt) } checked?={ opt == f.Current }/>

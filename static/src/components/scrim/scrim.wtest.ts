@@ -42,6 +42,42 @@ describe('scrim', () => {
     expect(dialog.open).to.equal(true);
   });
 
+  describe('a press and its click', () => {
+    const pressAt = (target: Element, x: number, y: number) =>
+      target.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, clientX: x, clientY: y }));
+
+    it('does not close when the press started inside the dialog and the click lands on the scrim (a drag that selects text)', () => {
+      const box = dialog.getBoundingClientRect();
+      const input = dialog.querySelector('input') as HTMLInputElement;
+      pressAt(input, box.left + 30, box.top + 30);
+      clickAt(box.left - 5, box.top - 5); // the click of the common ancestor, where the button was let go
+      expect(dialog.open).to.equal(true);
+    });
+
+    it('does not close when the press started on the dialog padding and the click lands on the scrim', () => {
+      const box = dialog.getBoundingClientRect();
+      pressAt(dialog, box.left + 3, box.top + 3);
+      clickAt(box.left - 5, box.top - 5);
+      expect(dialog.open).to.equal(true);
+    });
+
+    it('closes when the press and the click are both on the scrim', () => {
+      const box = dialog.getBoundingClientRect();
+      pressAt(dialog, box.left - 5, box.top - 5);
+      clickAt(box.left - 5, box.top - 5);
+      expect(dialog.open).to.equal(false);
+    });
+
+    it('forgets the press after its click: the next click that no press came before closes', () => {
+      const box = dialog.getBoundingClientRect();
+      pressAt(dialog.querySelector('input') as Element, box.left + 30, box.top + 30);
+      clickAt(box.left - 5, box.top - 5);
+      expect(dialog.open).to.equal(true);
+      clickAt(box.left - 5, box.top - 5);
+      expect(dialog.open).to.equal(false);
+    });
+  });
+
   it('asks before it closes a dialog whose field was changed, and keeps it open on "キャンセル"', async () => {
     installConfirm(document);
     (dialog.querySelector('input') as HTMLInputElement).dispatchEvent(new Event('input', { bubbles: true }));
@@ -53,5 +89,43 @@ describe('scrim', () => {
     (document.querySelector('[data-confirm-cancel]') as HTMLButtonElement).click();
     await aTimeout(20);
     expect(dialog.open).to.equal(true);
+  });
+
+  describe('what is not input to a form that the dialog saves', () => {
+    const typeInto = (selector: string) => {
+      (dialog.querySelector(selector) as HTMLElement).dispatchEvent(new Event('input', { bubbles: true }));
+      const box = dialog.getBoundingClientRect();
+      clickAt(box.left - 5, box.top - 5);
+    };
+
+    it('closes at once after a search box, a field of no form and a GET form (the filters of a picker)', () => {
+      for (const field of [
+        '<input type="search" name="q">',
+        '<input name="q" form="model-pick-no-form">',
+        '<input type="checkbox" name="origins" form="model-pick-no-form">',
+      ]) {
+        dialog.close();
+        dialog.innerHTML = `<form>${field}</form><form hx-get="/list"><input name="x"></form>`;
+        dialog.showModal();
+        typeInto('input');
+        expect(dialog.open, field).to.equal(false);
+      }
+      dialog.showModal();
+      dialog.innerHTML = '<form hx-get="/list"><input name="x"></form>';
+      typeInto('input');
+      expect(dialog.open).to.equal(false);
+    });
+
+    it('closes at once for a picker that sits in the form of the page (the form is outside the dialog)', () => {
+      dialog.close();
+      host.innerHTML = `<template id="confirm-template">${CONFIRM}</template>
+        <form><dialog id="d2" style="padding:20px"><select name="project"><option>a</option></select></dialog></form>`;
+      const picker = host.querySelector('#d2') as HTMLDialogElement;
+      picker.showModal();
+      (picker.querySelector('select') as HTMLElement).dispatchEvent(new Event('input', { bubbles: true }));
+      const box = picker.getBoundingClientRect();
+      picker.dispatchEvent(new MouseEvent('click', { bubbles: true, clientX: box.left - 5, clientY: box.top - 5 }));
+      expect(picker.open).to.equal(false);
+    });
   });
 });

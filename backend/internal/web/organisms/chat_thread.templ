@@ -72,7 +72,8 @@ templ CardFragment(p domain.Project, m domain.ThreadMessage) {
 templ ChatThread(msgs []domain.ThreadMessage) {
 	<div
 		id="chat-thread"
-		class="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4"
+		class="flex flex-1 flex-col gap-3 overflow-y-auto px-4 py-4 md:px-6 focus-visible:focus-ring"
+		tabindex="0"
 		role="log"
 		aria-live="polite"
 		aria-label="チャットスレッド"

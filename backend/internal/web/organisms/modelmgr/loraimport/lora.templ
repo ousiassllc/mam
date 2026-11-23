@@ -35,7 +35,7 @@ templ PanelView(p Panel) {
 		}
 		switch  {
 			case p.Unsupported != "":
-				<p class="text-sm text-mute" data-testid="mm-lora-unsupported">{ p.Unsupported }</p>
+				<p class="text-sm text-ink" data-testid="mm-lora-unsupported">{ p.Unsupported }</p>
 			case p.Staged != nil:
 				@stagedForm(*p.Staged)
 			default:
@@ -60,17 +60,17 @@ templ pickForm(p Panel) {
 	>
 		<input id="mm-lora-file" type="file" name={ FieldFile } accept=".safetensors" class="peer sr-only" data-lora-file data-testid="mm-lora-file"/>
 		<div
-			class="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border p-4 text-center text-sm text-ink transition-colors peer-focus-visible:focus-ring motion-reduce:transition-none"
+			class="flex flex-col items-center justify-center gap-2 rounded-lg border border-dashed border-border p-6 text-center text-sm text-ink transition-colors peer-focus-visible:focus-ring motion-reduce:transition-none"
 			data-lora-zone
 			data-testid="mm-lora-zone"
 		>
-			<label for="mm-lora-file" class="inline-flex cursor-pointer items-center rounded-md bg-accent px-3 py-2 text-sm font-semibold text-bone hover:bg-accent/85" data-testid="mm-lora-choose">ファイルを追加</label>
+			<label for="mm-lora-file" class={ atoms.ButtonClass(atoms.TonePrimary), "cursor-pointer peer-focus-visible:focus-ring" } data-ripple data-testid="mm-lora-choose">ファイルを追加</label>
 			<span class="text-mute">またはここに .safetensors のファイルをドロップ（{ p.MaxText } まで）</span>
-			<span class="text-xs text-mute">手元に保存した LoRA を、この PC の中の Nefos Video に取り込みます。ネットには送りません。取り込んだだけでは生成は始まりません。</span>
+			<span class="text-sm text-ink">手元に保存した LoRA を、この PC の中の Nefos Video に取り込みます。ネットには送りません。取り込んだだけでは生成は始まりません。</span>
 		</div>
 		<p class="mt-2 text-sm text-danger" role="alert" data-lora-error data-testid="mm-lora-client-error" hidden></p>
 		<div class="mt-2 flex flex-col gap-1" role="status" aria-live="polite" data-lora-progress data-testid="mm-lora-progress" hidden>
-			<progress class="w-full" max="100" value="0" aria-label="アップロードの進み具合"></progress>
+			<progress class="h-1.5 w-full" max="100" value="0" aria-label="アップロードの進み具合"></progress>
 			<p class="text-sm text-ink" data-lora-progress-text></p>
 		</div>
 	</form>
@@ -89,24 +89,24 @@ templ stagedForm(s Staged) {
 		data-testid="mm-lora-staged"
 	>
 		<input type="hidden" name={ FieldToken } value={ s.Token }/>
-		<div class="flex flex-col gap-1 rounded-md border border-border p-3 text-sm" data-testid="mm-lora-file-facts">
+		<div class="flex flex-col gap-1 rounded-lg border border-border p-3 text-sm" data-testid="mm-lora-file-facts">
 			<p class="break-all">{ s.OriginalName }</p>
-			<p class="text-xs text-mute">{ s.Size }・SHA-256 { s.SHA256 }…</p>
+			<p class="text-sm text-mute"><span class="font-mono tabular-nums">{ s.Size }</span>・SHA-256 { s.SHA256 }…</p>
 			if s.Title != "" {
-				<p class="text-xs text-mute">ファイルのタイトル: { s.Title }</p>
+				<p class="text-sm text-mute">ファイルのタイトル: { s.Title }</p>
 			}
 			if len(s.BaseRaw) > 0 {
-				<p class="text-xs text-mute" data-testid="mm-lora-base-raw">ファイルに書かれたベースモデル: { strings.Join(s.BaseRaw, " / ") }</p>
+				<p class="text-sm text-mute" data-testid="mm-lora-base-raw">ファイルに書かれたベースモデル: { strings.Join(s.BaseRaw, " / ") }</p>
 			}
 			if s.Network != "" {
-				<p class="text-xs text-mute">{ s.Network }</p>
+				<p class="text-sm text-mute">{ s.Network }</p>
 			}
 			if s.Renamed {
-				<p class="text-xs text-warning" data-testid="mm-lora-renamed">使えない文字を置き換えたため、{ s.SavedAs } の名前で保存します。</p>
+				<p class="text-sm text-warning" data-testid="mm-lora-renamed">使えない文字を置き換えたため、{ s.SavedAs } の名前で保存します。</p>
 			}
 		</div>
 		if s.Conflict != nil {
-			<div class="flex flex-col gap-1 rounded-md border border-warning/60 bg-warning/10 p-3 text-sm text-ink" role="alert" data-testid="mm-lora-conflict" data-same?={ s.Conflict.Same }>
+			<div class="flex flex-col gap-1 rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-ink" role="alert" data-testid="mm-lora-conflict" data-same?={ s.Conflict.Same }>
 				if s.Conflict.Same {
 					<p>同じ内容のファイルが、すでに <code class="break-all">{ s.Conflict.Name }</code> として loras フォルダにあります。追加は要りません（取り消してください）。</p>
 				} else {
@@ -116,10 +116,11 @@ templ stagedForm(s Staged) {
 			</div>
 		}
 		<p id={ MsgID } class="text-sm text-danger" role="alert" data-testid="mm-lora-msg"></p>
-		<label class="flex flex-col gap-1 text-xs text-mute" for="mm-lora-name">
-			<span>保存するファイル名（loras フォルダの中の名前。英数字と . _ + - の .safetensors）</span>
-			@atoms.Input(atoms.FieldMd, "w-full max-w-md", templ.Attributes{"id": "mm-lora-name", "name": FieldName, "type": "text", "value": s.Name, "maxlength": fmt.Sprint(NameMaxLen), "required": true, "data-testid": "mm-lora-name"})
-		</label>
+		<div class="flex flex-col gap-1">
+			<label class="text-xs text-mute" for="mm-lora-name">保存するファイル名</label>
+			@atoms.Input(atoms.FieldMd, "w-full max-w-md", templ.Attributes{"id": "mm-lora-name", "name": FieldName, "type": "text", "value": s.Name, "maxlength": fmt.Sprint(NameMaxLen), "required": true, "aria-describedby": "mm-lora-name-help", "data-testid": "mm-lora-name"})
+			<p id="mm-lora-name-help" class="text-sm text-ink">loras フォルダの中の名前。英数字と . _ + - の .safetensors。</p>
+		</div>
 		@metaFields(s)
 		<div class="flex flex-wrap gap-2">
 			if s.Conflict == nil || !s.Conflict.Same {
@@ -131,58 +132,6 @@ templ stagedForm(s Staged) {
 			})
 		</div>
 	</form>
-}
-
-// metaFields are the fields of what is known of a LoRA: the base model, the recommended strength, the trigger words and the license. Each starts at what the
-// file says, or is empty ("未設定"); nothing is filled in by a guess.
-templ metaFields(s Staged) {
-	<fieldset class="flex flex-col gap-1" data-testid="mm-lora-base">
-		<legend class="text-xs text-mute">対応するベースモデル（合わないモデルで使うと警告します。複数選べます）</legend>
-		<div class="flex flex-wrap gap-x-4 gap-y-1 text-sm">
-			for _, f := range s.Families {
-				<label class="flex items-center gap-1">
-					@atoms.Choice("", templ.Attributes{"type": "checkbox", "name": FieldBase, "value": f.Key, "checked": f.Checked})
-					<span>{ f.Label }</span>
-				</label>
-			}
-		</div>
-		if s.FromFile {
-			<p class="text-xs text-mute" data-testid="mm-lora-base-note">ファイルの情報から読み取りました。違うときは直してください。</p>
-		} else {
-			<p class="text-xs text-mute" data-testid="mm-lora-base-note">ファイルに書かれていないため、未設定です（選ばなければ未設定のまま追加します）。</p>
-		}
-	</fieldset>
-	<label class="flex flex-col gap-1 text-xs text-mute" for="mm-lora-strength">
-		<span>推奨の強さ（0.05〜1。空欄は未設定。選ぶと単発生成の強さの初期値になります）</span>
-		@atoms.Input(atoms.FieldMd, "w-28", templ.Attributes{"id": "mm-lora-strength", "name": FieldStrength, "type": "number", "min": "0.05", "max": "1", "step": "0.05", "placeholder": "未設定", "inputmode": "decimal", "data-testid": "mm-lora-strength"})
-	</label>
-	<label class="flex flex-col gap-1 text-xs text-mute" for="mm-lora-triggers">
-		<span>トリガー語（プロンプトに入れる言葉。カンマか改行で区切る。空欄は未設定）</span>
-		@atoms.Textarea(atoms.FieldMd, "w-full max-w-md", templ.Attributes{"id": "mm-lora-triggers", "name": FieldTriggers, "rows": "2", "maxlength": fmt.Sprint(TriggersMaxLen), "placeholder": "未設定", "data-testid": "mm-lora-triggers"}, s.Triggers)
-		if len(s.Candidates) > 0 {
-			<span data-testid="mm-lora-candidates">学習で多く使われたタグ（候補です。トリガー語かどうかは分かりません）: { strings.Join(s.Candidates, "、") }</span>
-		}
-	</label>
-	<div class="flex flex-wrap items-end gap-3">
-		<label class="flex flex-col gap-1 text-xs text-mute" for="mm-lora-license">
-			<span>ライセンス（任意。空欄は「不明」と表示します）</span>
-			@atoms.Input(atoms.FieldMd, "w-72 max-w-full", templ.Attributes{"id": "mm-lora-license", "name": FieldLicense, "type": "text", "value": s.License, "maxlength": fmt.Sprint(LicenseMaxLen), "placeholder": "不明", "data-testid": "mm-lora-license"})
-		</label>
-		@commercialSelect("mm-lora-commercial", "")
-	</div>
-}
-
-// commercialSelect is the answer to "商用利用は？": the unknown answer first. There is no 商用OK to pick: what a user types is a declaration, and a declaration alone
-// is never 商用OK in mam (the answer is 条件つき).
-templ commercialSelect(id, current string) {
-	<label class="flex flex-col gap-1 text-xs text-mute" for={ id }>
-		<span>商用利用（既定は不明）</span>
-		@atoms.Select(atoms.FieldMd, "", templ.Attributes{"id": id, "name": FieldCommercial, "data-testid": id}) {
-			<option value="" selected?={ current == "" }>不明（確認していない）</option>
-			<option value="conditional" selected?={ current == "conditional" }>条件つき（配布元で商用可と確認した・自己申告）</option>
-			<option value="no" selected?={ current == "no" }>商用NG</option>
-		}
-	</label>
 }
 
 // ListView is the list of the LoRAs that were added.
@@ -275,7 +224,7 @@ templ itemCard(it Item) {
 			<dd class="break-words" data-testid="mm-lora-item-license">{ licenseWords(it) }</dd>
 		</dl>
 		<details class="text-sm" data-testid="mm-lora-edit">
-			<summary class="cursor-pointer text-xs text-accent underline decoration-mute">情報を編集</summary>
+			<summary class={ atoms.SummaryClass }>情報を編集</summary>
 			<form
 				class="mt-2 flex flex-col gap-3"
 				hx-put={ LoRAsURL + "?" + FieldPath + "=" + url.QueryEscape(it.Path) }

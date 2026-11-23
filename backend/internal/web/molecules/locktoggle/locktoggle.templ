@@ -40,15 +40,15 @@ func (d Data) modes() []domain.LockMode {
 	return domain.LockModes()
 }
 
-func lockModeClass(active bool, m domain.LockMode) string {
-	base := "px-2 py-1 text-xs font-semibold transition-colors "
+// lockModeClass is the face of a mode button in the segmented control of the brand guide (§4): the track (the group) is --accent-soft and the selected
+// segment is a --surface face with --ink text on it; the segments that are not selected are the track showing through. Whatever the mode: the words
+// (LOCK / 手動 / 自動) and aria-pressed say which it is, not a state colour.
+func lockModeClass(active bool) string {
+	base := "min-h-8 rounded-sm px-2 py-1 text-sm font-semibold text-ink transition-colors motion-reduce:transition-none"
 	if !active {
-		return base + "text-ink hover:bg-accent-soft"
+		return base
 	}
-	if m == domain.LockLocked {
-		return base + "bg-warning/20 text-warning"
-	}
-	return base + "bg-accent-soft text-accent"
+	return base + " bg-surface"
 }
 
 // Toggle is the three-value switch of a parameter. Each button saves at once (no save button):
@@ -66,9 +66,9 @@ templ Toggle(d Data) {
 			<input type="hidden" name={ h.Name } value={ h.Value }/>
 		}
 		<span class="w-40 shrink-0 text-ink">{ d.label() }</span>
-		<span role="group" aria-label={ d.label() + " の制御" } class="inline-flex overflow-hidden rounded-md border border-border">
+		<span role="group" aria-label={ d.label() + " の制御" } class="inline-flex gap-1 rounded-md bg-accent-soft p-1">
 			for _, m := range d.modes() {
-				<button type="submit" name="mode" value={ string(m) } aria-pressed={ boolText(d.Mode == m) } class={ lockModeClass(d.Mode == m, m) }>{ m.Label() }</button>
+				<button type="submit" name="mode" value={ string(m) } aria-pressed={ boolText(d.Mode == m) } class={ lockModeClass(d.Mode == m) } data-ripple>{ m.Label() }</button>
 			}
 		</span>
 		if d.Model.ID != "" {

@@ -1,10 +1,10 @@
 import { html, nothing } from 'lit';
 import type { TakeScore } from './take-model';
 import { describeTake, renderScore } from './take-cells';
-import { BADGE, STATUS_CLASS } from './take-status';
+import { BADGE } from '../lib/ui/badge';
+import { LINK_BUTTON } from '../lib/ui/button';
+import { STATUS_CLASS } from './take-status';
 
-/** A button of a row: the text of `atoms.LinkButton` (W3), with the focus ring. */
-const ROW_BUTTON = 'text-xs text-mute underline hover:text-ink focus-visible:focus-ring';
 /** A number of the table (W7): right-aligned, digits of one width. */
 const NUMBER = 'px-2 py-2 text-right font-mono tabular-nums';
 
@@ -36,8 +36,8 @@ export function renderTakeTable(takes: TakeScore[], minAxis: number, actions: Ta
 
 function renderRow(t: TakeScore, minAxis: number, actions: TakeActions) {
   return html`<tr class="border-t border-border ${t.status === 'rejected' ? 'text-mute' : ''}" data-take=${t.id}>
-    <th scope="row" class="px-2 py-2 font-semibold">
-      Take ${t.label}${t.adopted ? html` <span class="${BADGE} bg-success/20 font-normal text-success" data-adopted>使用中</span>` : nothing}
+    <th scope="row" class="px-2 py-2 font-normal">
+      Take ${t.label}${t.adopted ? html` <span class="${BADGE} ${STATUS_CLASS.selected} font-normal" data-adopted>使用中</span>` : nothing}
       <div class="text-xs font-normal text-mute">${describeTake(t)}</div>
     </th>
     <td class="${NUMBER}" data-score="product">${renderScore(t.scores?.product, minAxis)}</td>
@@ -48,18 +48,18 @@ function renderRow(t: TakeScore, minAxis: number, actions: TakeActions) {
       <span class="${BADGE} ${STATUS_CLASS[t.status]}" data-status=${t.status}>${t.status_label}</span>
       ${t.verdict ? html`<span class="ml-1 text-xs text-mute">${t.verdict.toUpperCase()}</span>` : nothing}
     </td>
-    <td class="px-2 py-2 text-xs">
+    <td class="px-2 py-2">
       ${
         t.select_url || t.reject_url
-          ? html`<span class="flex gap-3">
+          ? html`<span class="flex gap-2">
             ${
               t.select_url
-                ? html`<button type="button" aria-label="選択: Take ${t.label}" class=${ROW_BUTTON} data-action="select" ?disabled=${actions.busy} @click=${() => actions.select(t)}>選択</button>`
+                ? html`<button type="button" aria-label="選択: Take ${t.label}" class=${LINK_BUTTON} data-action="select" ?disabled=${actions.busy} @click=${() => actions.select(t)}>選択</button>`
                 : nothing
             }
             ${
               t.reject_url
-                ? html`<button type="button" aria-label="除外: Take ${t.label}" class=${ROW_BUTTON} data-action="reject" ?disabled=${actions.busy} @click=${() => actions.reject(t)}>除外</button>`
+                ? html`<button type="button" aria-label="除外: Take ${t.label}" class=${LINK_BUTTON} data-action="reject" ?disabled=${actions.busy} @click=${() => actions.reject(t)}>除外</button>`
                 : nothing
             }
           </span>`

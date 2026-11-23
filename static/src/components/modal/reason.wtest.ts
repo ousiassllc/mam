@@ -35,7 +35,7 @@ describe('the popup of the reason a model cannot be installed (#1118)', () => {
     const page = await (await fetch(`${DATA}layout-mm-card-node-needed.html`)).text();
     const modalHost = await (await fetch(`${DATA}mm-reason-host.html`)).text();
     host = document.createElement('div');
-    host.innerHTML = `<main class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 md:p-8">${page}</main>${modalHost}`;
+    host.innerHTML = `<main class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 md:p-6">${page}</main>${modalHost}`;
     document.body.append(host);
     htmx.process(host);
     requests = [];

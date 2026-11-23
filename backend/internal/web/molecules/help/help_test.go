@@ -26,7 +26,7 @@ func render(t *testing.T, c templ.Component) string {
 func TestToggle_IsANamedButtonThatControlsItsPanel(t *testing.T) {
 	html := render(t, help.Toggle("help-x", "API キー"))
 
-	assert.Contains(t, html, `<button type="button" data-help-toggle popovertarget="help-x" aria-expanded="false" aria-controls="help-x" aria-label="API キーの説明"`)
+	assert.Contains(t, html, `<button type="button" data-help-toggle data-ripple popovertarget="help-x" aria-expanded="false" aria-controls="help-x" aria-label="API キーの説明"`)
 	assert.Contains(t, html, `aria-hidden="true"`, "the icon is decoration")
 	assert.NotContains(t, html, "text-neutral-500")
 }
@@ -39,6 +39,8 @@ func TestPanel_IsAnUnclassedPopoverNamedLikeItsButtonAndHoldsItsChildren(t *test
 	require.NoError(t, help.Panel("help-x", "API キー").Render(ctx, &sb))
 
 	assert.Contains(t, sb.String(), `id="help-x" popover role="group" aria-label="API キーの説明" data-help-panel`)
+	// It scrolls inside when long (overflow-y-auto), so the keyboard reaches it even when its text has no link (B6).
+	assert.Regexp(t, `<div id="help-x"[^>]*\boverflow-y-auto\b[^>]*\bfocus-visible:focus-ring\b[^>]* tabindex="0">`, sb.String())
 	assert.NotRegexp(t, `class="[^"]*\b(flex|grid|block|inline|hidden)\b`, sb.String(), "a display class would show the closed popover")
 	assert.NotContains(t, sb.String(), " hidden")
 	assert.Contains(t, sb.String(), "<p>説明</p>")

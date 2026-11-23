@@ -87,7 +87,7 @@ func GuideSection() templ.Component {
 			templ_7745c5c3_Var2 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<section class=\"mt-8 flex flex-col gap-2\" aria-labelledby=\"settings-guide-title\" data-testid=\"settings-guide\"><h3 id=\"settings-guide-title\" class=\"text-base font-semibold\">初期セットアップの案内</h3><p class=\"text-sm text-mute\">Nefos Video でできることの紹介と、API キー・モデル・ffmpeg の順に設定する案内を、もう一度開きます。</p><p><a href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<section class=\"mt-8 flex flex-col gap-2\" aria-labelledby=\"settings-guide-title\" data-testid=\"settings-guide\"><h3 id=\"settings-guide-title\" class=\"text-base font-semibold\">初期セットアップの案内</h3><p class=\"text-sm text-ink\">Nefos Video でできることの紹介と、API キー・モデル・ffmpeg の順に設定する案内を、もう一度開きます。</p><p><a href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

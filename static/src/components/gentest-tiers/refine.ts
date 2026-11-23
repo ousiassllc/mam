@@ -6,6 +6,7 @@
  * The rules are in refine-model.ts. The listeners are on the document: the form may arrive in a swapped body.
  */
 
+import { BUTTON, BUTTON_TONE } from '../lib/ui/button';
 import { changed, changedItems, droppedKeys, line, resetLabel, type Item } from './refine-model';
 
 const ROOT = '[data-gt-refine]';
@@ -172,7 +173,7 @@ function mark(t: Tracked, on: boolean): void {
     const badge = document.createElement('span');
     badge.setAttribute('data-gt-mark', '');
     badge.className = 'text-xs text-warning';
-    badge.textContent = '● 変えた';
+    badge.textContent = '変えた';
     if (t.before) t.host.before(badge);
     else t.host.prepend(badge);
   } else if (!on && existing) {
@@ -206,7 +207,7 @@ function render(section: HTMLElement): void {
 
 function row(item: Item): HTMLElement {
   const li = document.createElement('li');
-  li.className = 'flex flex-wrap items-center justify-between gap-2 text-xs text-ink';
+  li.className = 'flex flex-wrap items-center justify-between gap-2 text-sm text-ink';
   li.dataset.gtRefineItem = item.key;
   const text = document.createElement('span');
   text.className = 'break-words';
@@ -214,7 +215,8 @@ function row(item: Item): HTMLElement {
   const button = document.createElement('button');
   button.type = 'button';
   button.dataset.gtReset = item.key;
-  button.className = 'rounded-md border border-border px-2 py-1 text-ink hover:bg-accent-soft';
+  button.className = `${BUTTON} ${BUTTON_TONE.neutral}`;
+  button.dataset.ripple = '';
   button.textContent = '元に戻す';
   button.setAttribute('aria-label', resetLabel(item));
   li.append(text, button);

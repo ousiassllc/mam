@@ -10,7 +10,7 @@ import templruntime "github.com/a-h/templ/runtime"
 
 // ConnectionNotice is the one definition of the "connection lost" notice's markup, shown when a
 // WebSocket has used up its reconnection attempts. The page shell embeds it once as
-// <template id="connection-notice-template">; static/src/components/lib/connection-notice.ts clones
+// <template id="connection-notice-template">; static/src/components/lib/ui/connection-notice.ts clones
 // it, fills data-connection-lost-message and wires the two buttons (data-action).
 func ConnectionNotice() templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -33,15 +33,27 @@ func ConnectionNotice() templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pointer-events-auto flex items-center gap-3 rounded-md border border-warning/60 bg-surface px-4 py-2 text-sm text-warning\" role=\"alert\" data-connection-lost=\"\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"pointer-events-auto flex max-w-full flex-wrap items-center gap-3 rounded-md border border-warning/40 bg-warning/10 px-4 py-2 text-sm text-warning\" role=\"alert\" data-connection-lost=\"\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = Icon(IconWarning, "h-4 w-4 shrink-0").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Icon(IconWarning, "size-icon-sm shrink-0").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<span data-connection-lost-message></span> <button type=\"button\" class=\"rounded-md border border-warning/60 px-2 py-1 hover:bg-accent-soft\" data-action=\"reconnect\">再接続</button> <button type=\"button\" class=\"rounded-md border border-warning/60 px-2 py-1 hover:bg-accent-soft\" data-action=\"reload\">再読み込み</button></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "<span data-connection-lost-message></span>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = SmallButton(ToneNeutral, "再接続", templ.Attributes{"type": "button", "data-action": "reconnect"}).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = SmallButton(ToneNeutral, "再読み込み", templ.Attributes{"type": "button", "data-action": "reload"}).Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

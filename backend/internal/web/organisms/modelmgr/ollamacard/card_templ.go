@@ -274,7 +274,7 @@ func others(items []Other) templ.Component {
 			templ_7745c5c3_Var14 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<div class=\"flex flex-col gap-1\" data-testid=\"mm-ollama-others\"><h3 class=\"text-sm font-semibold text-ink\">そのほかのモデル</h3><p class=\"text-xs text-mute\">この Ollama に、ほかの手段で入れたモデルです。Nefos Video はここから消したり、取得したりしません。</p><ul role=\"list\" class=\"flex flex-col gap-1 text-sm text-ink\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 21, "<div class=\"flex flex-col gap-1\" data-testid=\"mm-ollama-others\"><h3 class=\"text-sm font-semibold text-ink\">そのほかのモデル</h3><p class=\"text-sm text-ink\">この Ollama に、ほかの手段で入れたモデルです。Nefos Video はここから消したり、取得したりしません。</p><ul role=\"list\" class=\"flex flex-col gap-1 text-sm text-ink\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -398,14 +398,14 @@ func ModelCard(m Model) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<p class=\"text-sm text-mute\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "<p class=\"text-sm text-ink\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var20 string
 			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(m.Description)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/ollamacard/card.templ`, Line: 95, Col: 46}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/ollamacard/card.templ`, Line: 95, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 			if templ_7745c5c3_Err != nil {
@@ -527,7 +527,7 @@ func ModelCard(m Model) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\" class=\"text-xs text-mute\" data-testid=\"mm-ollama-blocked\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\" class=\"text-sm text-mute\" data-testid=\"mm-ollama-blocked\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}

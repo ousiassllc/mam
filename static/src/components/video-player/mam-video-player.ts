@@ -1,10 +1,11 @@
 import { LitElement, html, nothing } from 'lit';
 import { customElement, property, state } from 'lit/decorators.js';
 import { ApiError, get } from '../lib/api';
+import { icon } from '../lib/ui/icon';
 import { createLogger } from '../lib/logger';
 import { isFinished, type ShotProgress } from '../lib/shot';
 import { DEFAULT_FPS, seekToFrame, stepFrame, timeToFrame, type JudgeIssue } from '../lib/video';
-import { createConnectionNotice } from '../lib/connection-notice';
+import { createConnectionNotice } from '../lib/ui/connection-notice';
 import { connect, socketUrl, type Connection } from '../lib/ws';
 import { probeFrameRate, sampleFrameRate } from './video-fps';
 import { buildMarkers, renderPlaceholder, renderTransport } from './video-parts';
@@ -215,8 +216,9 @@ export class MamVideoPlayer extends LitElement {
     const generating = stage === 'queued' || stage === 'generating' || stage === 'repairing';
     if (!this.videoSrc || generating) return renderPlaceholder(this.progress);
     if (this.failed) {
-      return html`<div class="flex aspect-video items-center justify-center rounded-md border border-border bg-surface text-xs text-mute" role="alert" data-placeholder>
-        動画を再生できません
+      return html`<div class="flex aspect-video items-center justify-center gap-2 rounded-lg border border-danger/40 bg-danger/10 text-xs text-danger" role="alert" data-placeholder>
+        ${icon('warning')}
+        <span>動画を再生できません</span>
       </div>`;
     }
     const max = this.duration || 0;

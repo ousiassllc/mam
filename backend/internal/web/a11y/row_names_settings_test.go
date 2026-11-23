@@ -7,6 +7,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"github.com/ousiassllc/mam/backend/internal/web/a11y/uisrc"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/llm"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/local"
 	"github.com/ousiassllc/mam/backend/internal/web/organisms/settings/mcp"
@@ -16,7 +17,7 @@ import (
 // The buttons of the cards of the local endpoints, of the rows of their models and of the MCP tokens name their row (#793).
 
 func TestLocalEndpointCards_ButtonsAreNamedAfterTheirEndpoint(t *testing.T) {
-	html := render(t, local.Section(local.Data{Endpoints: []local.Endpoint{
+	html := uisrc.Render(t, local.Section(local.Data{Endpoints: []local.Endpoint{
 		{Name: "gpu-box", Kind: local.KindComfyUI, KindLabel: "ComfyUI", Models: []local.Model{{Name: "a"}}},
 		{Name: "lm", Kind: local.KindOpenAICompat, KindLabel: "OpenAI 互換"},
 	}}))
@@ -37,7 +38,7 @@ func TestLocalModelRows_ButtonsAreNamedAfterTheirModel(t *testing.T) {
 		{Name: "sdxl", ID: "comfyui:gpu-box/sdxl", Media: local.MediaImage},
 		{Name: "ltx", ID: "comfyui:gpu-box/ltx", Media: local.MediaVideo},
 	}}
-	html := render(t, local.Page(local.Data{Endpoints: []local.Endpoint{e}}, e))
+	html := uisrc.Render(t, local.Page(local.Data{Endpoints: []local.Endpoint{e}}, e))
 
 	assert.Equal(t, []string{"編集: comfyui:gpu-box/sdxl", "編集: comfyui:gpu-box/ltx"}, namesIn(html, "編集", "comfyui:"))
 	assert.Equal(t, []string{"削除: comfyui:gpu-box/sdxl", "削除: comfyui:gpu-box/ltx"}, buttonNames(html, "削除"))
@@ -56,7 +57,7 @@ func namesIn(html, label, what string) []string {
 
 func TestMCPTokenRows_RevokeButtonsAreNamedAfterTheirToken(t *testing.T) {
 	now := time.Now()
-	html := render(t, mcp.Section(mcp.Data{Tokens: []mcp.TokenRow{
+	html := uisrc.Render(t, mcp.Section(mcp.Data{Tokens: []mcp.TokenRow{
 		{ID: "1", Name: "Grok Bot", Prefix: "abcd", CreatedAt: now},
 		{ID: "2", Name: "CI", Prefix: "efgh", CreatedAt: now},
 		{ID: "3", Name: "Old", Prefix: "ijkl", CreatedAt: now, Revoked: true},
@@ -73,7 +74,7 @@ func TestLLMTable_EditButtonsAreNamedAfterTheirAgent(t *testing.T) {
 		def := llm.Target{Provider: "anthropic", Model: "claude-x"}
 		return llm.Row{Agent: agent, Label: label, Purpose: "用途", Primary: def, Fallback: def, DefaultPrimary: def, DefaultFallback: def}
 	}
-	html := render(t, llm.Section(llm.Data{
+	html := uisrc.Render(t, llm.Section(llm.Data{
 		Rows:   []llm.Row{row("writer", "Writer（脚本）"), row("director", "Director（計画）")},
 		Unused: []llm.Row{row("orchestrator", "Orchestrator（進行管理）")},
 	}))
@@ -89,12 +90,12 @@ func TestLLMTable_EditButtonKeepsItsFocusKeyWhenTheRowChanges(t *testing.T) {
 	plain := llm.Row{Agent: "writer", Label: "Writer", Primary: def, Fallback: def, DefaultPrimary: def, DefaultFallback: def}
 
 	for _, r := range []llm.Row{plain, changed} {
-		assert.Contains(t, render(t, llm.RowOOB(r)), `data-focus-key="edit-writer"`)
+		assert.Contains(t, uisrc.Render(t, llm.RowOOB(r)), `data-focus-key="edit-writer"`)
 	}
 }
 
 func TestMediaTables_EditButtonsAreNamedAfterTheirRow(t *testing.T) {
-	html := render(t, media.Section(media.Data{
+	html := uisrc.Render(t, media.Section(media.Data{
 		Images:   []media.ImageRow{{Purpose: "new_reference", Label: "新規リファレンス"}, {Purpose: "preview", Label: "プレビュー"}},
 		Policies: []media.PolicyRow{{Policy: "fast", Label: "FAST", Takes: 2}, {Policy: "max_quality", Label: "MAX QUALITY", Takes: 4}},
 	}))

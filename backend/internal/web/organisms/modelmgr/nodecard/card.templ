@@ -116,7 +116,7 @@ func installLabel(n Node) string {
 // enforces the acceptance: the form is only how a user gives it.
 templ ConsentDialog(n Node) {
 	<section
-		class="flex flex-col gap-3 p-5 focus-visible:focus-ring"
+		class="flex flex-col gap-3 p-6 focus-visible:focus-ring"
 		role="dialog"
 		aria-labelledby="mm-node-consent-title"
 		tabindex="-1"
@@ -135,7 +135,7 @@ templ ConsentDialog(n Node) {
 			商用利用: { n.LicenseCommercial } @commercialBadge(n)
 		</p>
 		if n.LicenseNotice != "" {
-			<p class="text-sm text-mute">{ n.LicenseNotice }</p>
+			<p class="text-sm text-ink">{ n.LicenseNotice }</p>
 		}
 		<p class="break-all text-sm text-mute">取得元: { n.Repo }（コミット <code>{ n.Commit }</code>。SHA-256 <code>{ n.ArchiveSHA }</code> を確かめます）</p>
 		<form

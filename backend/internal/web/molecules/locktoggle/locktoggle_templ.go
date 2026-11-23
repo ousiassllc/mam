@@ -49,15 +49,15 @@ func (d Data) modes() []domain.LockMode {
 	return domain.LockModes()
 }
 
-func lockModeClass(active bool, m domain.LockMode) string {
-	base := "px-2 py-1 text-xs font-semibold transition-colors "
+// lockModeClass is the face of a mode button in the segmented control of the brand guide (§4): the track (the group) is --accent-soft and the selected
+// segment is a --surface face with --ink text on it; the segments that are not selected are the track showing through. Whatever the mode: the words
+// (LOCK / 手動 / 自動) and aria-pressed say which it is, not a state colour.
+func lockModeClass(active bool) string {
+	base := "min-h-8 rounded-sm px-2 py-1 text-sm font-semibold text-ink transition-colors motion-reduce:transition-none"
 	if !active {
-		return base + "text-ink hover:bg-accent-soft"
+		return base
 	}
-	if m == domain.LockLocked {
-		return base + "bg-warning/20 text-warning"
-	}
-	return base + "bg-accent-soft text-accent"
+	return base + " bg-surface"
 }
 
 // Toggle is the three-value switch of a parameter. Each button saves at once (no save button):
@@ -184,12 +184,12 @@ func Toggle(d Data) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" class=\"inline-flex overflow-hidden rounded-md border border-border\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" class=\"inline-flex gap-1 rounded-md bg-accent-soft p-1\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		for _, m := range d.modes() {
-			var templ_7745c5c3_Var9 = []any{lockModeClass(d.Mode == m, m)}
+			var templ_7745c5c3_Var9 = []any{lockModeClass(d.Mode == m)}
 			templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var9...)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -233,14 +233,14 @@ func Toggle(d Data) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\" data-ripple>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var13 string
 			templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(m.Label())
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/locktoggle/locktoggle.templ`, Line: 71, Col: 148}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/locktoggle/locktoggle.templ`, Line: 71, Col: 157}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 			if templ_7745c5c3_Err != nil {

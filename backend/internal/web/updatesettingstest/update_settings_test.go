@@ -1,4 +1,5 @@
-package web_test
+// Package updatesettingstest_test runs the update settings screen through the router. It lives apart from web because that directory is over the line limit.
+package updatesettingstest_test
 
 import (
 	"context"

@@ -43,9 +43,9 @@ describe('the columns of the lists of cards (#1102)', () => {
     host = document.createElement('div');
     if (withMenu) {
       const nav = await (await fetch(`${TESTDATA}layout-sidenav.html`)).text();
-      host.innerHTML = `<div class="flex min-h-screen">${nav}<div id="content" class="min-w-0 flex-1"><main class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 md:p-8">${html}</main></div></div>`;
+      host.innerHTML = `<div class="flex min-h-screen">${nav}<div id="content" class="min-w-0 flex-1"><main class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 md:p-6">${html}</main></div></div>`;
     } else {
-      host.innerHTML = `<main class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 md:p-8">${html}</main>`;
+      host.innerHTML = `<main class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 md:p-6">${html}</main>`;
     }
     document.body.append(host);
   }
@@ -168,7 +168,7 @@ describe('the 導入 button that opens the reason, on the card of a model that n
     await setViewport({ width: 1280, height: 800 });
     const html = await (await fetch(`${TESTDATA}layout-mm-card-node-needed.html`)).text();
     host = document.createElement('div');
-    host.innerHTML = `<main class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 md:p-8">${html}</main>`;
+    host.innerHTML = `<main class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 md:p-6">${html}</main>`;
     document.body.append(host);
     const button = host.querySelector<HTMLButtonElement>('[data-testid=mm-reason-open]')!;
 

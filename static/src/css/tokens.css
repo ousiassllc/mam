@@ -1,5 +1,5 @@
 /*
- * The design tokens of the Ousiass UI guide (brand-guide 622ea73; the rules are spec/components/color-rules.md). This is the one
+ * The design tokens of the Ousiass UI guide (brand-guide 5d816f8; the rules are spec/components/color-rules.md). This is the one
  * place where a colour is written as a value: every other source names a token (bg-surface, text-mute, border-border, ...), and
  * a Tailwind palette class or a raw colour anywhere else fails backend/internal/web/a11y/color_allowlist_test.go.
  *
@@ -29,6 +29,12 @@
      .55 opacity, each keeps 3:1 against the picture where it applies (a mid-tone picture cannot: no colour at .55 does); backend/internal/web/a11y/overlay_test.go checks it. */
   --overlay-deep: #5a0000;
   --overlay-pale: #ff8c96;
+
+  /* The thumb of a scrollbar (B2, guide §10, scrollbar.css): --mute, and on hover / drag --ink mixed in at 35% / 65% (darker in Light,
+     lighter in Dark). Written here once: this is the one place that writes a colour mix, and they follow --ink and --mute of the theme. */
+  --scrollbar-thumb: var(--mute);
+  --scrollbar-thumb-hover: color-mix(in srgb, var(--ink) 35%, var(--mute));
+  --scrollbar-thumb-active: color-mix(in srgb, var(--ink) 65%, var(--mute));
 
   /* The scrim behind a modal (O1): black in both themes. */
   --scrim: rgb(0 0 0 / 0.7);
@@ -155,6 +161,14 @@
   --shadow-modal: 0 1px 2px rgb(0 0 0 / 0.06);
 }
 
+/* The sizes of an icon (I2): 16 / 20 / 24, and 32 for an empty state only. A source says size-icon-sm / -md / -lg / -xl (the utilities below), never h-4 w-4. */
+@theme {
+  --icon-sm: 1rem;
+  --icon-md: 1.25rem;
+  --icon-lg: 1.5rem;
+  --icon-xl: 2rem;
+}
+
 @theme inline {
   --default-transition-duration: var(--motion-base);
   --default-transition-timing-function: var(--ease-out);
@@ -166,6 +180,36 @@
     font-size: var(--text-base);
     line-height: 1.8;
   }
+
+  /* Emphasis inside a text (T2): Tailwind's preflight sets strong to `bolder` (700); the guide has only Regular and SemiBold. */
+  strong {
+    font-weight: 600;
+  }
+
+  /* The focus ring of a control that says nothing about it (C3): the same 2px solid --focus, offset 2 as the `focus-ring` utility below, not the
+     browser's own ring. :where() adds no specificity and the utilities layer wins over this one, so `focus-visible:outline-none` and
+     `focus-visible:focus-ring` on a control still decide its ring. */
+  :where(a, button, summary, [tabindex], input:is([type="checkbox"], [type="radio"], [type="file"]), video[controls], audio[controls]):focus-visible {
+    outline: 2px solid var(--focus);
+    outline-offset: 2px;
+  }
+
+  /* The fill of a native checkbox / radio is --accent, not the browser's own blue (C3). A range is not here: slider.css draws it with appearance: none (accent-color does not reach it). */
+  :root {
+    accent-color: var(--accent);
+  }
+
+  /* The hint in an empty field is --mute (C6), full opacity: the preflight default is currentcolor at 50%, 3.8:1 on --bone in Light (AA needs 4.5:1). */
+  ::placeholder {
+    color: var(--mute);
+    opacity: 1;
+  }
+
+  /* The underline of a text link is --mute (O7), not the colour of its text: one place, so that a link that says only `underline` is the same as the
+     one that also says `decoration-mute`. A utility class on a link still wins (the utilities layer is after this one). */
+  :where(a, button).underline {
+    text-decoration-color: var(--mute);
+  }
 }
 
 /* The focus ring (C3): 2px solid --focus, offset 2. A utility so that every control says it the same way
@@ -173,6 +217,27 @@
 @utility focus-ring {
   outline: 2px solid var(--focus);
   outline-offset: 2px;
+}
+
+/* The sizes of an icon (I2): width and height from --icon-*, so that one change of a token moves every icon. */
+@utility size-icon-sm {
+  width: var(--icon-sm);
+  height: var(--icon-sm);
+}
+
+@utility size-icon-md {
+  width: var(--icon-md);
+  height: var(--icon-md);
+}
+
+@utility size-icon-lg {
+  width: var(--icon-lg);
+  height: var(--icon-lg);
+}
+
+@utility size-icon-xl {
+  width: var(--icon-xl);
+  height: var(--icon-xl);
 }
 
 /* The layers of the page (O4): a utility per layer, so that no source writes a bare z-10. */

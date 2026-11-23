@@ -20,6 +20,7 @@
  *
  * Install it before `installFocusRestore`: the focus that is back on a control is not touched by that one.
  */
+import { whenFaded } from '../lib/ui/fade';
 
 const DIALOG = '[data-inline-dialog]';
 const HOST = 'dialog[data-inline-dialog-host]';
@@ -63,34 +64,53 @@ export function installInlineDialog(root: Document = document): void {
   /** The question is gone: the page goes back to where it was, and the focus to the control that asked (or to the place of its card). */
   function gone(): void {
     if (!shown) return;
+    const inHost = shown.closest(HOST);
     shown = null;
     const from = opener;
     opener = null;
     if (origin) window.scrollTo({ left: origin.left, top: origin.top, behavior: 'instant' });
     origin = null;
-    // The focus the user (or htmx) put somewhere else is not ours; the dialog's own control that had it is gone.
-    if (document.activeElement && document.activeElement !== document.body) return;
+    // The focus the user (or htmx) put somewhere else is not ours. The dialog's own control that has it is: the host that was closed (the scrim) still holds the
+    // question while it fades out, so its control is still the active element, though nobody moved the focus there after the dialog closed.
+    const active = document.activeElement;
+    if (active && active !== document.body && !inHost?.contains(active)) return;
     if (focusOn(from as HTMLElement | null)) return;
     const place = returnTo ? document.querySelector(returnTo) : null;
     focusOn(place?.querySelector<HTMLElement>(CONTROL));
+  }
+
+  /** The question of a host that was closed, while it fades out (motion.css, M5): it is not asked any more, so no swap opens the host or the focus again for it. */
+  let leaving: Element | null = null;
+
+  /** The question that the page asks now, or null. */
+  function asked(): HTMLElement | null {
+    const question = document.querySelector<HTMLElement>(DIALOG);
+    return question === leaving ? null : question;
   }
 
   /** Opens the host while it holds a question and closes it when it does not (closing is a swap that took the question away). */
   function syncHost(): void {
     const host = document.querySelector<HTMLDialogElement>(HOST);
     if (!host) return;
-    const holdsQuestion = host.querySelector(DIALOG) !== null;
+    const question = host.querySelector(DIALOG);
+    const holdsQuestion = question !== null && question !== leaving;
     if (holdsQuestion && !host.open) host.showModal();
     else if (!holdsQuestion && host.open) host.close();
   }
 
-  // A host closed by Esc or by the scrim goes with its question: what it held is gone, so that it does not open again with a swap.
+  // A host closed by Esc or by the scrim goes with its question: what it held is gone, so that it does not open again with a swap. It fades out first (M5),
+  // so it is emptied when the fade is over; a host that was opened again meanwhile (a new question) keeps what it holds.
   root.addEventListener(
     'close',
     (event) => {
       const host = event.target as Element | null;
       if (!host?.matches(HOST)) return;
-      host.replaceChildren();
+      const question = host.querySelector(DIALOG);
+      leaving = question;
+      void whenFaded(host).then(() => {
+        if (!(host as HTMLDialogElement).open) host.replaceChildren();
+        if (leaving === question) leaving = null;
+      });
       gone();
     },
     true,
@@ -98,7 +118,7 @@ export function installInlineDialog(root: Document = document): void {
 
   root.addEventListener('htmx:afterSwap', (event) => {
     syncHost();
-    const dlg = document.querySelector<HTMLElement>(DIALOG);
+    const dlg = asked();
     if (dlg) {
       if (dlg === shown) return;
       const requester = (event as CustomEvent<SwapDetail>).detail?.requestConfig?.elt ?? null;

@@ -40,8 +40,8 @@ templ Form(p Page) {
 				}
 				<input type="hidden" name="ref" value={ p.SourceRef }/>
 			} else {
-				<label class="flex flex-col gap-1 text-xs text-mute" for="gt-inpaint-source">
-					<span>画像ファイル（PNG・JPEG・WebP）。履歴やプロジェクトの画像は、その画面のリンクからも開けます。</span>
+				<label class="flex flex-col gap-1 text-ink" for="gt-inpaint-source">
+					<span class="text-sm">画像ファイル（PNG・JPEG・WebP）。履歴やプロジェクトの画像は、その画面のリンクからも開けます。</span>
 					<input id="gt-inpaint-source" class="text-sm text-ink" type="file" name="source" accept="image/png,image/jpeg,image/webp"/>
 				</label>
 			}
@@ -63,7 +63,7 @@ templ Form(p Page) {
 		<fieldset class="flex flex-col gap-2">
 			<legend class="text-sm">モデル</legend>
 			if !p.HasModel {
-				<p class="text-sm text-mute" data-testid="gt-inpaint-none">一部だけ描き直せるモデルがありません。SDXL か FLUX.1 dev のインペイントを導入してください。</p>
+				<p class="text-sm text-ink" data-testid="gt-inpaint-none">一部だけ描き直せるモデルがありません。SDXL か FLUX.1 dev のインペイントを導入してください。</p>
 			}
 			if p.HasModel {
 				@modelpick.Field(p.Model)
@@ -82,11 +82,11 @@ templ Form(p Page) {
 
 // Confirm is the estimate. Running posts the same inputs back.
 templ Confirm(c Box) {
-	<div id={ outID } class="flex flex-col gap-3 rounded-lg border border-accent p-4" data-testid="gt-inpaint-confirm">
+	<div id={ outID } class="flex flex-col gap-3 rounded-lg border border-mute p-4" data-testid="gt-inpaint-confirm">
 		<h2 class="text-sm font-semibold">実行の確認</h2>
 		<p class="text-sm">全部で <strong>{ strconv.Itoa(c.Items) }</strong> 件。見積り合計は <strong>{ c.Total }</strong> です。結果は元の画像とは別のファイルになり、元の結果へのリンクが残ります。</p>
 		if len(c.Warnings) > 0 {
-			<ul class="list-disc pl-5 text-xs text-warning">
+			<ul class="list-disc pl-6 text-sm text-warning">
 				for _, w := range c.Warnings {
 					<li>{ w }</li>
 				}
@@ -114,14 +114,14 @@ templ Confirm(c Box) {
 
 // Failed is an estimate or a run that was refused, in the place of the confirmation.
 templ Failed(msg string) {
-	<div id={ outID } class="rounded-lg border border-danger/60 p-4" data-testid="gt-inpaint-failed">
+	<div id={ outID } class="rounded-lg border border-danger/40 bg-danger/10 p-4" data-appear data-testid="gt-inpaint-failed">
 		<p class="text-sm text-danger" role="alert">{ msg }</p>
 	</div>
 }
 
 // Started says the redraw was queued. The history keeps the new file.
 templ Started(history string) {
-	<div id={ outID } class="rounded-lg border border-success/60 p-4" data-testid="gt-inpaint-started">
+	<div id={ outID } class="rounded-lg border border-success/40 bg-success/10 p-4" data-appear data-testid="gt-inpaint-started">
 		<p class="text-sm text-success" role="status">描き直しを始めました。結果は履歴に、元の画像とは別のファイルで残ります。</p>
 		<a class="text-sm text-ink underline" href={ templ.SafeURL(history) }>履歴を見る</a>
 	</div>

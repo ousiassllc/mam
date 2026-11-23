@@ -180,6 +180,7 @@ func TestTheComfyTierOffersThePickerOfTheExposedInputs(t *testing.T) {
 	assert.Contains(t, page, `aria-current="page"`)
 	table := testid(page, "gt-picker-table")
 	require.NotEmpty(t, table)
+	assert.Regexp(t, `<div class="overflow-x-auto[^"]*" tabindex="0" role="region" aria-label="画面に出せる入力">`, page, "the table scrolls sideways and is reached by the keyboard (B6)")
 	assert.Contains(t, table, "KSampler.denoise")
 	assert.Contains(t, testid(page, "gt-picker-others"), "ほかのノードがつないでいる")
 	assert.Contains(t, testid(page, "gt-picker-others"), "Nefos Video が値を入れる")

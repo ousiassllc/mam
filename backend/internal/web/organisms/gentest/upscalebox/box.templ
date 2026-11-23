@@ -25,7 +25,7 @@ templ Box(f Form) {
 					<p class="text-sm text-danger" role="alert" data-testid="gt-upscale-error">{ f.Error }</p>
 				}
 				if !f.HasModel {
-					<p class="text-sm text-mute" data-testid="gt-upscale-none">
+					<p class="text-sm text-ink" data-testid="gt-upscale-none">
 						アップスケール用のモデルが入っていません。
 						<a class="underline" href={ templ.SafeURL(f.ModelsURL) }>モデルマネージャー</a>で入れてください。
 					</p>

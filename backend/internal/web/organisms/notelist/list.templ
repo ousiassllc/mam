@@ -83,7 +83,7 @@ templ Created(d Data) {
 templ noteAddForm(d Data, oob bool) {
 	<form
 		id="note-add-form"
-		class="flex flex-col gap-2 rounded-md border border-border p-3"
+		class="flex flex-col gap-2 rounded-lg border border-border p-3"
 		hx-post={ d.BasePath }
 		hx-target="#note-list"
 		hx-swap="outerHTML"
@@ -148,7 +148,7 @@ templ Groups(d Data) {
 	{{ groups, archived := groupNotes(d.Notes) }}
 	<div id="note-list" class="flex flex-col gap-6" hx-include={ "#note-list input[name='" + OnPageField + "']" }>
 		if len(groups) == 0 {
-			<p class="text-sm text-mute">メモはまだありません。チャットで「覚えておいて」と伝えても追加できます。</p>
+			<p class="text-sm text-ink">メモはまだありません。チャットで「覚えておいて」と伝えても追加できます。</p>
 		}
 		for _, g := range groups {
 			<section aria-label={ g.Title } class="flex flex-col gap-2">
@@ -160,7 +160,7 @@ templ Groups(d Data) {
 		}
 		if len(archived) > 0 {
 			<details class="flex flex-col gap-2">
-				<summary class="cursor-pointer text-sm font-semibold text-ink">{ "アーカイブ済み (" + strconv.Itoa(len(archived)) + ")" }</summary>
+				<summary class={ atoms.SummaryClass }>{ "アーカイブ済み (" + strconv.Itoa(len(archived)) + ")" }</summary>
 				<div class="mt-2 flex flex-col gap-2">
 					for _, n := range archived {
 						@noteWithHistory(d, n)
@@ -196,7 +196,7 @@ templ noteItem(n domain.NoteView) {
 		<input type="hidden" name={ OnPageField } value={ n.ID }/>
 		@notecard.Card(n)
 		<details class="pl-3 text-sm">
-			<summary class="cursor-pointer text-xs text-mute">バージョン履歴</summary>
+			<summary class={ atoms.SummaryClass }>バージョン履歴</summary>
 			<div class="mt-2">
 				@organisms.VersionHistoryPanel(organisms.VersionHistoryData{
 					DOMID: "note-history-" + n.ID, Title: "メモのバージョン", BasePath: paths.Note(n.ID),

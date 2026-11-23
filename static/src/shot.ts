@@ -7,7 +7,7 @@
  */
 import { ajaxChecked, showAlert } from './ajax';
 import { AJAX_FAILED_MESSAGE } from './components/lib/ajax';
-import { createConnectionNotice, releaseIfDetached } from './components/lib/connection-notice';
+import { createConnectionNotice, releaseIfDetached } from './components/lib/ui/connection-notice';
 import { connect, socketUrl, type Connection } from './components/lib/ws';
 import { selfAndDescendants } from './components/lib/query';
 import { createSyncer } from './components/lib/sync';

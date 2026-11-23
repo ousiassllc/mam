@@ -76,7 +76,7 @@ templ DetailSection(d Detail, inModal bool) {
 		@gentestresult.Row(d.Actions)
 		@gentestresult.Panel(d.Used)
 		@commercial.Note(d.Answer)
-		<div class="flex flex-wrap items-center gap-3">
+		<div class="flex flex-wrap items-center gap-2">
 			@resulttile.FavoriteButton(d.Card.ID, d.Card.Favorite)
 			if d.Card.FileURL != "" {
 				@atoms.ButtonLink(atoms.ToneNeutral, "ファイルをダウンロード", templ.SafeURL(d.Card.FileURL+"?download=1"), templ.Attributes{"data-testid": "gt-download"})
@@ -112,7 +112,7 @@ templ DetailSection(d Detail, inModal bool) {
 		@faceswapbox.Box(d.FaceSwap)
 		if d.English != "" || d.EnglishNegative != "" {
 			<div class="flex flex-col gap-1" data-testid="gt-english">
-				<h3 class="text-xs text-mute">英訳（送った英語）</h3>
+				<h3 class="text-sm font-semibold text-ink">英訳（送った英語）</h3>
 				<p class="whitespace-pre-wrap break-words rounded-md border border-border p-2 text-sm" data-testid="gt-english-prompt">{ d.English }</p>
 				if d.EnglishNegative != "" {
 					<p class="text-sm text-mute" data-testid="gt-english-negative">ネガティブ: { d.EnglishNegative }</p>
@@ -120,7 +120,7 @@ templ DetailSection(d Detail, inModal bool) {
 			</div>
 		}
 		<div class="flex flex-col gap-1">
-			<h3 class="text-xs text-mute">実際に送ったプロンプト</h3>
+			<h3 class="text-sm font-semibold text-ink">実際に送ったプロンプト</h3>
 			<p class="whitespace-pre-wrap break-words rounded-md border border-border p-2 text-sm" data-testid="gt-sent-prompt">{ d.SentPrompt }</p>
 			if d.Negative != "" {
 				<p class="text-sm text-mute" data-testid="gt-negative">ネガティブ（{ d.NegMode }）: { d.Negative }</p>
@@ -128,10 +128,10 @@ templ DetailSection(d Detail, inModal bool) {
 		</div>
 		if len(d.Inputs) > 0 {
 			<div class="flex flex-col gap-2">
-				<h3 class="text-xs text-mute">入力画像</h3>
+				<h3 class="text-sm font-semibold text-ink">入力画像</h3>
 				<ul class="flex flex-wrap gap-3" data-testid="gt-inputs-list">
 					for _, in := range d.Inputs {
-						<li class="flex w-32 flex-col gap-1 text-xs">
+						<li class="flex w-32 flex-col gap-1 text-sm">
 							<img class="h-24 w-full rounded-md object-cover" src={ in.URL } alt={ in.Role } loading="lazy"/>
 							<span class="text-mute">{ in.Role }・{ in.Origin }</span>
 						</li>
@@ -141,7 +141,7 @@ templ DetailSection(d Detail, inModal bool) {
 		}
 		if len(d.Imports) > 0 {
 			<div class="flex flex-col gap-1">
-				<h3 class="text-xs text-mute">取り込み済み</h3>
+				<h3 class="text-sm font-semibold text-ink">取り込み済み</h3>
 				<ul class="text-sm" data-testid="gt-imports">
 					for _, im := range d.Imports {
 						<li>

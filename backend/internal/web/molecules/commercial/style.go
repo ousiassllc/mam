@@ -10,11 +10,11 @@ func filterOptions() []modellicense.Filter { return modellicense.Filters() }
 
 // noteClass is the box of a Note: red for 商用NG, amber with an edge for the others (the colours of the meanings, color-rules.md).
 func noteClass(v View) string {
-	base := "flex flex-col gap-1 rounded-md border p-2 text-xs break-words "
+	base := "flex flex-col gap-1 rounded-md border p-2 text-sm break-words "
 	if v.Level == modellicense.No {
-		return base + "border-danger/60 bg-danger/10 text-danger"
+		return base + "border-danger/40 bg-danger/10 text-danger"
 	}
-	return base + "border-warning/60 bg-warning/10 text-warning"
+	return base + "border-warning/40 bg-warning/10 text-warning"
 }
 
 func noteIcon(v View) atoms.IconName {

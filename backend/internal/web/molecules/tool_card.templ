@@ -80,7 +80,7 @@ templ ToolCardItem(c ToolCard) {
 				aria-labelledby={ c.elementID("title") }
 			}
 			aria-describedby={ c.describedBy() }
-			class="flex h-full min-h-36 flex-col gap-3 rounded-lg border border-border bg-surface p-4 transition-colors hover:border-mute hover:bg-accent-soft/60 focus-visible:focus-ring motion-reduce:transition-none"
+			class="flex h-full min-h-36 flex-col gap-3 rounded-lg border border-border bg-surface p-4 transition-colors hover:border-mute hover:bg-accent-soft focus-visible:focus-ring motion-reduce:transition-none"
 		>
 			<span class="flex items-center gap-3">
 				<span class="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-accent-soft text-accent" aria-hidden="true">
@@ -92,7 +92,7 @@ templ ToolCardItem(c ToolCard) {
 					<span id={ c.elementID("title") } class="text-base font-semibold text-ink">{ c.Title }</span>
 				}
 			</span>
-			<span id={ c.elementID("desc") } class="text-pretty text-sm text-mute">{ c.Description }</span>
+			<span id={ c.elementID("desc") } class="text-pretty text-sm text-ink">{ c.Description }</span>
 			if len(c.Status) == 0 && c.StatusURL != "" {
 				<span
 					id={ c.elementID("status") }
@@ -119,7 +119,7 @@ templ ToolCardItem(c ToolCard) {
 			}
 			<span class={ "inline-flex items-center gap-1 text-sm text-accent", templ.KV("mt-auto", !c.hasStatusBox()) } aria-hidden="true">
 				{ c.cta() }
-				@atoms.Icon(atoms.IconChevronRight, "h-4 w-4 shrink-0")
+				@atoms.Icon(atoms.IconChevronRight, "size-icon-sm shrink-0")
 			</span>
 		</a>
 	</li>

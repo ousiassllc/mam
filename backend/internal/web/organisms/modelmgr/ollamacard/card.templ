@@ -47,7 +47,7 @@ templ OllamaSection(s Section) {
 templ others(items []Other) {
 	<div class="flex flex-col gap-1" data-testid="mm-ollama-others">
 		<h3 class="text-sm font-semibold text-ink">そのほかのモデル</h3>
-		<p class="text-xs text-mute">この Ollama に、ほかの手段で入れたモデルです。Nefos Video はここから消したり、取得したりしません。</p>
+		<p class="text-sm text-ink">この Ollama に、ほかの手段で入れたモデルです。Nefos Video はここから消したり、取得したりしません。</p>
 		<ul role="list" class="flex flex-col gap-1 text-sm text-ink">
 			for _, o := range items {
 				<li data-testid="mm-ollama-other" data-model={ o.Name }>{ o.Name }（{ o.Size }）</li>
@@ -92,7 +92,7 @@ func detailURL(name string) string {
 // and the license are in its detail modal (ModelDetail).
 templ ModelCard(m Model) {
 	@modelcard.Item(card(m)) {
-		<p class="text-sm text-mute">{ m.Description }</p>
+		<p class="text-sm text-ink">{ m.Description }</p>
 		@view.Notice(m.Message, ModelID(m.Name))
 		switch m.State {
 			case StatePulling:
@@ -122,7 +122,7 @@ templ ModelCard(m Model) {
 					@atoms.SmallButtonFor(atoms.TonePrimary, "取得", m.DisplayName, pullAttrs(m))
 				}
 				if m.Blocked != "" {
-					<p id={ ModelID(m.Name) + "-blocked" } class="text-xs text-mute" data-testid="mm-ollama-blocked">{ m.Blocked }</p>
+					<p id={ ModelID(m.Name) + "-blocked" } class="text-sm text-mute" data-testid="mm-ollama-blocked">{ m.Blocked }</p>
 				}
 		}
 	}

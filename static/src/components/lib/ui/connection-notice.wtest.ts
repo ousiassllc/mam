@@ -1,13 +1,13 @@
-import { expect } from '@open-wc/testing';
+import { expect, waitUntil } from '@open-wc/testing';
 import { createConnectionNotice } from './connection-notice';
-import { installConnectionNoticeTemplate } from '../testdata/fakes';
+import { installConnectionNoticeTemplate } from '../../testdata/fakes';
 
 describe('connection notice', () => {
   let removeTemplate: () => void;
   beforeEach(() => (removeTemplate = installConnectionNoticeTemplate()));
   afterEach(() => removeTemplate());
 
-  const notices = () => document.querySelectorAll<HTMLElement>('[data-connection-lost]');
+  const notices = () => document.querySelectorAll<HTMLElement>('[data-connection-lost]:not([data-leaving])');
 
   it('tells the user what stopped updating and lets them reconnect', () => {
     let retries = 0;
@@ -33,6 +33,15 @@ describe('connection notice', () => {
     expect(shown.outerHTML).to.equal(template.content.firstElementChild!.outerHTML);
   });
 
+  it('sits above the toast and is never wider than the window (O3)', () => {
+    createConnectionNotice('チャット').show(() => {});
+    const region = document.getElementById('connection-lost-region')!;
+    const classes = region.className.split(' ');
+    expect(classes).to.include('max-w-[calc(100vw-2rem)]');
+    expect(classes).to.include('bottom-20'); // the toast is bottom-6 and one line (min-h-10) high
+    expect(classes).to.not.include('bottom-4');
+  });
+
   it('shows nothing when the page has no template', () => {
     removeTemplate();
     createConnectionNotice('チャット').show(() => {});
@@ -51,5 +60,27 @@ describe('connection notice', () => {
     expect(notices()[0]!.dataset.connectionLost).to.equal('生成の進捗');
     chat.show(() => {});
     expect(notices().length).to.equal(2);
+  });
+
+  it('fades out when the connection is back: it stays until the transition is over (M5)', async () => {
+    const style = document.createElement('style');
+    style.textContent =
+      '[data-connection-lost]{opacity:1;transition:opacity 200ms linear}[data-connection-lost][data-leaving]{opacity:0}';
+    document.head.append(style);
+    try {
+      const notice = createConnectionNotice('チャット');
+      notice.show(() => {});
+      const shown = document.querySelector<HTMLElement>('[data-connection-lost]')!;
+      expect(getComputedStyle(shown).opacity).to.equal('1'); // the style the fade starts from
+
+      notice.hide();
+
+      expect(shown.hasAttribute('data-leaving')).to.equal(true);
+      expect(shown.isConnected).to.equal(true);
+      expect(notices().length).to.equal(0);
+      await waitUntil(() => !shown.isConnected, 'the notice was not removed after the fade');
+    } finally {
+      style.remove();
+    }
   });
 });

@@ -128,7 +128,7 @@ templ ReferenceLibraryList(d ReferenceLibraryData) {
 templ referenceUploadForm(d ReferenceLibraryData, oob bool) {
 	<form
 		id="reference-upload-form"
-		class="flex flex-col gap-2 rounded-md border border-border p-3"
+		class="flex flex-col gap-2 rounded-lg border border-border p-3"
 		hx-post={ paths.Project(d.Project.ID, "references") }
 		hx-encoding="multipart/form-data"
 		hx-target="#reference-library"
@@ -158,7 +158,7 @@ templ referenceUploadForm(d ReferenceLibraryData, oob bool) {
 				}
 			</div>
 			<div>
-				<label for="ref-new-name" class="mb-1 block text-xs text-mute">名前（100 文字以内。Character / Product / Location は登場する名前と揃える）</label>
+				<label for="ref-new-name" class="mb-1 block text-sm text-mute">名前（100 文字以内。Character / Product / Location は登場する名前と揃える）</label>
 				@atoms.Input(atoms.FieldMd, "w-full", templ.Attributes{
 					"id":        "ref-new-name",
 					"name":      "name",

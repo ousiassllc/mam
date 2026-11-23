@@ -96,7 +96,7 @@ func EngineDetail(e view.Engine) templ.Component {
 			}
 			switch view.EnginePhase(e) {
 			case "unsupported":
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"rounded-md border border-warning/60 bg-warning/10 p-3 text-sm text-warning\" role=\"note\" data-testid=\"mm-engine-unsupported\">同梱の ComfyUI は Windows 版と Apple Silicon の Mac（macOS 14 以降）版のデスクトップアプリだけで使えます。この環境（ブラウザ版・サーバー版・Intel Mac など）では、別に動かしている ComfyUI の URL を <a class=\"underline\" href=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "<p class=\"rounded-md border border-warning/40 bg-warning/10 p-3 text-sm text-warning\" role=\"note\" data-testid=\"mm-engine-unsupported\">同梱の ComfyUI は Windows 版と Apple Silicon の Mac（macOS 14 以降）版のデスクトップアプリだけで使えます。この環境（ブラウザ版・サーバー版・Intel Mac など）では、別に動かしている ComfyUI の URL を <a class=\"underline\" href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -114,7 +114,7 @@ func EngineDetail(e view.Engine) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			case "readonly":
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"flex flex-col gap-1 rounded-lg border border-warning/60 bg-warning/10 p-3 text-sm text-warning\" role=\"alert\" data-testid=\"mm-engine-readonly\"><p>導入先のフォルダ（")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<div class=\"flex flex-col gap-1 rounded-lg border border-warning/40 bg-warning/10 p-3 text-sm text-warning\" role=\"alert\" data-testid=\"mm-engine-readonly\"><p>導入先のフォルダ（")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -150,12 +150,12 @@ func EngineDetail(e view.Engine) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, " <dl class=\"grid grid-cols-2 gap-x-4 gap-y-2 text-xs text-ink\" data-testid=\"mm-engine-facts\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, " <dl class=\"grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-ink\" data-testid=\"mm-engine-facts\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if view.EnginePhase(e) == "installed" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<div class=\"col-span-2\"><dt class=\"text-mute\">導入済み</dt><dd>ComfyUI ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<div class=\"col-span-2\"><dt class=\"text-xs text-mute\">導入済み</dt><dd>ComfyUI ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -196,14 +196,14 @@ func EngineDetail(e view.Engine) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				if e.State == "running" {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<div class=\"col-span-2\"><dt class=\"text-mute\">待ち受け（この PC の中だけ）</dt><dd><code data-testid=\"mm-engine-url\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<div class=\"col-span-2\"><dt class=\"text-xs text-mute\">待ち受け（この PC の中だけ）</dt><dd><code data-testid=\"mm-engine-url\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var11 string
 					templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.JoinStringErrs(e.URL)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/modeldetail/engine.templ`, Line: 45, Col: 141}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/modeldetail/engine.templ`, Line: 45, Col: 149}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var11))
 					if templ_7745c5c3_Err != nil {
@@ -252,14 +252,14 @@ func EngineDetail(e view.Engine) templ.Component {
 				}
 			}
 			if e.Supported && e.Writable {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<div class=\"col-span-2\"><dt class=\"text-mute\">導入先（空き ")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<div class=\"col-span-2\"><dt class=\"text-xs text-mute\">導入先（空き ")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var14 string
 				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(e.Free)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/modeldetail/engine.templ`, Line: 53, Col: 54}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/modeldetail/engine.templ`, Line: 53, Col: 62}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
 				if templ_7745c5c3_Err != nil {
@@ -283,7 +283,7 @@ func EngineDetail(e view.Engine) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</dl><p class=\"text-sm text-mute\">ComfyUI（GPL-3.0）は別のプログラムで、Nefos Video には含まれません。公式のリリース ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "</dl><p class=\"text-sm text-ink\">ComfyUI（GPL-3.0）は別のプログラムで、Nefos Video には含まれません。公式のリリース ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

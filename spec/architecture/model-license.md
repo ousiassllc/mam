@@ -113,7 +113,7 @@
 - **マーク（`Mark`）**: アイコンだけ。結果のカード・表の細いセルなど、語が入らない所。意味はツールチップと `aria-label`。
 - **ノート（`Note`）**: 場所に余裕がある所（モデルのカード・結果の詳細）で、条件・注意をことばで出す。ライセンス原文へのリンクと「（YYYY-MM-DD に確認）」を付ける。`yes` は何も出さない。`unknown` と `no` は枠つきで目立たせる。
 - アイコン（Iconoir。#1039）: 商用OK＝`badge-check`、条件つき＝`warning-square`、不明＝`help-square`、商用NG＝`prohibition`。
-- 色は #867 の意味の色（[color-rules.md](../components/color-rules.md) §3.1）に従う: 商用OK＝成功（emerald）、条件つき＝警告（amber）、商用NG＝危険（red）、不明＝警告（amber）に **枠（`border-warning/60`）** を足して見落とさせない。新しい色は作らない。
+- 色は #867 の意味の色（[color-rules.md](../components/color-rules.md) §3.1）に従う: 商用OK＝成功（emerald）、条件つき＝警告（amber）、商用NG＝危険（red）、不明＝警告（amber）。バッジ・マークは状態色の枠 `/40` と地 `/10` を持つ（`atoms.Badge` と同じ。不明だけの枠は足さない。語とアイコンで見分ける）。新しい色は作らない。
 - `<select>` の `<option>` は文字しか入らないので、`モデル名（商用OK）` のように括弧で答えを続ける（`commercial.OptionLabel`）。
 
 画面ごとの場所:
@@ -188,3 +188,4 @@
 | 1.23 | 2026-11-14 | §3 の表に動画 3 件（`skyreels-v2-i2v-1-3b-540p`・`wan22-vace-fun-14b`・`ltxv-13b-0.9.8-distilled`）の答えを足した | Issue #1014 |
 | 1.24 | 2026-11-15 | §3 のクラウドの行: `gemini-omni-flash` の規約を 2026-11-15 に読み直した（結論は変わらない） | Issue #1154 |
 | 1.25 | 2026-11-19 | 本文の製品名の表示を「MAM」から「Nefos Video」に改めた（過去の改訂履歴の文は当時のまま） | #1170: 製品名を MAM から Nefos Video に変更（表示名のみ。識別子・パス・実行ファイル名は変更しない） |
+| 1.26 | 2026-11-22 | §4 の色: 不明の専用の枠（`atoms/commercial.templ` の `commercialEdge`。`border-warning/60`）をやめた。全バッジが状態色の枠 `/40` を持つので、不明だけの枠は区別にならない。「不明を見落とさせない」要件の達成手段は別途人が決める（語・アイコン・ノートの枠つき表示は残る） | レビュー指摘: `commercialEdge` の削除に改訂履歴が無かった |

@@ -1,7 +1,7 @@
 /*
  * The common slider (#955): every <input type="range"> of the app. Colours are the guide's tokens (static/src/css/tokens.css; the
- * rules are spec/components/color-rules.md §4.1): the filled part of the rail and the thumb's edge are --accent, the rest of the rail
- * is --accent-soft, and the keyboard focus is the --focus ring of every control.
+ * rules are spec/components/color-rules.md §4.1): the filled part of the rail is --accent, the rest of the rail
+ * is --accent-soft, the thumb is the --surface with a 1px --border (O11), and the keyboard focus is the --focus ring of every control.
  *
  * WebView2 (Chromium) and WKWebView (WebKit) have no pseudo-element for the filled part of the rail, so the rail is a gradient
  * up to `--fill` (0..1, written by components/slider/slider.ts from the value), and the browser's own look is switched off
@@ -16,7 +16,7 @@ input[type="range"] {
   --rail-fill: var(--accent);
   --rail-rest: var(--accent-soft);
   --thumb-face: var(--surface);
-  --thumb-edge: var(--accent);
+  --thumb-edge: var(--border);
 
   appearance: none;
   -webkit-appearance: none;
@@ -64,42 +64,18 @@ input[type="range"]::-webkit-slider-thumb {
   width: var(--thumb);
   height: var(--thumb);
   margin-top: calc((var(--rail) - var(--thumb)) / 2);
-  border: 2px solid var(--thumb-edge);
+  border: 1px solid var(--thumb-edge);
   border-radius: 9999px;
   background: var(--thumb-face);
-  transition:
-    background-color var(--motion-base) var(--ease-out),
-    border-color var(--motion-base) var(--ease-out);
 }
 
 input[type="range"]::-moz-range-thumb {
   box-sizing: border-box;
   width: var(--thumb);
   height: var(--thumb);
-  border: 2px solid var(--thumb-edge);
+  border: 1px solid var(--thumb-edge);
   border-radius: 9999px;
   background: var(--thumb-face);
-  transition:
-    background-color var(--motion-base) var(--ease-out),
-    border-color var(--motion-base) var(--ease-out);
-}
-
-/* Hover: colour and background only (M1): the thumb takes the soft background. */
-input[type="range"]:not(:disabled):hover::-webkit-slider-thumb {
-  background: var(--accent-soft);
-}
-
-input[type="range"]:not(:disabled):hover::-moz-range-thumb {
-  background: var(--accent-soft);
-}
-
-/* Dragging: the thumb is filled, so that it is plain which one is held. */
-input[type="range"]:not(:disabled):active::-webkit-slider-thumb {
-  background: var(--accent);
-}
-
-input[type="range"]:not(:disabled):active::-moz-range-thumb {
-  background: var(--accent);
 }
 
 /* Keyboard focus: the ring of the other controls (2px --focus, offset 2, here a gap in the page's colour) around the thumb. */
@@ -113,13 +89,6 @@ input[type="range"]:not(:disabled):focus-visible::-moz-range-thumb {
   box-shadow:
     0 0 0 2px var(--bone),
     0 0 0 4px var(--focus);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  input[type="range"]::-webkit-slider-thumb,
-  input[type="range"]::-moz-range-thumb {
-    transition: none;
-  }
 }
 
 /* Windows forced colours (high contrast): the author's colours are dropped, so name the system's. */

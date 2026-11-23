@@ -169,7 +169,7 @@ func Form(p Page) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<label class=\"flex flex-col gap-1 text-xs text-mute\" for=\"gt-inpaint-source\"><span>画像ファイル（PNG・JPEG・WebP）。履歴やプロジェクトの画像は、その画面のリンクからも開けます。</span> <input id=\"gt-inpaint-source\" class=\"text-sm text-ink\" type=\"file\" name=\"source\" accept=\"image/png,image/jpeg,image/webp\"></label> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<label class=\"flex flex-col gap-1 text-ink\" for=\"gt-inpaint-source\"><span class=\"text-sm\">画像ファイル（PNG・JPEG・WebP）。履歴やプロジェクトの画像は、その画面のリンクからも開けます。</span> <input id=\"gt-inpaint-source\" class=\"text-sm text-ink\" type=\"file\" name=\"source\" accept=\"image/png,image/jpeg,image/webp\"></label> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -247,7 +247,7 @@ func Form(p Page) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if !p.HasModel {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<p class=\"text-sm text-mute\" data-testid=\"gt-inpaint-none\">一部だけ描き直せるモデルがありません。SDXL か FLUX.1 dev のインペイントを導入してください。</p>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "<p class=\"text-sm text-ink\" data-testid=\"gt-inpaint-none\">一部だけ描き直せるモデルがありません。SDXL か FLUX.1 dev のインペイントを導入してください。</p>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -334,7 +334,7 @@ func Confirm(c Box) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "\" class=\"flex flex-col gap-3 rounded-lg border border-accent p-4\" data-testid=\"gt-inpaint-confirm\"><h2 class=\"text-sm font-semibold\">実行の確認</h2><p class=\"text-sm\">全部で <strong>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "\" class=\"flex flex-col gap-3 rounded-lg border border-mute p-4\" data-testid=\"gt-inpaint-confirm\"><h2 class=\"text-sm font-semibold\">実行の確認</h2><p class=\"text-sm\">全部で <strong>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -365,7 +365,7 @@ func Confirm(c Box) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(c.Warnings) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<ul class=\"list-disc pl-5 text-xs text-warning\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "<ul class=\"list-disc pl-6 text-sm text-warning\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -523,7 +523,7 @@ func Failed(msg string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "\" class=\"rounded-lg border border-danger/60 p-4\" data-testid=\"gt-inpaint-failed\"><p class=\"text-sm text-danger\" role=\"alert\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 47, "\" class=\"rounded-lg border border-danger/40 bg-danger/10 p-4\" data-appear data-testid=\"gt-inpaint-failed\"><p class=\"text-sm text-danger\" role=\"alert\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -579,7 +579,7 @@ func Started(history string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "\" class=\"rounded-lg border border-success/60 p-4\" data-testid=\"gt-inpaint-started\"><p class=\"text-sm text-success\" role=\"status\">描き直しを始めました。結果は履歴に、元の画像とは別のファイルで残ります。</p><a class=\"text-sm text-ink underline\" href=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 50, "\" class=\"rounded-lg border border-success/40 bg-success/10 p-4\" data-appear data-testid=\"gt-inpaint-started\"><p class=\"text-sm text-success\" role=\"status\">描き直しを始めました。結果は履歴に、元の画像とは別のファイルで残ります。</p><a class=\"text-sm text-ink underline\" href=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

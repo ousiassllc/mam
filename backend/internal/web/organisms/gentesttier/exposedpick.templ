@@ -21,7 +21,7 @@ templ ExposedPicker(d PickerData) {
 			<p class="text-sm text-warning" role="alert" data-testid="gt-picker-error">{ d.Err }</p>
 		}
 		if len(d.Models) == 0 {
-			<p class="text-sm text-mute" data-testid="gt-picker-nomodel">選べるモデルがありません。モデルマネージャーでモデルを導入するか、ワークフローを取り込んでください。</p>
+			<p class="text-sm text-ink" data-testid="gt-picker-nomodel">選べるモデルがありません。モデルマネージャーでモデルを導入するか、ワークフローを取り込んでください。</p>
 		} else {
 			<nav aria-label="モデル" data-testid="gt-picker-models">
 				<ul class="flex flex-wrap gap-2 text-sm">
@@ -50,17 +50,17 @@ templ pickerForm(d PickerData) {
 		if len(d.Choosable()) == 0 {
 			<p class="text-sm text-mute">このグラフに、画面に出せる入力（ほかのノードがつないでいない数値・文字・選択肢）がありません。</p>
 		} else {
-			<div class="overflow-x-auto">
-				<table class="w-full min-w-[40rem] text-left text-xs text-ink" data-testid="gt-picker-table">
+			<div class="overflow-x-auto focus-visible:focus-ring" tabindex="0" role="region" aria-label="画面に出せる入力">
+				<table class="w-full min-w-[40rem] text-left text-sm text-ink" data-testid="gt-picker-table">
 					<caption class="sr-only">画面に出せる入力</caption>
 					<thead>
-						<tr class="text-mute">
-							<th scope="col" class="py-1 pr-2">出す</th>
-							<th scope="col" class="py-1 pr-2">ノード・入力</th>
-							<th scope="col" class="py-1 pr-2">今の値</th>
-							<th scope="col" class="py-1 pr-2">型</th>
-							<th scope="col" class="py-1 pr-2">画面での名前</th>
-							<th scope="col" class="py-1">範囲・選択肢</th>
+						<tr class="text-xs text-mute">
+							<th scope="col" class="py-1 pr-2 font-semibold">出す</th>
+							<th scope="col" class="py-1 pr-2 font-semibold">ノード・入力</th>
+							<th scope="col" class="py-1 pr-2 font-semibold">今の値</th>
+							<th scope="col" class="py-1 pr-2 font-semibold">型</th>
+							<th scope="col" class="py-1 pr-2 font-semibold">画面での名前</th>
+							<th scope="col" class="py-1 font-semibold">範囲・選択肢</th>
 						</tr>
 					</thead>
 					<tbody>
@@ -80,8 +80,8 @@ templ pickerForm(d PickerData) {
 			<p class="text-sm text-warning" data-testid="gt-picker-readonly">このモデルの設定は、ここでは変えられません（設定ファイルが固定されています）。</p>
 		}
 		if len(d.Others()) > 0 {
-			<details class="text-xs text-mute" data-testid="gt-picker-others">
-				<summary class="cursor-pointer">選べない入力（{ strconv.Itoa(len(d.Others())) } 件）と、その理由</summary>
+			<details class="text-sm text-mute" data-testid="gt-picker-others">
+				<summary class={ atoms.SummaryClass }>選べない入力（{ strconv.Itoa(len(d.Others())) } 件）と、その理由</summary>
 				<ul class="mt-2 flex flex-col gap-1">
 					for _, r := range d.Others() {
 						<li><span class="text-ink">{ r.Node } { r.Class }.{ r.Input }</span>: { r.Reason }</li>
@@ -99,9 +99,13 @@ templ pickerRow(r PickerRow, editable bool) {
 				"type": "checkbox", "name": FieldPickRow, "value": r.Key, "checked": r.Chosen, "disabled": !editable, "aria-label": r.Class + "." + r.Input + "（ノード " + r.Node + "）を画面に出す",
 			})
 		</td>
-		<th scope="row" class="py-2 pr-2 font-normal text-ink">{ r.Class }.{ r.Input } <span class="text-mute">ノード { r.Node }</span></th>
-		<td class="py-2 pr-2 break-all">{ r.Value }</td>
-		<td class="py-2 pr-2">{ r.Type }</td>
+		<th scope="row" class="py-2 pr-2 font-normal text-ink"><code>{ r.Class }.{ r.Input }</code> <span class="text-mute">ノード { r.Node }</span></th>
+		if r.Type == "int" || r.Type == "float" {
+			<td class="py-2 pr-2 text-right font-mono tabular-nums break-all">{ r.Value }</td>
+		} else {
+			<td class="py-2 pr-2 font-mono break-all">{ r.Value }</td>
+		}
+		<td class="py-2 pr-2"><code>{ r.Type }</code></td>
 		<td class="py-2 pr-2">
 			@atoms.Input(atoms.FieldSm, "w-44", templ.Attributes{"name": FieldPickLabel + r.Key, "type": "text", "maxlength": itoa(MaxPickLabel), "value": r.Label, "disabled": !editable, "aria-label": r.Key + " の画面での名前"})
 		</td>

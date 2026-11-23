@@ -5,8 +5,8 @@
 ## 1. 位置づけ
 
 - 共通ガイドの正は https://ousiassllc.github.io/brand-guide/ 。ガイドの P3「メディア・エディタ」は「独自ウィジェットは共通ガイドに置かず、そのプロダクトの案件ガイドで定義する。UI クロムにプリズムを使わない」と定めている。3 つのウィジェットはこの P3 に当たる。
-- 参照した時点: 2026-11-06（要約の取り込み時点は brand-guide `73d8cf6`。色のトークンの版は [color-rules.md](color-rules.md) が `622ea73` と書いている）。食い違ったらガイドが正。
-- **この文書は値を複製しない。** 色・文字・角丸・余白・動きは、トークンの名前とそれを出す Tailwind のクラス（[color-rules.md](color-rules.md) §3・§4、[shared-ui-parts.md](shared-ui-parts.md) §1）で書く。クラスの許可リストは `a11y/color_allowlist_test.go`・`shape_test.go`・`typography_test.go` が守る。
+- 参照した時点: 2026-11-06（要約の取り込み時点は brand-guide `73d8cf6`。色のトークンの版は [color-rules.md](color-rules.md) が `5d816f8` と書いている）。食い違ったらガイドが正。
+- **この文書は値を複製しない。** 色・文字・角丸・余白・動きは、トークンの名前とそれを出す Tailwind のクラス（[color-rules.md](color-rules.md) §3・§4、[shared-ui-parts.md](shared-ui-parts.md) §1）で書く。クラスの許可リストは `a11y/color_allowlist_test.go`・`shape_test.go`・`texttest/typography_test.go` が守る。
 - ガイドにない部品・値・モーションは足さない。この文書が決めたのは、ガイドの既存の部品（ボタン・入力・ステータスピル・インラインアラート・トースト・テーブル・カード・スライダー・空状態）を、3 つのウィジェットのどこにどう使うかである。**共通ガイドへの追加提案は無い**（§7）。
 - 対象外: `mam-video-player`（P3 の「動画」。別に決める）、`mam-comfy-frame`（iframe の枠）、`mam-prompt-weight`（Issue #1046）。
 - 3 つとも Light DOM に描く（`createRenderRoot()` が `this`）。ページの Tailwind クラスがそのまま効く。ライト / ダークは `<html data-theme>` のトークンの切り替えで決まり、クラスに `dark:` は付けない。
@@ -17,10 +17,10 @@
 |---|------|--------|
 | W1 | 色 | トークンのクラスだけ（[color-rules.md](color-rules.md) §3・§4）。面は `bg-surface`・枠は `border-border`・補助の文字は `text-mute`・選択と現在地は `border-accent`（＋`bg-accent-soft`）。意味の色は 4 トークン（`danger` `warning` `success` `info`）だけで、色だけで意味を伝えない（文言とアイコンを添える）。`#000` などの直書きはしない |
 | W2 | 行・パネルの面 | 並べて操作する 1 件（クリップの行・区間の選択パネル）は、カード（`rounded-lg border border-border bg-surface`、影なし）。カードの中の入れ子の面（区間のチップ）は `rounded-sm bg-accent-soft` |
-| W3 | ボタン | 共通ガイドの O7 と同じ（[shared-ui-parts.md](shared-ui-parts.md) §1「部品・オーバーレイ」）。主 = `bg-accent text-bone hover:bg-accent/85`、サブ = `border border-border text-ink hover:bg-accent-soft`。どれも `rounded-md font-semibold transition-colors motion-reduce:transition-none disabled:opacity-40`、小は `min-h-8 px-3 py-1 text-sm`（ウィジェットの中のボタンはすべて小）、押下は `data-ripple`、キーボードのフォーカスは `focus-visible:focus-ring`。行の中の補助の操作（「外す」「選択」「除外」「変更を戻す」「選び直す」）は `atoms.LinkButton` と同じ文字のボタン（`text-xs text-mute underline hover:text-ink`。リップルは付けない）で、同じく `focus-visible:focus-ring` を持つ |
-| W4 | 記号だけのボタン（↑ ↓ ×） | 名前は `aria-label`（見える記号は名前ではない）。押せる大きさは 24×24px 以上（WCAG 2.5.8）。`atoms.IconButton` と同じ形（`text-mute hover:text-ink`、`data-ripple`）で `focus-visible:focus-ring`。行に同じ名前を並べない（`atoms.RowLabel` と同じ規約。[overview.md](overview.md) §4.2・§4.3） |
-| W5 | 入力欄 | 枠は `border-mute`（入力欄の枠のコントラスト 3:1。[color-rules.md](color-rules.md) §4）・`rounded-md`・`text-ink`・`px-2 py-1`。地は `bg-surface`（面の上）か `bg-bone`（ページの上）で、どちらも `a11y/field_border_test` が見る。ラベルは入力の上に `text-xs text-mute`（Regular）。無効は不透明度 .4。`focus-visible:focus-ring` |
-| W6 | ステータスの印 | `atoms.Badge` と同じ形（`rounded-full px-2 py-1 text-xs`＋ `bg-<状態>/20 text-<状態>`、中立は `bg-accent-soft text-ink`）。色は [shared-ui-parts.md](shared-ui-parts.md) §1「状態の種類と `Badge` の対応」に従う。**`rounded-sm` の枠だけの印や、`text-[10px]` のような 12px 未満の文字は使わない**（T3: 最小は `text-xs` 12px） |
+| W3 | ボタン | 共通ガイドの O7 と同じ（[shared-ui-parts.md](shared-ui-parts.md) §1「部品・オーバーレイ」）。主 = `bg-accent text-bone hover:bg-accent/85`、サブ = `border border-border text-ink hover:bg-accent-soft`。どれも `rounded-md font-semibold transition-colors motion-reduce:transition-none disabled:opacity-40`、小は `min-h-8 px-3 py-1 text-sm`（ウィジェットの中のボタンはすべて小。class は `components/lib/ui/button.ts` の `BUTTON` と `BUTTON_TONE` の 1 か所。手書きで複製しない。`a11y/lit_atoms_test.go` が `atoms.SmallButtonClass` との一致を検査する）、押下は `data-ripple`、キーボードのフォーカスは `focus-visible:focus-ring`。行の中の補助の操作（「外す」「選択」「除外」「変更を戻す」「選び直す」）は `atoms.LinkButton` と同じ文字のボタン（`components/lib/ui/button.ts` の `LINK_BUTTON` の 1 か所。`text-sm text-mute underline transition-colors hover:text-ink disabled:cursor-not-allowed disabled:opacity-40 motion-reduce:transition-none focus-visible:focus-ring`。atoms の `linkButtonClass` と同じ語で、`a11y/shape_test.go` が保つ。操作できる文字は 14px 以上（T3）。リップルは付けない） |
+| W4 | アイコンだけのボタン（↑ ↓ ×） | 絵は文字でなく Iconoir のアイコン（`components/lib/ui/icon.ts` の `icon()`。`atoms.Icon` と同じ path・`stroke-width` 1.5・`aria-hidden`。`icon.test.ts` が path の一致を検査する）。名前は `aria-label`（絵は名前ではない）。押せる大きさは 24×24px 以上（WCAG 2.5.8）。`atoms.IconButton` と同じ形（`text-mute hover:text-ink`、`data-ripple`）で `focus-visible:focus-ring`。行に同じ名前を並べない（`atoms.RowLabel` と同じ規約。[overview.md](overview.md) §4.2・§4.3） |
+| W5 | 入力欄 | 枠は `border-mute`（入力欄の枠のコントラスト 3:1。[color-rules.md](color-rules.md) §4）・`rounded-md`・`text-ink`・`px-2 py-1`・文字は `text-sm`（12px にしない。T3。クリップの in / out・トランジション・字幕の入力も）。地は `bg-surface`（面の上）か `bg-bone`（ページの上）で、どちらも `a11y/field_border_test` が見る。ラベルは入力の上に `text-xs text-mute`（Regular）。無効は不透明度 .4。`focus-visible:focus-ring` |
+| W6 | ステータスの印 | `atoms.Badge` と同じ形（`rounded-full px-2 py-1 text-xs`＋ `border border-<状態>/40 bg-<状態>/10 text-<状態>`、中立は `border border-transparent bg-accent-soft text-ink`。class は `components/lib/ui/badge.ts` の `BADGE` と `BADGE_TONE` の 1 か所。`a11y/lit_atoms_test.go` が `atoms.Badge` の class との一致を検査する）。色は [shared-ui-parts.md](shared-ui-parts.md) §1「状態の種類と `Badge` の対応」に従う。**`rounded-sm` の枠だけの印や、`text-[10px]` のような 12px 未満の文字は使わない**（T3: 最小は `text-xs` 12px） |
 | W7 | 数値 | 桁を揃える秒数・点数は `font-mono tabular-nums`（T5）。表の数値列は右寄せ |
 | W8 | 通知 | 成功の 1 行（「保存しました」）は**トースト**（`components/toast` の `showToast()`。O3。3 秒・同時に 1 つ）。エラー・拒否・取り消せない結果・読み直して失われた編集のような**読み返す**ものは**インラインアラート**（`components/alert` の `appendAlert(#alert-region, …)`。アイコン＋見出し＋本文。閉じるまで残る。同じ文は重ねない）。ウィジェットが自分の中に通知の箱を持たない。スクリーンリーダー向けの `role="status"` の読み上げ（`data-announce`）は残す |
 | W9 | 空状態・読み込み | 空状態は破線の枠（`rounded-lg border border-dashed border-border`・余白 `p-6`）に文言。次の一手があるものは文言で言う（ボタンは、そのウィジェットから押せる操作があるときだけ）。読み込み中は `text-sm text-mute` の文言（`role="status"`）。スケルトンは使わない |
@@ -84,7 +84,7 @@ Shot の Take のスコアを比べ、1 つを選ぶ・除外する、また複�
 | Status | `atoms.Badge`（Shot カードの `molecules.TakeStatusBadge` と同じ色: 候補 = `BadgeWarn`・AI Pick = `BadgeInfo`・採用 = `BadgeOK`・除外 = `BadgeNeutral`）。文字は `status_label`（サーバーが返す。クライアントは持たない）。除外は取り消し線を使わず、行の `text-mute` と文言で伝える。Judge の判定（PASS / FAIL）は印の隣の `text-xs text-mute` |
 | 行の操作 | 「選択」「除外」は W3 の補助（`atoms.LinkButtonFor` と同じ形。名前は「選択: Take A」「除外: Take A」）。出すかどうかは `select_url` / `reject_url` の有無（`status` は見ない） |
 | 区間で採用 | `<section aria-label="区間指定">`、見出し「区間で採用（Partial Take Use）」。Take ごとに、「Take A」・`mam-video-player`（`max-w-md`）・区間を選ぶレーン |
-| レーン | 高さ 28（`h-7`）・`rounded-md bg-accent-soft`・`cursor-crosshair`。幅は Take の長さを最長の Take（または Shot の計画尺）に対する割合にして、長さの違いが見えるようにする。選んだ区間 = `bg-success/70`（番号は `text-xs text-bone`）、ドラッグ中 = `bg-info/70`（どちらも [color-rules.md](color-rules.md) §4 の重ね塗りの例外）。`role="group"`・`aria-label="Take A の区間を選ぶ"` |
+| レーン | 高さ 28（`h-7`）・`rounded-md bg-accent-soft`・`cursor-crosshair`。幅は Take の長さを最長の Take（または Shot の計画尺）に対する割合にして、長さの違いが見えるようにする。選んだ区間 = `bg-success/70`（番号は透ける塗りの上に直接置かず、`bg-surface text-ink` の小さなチップに入れる。`text-bone` は Light で 4.5:1 に届かない）、ドラッグ中 = `bg-info/70`（どちらも [color-rules.md](color-rules.md) §4 の重ね塗りの例外）。`role="group"`・`aria-label="Take A の区間を選ぶ"` |
 | 選択パネル | W2 のカード（`tabindex="-1"`。フォーカスの戻し先）。選んだ区間が無いときは「Take の帯をドラッグして区間を選ぶと、選んだ順につなぎます。」。あるときは区間のチップ（`rounded-sm bg-accent-soft`、「Take A の 0.0-2.0秒」と、名前付きの × ボタン「区間 n を外す」）と「合計 N 秒（つなぎ目はクロスフェード）」 |
 | 合成のボタン | 「この区間で合成」（主）= 区間が 2 つ以上・処理中でないときだけ有効。「選び直す」（W3 のテキストボタン）= 区間が無いと無効。「言葉で合成」（サブ）= 入力が空・処理中のとき無効 |
 | 言葉の入力 | `<input type="text" name="instruction">`（W5。`aria-label="区間を言葉で指定"`。例「Take A の 0-2秒 + Take B の 2-4秒」）。解釈はサーバー。**レーンのドラッグに代わる入力**（W12） |
@@ -191,7 +191,7 @@ Shot の Take のスコアを比べ、1 つを選ぶ・除外する、また複�
 **TC-1〜TC-7 は Issue #1092 で解消した**（実装を規定に合わせた。差分として残したものは無い）。表の「実装」欄は解消前の状態の記録で、直した先は次のとおり。
 
 - TC-1・TC-7: 「選択」「除外」「選び直す」は `text-xs text-mute underline hover:text-ink focus-visible:focus-ring`（リップルなし）。「この区間で合成」「言葉で合成」は `min-h-8 text-sm font-semibold`＋`transition-colors motion-reduce:transition-none`＋`data-ripple`＋`focus-visible:focus-ring`、「×」は `min-h-6 min-w-6`＋`data-ripple`、言葉の入力は `text-ink focus-visible:focus-ring`、選択パネルは `bg-surface` のカード
-- TC-2・TC-3: Status は `rounded-full px-2 py-1 text-xs`＋ Shot カードの `TakeStatusBadge` と同じ色（候補 = `bg-warning/20 text-warning`・AI Pick = `bg-info/20 text-info`・採用 = `bg-success/20 text-success`・除外 = `bg-accent-soft text-ink`。取り消し線は無し）。「使用中」は `bg-success/20` のバッジ（括弧は無し）。レーンの区間の番号は `text-xs`
+- TC-2・TC-3: Status は `rounded-full px-2 py-1 text-xs`＋ Shot カードの `TakeStatusBadge` と同じ色（候補 = `border-warning/40 bg-warning/10 text-warning`・AI Pick = `border-info/40 bg-info/10 text-info`・採用 = `border-success/40 bg-success/10 text-success`（色は `lib/ui/badge.ts` の `BADGE_TONE`）・除外 = `bg-accent-soft text-ink`。取り消し線は無し）。「使用中」は採用と同じ色のバッジ（括弧は無し）。レーンの区間の番号は `text-xs`
 - TC-4: スコアのセルは `text-right font-mono tabular-nums`、Product〜Continuity の列の見出しも右寄せ
 - TC-5: エラーは `#alert-region` のエラーのアラート、区間の上限・短すぎる区間は注意のアラート（`appendAlert(region, message, 'warning')`）。ウィジェットは通知の箱を持たない
 - TC-6: 空状態は `rounded-lg border border-dashed border-border p-6`（`data-empty`）
@@ -242,3 +242,11 @@ Shot の Take のスコアを比べ、1 つを選ぶ・除外する、また複�
 | 1.2 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |
 | 1.3 | 2026-11-12 | §6.1 の TL-1〜TL-10 を解消済みにし、直した先を書いた（`mam-timeline-editor` のフォーカスの輪・バッジ・数値・トースト・アラート・空状態・確認）（§3.2 の注意のアラートは `#alert-warning-template`） | Issue #1091 |
 | 1.4 | 2026-11-12 | §6.3 の MP-3 を解消済みにした（重ね塗りの専用トークン `--overlay-deep`・`--overlay-pale` を足し、写真の明るさで選ぶ。中間調の写真は 3:1 に届かないことを書いた）。§3.2 に、タイムライン編集の初回の読み込みに失敗したときの「もう一度読み込む」を足した | Issue #1093・#1091 |
+| 1.5 | 2026-11-22 | W4 を「アイコンだけのボタン」に改め、絵を `components/lib/ui/icon.ts` の `icon()`（`atoms.Icon` と同じ Iconoir の path）にした。再生・コマ送り・並べ替え・区間削除のグリフを置き換えた | #1179: アイコン（I）の指摘 |
+| 1.6 | 2026-11-22 | W3 の行の中の補助の操作（`atoms.LinkButton` と同じ文字）を `text-xs` から `text-sm` に改めた（操作できる文字は 14px 以上。T3） | #1185: タイポグラフィ（T）の指摘 |
+| 1.7 | 2026-11-22 | W5 に、入力欄の文字は `text-sm` と書いた（クリップの in / out・トランジション・字幕・言葉で合成の入力欄を 12px から 14px に）。`mam-weight-note` の注意の文も `text-sm` | #1192: タイポグラフィ（T）の指摘 |
+| 1.8 | 2026-11-22 | W3 のボタンの class を `components/lib/ui/button.ts`（`BUTTON`・`BUTTON_TONE`）の 1 か所にまとめた（マスク・重み調整・タイムライン・Take 比較のボタンの手書きの複製をやめた） | #1194: 部品・オーバーレイ（O）の指摘 |
+| 1.9 | 2026-11-22 | W3 の行の中の補助の操作（テキストボタン）の class を `lib/ui/button.ts` の `LINK_BUTTON`（atoms の `linkButtonClass` と同じ語）の 1 か所にし、Take 比較の行・タイムラインの行とツールバーの複製を置き換えた。タイムラインの読み込み失敗の案内は 2 文なので `text-ink`（C6）。こだわりの「元に戻す」は `BUTTON` + `BUTTON_TONE.neutral` | #1196・#1200 |
+| 1.10 | 2026-11-22 | W5 の Take 比較のレーン: 選んだ区間の番号を、`bg-success/70` の上に直接置かず `bg-surface text-ink` のチップに入れた（Light の AA） | #1201: 色（C）の指摘 |
+| 1.11 | 2026-11-22 | W6 のステータスの印の色を実装（`lib/ui/badge.ts` の `BADGE_TONE`）に合わせた: `bg-<状態>/20 text-<状態>` を `border border-<状態>/40 bg-<状態>/10 text-<状態>`（中立は `border border-transparent bg-accent-soft text-ink`）に直した（ガイド C4: 枠 40%・地 10%。`atoms.Badge` と同じ） | レビュー指摘: W6 が実装と食い違っていた |
+| 1.12 | 2026-11-22 | W3・W6 に、Lit の `BUTTON`・`BUTTON_TONE`・`BADGE`・`BADGE_TONE` が atoms の class と同じ語であることを `a11y/lit_atoms_test.go` が検査すると書いた | レビュー指摘: Lit と atoms の class の突き合わせが無かった |

@@ -418,7 +418,7 @@ func HistoryLive(h History) templ.Component {
 // HistoryCard is a result of the history: its tile (the picture, a badge of its state, the heart; a tap opens the detail in the modal, Issue #1004). A
 // result that made a file can be chosen for the ZIP export (#932), as the model cards of the form are chosen (#906): a check box in the corner of the
 // tile (a real checkbox, the peer of the frame, so the keyboard and a screen reader have it) lights the frame and holds the state, static/src/components/
-// gentest/export-pick.ts keeps it over the refresh of the list; the detail offers the same choice. A card without a file is not offered.
+// gentest/export/export-pick.ts keeps it over the refresh of the list; the detail offers the same choice. A card without a file is not offered.
 func HistoryCard(c resulttile.Card) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -486,7 +486,7 @@ func HistoryCard(c resulttile.Card) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		var templ_7745c5c3_Var19 = []any{"overflow-hidden rounded-lg border border-border", pick.Glow}
+		var templ_7745c5c3_Var19 = []any{"rounded-lg border border-border", pick.Glow}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var19...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
@@ -530,11 +530,11 @@ func HistoryCard(c resulttile.Card) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "\" class=\"absolute left-1.5 top-1.5 z-raised flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-border bg-surface text-accent hover:border-accent peer-checked:border-accent peer-checked:bg-accent-soft [&_svg]:opacity-0 peer-checked:[&_svg]:opacity-100\" aria-hidden=\"true\" data-testid=\"gt-pick-mark\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 49, "\" class=\"absolute left-2 top-2 z-raised flex h-6 w-6 cursor-pointer items-center justify-center rounded-sm border border-border bg-surface text-accent hover:border-accent peer-checked:border-accent peer-checked:bg-accent-soft [&_svg]:opacity-0 peer-checked:[&_svg]:opacity-100\" aria-hidden=\"true\" data-testid=\"gt-pick-mark\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = atoms.Icon(atoms.IconCheck, "h-4 w-4").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = atoms.Icon(atoms.IconCheck, "size-icon-sm").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

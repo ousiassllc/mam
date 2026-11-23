@@ -72,7 +72,7 @@ func (h Handlers) CreateEndpoint(c *gin.Context) {
 		h.refuse(c, err, endpointExists, f)
 		return
 	}
-	toast := atoms.ToastOOB("接続先「" + in.Name + "」を追加しました。すぐに使えます")
+	toast := atoms.ToastOOB("接続先「" + in.Name + "」を追加しました")
 	status := http.StatusOK
 	if key := strings.TrimSpace(postForm(c).Get(view.FieldAPIKey)); key != "" {
 		if err := h.Local.SetEndpointKey(in.Name, key); err != nil {
@@ -109,7 +109,7 @@ func (h Handlers) UpdateEndpoint(c *gin.Context) {
 	}
 	e, _ := h.endpointOf(name)
 	settingshttp.CloseModal(c)
-	settingshttp.Render(c, http.StatusOK, templ.Join(view.EndpointCardOOB(e, f.OnPage), atoms.ToastOOB("接続先「"+name+"」を保存しました。すぐに反映されます")))
+	settingshttp.Render(c, http.StatusOK, templ.Join(view.EndpointCardOOB(e, f.OnPage), atoms.ToastOOB("接続先「"+name+"」を保存しました")))
 }
 
 // DeleteEndpoint removes the endpoint with its models and key (DELETE /settings/local-models/endpoints/:name) and answers

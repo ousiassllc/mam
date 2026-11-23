@@ -34,6 +34,7 @@ templ Modal(f Form) {
 				@atoms.Button(atoms.ToneNeutral, "この Agent を既定に戻す", templ.Attributes{
 					"type":            "button",
 					"hx-delete":       paths.LLMAgent(f.Row.Agent),
+					"hx-confirm":      "この Agent の LLM の割り当てを既定に戻します。よろしいですか？",
 					"hx-target":       "#" + modal.BodyID,
 					"hx-swap":         "innerHTML",
 					"hx-sync":         "closest form:drop", // a save and a reset never run together

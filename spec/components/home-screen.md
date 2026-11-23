@@ -21,11 +21,11 @@
 |----|------|------|
 | 1 | `<h1>` Nefos Video・「Autonomous Shot Studio」 | |
 | 2 | 新しいプロジェクトのフォーム（`organisms.NewProjectForm`） | |
-| 3 | バンドルの読み込み（`organisms.ProjectImportForm`） | |
+| 3 | バンドルの読み込み（`projectimport.Form`（`organisms/projectimport/`）） | |
 | 4 | `<h2>` プロジェクト・`organisms.ProjectList` | プロジェクトが 0 件のときは一覧の空の文言 |
 
 - 見出しは h1（Nefos Video）→ h2（プロジェクト）の順（#781。段を飛ばさない）。
-- 幅: `<main class="mx-auto max-w-5xl p-8">`。区画 1〜4 は**すべて同じ幅**で、内側の `max-w-3xl` の枠は持たない（2026-10-25 オーナー決定）。1024 px のウィンドウでも横にスクロールしない。
+- 幅: `pagehead.Main(pagehead.Wide)`＝`<main class="mx-auto flex w-full flex-col gap-6 p-4 md:p-6 max-w-5xl">`（余白は 16px、`md` 以上で 24px。内側の幅は `max-w-5xl`＝1024 px から余白を引いた 976 px）。区画 1〜4 は**すべて同じ幅**で、内側の `max-w-3xl` の枠は持たない（2026-10-25 オーナー決定）。1024 px のウィンドウでも横にスクロールしない。
 - ツールのカードは置かない。`data-testid="tool-card"` も、`hx-trigger="load"` で状態を読む枠も、このページには無い（`pages/projects_page_test.go`）。
 
 ## 3. ツールのカードを外したこと（#978）
@@ -99,3 +99,4 @@
 | 0.9 | 2026-11-03 | §3 のモデルマネージャーの状態の表で、「非対応」を「Windows と Apple Silicon の Mac 以外」にし、文言を実際の「同梱の ComfyUI は Windows 版と Apple Silicon の Mac 版のみ」にそろえた | 統合後レビューの指摘（macOS 版の同梱エンジン #854 と文言の食い違い） |
 | 0.10 | 2026-11-10 | 画面名・機能名の「生成テスト」を「単発生成」に改めた（本文の文言だけ。仕様は変えない。過去の改訂履歴の文は当時のまま） | Issue #1137 |
 | 0.11 | 2026-11-19 | 本文の製品名の表示を「MAM」から「Nefos Video」に改めた（過去の改訂履歴の文は当時のまま） | #1170: 製品名を MAM から Nefos Video に変更（表示名のみ。識別子・パス・実行ファイル名は変更しない） |
+| 0.12 | 2026-11-22 | §2 の幅を、実装の `pagehead.Main(pagehead.Wide)`（`p-4 md:p-6`・`max-w-5xl`）に合わせた（旧 `p-8`） | レビュー指摘: 余白の数値が実装と食い違っていた |

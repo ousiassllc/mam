@@ -87,17 +87,20 @@ describe('the note under the LoRA choice (#1119)', () => {
 
   it('warns when a model of another base model is ticked, and follows the ticks', () => {
     choose('mine.safetensors');
-    expect(note().some((t) => t?.startsWith('⚠'))).to.equal(false);
+    const warns = () => [...q('[data-gt-lora-note]').querySelectorAll('li[role="alert"]')];
+    expect(warns()).to.have.length(0);
     const qwen = q<HTMLInputElement>('input[value="m-qwen"]');
     qwen.checked = true;
     qwen.dispatchEvent(new Event('change', { bubbles: true }));
-    const warns = note().filter((t) => t?.startsWith('⚠'));
-    expect(warns).to.have.length(1);
-    expect(warns[0]).to.contain('「Qwen-Image 2.1」は Qwen-Image 用のモデルです');
-    expect(q('[data-gt-lora-note] li[role="alert"]')).to.not.equal(null);
+    expect(warns()).to.have.length(1);
+    const [warn] = warns();
+    expect(warn?.textContent).to.contain('「Qwen-Image 2.1」は Qwen-Image 用のモデルです');
+    // The mark is the Iconoir icon, not a glyph in the text (I1).
+    expect(warn?.querySelector('svg[aria-hidden="true"]')).to.not.equal(null);
+    expect(warn?.textContent).to.not.contain('⚠');
     qwen.checked = false;
     qwen.dispatchEvent(new Event('change', { bubbles: true }));
-    expect(note().some((t) => t?.startsWith('⚠'))).to.equal(false);
+    expect(warns()).to.have.length(0);
   });
 
   it('says a file the model manager did not add has nothing set', () => {

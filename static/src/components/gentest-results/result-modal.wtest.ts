@@ -106,7 +106,8 @@ describe('a tile of the history opens the detail of the result in the modal (#10
       () => !tile('r0').querySelector('[data-testid="gt-fav-mark"]')!.hasAttribute('hidden'),
       'the heart did not show',
     );
-    expect(tile('r0').querySelector('[data-testid="gt-fav-mark"]')!.textContent).to.contain('★');
+    expect(tile('r0').querySelector('[data-testid="gt-fav-mark"] svg')).to.not.equal(null); // the star is an outline: it is not filled
+    expect(tile('r0').querySelector('[data-testid="gt-fav-mark"] svg.fill-current')).to.equal(null);
   });
 
   it('takes the tile out of the grid when the result is deleted in the modal, and closes', async () => {

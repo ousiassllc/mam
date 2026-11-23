@@ -70,7 +70,7 @@ func Frame(notes []Note, fields []Field) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" tabindex=\"-1\" autofocus data-testid=\"gt-role-notice\"><ul class=\"list-disc space-y-1 pl-5 text-sm\" data-testid=\"gt-role-notes\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "\" tabindex=\"-1\" autofocus data-testid=\"gt-role-notice\"><ul class=\"list-disc space-y-1 pl-6 text-sm\" data-testid=\"gt-role-notes\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

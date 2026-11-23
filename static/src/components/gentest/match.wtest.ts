@@ -7,7 +7,7 @@ import { initGentestMatch } from './match';
 const FORM = `
 <form data-gt-match data-max-bytes="1048576">
   <input type="file" name="upload" data-gt-match-file>
-  <label data-gt-match-zone>
+  <label data-gt-match-zone class="border-border">
     <img data-gt-match-preview alt="" hidden>
     <span data-gt-match-hint>画像をドロップ、またはクリック</span>
   </label>
@@ -49,6 +49,39 @@ describe('the prompt match form of the generation test (spec/components/gentest-
     expect(q<HTMLElement>('[data-gt-match-hint]').hidden).to.equal(true);
     expect(q<HTMLInputElement>('[data-gt-match-ref]').value, 'the file is the reference now').to.equal('');
     expect(q<HTMLElement>('[data-gt-match-error]').hidden).to.equal(true);
+  });
+
+  it('shows the zone as a drop target while a file is dragged over it, as the input images do (brand guide §7)', () => {
+    const zone = q('[data-gt-match-zone]');
+    const hint = q('[data-gt-match-hint]');
+    const data = new DataTransfer();
+    data.items.add(pngFile());
+    zone.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: data }));
+    expect(zone.classList.contains('border-accent')).to.equal(true);
+    expect(zone.classList.contains('bg-accent-soft')).to.equal(true);
+    expect(zone.classList.contains('border-border'), 'border-border would win over border-accent').to.equal(false);
+
+    zone.dispatchEvent(new DragEvent('dragleave', { bubbles: true, relatedTarget: hint }));
+    expect(zone.classList.contains('border-accent'), 'moving onto a child is not leaving').to.equal(true);
+    zone.dispatchEvent(new DragEvent('dragleave', { bubbles: true, relatedTarget: document.body }));
+    expect(zone.classList.contains('border-accent')).to.equal(false);
+    expect(zone.classList.contains('border-border')).to.equal(true);
+
+    zone.dispatchEvent(new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: data }));
+    zone.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: data }));
+    expect(zone.classList.contains('bg-accent-soft'), 'a drop puts the highlight off').to.equal(false);
+    expect(zone.classList.contains('border-border')).to.equal(true);
+  });
+
+  it('ignores a drag that carries no file: no highlight, and the browser keeps its own behaviour', () => {
+    const zone = q('[data-gt-match-zone]');
+    const data = new DataTransfer();
+    data.setData('text/plain', 'a dragged sentence');
+    const over = new DragEvent('dragover', { bubbles: true, cancelable: true, dataTransfer: data });
+    zone.dispatchEvent(over);
+    expect(over.defaultPrevented, 'the browser keeps its own behaviour').to.equal(false);
+    expect(zone.classList.contains('border-accent')).to.equal(false);
+    expect(zone.classList.contains('border-border')).to.equal(true);
   });
 
   it('refuses a file that is not a PNG, JPEG or WebP, or is too large, and says why in one line', () => {

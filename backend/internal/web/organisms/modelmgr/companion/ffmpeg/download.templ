@@ -15,7 +15,7 @@ func megabytes(n int64) string { return fmt.Sprintf("%d", (n+(1<<20)-1)>>20) }
 templ DownloadPanel(d Download) {
 	<section
 		id={ DownloadID }
-		class="flex flex-col gap-2 rounded-md border border-border px-3 py-2"
+		class="flex flex-col gap-2 rounded-lg border border-border px-3 py-2"
 		data-testid="ffmpeg-download"
 		if d.Polling() {
 			hx-get={ paths.FFmpegDownload() }
@@ -47,7 +47,7 @@ templ DownloadPanel(d Download) {
 		}
 		if d.Install.Running {
 			<div class="flex flex-col gap-1" role="status" data-testid="ffmpeg-download-progress">
-				<progress class="w-full" max="100" value={ fmt.Sprintf("%d", d.Install.Percent) }></progress>
+				<progress class="h-1.5 w-full" max="100" value={ fmt.Sprintf("%d", d.Install.Percent) } aria-label="ffmpeg のダウンロードの進み具合"></progress>
 				<p class="text-sm">{ d.Install.Message }（{ fmt.Sprintf("%d", d.Install.Percent) }%）</p>
 				<form hx-post={ paths.FFmpegDownloadCancel() } hx-target={ "#" + DownloadID } hx-swap="outerHTML" hx-sync="this:drop" hx-params="none" hx-disabled-elt="find button[type=submit]">
 					@atoms.SmallButtonFor(atoms.ToneNeutral, "中断", "ffmpeg のダウンロード", templ.Attributes{"type": "submit", "data-testid": "ffmpeg-download-cancel"})
@@ -76,7 +76,7 @@ templ DownloadPanel(d Download) {
 			}
 			if !d.Installed || d.UpdateAvailable {
 				<form hx-post={ paths.FFmpegDownload() } hx-target={ "#" + DownloadID } hx-swap="outerHTML" hx-sync="this:drop" hx-params="none" hx-disabled-elt="find button[type=submit]">
-					<p class="mb-2 text-sm text-mute" data-testid="ffmpeg-download-about">
+					<p class="mb-2 text-sm text-ink" data-testid="ffmpeg-download-about">
 						ffmpeg と ffprobe（{ d.Build }）を、配布元（{ d.Publisher }）からダウンロードします。約 { megabytes(d.DownloadBytes) } MB。展開後は約 { megabytes(d.ExtractedBytes) } MB。
 						ダウンロードしたファイルは、Nefos Video に固定してある SHA-256 と一致したときだけ使います（一致しなければ削除します）。
 						ライセンスは <a class="underline" href={ templ.SafeURL(d.LicenseURL) } target="_blank" rel="noopener noreferrer">{ d.License }</a>、
@@ -84,7 +84,7 @@ templ DownloadPanel(d Download) {
 						置き場所は { d.Dir } です。ボタンを押したときだけ通信します（自動の更新確認はしません）。
 					</p>
 					if d.Found && !d.Managed {
-						<p class="mb-2 text-sm text-mute" data-testid="ffmpeg-download-found-elsewhere">すでに別の場所の ffmpeg が見つかっています。そちらが優先されるので、ダウンロードは要りません。</p>
+						<p class="mb-2 text-sm text-ink" data-testid="ffmpeg-download-found-elsewhere">すでに別の場所の ffmpeg が見つかっています。そちらが優先されるので、ダウンロードは要りません。</p>
 					}
 					if d.UpdateAvailable {
 						@atoms.SmallButtonFor(atoms.TonePrimary, "新しい版をダウンロード", "ffmpeg のダウンロード", templ.Attributes{"type": "submit", "data-testid": "ffmpeg-download-button"})

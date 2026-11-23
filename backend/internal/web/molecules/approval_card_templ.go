@@ -111,14 +111,14 @@ func ApprovalCard(m domain.ThreadMessage) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			if m.Unrecorded {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<p class=\"mt-1 text-xs text-mute\" data-testid=\"approval-unrecorded\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<p class=\"mt-1 text-sm text-ink\" data-testid=\"approval-unrecorded\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(mainline.UnrecordedCardNote)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/approval_card.templ`, Line: 30, Col: 101}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/molecules/approval_card.templ`, Line: 30, Col: 100}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {

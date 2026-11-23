@@ -12,7 +12,7 @@ const TESTDATA = '/src/components/testdata/';
 async function menuBesidePage(): Promise<HTMLElement> {
   const nav = await (await fetch(TESTDATA + 'layout-sidenav.html')).text();
   const host = document.createElement('div');
-  host.innerHTML = `<div class="flex min-h-screen">${nav}<div id="content" class="min-w-0 flex-1"><main data-testid="page" class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 md:p-8"><h1 class="text-xl font-semibold">Brief</h1><p class="break-words">長い文章が続きます。</p></main></div></div>`;
+  host.innerHTML = `<div class="flex min-h-screen">${nav}<div id="content" class="min-w-0 flex-1"><main data-testid="page" class="mx-auto flex w-full max-w-5xl flex-col gap-6 p-4 md:p-6"><h1 class="text-xl font-semibold">Brief</h1><p class="break-words">長い文章が続きます。</p></main></div></div>`;
   document.body.append(host);
   return host;
 }

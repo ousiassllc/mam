@@ -4,6 +4,7 @@
  * are in match-model.ts. The listeners are on the document: the form may arrive in a swapped body.
  */
 
+import { hasFiles, highlightZone } from '../lib/ui/dropzone';
 import { imageProblem, showsLimits, targetText } from './match-model';
 
 const FORM = '[data-gt-match]';
@@ -65,12 +66,22 @@ export function initGentestMatch(root: Document = document): void {
     const out = host.querySelector<HTMLElement>('[data-gt-match-target-output]');
     if (out) out.textContent = targetText(el.value);
   });
-  // A file dropped on the zone is the chosen one; anywhere else the browser keeps its own behaviour.
+  // A file dropped on the zone is the chosen one; anywhere else the browser keeps its own behaviour. The zone shows it is a drop target while a file is over it.
   root.addEventListener('dragover', (event) => {
-    if ((event.target as Element | null)?.closest('[data-gt-match-zone]')) event.preventDefault();
+    const zone = (event.target as Element | null)?.closest('[data-gt-match-zone]');
+    if (!zone || !hasFiles(event)) return; // a dragged text or link is not a file: no highlight, and the browser keeps its own behaviour
+    event.preventDefault();
+    highlightZone(zone, true);
+  });
+  root.addEventListener('dragleave', (event) => {
+    const zone = (event.target as Element | null)?.closest('[data-gt-match-zone]');
+    // Moving from the zone onto something inside it is not leaving it (the highlight would flicker).
+    if (!zone || (event.relatedTarget instanceof Node && zone.contains(event.relatedTarget))) return;
+    highlightZone(zone, false);
   });
   root.addEventListener('drop', (event) => {
     const zone = (event.target as Element | null)?.closest('[data-gt-match-zone]');
+    if (zone) highlightZone(zone, false);
     const host = zone && form(zone);
     const file = event.dataTransfer?.files?.[0];
     const input = host?.querySelector<HTMLInputElement>('[data-gt-match-file]');

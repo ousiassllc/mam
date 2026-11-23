@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/ousiassllc/mam/backend/internal/domain"
+	"github.com/ousiassllc/mam/backend/internal/web/a11y/uisrc"
 	"github.com/ousiassllc/mam/backend/internal/web/molecules"
 )
 
@@ -21,8 +22,8 @@ func pendingApproval(id, content string) domain.ThreadMessage {
 }
 
 func TestApprovalCard_ButtonsAndCommentAreNamedAfterTheirCard(t *testing.T) {
-	html := render(t, molecules.ApprovalCard(pendingApproval("a1", "世界観 v2 を反映する"))) +
-		render(t, molecules.ApprovalCard(pendingApproval("a2", "口調 v1 を反映する")))
+	html := uisrc.Render(t, molecules.ApprovalCard(pendingApproval("a1", "世界観 v2 を反映する"))) +
+		uisrc.Render(t, molecules.ApprovalCard(pendingApproval("a2", "口調 v1 を反映する")))
 
 	assert.Equal(t, []string{"承認: 世界観 v2 を反映する", "承認: 口調 v1 を反映する"}, buttonNames(html, "承認"))
 	assert.Equal(t, []string{"修正を依頼: 世界観 v2 を反映する", "修正を依頼: 口調 v1 を反映する"}, buttonNames(html, "修正を依頼"))
@@ -41,16 +42,16 @@ func openCard(kind domain.MessageKind, id, text string) domain.ThreadMessage {
 }
 
 func TestQuestionCard_OptionButtonsAreNamedAfterTheirCard(t *testing.T) {
-	html := render(t, molecules.QuestionCard(openCard(domain.KindQuestion, "q1", "動画の目的は何ですか"))) +
-		render(t, molecules.QuestionCard(openCard(domain.KindQuestion, "q2", "尺は何秒ですか")))
+	html := uisrc.Render(t, molecules.QuestionCard(openCard(domain.KindQuestion, "q1", "動画の目的は何ですか"))) +
+		uisrc.Render(t, molecules.QuestionCard(openCard(domain.KindQuestion, "q2", "尺は何秒ですか")))
 
 	assert.Equal(t, []string{"はい: 動画の目的は何ですか", "はい: 尺は何秒ですか"}, buttonNames(html, "はい"))
 	assert.Equal(t, []string{"AIに任せる: 動画の目的は何ですか", "AIに任せる: 尺は何秒ですか"}, buttonNames(html, domain.DelegateOption))
 }
 
 func TestEscalationCard_OptionButtonsAreNamedAfterTheirCard(t *testing.T) {
-	html := render(t, molecules.EscalationCard(openCard(domain.KindEscalation, "e1", "予算を超えます"))) +
-		render(t, molecules.EscalationCard(openCard(domain.KindEscalation, "e2", "素材が足りません")))
+	html := uisrc.Render(t, molecules.EscalationCard(openCard(domain.KindEscalation, "e1", "予算を超えます"))) +
+		uisrc.Render(t, molecules.EscalationCard(openCard(domain.KindEscalation, "e2", "素材が足りません")))
 
 	assert.Equal(t, []string{"はい: 予算を超えます", "はい: 素材が足りません"}, buttonNames(html, "はい"))
 }

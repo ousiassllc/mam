@@ -1,4 +1,5 @@
-import { highlight, markAdded, releasePicker, RowReorder } from './inputs-dom';
+import { hasFiles, highlightZone } from '../lib/ui/dropzone';
+import { markAdded, releasePicker, RowReorder } from './inputs-dom';
 import { applyModels } from './inputs-models';
 import { defaultStrength, isUploadRef, moveItem, takeFiles, uploadRef } from './inputs-model';
 import { syncSliders } from '../slider/slider';
@@ -6,7 +7,7 @@ import { syncSliders } from '../slider/slider';
 /**
  * The input images of the generation test (spec/components/gentest-screen.md): one drop zone (drop or click, plus a dialog that
  * lists the images of a Project or of the history, which HTMX fills), the chosen images as numbered thumbnails that can be
- * removed, reordered (drag, or the ‹ › buttons), enlarged (a dialog), and given a role and a strength.
+ * removed, reordered (drag, or the chevron buttons), enlarged (a dialog), and given a role and a strength.
  *
  * The images chosen in the browser are not uploaded until the estimate: each is a File that this keeps, shows through an object
  * URL, and puts into the input `upload` in the order of the thumbnails; its thumbnail posts `ref=upload::#<n>` for the n-th file
@@ -14,10 +15,6 @@ import { syncSliders } from '../slider/slider';
  */
 
 const inited = new WeakSet<HTMLElement>();
-
-// The drop highlight of the zone: classes of the colour table (spec/components/color-rules.md), swapped in by the script.
-const ZONE_REST = 'border-border';
-const ZONE_ACTIVE = ['border-accent', 'bg-accent-soft'];
 
 class Inputs {
   private readonly form: HTMLElement;
@@ -67,15 +64,15 @@ class Inputs {
     zone.addEventListener('dragover', (e) => {
       if (!hasFiles(e)) return;
       e.preventDefault();
-      highlight(zone, true, ZONE_REST, ZONE_ACTIVE);
+      highlightZone(zone, true);
     });
     zone.addEventListener('dragleave', (e) => {
       // Moving from the zone onto something inside it is not leaving it (the highlight would flicker).
       if (e.relatedTarget instanceof Node && zone.contains(e.relatedTarget)) return;
-      highlight(zone, false, ZONE_REST, ZONE_ACTIVE);
+      highlightZone(zone, false);
     });
     zone.addEventListener('drop', (e) => {
-      highlight(zone, false, ZONE_REST, ZONE_ACTIVE);
+      highlightZone(zone, false);
       if (!hasFiles(e)) return;
       e.preventDefault();
       this.add([...(e.dataTransfer?.files ?? [])]);
@@ -284,10 +281,6 @@ class Inputs {
     for (const f of files) dt.items.add(f);
     this.fileInput.files = dt.files;
   }
-}
-
-function hasFiles(e: DragEvent): boolean {
-  return [...(e.dataTransfer?.types ?? [])].includes('Files');
 }
 
 /** Starts the input images of every form below `root` that has not been started. */

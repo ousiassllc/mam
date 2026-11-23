@@ -108,8 +108,8 @@ templ hfRepoView(r HFRepo) {
 		}
 		for _, g := range r.Groups {
 			<section class="flex flex-col gap-1" data-testid="mm-hfi-group" data-group={ g.Name }>
-				<h4 class="break-words text-sm font-semibold">{ g.Name }</h4>
-				<ul class="flex flex-col divide-y divide-border text-xs">
+				<h3 class="break-words text-sm font-semibold">{ g.Name }</h3>
+				<ul class="flex flex-col divide-y divide-border text-sm">
 					for _, f := range g.Files {
 						@hfFileRow(r, f)
 					}
@@ -123,7 +123,7 @@ templ hfFileRow(r HFRepo, f HFFile) {
 	<li class="flex flex-col gap-1 py-2" data-testid="mm-hfi-file" data-path={ f.Path } data-installable={ boolText(f.Installable) }>
 		<div class="flex flex-wrap items-center gap-2">
 			<code class="break-all">{ f.Path }</code>
-			<span class="text-ink">{ f.Size }</span>
+			<span class="font-mono tabular-nums text-ink">{ f.Size }</span>
 			@atoms.Badge(atoms.BadgeNeutral, f.Format)
 			if f.Variant != "" {
 				@atoms.Badge(atoms.BadgeInfo, f.Variant)
@@ -148,7 +148,7 @@ templ hfFileRow(r HFRepo, f HFFile) {
 			<p class="text-ink">導入中です（下の「追加したモデル」に進み具合が出ます）</p>
 		} else {
 			<details class="text-ink" data-testid="mm-hfi-install">
-				<summary class="cursor-pointer text-success">導入する…</summary>
+				<summary class={ atoms.SummaryClass }>導入する…</summary>
 				@hfInstallForm(r, f)
 			</details>
 		}
@@ -192,7 +192,7 @@ templ hfInstallForm(r HFRepo, f HFFile) {
 		if f.Family == "sdxl" {
 			<p class="text-success" data-testid="mm-hfi-sdxl">SDXL 系の一体型チェックポイントです。導入すると、画像モデル（テキストから画像・参照画像から画像）として単発生成で選べます。</p>
 		} else {
-			<p class="text-mute">このファイルは置くだけです（ワークフローは作りません）。ノード画面や自分で書いたワークフローから使います。</p>
+			<p class="text-ink">このファイルは置くだけです（ワークフローは作りません）。ノード画面や自分で書いたワークフローから使います。</p>
 		}
 		if !r.Consented {
 			<label class="flex items-start gap-2">
