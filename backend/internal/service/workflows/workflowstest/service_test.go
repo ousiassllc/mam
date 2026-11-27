@@ -2,6 +2,7 @@ package workflowstest_test
 
 import (
 	"context"
+	"math"
 	"slices"
 	"testing"
 
@@ -177,4 +178,28 @@ func TestRoutesFollowTheLatestVersionAndAUsedWorkflowCannotBeDeleted(t *testing.
 	require.NoError(t, r.svc.Delete(ctx, w.ID))
 	assert.False(t, slices.Contains(domain.ImageModels(), domain.ModelName(w2.ModelID)))
 	assert.ErrorIs(t, r.svc.Delete(ctx, w.ID), workflows.ErrNotFound)
+}
+
+// json.Marshal refuses a NaN: the save fails instead of storing a workflow without its assignment (#1232).
+func TestSaveDoesNotStoreAnAssignmentThatCannotBeEncoded(t *testing.T) {
+	r := newRig(t)
+	ctx := context.Background()
+	graph, spec := template(t, "img2video-wan22-5b")
+	bad := spec
+	bad.Video = &localcfg.VideoSettings{Durations: []float64{math.NaN()}, Resolutions: []string{"720p"}}
+
+	_, err := r.svc.Create(ctx, workflows.CreateInput{Name: "Broken", Kind: localcfg.MediaVideo, API: graph, Spec: &bad})
+	require.ErrorContains(t, err, "encode the workflow assignment")
+	list, err := r.svc.List(ctx)
+	require.NoError(t, err)
+	assert.Empty(t, list, "nothing was saved")
+
+	w, err := r.svc.Create(ctx, workflows.CreateInput{Name: "Clip", Kind: localcfg.MediaVideo, API: graph, Spec: &spec})
+	require.NoError(t, err)
+	_, err = r.svc.Update(ctx, w.ID, workflows.UpdateInput{Spec: &bad})
+	require.ErrorContains(t, err, "encode the workflow assignment")
+	got, err := r.svc.Get(ctx, w.ID)
+	require.NoError(t, err)
+	assert.Equal(t, w.Version, got.Version)
+	assert.Equal(t, spec.Video, got.Spec.Video, "the assignment was kept")
 }

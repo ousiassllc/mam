@@ -106,3 +106,23 @@ func TestEveryChangeNeedsTheCSRFToken(t *testing.T) {
 	list, _ = s.svc.List(t.Context())
 	assert.Len(t, list, 1, "nothing was deleted")
 }
+
+// ParseFloat reads "nan" and "inf", which no comparison of the settings check can refuse: the editor refuses them (#1232).
+func TestEditRefusesNonFiniteDurations(t *testing.T) {
+	s := newScreen(t)
+	rec := s.upload(paths.WorkflowsPart("import"), map[string]string{"name": "Clip", "kind": "video", "api_json": graphOf(t, "img2video-wan22-5b")}, "", true)
+	require.Equal(t, http.StatusOK, rec.Code, rec.Body.String())
+	id := s.workflowID(t, rec.Body.String())
+	before, err := s.svc.Get(t.Context(), id)
+	require.NoError(t, err)
+
+	for _, durations := range []string{"nan", "NaN", "inf", "+Inf", "-inf", "3, nan"} {
+		res := s.form(http.MethodPut, paths.Workflow(id), url.Values{"name": {"Clip"}, "durations": {durations}, "resolutions": {"720p"}}, true)
+		assert.Equal(t, http.StatusUnprocessableEntity, res.Code, durations)
+		assert.Contains(t, res.Body.String(), "長さは、秒の数字をカンマで区切って入力してください", durations)
+	}
+	after, err := s.svc.Get(t.Context(), id)
+	require.NoError(t, err)
+	assert.Equal(t, before.Version, after.Version)
+	assert.Equal(t, before.Spec, after.Spec, "nothing was saved")
+}
