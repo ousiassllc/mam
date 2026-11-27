@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 
@@ -60,7 +61,10 @@ func (s *Service) Create(ctx context.Context, in CreateInput) (Workflow, error) 
 			return Workflow{}, err
 		}
 	}
-	rawSpec, _ := json.Marshal(spec)
+	rawSpec, err := json.Marshal(spec)
+	if err != nil {
+		return Workflow{}, fmt.Errorf("encode the workflow assignment: %w", err)
+	}
 	now := s.Now().UTC()
 	w := comfywf.Workflow{
 		ID: domain.NewID(), Name: name, Kind: string(in.Kind), Endpoint: endpoint, UIJSON: in.UI,
@@ -137,7 +141,10 @@ func (s *Service) Update(ctx context.Context, id string, in UpdateInput) (Workfl
 		if err := s.checkSpec(kind, w.APIJSON, spec); err != nil {
 			return Workflow{}, err
 		}
-		raw, _ := json.Marshal(spec)
+		raw, err := json.Marshal(spec)
+		if err != nil {
+			return Workflow{}, fmt.Errorf("encode the workflow assignment: %w", err)
+		}
 		changed = changed || !sameJSON(raw, w.Assignment)
 		w.Assignment = raw
 	}
