@@ -34,7 +34,7 @@ Issue #835。[model-adapters.md](../model-adapters.md)（§9 の実装）に足�
 
 ## 5. 上限の設定（`gentestcfg`）
 
-`models.json` の `gentest`: `max_items`（既定 50、1 回のバッチの結果の数）・`max_cost_usd`（既定 20。0 は上限なし）。省略は既定。`configcheck` が値を検査し（負の数・0 以下の `max_items`・数値でない値を拒否）、設定画面の「画像・動画モデル」の保存・固定ファイルの規則（`MAM_MODELS_PINNED`）に従う。画面の見積りとジョブの投入の**両方**で検査する。
+`models.json` の `gentest`: `max_items`（既定 50、1 回のバッチの結果の数）・`max_cost_usd`（既定 20。0 は上限なし）。省略は既定。`configcheck` が値を検査し（負の数・0 以下の `max_items`・数値でない値を拒否）、設定画面の「画像・動画モデル」の保存・固定ファイルの規則（`--model-config` / `MAM_MODEL_CONFIG` で固定したファイルは読み取り専用）に従う。画面の見積りとジョブの投入の**両方**で検査する。
 
 ## 改訂履歴
 
