@@ -81,8 +81,13 @@ type Runner struct {
 	wg       sync.WaitGroup
 }
 
-// NewRunner is a Runner of the program that cfg describes.
-func NewRunner(cfg RunnerConfig) *Runner { return &Runner{cfg: cfg} }
+// NewRunner is a Runner of the program that cfg describes. A nil cfg.Logger is a logger that discards.
+func NewRunner(cfg RunnerConfig) *Runner {
+	if cfg.Logger == nil {
+		cfg.Logger = slog.New(slog.DiscardHandler)
+	}
+	return &Runner{cfg: cfg}
+}
 
 // Status is the progress of the install (State Idle when none was started).
 func (r *Runner) Status() Status {

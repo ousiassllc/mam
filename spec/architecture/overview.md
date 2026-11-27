@@ -153,7 +153,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │       ├── apperr/         # 人が読む失敗の共通の形（コード・原因と対処の文（日本語と英語のカタログ）・助けになる設定画面・機械が返した詳細）。画面・MCP ツール・結果の履歴が同じ文を引く（`spec/architecture/errors.md`）
 │       │   └── errmap/     # ComfyUI・ベンダー・LLM・ネットワーク・ディスクなど外から来たエラーを `apperr` のコードへ写す。見分けられない失敗は `CodeUnknown` で、相関 ID を付けてログに出す
 │       ├── failreport/     # ffmpeg の失敗をサービスが伝えるための文（共通エラーと、利用者が読む原因と対処。原因が分からない失敗にはログと共有するエラー ID を付ける）。サービスの下・`errmap` の上
-│       ├── worktrack/      # ジョブ表に行が無い作業（動画の書き出し・音声の段・Editor Judge・ワークフローの実行・Codex の導入・ffmpeg のダウンロード）のメモリ上の記録。ジョブ一覧が読む。永続しない（`spec/components/jobs-screen.md` §2）
+│       ├── worktrack/      # ジョブ表に行が無い作業（動画の書き出し・音声の段・Editor Judge・ワークフローの実行・ボイストレーニング・Codex の導入・ffmpeg のダウンロード）のメモリ上の記録。ジョブ一覧が読む。永続しない（`spec/components/jobs-screen.md` §2）
 │       ├── imgprep/        # ControlNet のワークフローの制御画像（Canny のエッジ）を mam の中で純 Go で作る（Issue #993。`spec/architecture/model-manager/custom-nodes.md` §5.1）
 │       ├── modelfilter/    # モデルを一覧する画面・MCP ツールが共通で使う絞り込みの条件（`Condition`。クエリ文字列と JSON で同じ言葉）と、それに 1 件を照らす `Match`（Issue #1011。`spec/architecture/model-manager/model-filter.md`）
 │       ├── licenses/       # 設定画面「第三者のライセンス」が並べるライセンスの一覧（`Catalog`。いまの出どころは `THIRD_PARTY_NOTICES.md`。`spec/components/settings-screen-licenses.md`）
