@@ -52,7 +52,7 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 
 | 結果 | 状態 | ヘッダー | 本文 |
 |------|------|---------|------|
-| 成功 | 200 | `HX-Trigger-After-Swap: modal-close`、`Cache-Control: no-store`（キーの保存・ログインの開始と終了） | 一覧の行の OOB（`<li id="…" hx-swap-oob="true">`）と、成功のトースト（`atoms.SuccessToastOOB`。`role="status"`、閉じるまで残る）。モーダルの本文は空 |
+| 成功 | 200 | `HX-Trigger-After-Swap: modal-close`、`Cache-Control: no-store`（キーの保存・ログインの開始と終了） | 一覧の行の OOB（`<li id="…" hx-swap-oob="true">`）と、成功のトースト（`atoms.ToastOOB`。`role="status"`、3 秒で消える・同時に 1 つ）。モーダルの本文は空 |
 | 入力の誤り | 422 | なし | モーダルの断片（`#mam-modal-body` に入り直す）。理由は `<p id="mam-modal-error" role="alert" tabindex="-1">`、問題の欄に `aria-invalid="true"`・`aria-describedby`・`autofocus`。**秘密の値は描き戻さない**（キーの欄は空に戻る） |
 | 条件を満たさない（ChatGPT の画像が OFF・エンジン無し・登録できない） | 409 | なし | モーダルの断片（理由と「閉じる」） |
 | 対象が無い | 404 | なし | モーダルの断片（「対象が見つかりません」と「閉じる」）。一覧は変えない |
@@ -232,3 +232,4 @@ HTMX 専用の断片（`#mam-modal-body` に入る）。HTMX でない GET は 4
 | 1.23 | 2026-11-11 | §3 の `PUT /settings/api-provider` の行を「今のルートに起きた変更」（パス・フォーム・状態コードは変えない）の表から、新しい節「新しいルート」へ移した（新規のルートで、見出しと食い違っていた）。1.20 の「§1」は誤りで、§3 が正しい。ブラウザは選びが落ち着いてから（`change` の 600ms 後）この PUT を送る（[settings-screen-categories.md](../components/settings-screen-categories.md) §1.0）。キーストアが読めないときのカードの並びも選択に追従する | PR #1141 のレビュー指摘 |
 | 1.24 | 2026-11-11 | §3 の `PUT /settings/api-provider` の行に、`models.json` が読めないときは 422 で断り、ファイルを書き換えず、区画は読めないときの表示（`api-provider-problem`）のままであること、判定の順（不正な値の 422 → 固定の 409 → 読めない 422）を足した（実装の `SaveVideoProvider` と `TestSaveProvider_AnUnreadableSettingsFileIsRefusedAndLeftAsItIs` に合わせた） | PR #1141 のレビュー指摘 |
 | 1.25 | 2026-11-19 | 本文の製品名の表示を「MAM」から「Nefos Video」に改めた（過去の改訂履歴の文は当時のまま） | #1170: 製品名を MAM から Nefos Video に変更（表示名のみ。識別子・パス・実行ファイル名は変更しない） |
+| 1.26 | 2026-11-28 | §2 の成功応答の説明を実装に合わせた: トーストは `atoms.SuccessToastOOB`（存在しない）ではなく `atoms.ToastOOB`、「閉じるまで残る」ではなく 3 秒で消える・同時に 1 つ（`toast.templ`・`toast.ts` の `TOAST_MS`）。コード・挙動は変えない | Issue #1226（仕様書と実装の乖離） |
