@@ -3,6 +3,7 @@ package localruntime
 import (
 	"context"
 
+	"github.com/ousiassllc/mam/backend/internal/bgwork"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/proc"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/track"
@@ -145,11 +146,11 @@ func (s *Service) OnStartup(ctx context.Context) {
 		if !inst.state.Get().AutoStart || !inst.install.Status().Installed {
 			continue
 		}
-		go func() {
+		go bgwork.RunSafely(s.Logger, "start the local runtime", func() {
 			if _, err := s.Start(context.WithoutCancel(ctx), inst.rt.ID); err != nil {
 				s.Logger.Warn("start the local runtime failed", "runtime", inst.rt.ID, "err", err)
 			}
-		}()
+		})
 	}
 }
 
