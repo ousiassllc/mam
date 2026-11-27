@@ -243,6 +243,34 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
         │   ├── focus-restore/        # 利用者の操作で始まった htmx の swap（`HX-Trigger` 起点の再読込・`hx-swap-oob` を含む）が、フォーカス中のコントロールを消した、または `hx-disabled-elt` で `disabled` にしたとき、差し替え後の同じコントロールへフォーカスを戻す（`htmx:beforeRequest` / `beforeSwap` / `afterSwap` / `afterRequest`。`main.ts` が組み込む。Lit ではない。詳細は [components/overview.md](../components/overview.md) §5.2）。Lit コンポーネント（`take-comparator/`・`timeline-editor/timeline-focus.ts`）向けの `lit-focus.ts`（`focusAfterUpdate()`・`focusFirst()`）と、テスト用の `focus-assert.ts` も置く
         │   ├── scroll/               # 取り直しで描き直された `data-keep-scroll` の箱（単発生成の比較表）を、読んでいた位置へ戻す（`keep-scroll.ts`。Issue #940。`main.ts` が `installKeepScroll()` で組み込む。Lit ではない）
         │   ├── poll/                 # `hx-trigger="every …"` の要求を、タブが隠れているあいだと区画の動画・音声が再生中のあいだは出さない（`poll-guard.ts`。Issue #925。`main.ts` が `installPollGuard()` で組み込む。更新ボタン `molecules/refresh.Bar` の要求は人の要求なので止めない。Issue #962）
+        │   ├── alert/                # アラート（`#alert-region`）。操作が通らなかったこと（LOCK 違反・予算超過・要求の失敗）を、閉じるまで出す
+        │   ├── toast/                # トースト（`#toast-region`）。うまくいったことを短く 1 つだけ出し、3 秒で消える
+        │   ├── confirm/              # 確認のモーダル（`confirmDialog`）。ブラウザの `confirm()` の代わり。`testkit.ts` はテスト用の差し替え
+        │   ├── modal/                # 設定画面のモーダル（`<dialog id="mam-modal">`。本体は HTMX が埋める。`spec/components/shared-ui-parts.md` §4）
+        │   ├── scrim/                # モーダルの `<dialog>` の外（`::backdrop`）をクリックして閉じる（Esc と同じ。Ousiass UI ガイド O1）
+        │   ├── inline-dialog/        # モデル管理の問い（成人向けモデルの年齢確認・モデルのライセンス）を `<dialog data-inline-dialog-host>` で中央のモーダルとして開く
+        │   ├── help/                 # 画面の「?」のヘルプ（`popover`。`spec/components/shared-ui-parts.md` §9）
+        │   ├── copy/                 # 一度だけ見せる値（MCP のトークンなど）の「コピー」ボタン
+        │   ├── restart/              # 設定の保存のあとに「再起動して反映」のパネルを読み直す
+        │   ├── sidenav/              # サイドメニューの折りたたみ状態（Cookie。`spec/components/side-menu.md` §4）
+        │   ├── theme/                # 配色テーマの選択（Cookie。サーバーの `themestate` が同じ Cookie から `<html data-theme>` を描く）
+        │   ├── ripple/               # ボタンを押した点から広がる波紋（Ousiass UI ガイド M4）
+        │   ├── slider/               # 共通のスライダー（レールの塗りを値から書く。Issue #955）
+        │   ├── comfy-frame/          # `<mam-comfy-frame>`: ComfyUI のノード画面を iframe で出す（`spec/architecture/comfy/comfy-embedding.md`）
+        │   ├── model-pick/           # モデルの絞り込みと選択（全モデル一覧の画面で共通。絞り込みはサーバーへの要求で、このスクリプトは絞らない。Issue #1011）
+        │   ├── lora-import/          # モデル管理の「ファイルを追加」（LoRA ファイルの送信前の検査と転送の進み具合。Issue #1119）
+        │   ├── mask-paint/           # `<mam-mask-paint>`: 描き直す部分のマスクを描く（`spec/components/gentest-screen.md`）
+        │   ├── prompt-weight/        # `<mam-prompt-weight>`・`<mam-weight-help>`: プロンプトの語のウェイト（`(語:1.2)`）を書かずに入れるバー（`spec/components/gentest-tiers.md`）
+        │   ├── gentest/              # 単発生成のフォーム（詳細設定 `advanced.ts`・入力画像 `inputs.ts`・プロンプトマッチ `match.ts`・結果の ZIP の選択 `export/`・動画の入力画像の役割 `roles/`）
+        │   ├── gentest-tiers/        # かんたん（`easy.ts`）・こだわり（`refine.ts`）の段と、画面に出す値（`exposed.ts`）・レシピ（`recipe.ts`）。`spec/components/gentest-tiers.md`
+        │   ├── gentest-chat/         # 単発生成のチャット（`chat.ts`。スレッドとカードはサーバーが返し、ここはブラウザ側の動き。`spec/components/gentest-chat.md`）
+        │   ├── gentest-gpt/          # 単発生成のフォームの「GPT Image 2.6 の設定」の区画（複雑さ・出力形式・GIF のコマ数。Issue #1096）
+        │   ├── gentest-lora/         # LoRA の選択の下の注（分かっていること・ベースモデルが合わない警告・推奨の強さ。Issue #1119）
+        │   ├── gentest-history/      # テストだけ（`history-pages.wtest.ts`: 単発生成の履歴のページ送り。Issue #1079）
+        │   ├── gentest-results/      # テストだけ（`result-modal.wtest.ts`: 履歴の結果の詳細モーダル。Issue #1004）
+        │   ├── layout/               # テストだけ（`*.wtest.ts`: 実際の Tailwind CSS での描画の検査。フォーカスリング・長い名前・モデル管理のカードの列・横スクロールしないこと）
+        │   ├── test/                 # テストだけ（`*.wtest.ts` と `ws-handler-error.test.ts`: 画面をまたぐ動き。チャットの URL・切れた接続・htmx の履歴・Review Workspace・Shot カードの再取得・トーストの重複・最上位ノードの swap）
+        │   ├── testdata/             # テストが読む HTML などの固定データと、テスト用の差し替え（`fakes.ts`: `lib/api` の `fetch` と `lib/ws` の `WebSocket`）
         │   └── lib/
         │       ├── api.ts            # CSRFトークン自動付与のHTTPクライアント
         │       ├── ajax.ts / errors.ts / ui/connection-notice.ts (+ components/toast, alert, confirm, scrim) # フラグメント再取得・エラー表示
