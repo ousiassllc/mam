@@ -118,6 +118,9 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │   ├── stress-test.sh      # テストのフレークを追うために Go のテストを `-race` で繰り返す（`make stress`）。同時に走らせるプロセスは既定 2・上限 4（超える指定は断る）で、`-c` で CPU を絞って負荷を再現する。共有のマシンに負荷をかけないため
 │   ├── third-party-notices.sh # `THIRD_PARTY_NOTICES.md` を再生成する（Windows 版 exe にリンクされる Go モジュールと本番フロントエンドバンドルの npm パッケージ、同梱する ONNX Runtime のライセンスファイルを写す。`go`・`node` と `npm ci --prefix static` が要り、ライセンスファイルが無い依存があると失敗する）
 │   └── *_test.sh           # スクリプトのテスト（`linterly-baseline_test.sh`: 行数基準値、`slow-tests_test.sh`: 遅いテストの一覧、`stress-test_test.sh`: 繰り返し実行の上限と既定、`complexity-ratchet_test.sh`: `.golangci.yml` の複雑度の許可リスト、`makefile_test.sh`: `Makefile` のターゲット、`sign-checksums_test.sh`: `checksums.txt` の署名、`make-checksums_test.sh`: `checksums.txt` の作成、`third-party-notices_test.sh`: 表記ファイルの生成、`check-third-party-notices_test.sh`: 表記ファイルが最新かの検査、`fetch-onnxruntime_test.sh`: ONNX Runtime の取得の検証、`fetch-onnxruntime/extract_test.sh`: 取得の成功経路と zip の展開手段のフォールバック、`require-tests-passed_test.sh`: 指定したテストがすべて `PASS` かの検査。`make test-scripts`。一覧の正は `Makefile` の `test-scripts`）
+├── README.md               # 製品の紹介と、声・口パクをローカルで作る手順（ローカルのモデル・入手元・ライセンスの表）。仕様は `spec/` へ誘導する
+├── notices.go              # ルートの Go パッケージ `mam`。`THIRD_PARTY_NOTICES.md` を `go:embed` して `ThirdPartyNotices` で渡す（`go:embed` は親ディレクトリを読めないためルートに置く。設定画面「第三者のライセンス」が読む。`spec/components/settings-screen-licenses.md`）
+├── docs/screenshots/       # 画面のスクリーンショット画像。Issue・PR の番号ごとのディレクトリ（`docs/screenshots/<番号>/`）に置く
 ├── third_party/            # 上流のコードをそのまま写した外部コード（`onnxruntime-purego/`: Windows 対応の PR #17 を足した ONNX Runtime のバインディング。由来は `VENDORED.md`。`go.mod` の `replace` が指す。Linterly の行数チェックから除外。Issue #949）
 ├── build/                  # Wails v3 のパッケージング設定（`config.yml`・`Taskfile.yml`・`windows/`: アイコン・マニフェスト・`info.json`・`nsis/project.nsi`、`onnxruntime/`: 同梱する ONNX Runtime の `LICENSE` と `ThirdPartyNotices.txt` の写し。§11）
 ├── backend/
@@ -125,6 +128,7 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │   │   ├── server/         # ブラウザ版（全 OS）のエントリーポイント
 │   │   │   ├── main.go     # `app.Run` を呼び、起動完了で `openBrowser` する
 │   │   │   └── browser.go  # OS別のブラウザ自動オープン
+│   │   ├── upstreamcheck/  # カタログが固定した URL（重み・パッケージ・エンジンのビルド）が、上流にまだ固定したサイズ（と、ダウンロードせずに分かる SHA-256）であるかを照合するコマンド。不一致で終了コード 1（`make upstream-check`・`.github/workflows/upstream-check.yml`。`spec/architecture/model-manager/local-runtime.md` §12.10、実装は `modelmgr/upstream/`）
 │   │   └── wails/          # Windows 版のエントリーポイント（`//go:build windows`。Wails ウィンドウ。§11）
 │   │       ├── main.go     # Wails アプリ・ウィンドウ・単一インスタンス。`app.Run` を別 goroutine で動かし、起動完了で URL を開く
 │   │       └── dialog.go   # 起動エラーの Win32 MessageBox（コンソールが無いため。Wails のダイアログはイベントループが要るので使わない）
@@ -146,6 +150,31 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │       ├── keylock/        # キー別のロック（`Locker`）。待機側は ctx のキャンセルで諦められ、エントリは保持・待機中だけ存在する（キーの数だけ増え続けない）。service 層専用ではなく、`agent/orchestrator`（Project ごとの `advance` を 1 度に 1 つに直列化）、`service/take.go`（`compose` のみ。Shot ごと）、`service/editor.go`（`stage` / `auto` / `preview`）、`previewcache`（ファイルごと）が使う
 │       ├── media/          # ffmpeg / ffprobe（Take の解像度・フレームレート取得、4K プロキシ・サムネイル、部分採用の合成）。実行には上限時間があり、超えたら強制終了して `ErrTimeout` で失敗にする（キャンセルとは区別する。値は `spec/requirements/non-functional.md` §3）。ffmpeg / ffprobe の探し方（設定したパス → `PATH` → macOS の Homebrew の場所 → ボタンで取得して入れたもの）は `media/locate`（`ffmpeg-lookup.md`）、取得して入れる処理（固定した版のカタログ・SHA-256 の検証・原子的な導入）は `media/ffmpegdl`（`ffmpeg-download.md`）
 │       ├── previewcache/   # プレビューファイル（Take の 4K のプロキシ・サムネイルと Rough Cut のプレビュー `edit-<版ID>.mp4`）を `assets/.previews` に 1 度だけ作る（`Path` がファイルを `.previews` 直下に固定する）。同じファイルへの同時要求は 1 回の ffmpeg 実行を待ち、作る処理はクライアントの切断では止めない（サービスの `Close` で止める）。失敗は 10 分覚えて再実行しない（`ErrFailedRecently`）。高さの判定（`Tall`）も Take ごとに覚える。合計が上限（4 GiB）を超えたら最後に使われた（`Make` で要求された）のが古いものから削除し（`prune`。LRU で、作ってから古いものではない。ファイルが既にあるときも `Make` が更新時刻を更新する）、Take のアーカイブでその Take の分も消す。合計は `Size()` で Storage 画面に出す（`PreviewBytes`）。強制終了で残った変換の一時ファイル（`.<名前>.ffmpeg.tmp`）は `Size()` にも `prune` にも入らないので、起動時の `fsutil.RemoveStaleTemp`（`assets` 配下を再帰して、`.` で始まり `.tmp` で終わるファイルを消す。`.previews` も対象）が消す（`app` の `buildServices`、Queue 開始前。`previewcache` 自身は掃除しない）。`service` の `core.previews`（`wiring.go` が作る）が持ち、`take_media.go` / `editor_export.go` / `policy.go` が使う
+│       ├── apperr/         # 人が読む失敗の共通の形（コード・原因と対処の文（日本語と英語のカタログ）・助けになる設定画面・機械が返した詳細）。画面・MCP ツール・結果の履歴が同じ文を引く（`spec/architecture/errors.md`）
+│       │   └── errmap/     # ComfyUI・ベンダー・LLM・ネットワーク・ディスクなど外から来たエラーを `apperr` のコードへ写す。見分けられない失敗は `CodeUnknown` で、相関 ID を付けてログに出す
+│       ├── failreport/     # ffmpeg の失敗をサービスが伝えるための文（共通エラーと、利用者が読む原因と対処。原因が分からない失敗にはログと共有するエラー ID を付ける）。サービスの下・`errmap` の上
+│       ├── worktrack/      # ジョブ表に行が無い作業（動画の書き出し・音声の段・Editor Judge・ワークフローの実行・Codex の導入・ffmpeg のダウンロード）のメモリ上の記録。ジョブ一覧が読む。永続しない（`spec/components/jobs-screen.md` §2）
+│       ├── imgprep/        # ControlNet のワークフローの制御画像（Canny のエッジ）を mam の中で純 Go で作る（Issue #993。`spec/architecture/model-manager/custom-nodes.md` §5.1）
+│       ├── modelfilter/    # モデルを一覧する画面・MCP ツールが共通で使う絞り込みの条件（`Condition`。クエリ文字列と JSON で同じ言葉）と、それに 1 件を照らす `Match`（Issue #1011。`spec/architecture/model-manager/model-filter.md`）
+│       ├── licenses/       # 設定画面「第三者のライセンス」が並べるライセンスの一覧（`Catalog`。いまの出どころは `THIRD_PARTY_NOTICES.md`。`spec/components/settings-screen-licenses.md`）
+│       ├── planadvice/     # 企画のジョブが止まったときに、先へ進むためにすることの案内（失敗の文はオーケストレーターが書いたものを並べて出す。Issue #1001）
+│       ├── characterdraft/ # LLM の API キーが無く企画が止まったとき、Brief に添えた画像から LLM を使わずに Project の登場人物の下書き（仮の名前と顔の参照画像だけ）を作る（Issue #1022）
+│       ├── chatgpt/        # ChatGPT でのサインイン（公式の「Sign in with ChatGPT」と、オプトインの非公式な画像生成用の Codex 公開クライアントの 2 系統。トークンは系統ごとに OS のセキュアストレージ（`tokenstore/`）に置く。`oauth/`: OAuth 2.0 / OIDC、`codex/`: Codex の app-server 経由のログイン、`chatgpttest/`: テスト用の偽の auth.openai.com。`spec/architecture/chatgpt-signin.md`）
+│       ├── mcp/            # MCP サーバー（`spec/architecture/mcp.md`、ツールの足し方は `mcp/README.md`、ツール一覧は `spec/api/mcp-tools.md`）
+│       │   ├── bind/       # 待ち受けるアドレスの規則と `mcp.json`
+│       │   ├── server/     # Streamable HTTP・ベアラー認証・Origin 検査・リスナーのライブ切り替え（`Manager`）
+│       │   ├── mcpkit/     # `Registrar`・エラー写像・ジョブ・ファイル。ツールのパッケージには依存しない（`mcptest/`: ツールのテスト用のインメモリ MCP クライアント）
+│       │   ├── tools/      # ドメインごとのツール（`tools/<ドメイン>`。`Register(r, svc)` を公開する）
+│       │   └── toolset/    # 全ツールパッケージの `Register` を並べる 1 ファイル（`all.go`）
+│       ├── modelmgr/       # ローカルモデル管理（同梱の ComfyUI の導入・起動、モデルのカタログ・導入・Hugging Face からの取り込み・LoRA の取り込み、ローカルランタイム。`spec/architecture/model-manager/model-manager.md`・`local-runtime.md`）
+│       │   ├── catalog/ store/ engine/ extract/ fetch/ proc/ track/ upstream/
+│       │   │               # `catalog`: 導入できるモデルと固定した ComfyUI のエンジン（バイナリに埋め込んだデータ。URL は固定し SHA-256・サイズを持つ）、`store`: エンジンとモデルの置き場とその記録、`engine`: 同梱の ComfyUI の導入、`extract`: ポータブルの 7z の展開、`fetch`: 取得する URL の許可、`proc`: ComfyUI とローカルランタイムを mam の子プロセスとして動かす、`track`: ジョブの進み具合（メモリ上）、`upstream`: カタログの固定を上流と照合する（`cmd/upstreamcheck` が呼ぶ）
+│       │   ├── gpu/ detect/ vramfit/ adult/
+│       │   │               # `gpu`: GPU の検出と ComfyUI のビルドの選択、`detect`: すでにある ComfyUI の検出、`vramfit`: モデルの VRAM の目安に GPU が足りるかの判定（Issue #927）、`adult`: 成人向けモデルの判定
+│       │   ├── hf/ hfplan/ lorafile/
+│       │   │               # `hf`: Hugging Face の検索・ファイル一覧・ヘッダーの読み取り（ファイルは取らない）、`hfplan`: 取り込めるファイル・入れる先・GPU に載るかの判断、`lorafile`: 利用者が選んだ LoRA ファイルの検査（Issue #1119）
+│       │   └── nodecat/ nodes/ runtime/ lipsync/
+│       │                   # `nodecat`: 同梱の ComfyUI が読んでよいカスタムノードの許可リスト、`nodes`: その導入・検査・削除、`runtime`: ローカルのランタイム（GPT-SoVITS・MuseTalk）の導入、`lipsync`: ローカルの口パク（MuseTalk 1.5）のクライアント
 │       ├── domain/         # Project/Scene/Shot/Take/WorldState等のドメインモデル。サブパッケージ `bundlepath/` は Project バンドルの ID・ファイルパスの検証（`ValidID` / `ValidFilePath`。行数上限のため分けた）
 │       ├── repository/     # SQLite アクセス層（domainのみに依存）
 │       │   ├── bundle/ review/ # bundle: Project バンドルの書き出し・取り込み（行の検証と全テーブル一覧を持つ）。review: チームコラボレーション（レビュー依頼・返答・コメント）の永続化。どちらも `repository` の接続・エラーに依存
@@ -160,6 +189,12 @@ Orchestrator の責務（§20.1）: 次に実行する Agent の決定、人間�
 │       │   │   generation/ judge/ modeladapter/ promptplanner/ repair/ stateextractor/
 │       │   │               # 同名の Agent / Orchestrator（Art Director、Audio Director、Command Interpreter、Continue Agent、Editor Agent + Editor Judge、Final QC、Generation Orchestrator、AI Video Judge、Model Adapter、Prompt Planner、Repair Agent、State Extractor）。`modeladapter/configcheck/` は Model Adapter 設定（`modeladapter.Config`）の整合性検査（`Validate`）と、読み込んで検査する `Load`。`modeladapter/aspectsize/` は Brief の縦横比（`domain.BriefAspectRatios`）ごとの画像サイズ（GPT Image 2・FLUX.2）で、表に無い縦横比は `domain.DefaultAspectRatio` のサイズになる。`repair/escalation/` は自動 Repair ループが Shot ごとに「どの Judge 結果についてユーザーに確認したか」を 1 件だけ覚える `Memory`（`Ask` / `Forget`。新しい結果で置き換わり、確認待ちでなくなった Shot は忘れる。同じ状態で二度確認しない）
 │       │   ├── jev/        # TypeSafe Jev クライアント（Repair Agent のシャドー実行、model-adapters.md §4.5）
+│       │   ├── cloudenhance/ # 「動画を大きくする」「動画をなめらかにする」が、ローカルの ComfyUI のワークフロー（SeedVR2・RIFE）と有料のクラウド（Topaz Video API）で共有する操作・元動画の事実・出力への要求・`Cloud` インターフェース（Issue #1031）
+│       │   ├── topaz/      # Topaz Video API のクライアント（見積り → 承認 → アップロード → 処理 → ダウンロード）。`cloudenhance.Cloud` を実装する（Issue #1031）
+│       │   ├── genplan/    # AUTO の生成を始める前に示す、有料の生成の計画（どの Shot に Reference Pack を付け、どの動画モデルで何 Take 作るか）と見積り。価格を決められないものは「不明」にする（`spec/spec.md` §4.3）
+│       │   ├── gentestchat/ # 単発生成の画面のチャットの LLM 側（Reasoning LLM が 1 手ずつ JSON のアクションで答える。Issue #1138。`spec/architecture/gentest/gentest-chat.md`）
+│       │   ├── imagematch/ # プロンプトマッチの Reasoning LLM 側（参考画像から英語のプロンプトを書く `Describe`・似ている度の `Compare`・差分と利用者の言葉からの `Revise`。Issue #916）
+│       │   ├── prompttranslate/ # 単発生成のプロンプトを Reasoning LLM で英語にする（Prompt Planner の割り当ての経路で推論し、トークン単位で見積りに入れる。`spec/architecture/gentest/gentest.md` §3.1）
 │       │   ├── resilience/ # LLM Adapter と Model Adapter が共有するサーキットブレーカーと指数バックオフ再試行
 │       │   ├── briefing/   # チャット発言からの Creative Brief 抽出（Extractor インターフェース。M1 はルールベース、LLM 版は Reasoning LLM Adapter の Issue で差し替え）と、その規則（Subject の読み取りと否定・一般的な答えの拒否、明示した変更だけが上書きする規則、掲載先ごとの推奨値の表、確認カード「この内容でよいですか？」と FULL AUTO / KEY CHECK の開始条件。#1114）
 │       │   ├── llm/        # Reasoning LLM Adapter（Agent ごとのプライマリ/代替プロバイダーを設定値から解決。指数バックオフ再試行・プロバイダー単位サーキットブレーカー・代替へのルーティング。Anthropic/OpenAI/Google の HTTP バックエンド）
