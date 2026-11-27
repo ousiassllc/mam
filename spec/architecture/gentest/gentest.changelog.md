@@ -67,3 +67,4 @@
 | 1.60 | 2026-11-10 | 「チャットで作る」を足した: LLM のエージェントループ（`agent/gentestchat`・`service/gentest/chat`）と確認のカード。専用の文書 [gentest-chat.md](gentest-chat.md) を新設し、§8（画面）と §10（パッケージ）に参照を足した | Issue #1138 |
 | 1.61 | 2026-11-11 | gentest-adapter.md の「ネガティブの欄」に、OpenRouter 経由の Kling 3.0 は欄を持たず `folded` になることを足した | PR #1141 のレビュー指摘 |
 | 1.62 | 2026-11-19 | 本文の製品名の表示を「MAM」から「Nefos Video」に改めた（過去の改訂履歴の文は当時のまま） | #1170: 製品名を MAM から Nefos Video に変更（表示名のみ。識別子・パス・実行ファイル名は変更しない） |
+| 1.63 | 2026-11-28 | gentest.md §3 と gentest-adapter.md §5 の固定ファイルの条件を、存在しない環境変数 `MAM_MODELS_PINNED` ではなく `--model-config` / `MAM_MODEL_CONFIG`（`Config.ModelSettingsFile` の `pinned`）に改めた。コード・挙動は変えない | Issue #1231（仕様書と実装の乖離） |
