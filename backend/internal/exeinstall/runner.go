@@ -3,8 +3,10 @@ package exeinstall
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"sync"
 
+	"github.com/ousiassllc/mam/backend/internal/bgwork"
 	"github.com/ousiassllc/mam/backend/internal/worktrack"
 )
 
@@ -33,8 +35,14 @@ type Status struct {
 	Cancelled bool
 }
 
+// ErrPanicked is the error an install ends with when its Install (or the progress it reports) panicked: the panic is logged and the
+// install fails like any other, so the status does not stay Running.
+var ErrPanicked = errors.New("exeinstall: the install panicked")
+
 // RunnerConfig is what differs between the programs that a Runner installs.
 type RunnerConfig struct {
+	// Logger gets the panic of an install, with its stack.
+	Logger *slog.Logger
 	// Kind and Subject name the install in the job list (worktrack).
 	Kind    worktrack.Kind
 	Subject string
@@ -131,12 +139,15 @@ func (r *Runner) refusal() error {
 
 func (r *Runner) run(ctx context.Context, work *worktrack.Run) {
 	defer r.wg.Done()
-	err := r.cfg.Install(ctx, func(p Status) {
-		p.State = Running
-		r.mu.Lock()
-		r.status = p
-		r.mu.Unlock()
-		work.Progress(p.Percent, p.Message)
+	err := ErrPanicked
+	bgwork.RunSafely(r.cfg.Logger, "install of "+r.cfg.Subject, func() {
+		err = r.cfg.Install(ctx, func(p Status) {
+			p.State = Running
+			r.mu.Lock()
+			r.status = p
+			r.mu.Unlock()
+			work.Progress(p.Percent, p.Message)
+		})
 	})
 	r.mu.Lock()
 	defer r.mu.Unlock()

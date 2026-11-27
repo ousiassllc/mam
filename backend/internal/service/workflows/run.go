@@ -14,6 +14,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/localcfg/sampling"
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter/progress"
+	"github.com/ousiassllc/mam/backend/internal/bgwork"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/domain/modelreg"
 	"github.com/ousiassllc/mam/backend/internal/fsutil"
@@ -26,6 +27,9 @@ const (
 	RunSucceeded = "succeeded"
 	RunFailed    = "failed"
 )
+
+// errRunPanicked is the error of a run whose work panicked: the record says failed (with this text) instead of staying running.
+var errRunPanicked = errors.New("実行中に予期しないエラーが起きました")
 
 // runKeep is how long a run's result is kept.
 const runKeep = 7 * 24 * time.Hour
@@ -251,7 +255,11 @@ func (s *Service) execute(ctx context.Context, rec RunRecord, dir string, saved 
 		work.Progress(u.Percent, u.Message)
 	})
 	s.runs.set(rec.ID, progress.Update{Message: "ComfyUI を準備しています"})
-	file, mime, size, err := s.generate(ctx, dir, saved, req)
+	// A panic of the work (the backend, the progress callback) is logged and ends the run as failed, like any other error.
+	var file, mime string
+	var size int64
+	err := errRunPanicked
+	bgwork.RunSafely(s.Logger, "workflow run", func() { file, mime, size, err = s.generate(ctx, dir, saved, req) })
 	now := s.Now().UTC()
 	rec.FinishedAt = &now
 	if err != nil {
