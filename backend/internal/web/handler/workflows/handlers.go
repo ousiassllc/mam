@@ -81,6 +81,7 @@ func (h Handlers) Page(c *gin.Context) {
 
 // respond draws d: the whole page for a plain request, the panel for an HTMX one.
 func (h Handlers) respond(c *gin.Context, status int, d view.Data) {
+	c.Writer.Header().Add("Vary", "HX-Request, HX-History-Restore-Request")
 	if c.GetHeader("HX-Request") == "true" && c.GetHeader("HX-History-Restore-Request") != "true" {
 		render(c, status, view.Panel(d))
 		return
