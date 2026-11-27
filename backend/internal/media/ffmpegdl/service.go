@@ -109,9 +109,8 @@ func (s *Service) Status() Status {
 	}
 }
 
-// Dirs is the directory the search of media/locate gets after PATH and the well-known places (locate.Finder.Extra): the one the
-// complete install is in, or nothing. It is read from the disk on every call, so an install that finishes is found by the next
-// lookup.
+// Dirs is the directory the search of media/locate gets after PATH and the well-known places (locate.Finder.Extra): the one the complete
+// install is in, or nothing. It is read from the disk on every call, so an install that finishes is found by the next lookup.
 func (s *Service) Dirs() []string {
 	if !s.supported {
 		return nil
