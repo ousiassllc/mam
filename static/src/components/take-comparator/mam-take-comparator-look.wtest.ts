@@ -76,7 +76,10 @@ describe('mam-take-comparator: the look (lit-widgets-guide §4, #1092)', () => {
     await Promise.resolve();
     await el.updateComplete;
 
-    const controls = el.querySelectorAll<HTMLElement>('button, input');
+    // The controls of this component: the <mam-video-player> in it draws its own once its video answers (a 404 here, which on a loaded host comes after this test looks), and is tested in video-player/.
+    const controls = [...el.querySelectorAll<HTMLElement>('button, input')].filter(
+      (c) => !c.closest('mam-video-player'),
+    );
     expect(controls.length).to.be.greaterThan(8); // 選択 / 除外 per row, ×, 合成, 選び直す, the words, 言葉で合成
     for (const control of controls) {
       expect(control.classList.contains('focus-visible:focus-ring'), control.outerHTML.slice(0, 90)).to.equal(true);
