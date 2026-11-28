@@ -1,5 +1,5 @@
 // Package worktrack is the in-memory record of the work that has no row in the job table (spec/components/jobs-screen.md §2): the
-// export of a video, the audio stage, the Editor Judge, the run of a workflow, the install of Codex and the download of ffmpeg.
+// export of a video, the audio stage, the Editor Judge, the run of a workflow, the voice training, the install of Codex and the download of ffmpeg.
 // The owner of such a work calls Begin when it starts, Run.Progress while it goes on and one of Run.Succeed, Run.Fail, Run.Cancel
 // or Run.End when it ends; the job list reads Tracker.Works. Nothing is persisted: a restart of the process ends the record, as it ends
 // the work (none of them is resumable).

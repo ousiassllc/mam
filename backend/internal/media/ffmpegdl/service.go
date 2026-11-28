@@ -109,9 +109,8 @@ func (s *Service) Status() Status {
 	}
 }
 
-// Dirs is the directory the search of media/locate gets after PATH and the well-known places (locate.Finder.Extra): the one the
-// complete install is in, or nothing. It is read from the disk on every call, so an install that finishes is found by the next
-// lookup.
+// Dirs is the directory the search of media/locate gets after PATH and the well-known places (locate.Finder.Extra): the one the complete
+// install is in, or nothing. It is read from the disk on every call, so an install that finishes is found by the next lookup.
 func (s *Service) Dirs() []string {
 	if !s.supported {
 		return nil
@@ -134,6 +133,7 @@ func (s *Service) StartInstall() (started bool, err error) {
 // download of Codex; what is ffmpeg's own is the checks before it, the progress it reports and the words of its ending.
 func (s *Service) newInstall() *exeinstall.Runner {
 	return exeinstall.NewRunner(exeinstall.RunnerConfig{
+		Logger:      s.logger,
 		Kind:        worktrack.KindFFmpegInstall,
 		Subject:     "ffmpeg",
 		Starting:    exeinstall.Status{Phase: string(PhaseDownload), Message: phaseMessage[PhaseDownload]},

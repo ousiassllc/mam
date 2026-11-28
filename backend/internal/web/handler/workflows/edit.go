@@ -1,6 +1,7 @@
 package workflows
 
 import (
+	"math"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -103,7 +104,7 @@ func specOf(form url.Values, kind service.Media) (service.WorkflowSpec, error) {
 		v := &service.VideoSettings{NativeAudio: first(form, view.FieldNativeAudio) != ""}
 		for _, part := range splitList(first(form, view.FieldDurations)) {
 			d, err := strconv.ParseFloat(part, 64)
-			if err != nil {
+			if err != nil || math.IsNaN(d) || math.IsInf(d, 0) {
 				return spec, &service.InvalidError{Message: "長さは、秒の数字をカンマで区切って入力してください（例: 3, 4, 5）"}
 			}
 			v.Durations = append(v.Durations, d)

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/ousiassllc/mam/backend/internal/bgwork"
 	"github.com/ousiassllc/mam/backend/internal/domain"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/proc"
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/store"
@@ -130,11 +131,11 @@ func (s *Service) OnStartup(ctx context.Context) {
 		s.Logger.Warn("register the bundled ComfyUI endpoint failed", "err", err)
 	}
 	if s.state.Get().AutoStart {
-		go func() {
+		go bgwork.RunSafely(s.Logger, "start the bundled ComfyUI", func() {
 			if _, err := s.StartEngine(context.WithoutCancel(ctx)); err != nil {
 				s.Logger.Warn("start the bundled ComfyUI failed", "err", err)
 			}
-		}()
+		})
 	}
 }
 

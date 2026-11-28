@@ -12,6 +12,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ousiassllc/mam/backend/internal/agent/modeladapter"
@@ -129,4 +130,24 @@ func graphOf(t *testing.T, id string) string {
 	tpl, ok := localcfg.TemplateByID(id)
 	require.True(t, ok)
 	return string(tpl.Model.Workflow.Graph)
+}
+
+// The page and the panel are one URL with two answers (HX-Request, HX-History-Restore-Request): the caches are told so (#1230).
+func TestWorkflowsPageVariesOnTheHTMXHeaders(t *testing.T) {
+	s := newScreen(t)
+	const vary = "HX-Request, HX-History-Restore-Request"
+	for name, headers := range map[string]map[string]string{
+		"plain":           {},
+		"htmx":            {"HX-Request": "true"},
+		"history restore": {"HX-Request": "true", "HX-History-Restore-Request": "true"},
+	} {
+		req := httptest.NewRequest(http.MethodGet, paths.Workflows(), nil)
+		req.AddCookie(s.cookie)
+		for k, v := range headers {
+			req.Header.Set(k, v)
+		}
+		rec := s.send(req)
+		require.Equal(t, http.StatusOK, rec.Code, name)
+		assert.Contains(t, rec.Header().Values("Vary"), vary, name)
+	}
 }

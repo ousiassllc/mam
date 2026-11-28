@@ -3,6 +3,7 @@ package exeinstall_test
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -48,6 +49,7 @@ func (h *held) waitReported(t *testing.T) {
 
 func newRunner(install func(context.Context, func(exeinstall.Status)) error, preflight func() error) *exeinstall.Runner {
 	return exeinstall.NewRunner(exeinstall.RunnerConfig{
+		Logger:      slog.New(slog.DiscardHandler),
 		Kind:        worktrack.KindFFmpegInstall,
 		Subject:     "tool",
 		Starting:    exeinstall.Status{Phase: "download", Message: "downloading"},
@@ -139,6 +141,29 @@ func TestRunnerFailureIsWordedByTheProgram(t *testing.T) {
 	r.Wait()
 	assert.Equal(t, exeinstall.Status{State: exeinstall.Failed, Error: "failed: boom"}, r.Status())
 	assert.Equal(t, worktrack.Failed, r.Works()[0].State)
+}
+
+// A panic of Install (or of the progress it reports) must not end the process, and must not leave the install running: it fails like
+// any other error, and installing again starts.
+func TestRunnerPanicOfInstallEndsAsFailedAndInstallingAgainRuns(t *testing.T) {
+	r := newRunner(func(_ context.Context, report func(exeinstall.Status)) error {
+		report(exeinstall.Status{Phase: "extract", Percent: 40})
+		panic("boom")
+	}, nil)
+	started, err := r.Start()
+	require.NoError(t, err)
+	require.True(t, started)
+
+	r.Wait() // the panic did not end the process: Wait returns
+	assert.Equal(t, exeinstall.Status{State: exeinstall.Failed, Error: "failed: " + exeinstall.ErrPanicked.Error()}, r.Status())
+	works := r.Works()
+	require.Len(t, works, 1)
+	assert.Equal(t, worktrack.Failed, works[0].State)
+
+	started, err = r.Start()
+	require.NoError(t, err)
+	assert.True(t, started, "a failed install is not running: it starts again")
+	r.Wait()
 }
 
 func TestRunnerHoldRefusesStartsUntilReleased(t *testing.T) {

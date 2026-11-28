@@ -15,6 +15,7 @@ import (
 // the download of ffmpeg; what is Codex's own is the checks before it, the progress it reports and the words of its ending.
 func (s *Service) newInstall() *exeinstall.Runner {
 	return exeinstall.NewRunner(exeinstall.RunnerConfig{
+		Logger:      s.opts.Logger,
 		Kind:        worktrack.KindCodexInstall,
 		Subject:     "Codex",
 		Starting:    exeinstall.Status{Phase: string(engine.PhaseDownload), Message: "Codex をダウンロードしています"},
