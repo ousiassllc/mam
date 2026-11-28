@@ -109,7 +109,7 @@ func (s *Service) Catalog() []ollamamodels.Model { return s.Models }
 // find is the model of the catalog called name: a name that may not be fetched at all, or is not in the list, is an *InvalidError.
 func (s *Service) find(name string) (ollamamodels.Model, error) {
 	if err := ollamamodels.CheckName(name); err != nil {
-		return ollamamodels.Model{}, &InvalidError{Message: "取得できるのは、Ollama の公式のモデル（library の <名前>:<タグ>。クラウドのモデルを除く）だけです"}
+		return ollamamodels.Model{}, &InvalidError{Message: "取得できるのは、Ollama の公式のモデル（library の <名前>:<タグ>）と、Huihui の非検閲のモデル（huihui_ai/<名前>:<タグ>）だけです（クラウドのモデルを除く）"}
 	}
 	m, ok := ollamamodels.Find(s.Models, name)
 	if !ok {

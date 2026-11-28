@@ -25,7 +25,10 @@ describe('mam-timeline-editor: accessible names', () => {
     });
     const el = await editor();
 
-    const controls = el.querySelectorAll('button, input, select, textarea');
+    // The controls of this component: the <mam-video-player> in it draws its own once its video answers (a 404 here, which on a loaded host comes after this test looks), and is tested in video-player/.
+    const controls = [...el.querySelectorAll('button, input, select, textarea')].filter(
+      (c) => !c.closest('mam-video-player'),
+    );
     expect(controls.length).to.be.greaterThan(10);
     for (const control of controls) {
       expect(control.classList.contains('focus-visible:focus-ring'), control.outerHTML.slice(0, 80)).to.equal(true);

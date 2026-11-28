@@ -5,7 +5,6 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/ousiassllc/mam/backend/internal/modelmgr/catalog/ollamamodels"
 )
@@ -25,10 +24,10 @@ const (
 
 const modelMediaType = "application/vnd.ollama.image.model"
 
-// manifestPath is where Ollama keeps the manifest of "<name>:<tag>" of the library below OLLAMA_MODELS (the models directory of the runtime).
+// manifestPath is where Ollama keeps the manifest of the model below OLLAMA_MODELS (the models directory of the runtime): the namespace ("library" for "gemma4:12b",
+// "huihui_ai" for "huihui_ai/gemma-4-abliterated:12b"), the name and the tag are the directories.
 func (s *Service) manifestPath(name string) string {
-	repo, tag, _ := strings.Cut(name, ":")
-	return filepath.Join(s.layout.ModelsDir(), "manifests", "registry.ollama.ai", "library", repo, tag)
+	return filepath.Join(s.layout.ModelsDir(), "manifests", "registry.ollama.ai", ollamamodels.Namespace(name), ollamamodels.Repo(name), ollamamodels.Tag(name))
 }
 
 type manifest struct {

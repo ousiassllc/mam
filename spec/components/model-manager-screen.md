@@ -270,11 +270,11 @@
 - **ポーリング**: 取得中のカードがあるとき、`#mm-ollama` が `hx-get="/model-manager/ollama?jobs=<job>,…"`・`hx-trigger="every 2s"` を持つ（なくなると止まる）。終わった取り直しで結果（「取得しました」／失敗の理由）を 1 度出す。更新ボタン（`molecules/refresh.Bar`。`id` は `mm-ollama-refresh`）。取得の完了・削除は、同じページの `#mm-llm-use-state`（取得済みのモデル数が変わるとき。状態の行だけ）を `hx-swap-oob` で描き直す。ほかのページの区画は描き直さない。
 - **LLM の割り当てとの関係**: `use` が `ollama` の間、設定の LLM のモデル選択に、取得済みのモデルがすべて出る（local-runtime.md §19.3）。使われている割り当てのモデルは、削除が 422（使っている Agent の名前を出す）。取得を始めても割り当てを自動では変えない。
 - **a11y**: 状態は文字。進捗は `role="status"`。ボタンの名前に画面の名前。未導入・停止中の理由は `aria-describedby` で取得のボタンに結ぶ。
-- **テストで見ること**: `GET /model-manager/local-llm` に `#mm-ollama` がちょうど 1 つ。カタログの 3 つのカードが `data-model` と一致し、`modelcard.GridClass`。未導入で取得のボタンが `disabled`・理由の行が出る。偽の Ollama（NDJSON の `/api/pull`）で、進捗が合計に対する割合になり、層が切り替わっても戻らない・`success` のあと `verified`／`changed`・`error` の行で失敗の理由・中断・空き不足の 409。削除（使用中の 422・取得中の 409・未取得の 409）。そのほかのモデルの表示。`cloud` を含む名前・`library` 以外の名前を、どのルートに送っても 422（実行されない）。CSRF のトークンが無い要求は 403。`mm-ollama-noauth` が詳細に出る。macOS・AMD の理由と案内。
+- **テストで見ること**: `GET /model-manager/local-llm` に `#mm-ollama` がちょうど 1 つ。カタログの 6 つのカード（純正 3 つ・非検閲 3 つ〔#1235。バッジ `mm-ollama-uncensored`・詳細モーダルに注意 `mm-ollama-cautions`〕）が `data-model` と一致し、`modelcard.GridClass`。未導入で取得のボタンが `disabled`・理由の行が出る。偽の Ollama（NDJSON の `/api/pull`）で、進捗が合計に対する割合になり、層が切り替わっても戻らない・`success` のあと `verified`／`changed`・`error` の行で失敗の理由・中断・空き不足の 409。削除（使用中の 422・取得中の 409・未取得の 409）。そのほかのモデルの表示。`cloud` を含む名前・`library`（名前の空間なし）と `huihui_ai` 以外の名前を、どのルートに送っても 422（実行されない）。CSRF のトークンが無い要求は 403。`mm-ollama-noauth` が詳細に出る。macOS・AMD の理由と案内。
 
 ### 決定が要ること
 
-- **自由入力の `ollama pull`**（既定: しない。厳選した 3 つのカードだけ。自由入力は、①ライセンスと成人向けの扱いを Nefos Video が確かめられない〔レジストリに HF のようなタグの API が無い〕②`cloud` タグ〔プロンプトを外へ送る〕を避ける必要がある。入れるなら: 名前の欄＋同意のチェック〔「Nefos Video はこのモデルのライセンスと内容を確認していません」。HF の導入と同じ形〕・`library` の名前だけ・`cloud` を拒否・商用は `unknown`・年齢確認が済むまで出さない）。
+- **自由入力の `ollama pull`**（既定: しない。厳選した 6 つのカードだけ。自由入力は、①ライセンスと成人向けの扱いを Nefos Video が確かめられない〔レジストリに HF のようなタグの API が無い〕②`cloud` タグ〔プロンプトを外へ送る〕を避ける必要がある。入れるなら: 名前の欄＋同意のチェック〔「Nefos Video はこのモデルのライセンスと内容を確認していません」。HF の導入と同じ形〕・`library` と `huihui_ai` の名前だけ・`cloud` を拒否・商用は `unknown`・年齢確認が済むまで出さない）。
 - **取得の方式**（既定: Ollama 自身の `/api/pull`。層の digest の検証は Ollama が行い、Nefos Video は取得後に manifest を照合して `verified`／`changed` を出すだけ。別案: Nefos Video がレジストリの blob を `fetch`〔Range 再開・SHA-256 固定〕で取得して `OLLAMA_MODELS` に書く。Nefos Video の固定は強くなるが、Ollama の内部形式〔blob と manifest の置き場所〕に依存し、Ollama の更新で壊れうる）。
 - **`changed` のときの扱い**（既定: 使えるまま・注記だけ。別案: 使用を止める〔タグが正規に更新された場合も使えなくなる〕、または取得後の内容を固定のカタログの digest と合わなければ消す）。
 - **認証が無いことの扱い**（既定: 注意書きだけ〔local-runtime.md §19.4〕。別案: Nefos Video が認証つきのループバックのプロキシを前に置く〔新しいプロセスと仕組みが要る〕）。

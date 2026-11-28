@@ -32,10 +32,13 @@ Nefos Video のローカルランタイム管理（Issue #1105）は、利用者
 
 ### Ollama のモデル
 
-取得できるのは次の 3 つだけです（Ollama のライブラリ <https://ollama.com/library> のタグ。**タグは書き換えられるため、取得する内容を固定できません**。Nefos Video は取得のあとで、Ollama が書いたマニフェストの重みの層の SHA-256 を、2026-11-07 に読んだ記録と比べ、違えば「上流で更新されています」と知らせます）。ライセンスは、レジストリの license の層の本文と、元のモデルカードの表記で、**法的な保証ではありません**（商用で使う前にライセンス全文を確認してください）。
+取得できるのは次の 6 つだけです（Ollama のライブラリ（非検閲の 3 つは公開元 huihui_ai の名前の空間） <https://ollama.com/library> のタグ。**タグは書き換えられるため、取得する内容を固定できません**。Nefos Video は取得のあとで、Ollama が書いたマニフェストの重みの層の SHA-256 を、2026-11-07 に読んだ記録と比べ、違えば「上流で更新されています」と知らせます）。ライセンスは、レジストリの license の層の本文と、元のモデルカードの表記で、**法的な保証ではありません**（商用で使う前にライセンス全文を確認してください）。
 
 | 名前 | 出典 | 取得量（バイト） | ライセンス | 商用利用 |
 |---|---|---|---|---|
 | Gemma 4 12B（`gemma4:12b`） | <https://ollama.com/library/gemma4:12b> | 8,021,618,941 | [Apache License 2.0（Gemma 4）](https://ai.google.dev/gemma/docs/gemma_4_license) | 可 |
 | Qwen3.8 27B（`qwen3.8:27b`） | <https://ollama.com/library/qwen3.8:27b> | 17,741,872,154 | [Apache License 2.0（Qwen3.8-27B）](https://huggingface.co/Qwen/Qwen3.8-27B) | 可 |
 | DeepSeek-R1 14B（`deepseek-r1:14b`） | <https://ollama.com/library/deepseek-r1:14b> | 8,988,112,209 | [MIT License（DeepSeek-R1-Distill-Qwen-14B）](https://huggingface.co/deepseek-ai/DeepSeek-R1-Distill-Qwen-14B) | 可 |
+| Gemma 4 12B 非検閲（`huihui_ai/gemma-4-abliterated:12b`。abliterated・成人向け相当） | <https://ollama.com/huihui_ai/gemma-4-abliterated:12b> | 7,556,507,919 | [Apache License 2.0（Huihui-gemma-4-12B-it-abliterated のカードの表記）](https://huggingface.co/huihui-ai/Huihui-gemma-4-12B-it-abliterated) | 可 |
+| Qwen3.8 27B 非検閲（`huihui_ai/qwen3.8-abliterated:27b`。abliterated・成人向け相当） | <https://ollama.com/huihui_ai/qwen3.8-abliterated:27b> | 17,741,871,954 | [Apache License 2.0（Huihui-Qwen3.8-27B-abliterated のカードの表記）](https://huggingface.co/huihui-ai/Huihui-Qwen3.8-27B-abliterated) | 可 |
+| DeepSeek-R1 14B 非検閲（`huihui_ai/deepseek-r1-abliterated:14b`。abliterated・成人向け相当） | <https://ollama.com/huihui_ai/deepseek-r1-abliterated:14b> | 8,988,112,488 | 派生の元の重み（[huihui-ai/DeepSeek-R1-Distill-Qwen-14B-abliterated](https://huggingface.co/huihui-ai/DeepSeek-R1-Distill-Qwen-14B-abliterated)）のカードに license の記載がない（レジストリの層は DeepSeek 本体の MIT のコピー） | **不明（わかりません）** |

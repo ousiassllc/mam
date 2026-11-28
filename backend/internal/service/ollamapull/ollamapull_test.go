@@ -68,15 +68,18 @@ func TestOnlyTheNamesOfTheListAreFetched(t *testing.T) {
 	assert.Empty(t, r.Runtime.Calls(), "the runtime was not started")
 }
 
-// The list has exactly the three models of the catalog, in its order.
-func TestTheListIsTheThreeModelsOfTheCatalog(t *testing.T) {
+// The list has exactly the models of the catalog, in its order: the library's three and the abliterated three of huihui_ai (#1235).
+func TestTheListIsTheModelsOfTheCatalog(t *testing.T) {
 	r := ollamatest.New(t)
 	var names []string
 	for _, m := range r.Svc.List(context.Background()).Models {
 		names = append(names, m.Model.Name)
 		assert.Equal(t, ollamapull.StateMissing, m.State)
 	}
-	assert.Equal(t, []string{"gemma4:12b", "qwen3.8:27b", "deepseek-r1:14b"}, names)
+	assert.Equal(t, []string{
+		"gemma4:12b", "qwen3.8:27b", "deepseek-r1:14b",
+		"huihui_ai/gemma-4-abliterated:12b", "huihui_ai/qwen3.8-abliterated:27b", "huihui_ai/deepseek-r1-abliterated:14b",
+	}, names)
 }
 
 // A server that is not installed, cannot run here or is being installed is the refusal of the runtime manager; a stopped one is no refusal.
@@ -276,4 +279,37 @@ func TestPullingNamesTheModelsBeingFetched(t *testing.T) {
 	release()
 	require.Equal(t, domain.JobSucceeded, r.Wait(ref.JobID).State)
 	require.Eventually(t, func() bool { return len(r.Svc.Pulling()) == 0 }, 10*time.Second, 10*time.Millisecond)
+}
+
+// Choices is the list the picker of the LLM assignment shows (#1235): every model of the list with its flag and license; a model that is not fetched says it has to be, one that is fetched has no
+// reason; a server that cannot run here gives no reason of its own (the runtime's one is put in front by the Server).
+func TestChoicesSayWhichModelsAreFetchedAndWhichAreUncensored(t *testing.T) {
+	abl := tiny()
+	abl.Name, abl.DisplayName, abl.Uncensored, abl.Cautions = "huihui_ai/tiny-abliterated:1b", "Tiny 非検閲", true, []string{"成人向け相当"}
+	r := ollamatest.New(t, ollamatest.WithModels(tiny(), abl))
+	r.Fake.Lines = successLines()
+
+	before := r.Svc.Choices(context.Background())
+
+	require.Len(t, before, 2)
+	assert.Equal(t, []string{"tiny:1b", "huihui_ai/tiny-abliterated:1b"}, []string{before[0].ID, before[1].ID})
+	assert.False(t, before[0].Uncensored)
+	assert.True(t, before[1].Uncensored)
+	assert.Equal(t, "Tiny 非検閲", before[1].Name)
+	for _, m := range before {
+		assert.Contains(t, m.Reason, "まだ取得していません", m.ID)
+		assert.Contains(t, m.Reason, "「Ollama のモデル」で取得してください", m.ID)
+	}
+
+	require.Equal(t, domain.JobSucceeded, pull(t, r, "huihui_ai/tiny-abliterated:1b").State)
+
+	after := r.Svc.Choices(context.Background())
+	assert.NotEmpty(t, after[0].Reason, "the other one is still not fetched")
+	assert.Empty(t, after[1].Reason, "a fetched model can be chosen (its manifest is below huihui_ai, not library)")
+	assert.True(t, after[1].Uncensored)
+
+	r.Runtime.Installed = false
+	for _, m := range r.Svc.Choices(context.Background()) {
+		assert.Empty(t, m.Reason, "a server that is not installed is the Server's reason, not each model's: %s", m.ID)
+	}
 }

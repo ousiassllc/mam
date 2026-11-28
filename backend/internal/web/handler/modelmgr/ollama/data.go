@@ -77,7 +77,7 @@ func modelCard(mv ollamapull.ModelView, server ollamapull.Server) card.Model {
 	m := mv.Model
 	c := card.Model{
 		Name: m.Name, DisplayName: m.DisplayName, Description: m.Description, Size: "約 " + jobview.BytesText(m.TotalBytes), State: string(mv.State),
-		Commercial: commercial.FromInfo(m.License), NoSpace: mv.NoSpace && mv.State == ollamapull.StateMissing,
+		Commercial: commercial.FromInfo(m.License), NoSpace: mv.NoSpace && mv.State == ollamapull.StateMissing, Uncensored: m.Uncensored, Cautions: m.Cautions,
 	}
 	if mv.State == ollamapull.StateUnavailable || mv.State == ollamapull.StateMissing {
 		c.Blocked = card.BlockedReason(string(server))
@@ -90,7 +90,7 @@ func detailData(svc *ollamapull.Service, m ollamamodels.Model) card.Detail {
 	d := card.Detail{
 		Name: m.Name, DisplayName: m.DisplayName, Description: m.Description, Commercial: commercial.FromInfo(m.License), Size: jobview.BytesText(m.TotalBytes),
 		Digest: m.ModelLayer().Digest, CheckedAt: m.CheckedAt, LicenseName: m.License.LicenseName, LicenseURL: m.License.SourceURL, LicenseSummary: m.LicenseSummary,
-		SourceURL: "https://ollama.com/library/" + m.Name,
+		SourceURL: m.PageURL(), Uncensored: m.Uncensored, Cautions: m.Cautions,
 	}
 	for _, l := range m.Layers {
 		d.Layers = append(d.Layers, card.Layer{Kind: l.Kind, Size: jobview.BytesText(l.Size), Digest: l.Digest})

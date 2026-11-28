@@ -136,7 +136,7 @@ func TestOllamaSupportIsWindowsX64WithTheReasonsAndTheFallback(t *testing.T) {
 // The three models, in this order, with the sizes and digests of the manifest of the registry on 2026-11-07, the license and the answer for commercial use.
 func TestTheThreeModelsArePinnedToTheManifestsOfTheRegistry(t *testing.T) {
 	models := catalog.Default().OllamaModels
-	require.Len(t, models, 3)
+	require.Len(t, models, 6, "the library's three, then the abliterated three (#1235)")
 	for i, want := range []struct {
 		name, digest, license string
 		model, total          int64
@@ -152,6 +152,7 @@ func TestTheThreeModelsArePinnedToTheManifestsOfTheRegistry(t *testing.T) {
 		assert.Equal(t, want.total, m.TotalBytes)
 		assert.Equal(t, want.license, m.License.LicenseName)
 		assert.Equal(t, modellicense.Yes, m.License.Commercial)
+		assert.False(t, m.Uncensored, "the library's models are the originals")
 		assert.Equal(t, "2026-11-07", m.CheckedAt)
 		got, ok := catalog.Default().OllamaModel(want.name)
 		assert.True(t, ok)
@@ -165,23 +166,62 @@ func TestTheThreeModelsArePinnedToTheManifestsOfTheRegistry(t *testing.T) {
 	assert.Equal(t, []string{"projector", "model", "draft", "template", "license", "params"}, kinds)
 }
 
-// Every name is of the library and has no cloud tag; a name of another namespace, a cloud tag, a bad form or a name that is not in the list is not one to fetch.
+// The abliterated models of Issue #1235 are of the namespace huihui_ai, the publisher whose Hugging Face weights the llama.cpp list has. Each is pinned to the manifest read on 2026-11-28,
+// says it is uncensored with the cautions an adult-content model needs, and has the license the registry's license layer and the card of the derivative's weights say. The DeepSeek one has
+// no license on its card: commercial use is "unknown", never "yes", the same as the llama.cpp abliterated-v2.
+func TestTheAbliteratedModelsAreOfHuihuiAndSayWhatTheyAre(t *testing.T) {
+	models := catalog.Default().OllamaModels[3:]
+	require.Len(t, models, 3)
+	for i, want := range []struct {
+		name, digest string
+		commercial   modellicense.Commercial
+		model, total int64
+	}{
+		{"huihui_ai/gemma-4-abliterated:12b", "sha256:b8d7a9b7fe82999937638293d83c157557b946c30d6d9577463261fc1680a0b1", modellicense.Yes, 7381381760, 7556507919},
+		{"huihui_ai/qwen3.8-abliterated:27b", "sha256:6c2c13cef89238c3604d756b07b3ef5fafebbd61095feb8553ff449c95e4c1c6", modellicense.Yes, 16810714400, 17741871954},
+		{"huihui_ai/deepseek-r1-abliterated:14b", "sha256:38b5e20078675a1e3040eced1859e432b423ec732c42f5dab03b0a8ae7ba1bdd", modellicense.Unknown, 8988110400, 8988112488},
+	} {
+		m := models[i]
+		assert.Equal(t, want.name, m.Name)
+		assert.Equal(t, want.digest, m.ModelLayer().Digest)
+		assert.Equal(t, want.model, m.ModelLayer().Size)
+		assert.Equal(t, want.total, m.TotalBytes)
+		assert.Equal(t, want.commercial, m.License.Commercial, m.Name)
+		assert.True(t, m.Uncensored, m.Name)
+		assert.Equal(t, "2026-11-28", m.CheckedAt)
+		assert.Equal(t, "huihui_ai", ollamamodels.Namespace(m.Name))
+		assert.Equal(t, "https://ollama.com/"+m.Name, m.PageURL())
+		require.GreaterOrEqual(t, len(m.Cautions), 2, m.Name)
+		assert.Contains(t, m.Cautions[0], "非検閲")
+		got, ok := catalog.Default().OllamaModel(want.name)
+		assert.True(t, ok, want.name)
+		assert.Equal(t, m, got)
+	}
+	assert.NotEmpty(t, models[2].License.Notice, "an unknown answer says to ask the publisher")
+	assert.Equal(t, "https://ollama.com/library/gemma4:12b", catalog.Default().OllamaModels[0].PageURL())
+}
+
+// Every name is of the library (no namespace) or of huihui_ai and has no cloud tag; a name of another namespace, a cloud tag, a bad form or a name that is not in the list is not one to fetch.
 func TestOnlyTheNamesOfTheListAreModelsToFetch(t *testing.T) {
-	for _, ok := range []string{"gemma4:12b", "qwen3.8:27b", "deepseek-r1:14b"} {
+	for _, ok := range []string{"gemma4:12b", "qwen3.8:27b", "deepseek-r1:14b", "huihui_ai/gemma-4-abliterated:12b", "huihui_ai/qwen3.8-abliterated:27b", "huihui_ai/deepseek-r1-abliterated:14b"} {
 		assert.NoError(t, ollamamodels.CheckName(ok), ok)
 		_, found := catalog.Default().OllamaModel(ok)
 		assert.True(t, found, ok)
 	}
 	for _, bad := range []string{
-		"qwen3.8:27b-cloud", "gpt-oss:120b-cloud", "kimi-k2:cloud", "huihui_ai/gemma4:12b", "hf.co/org/repo:Q4_K_M", "library/gemma4:12b", "gemma4", "gemma4:",
+		"qwen3.8:27b-cloud", "gpt-oss:120b-cloud", "kimi-k2:cloud", "someone/gemma-4-abliterated:12b", "mradermacher/gemma4:12b", "huihui_ai/gemma-4-abliterated:12b-cloud",
+		"huihui_ai/huihui_ai/gemma-4-abliterated:12b", "HUIHUI_AI/gemma-4-abliterated:12b", "hf.co/org/repo:Q4_K_M", "library/gemma4:12b", "gemma4", "gemma4:",
 		":12b", "Gemma4:12B", "gemma4:12b ", "gemma4:12b\n", "../x:1", "gemma4:12b;rm", "",
 	} {
 		assert.ErrorIs(t, ollamamodels.CheckName(bad), ollamamodels.ErrName, "%q", bad)
 		_, found := catalog.Default().OllamaModel(bad)
 		assert.False(t, found, "%q", bad)
 	}
-	_, found := catalog.Default().OllamaModel("llama3.2:3b") // a good name that is not in the list
-	assert.False(t, found)
+	for _, notListed := range []string{"llama3.2:3b", "huihui_ai/gemma3-abliterated:12b", "huihui_ai/gemma-4-abliterated:31b"} { // good names that are not in the list
+		assert.NoError(t, ollamamodels.CheckName(notListed), notListed)
+		_, found := catalog.Default().OllamaModel(notListed)
+		assert.False(t, found, notListed)
+	}
 }
 
 // The validation refuses a catalog that would let Ollama listen on every interface, take an unknown placeholder, fetch a cloud model or a model of another namespace.
@@ -224,12 +264,13 @@ func TestTheValidationRefusesWhatWouldMakeOllamaUnsafe(t *testing.T) {
 		}
 	}))
 	for name, bad := range map[string]string{
-		"a cloud tag": "qwen3.8:27b-cloud", "another namespace": "huihui_ai/qwen3.8:27b", "a form that is no name": "Qwen3.8 27B",
+		"a cloud tag": "qwen3.8:27b-cloud", "another namespace": "someone/qwen3.8:27b", "a form that is no name": "Qwen3.8 27B",
 	} {
 		t.Run(name, func(t *testing.T) {
 			assert.NotEmpty(t, mutate(t, func(c *catalog.Catalog) { c.OllamaModels[0].Name = bad }))
 		})
 	}
+	assert.NotEmpty(t, mutate(t, func(c *catalog.Catalog) { c.OllamaModels[3].Cautions = nil }), "an uncensored model says what it may output")
 	assert.NotEmpty(t, mutate(t, func(c *catalog.Catalog) { c.OllamaModels[0].TotalBytes++ }), "the total is the sum of the layers and the config")
 	assert.NotEmpty(t, mutate(t, func(c *catalog.Catalog) { c.OllamaModels[1].Name = c.OllamaModels[0].Name }), "a name once")
 	assert.NotEmpty(t, mutate(t, func(c *catalog.Catalog) { c.OllamaModels[0].License.CheckedAt = "" }), "the license has a check date")

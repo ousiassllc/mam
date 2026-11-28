@@ -5,6 +5,8 @@ import (
 	"net/url"
 	"slices"
 
+	"github.com/a-h/templ"
+
 	"github.com/ousiassllc/mam/backend/internal/modelfilter"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest"
 	"github.com/ousiassllc/mam/backend/internal/service/gentest/modelcatalog"
@@ -39,7 +41,7 @@ func init() {
 			for _, p := range llmmodels.ProviderNames() {
 				providers = append(providers, modelpick.Option{Value: p, Label: modelpick.ProviderLabel(p)})
 			}
-			return modelpick.Facets{Origins: true, Providers: providers, Available: true}
+			return modelpick.Facets{Origins: true, Providers: providers, Commercial: true, Uncensored: true, Available: true}
 		},
 		list: llmCards,
 	}
@@ -105,9 +107,29 @@ func llmCards(ctx context.Context, svc Services, _ url.Values, cond modelfilter.
 	passing := modelfilter.Filter(cond, all, llmmodels.Candidate.Item)
 	cards := make([]modelcard.Card, len(passing))
 	for i, c := range passing {
-		cards[i] = modelcards.Choose(LLMCard(c.Provider, c.Model.ID, c.Model.Name, c.Availability), map[string]string{"provider": c.Provider, "model": c.Model.ID})
+		cards[i] = modelcards.Choose(llmCandidateCard(c), map[string]string{"provider": c.Provider, "model": c.Model.ID})
 	}
 	return cards, pickfilter.CountOf(cond, all, llmmodels.Candidate.Item), nil
+}
+
+// llmCandidateCard is the card of a candidate: the card of its model and, for a model of the servers mam manages (#1235), the server it is of, that its refusals were removed, and
+// its license with the answer for commercial use.
+func llmCandidateCard(c llmmodels.Candidate) modelcard.Card {
+	card := LLMCard(c.Provider, c.Model.ID, c.Model.Name, c.Availability)
+	if c.Model.Unavailable != nil {
+		card.Reason = modelcards.Unavailable(*c.Model.Unavailable)
+	}
+	if c.Model.Server != "" {
+		card.Meta = c.Model.Server + " ・ " + c.Model.ID
+	}
+	if c.Model.Uncensored {
+		card.Badges = append(card.Badges, modelcard.Badge{Tone: atoms.BadgeWarn, Label: "成人向け相当（非検閲）", Attrs: templ.Attributes{"data-testid": "model-badge-uncensored"}})
+	}
+	if c.Model.License.Commercial != "" {
+		answer := commercial.FromInfo(c.Model.License)
+		card.Commercial, card.Note = &answer, answer.ShortNote()
+	}
+	return card
 }
 
 // LLMCard is the card of an LLM: the model (its display name, else its id) and the provider; why it cannot be used when the provider has no key or no sign-in.

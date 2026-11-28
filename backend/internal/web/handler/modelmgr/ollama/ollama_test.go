@@ -15,8 +15,8 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/web/screentest"
 )
 
-// The page "ローカル LLM" has the section once, with the three models of the catalog in its order, side by side like the other models.
-func TestThePageHasTheSectionOnceWithTheThreeModelsInOrder(t *testing.T) {
+// The page "ローカル LLM" has the section once, with the models of the catalog in its order (the library's three, then the abliterated three; #1235), side by side like the other models.
+func TestThePageHasTheSectionOnceWithTheModelsInOrder(t *testing.T) {
 	s := screentest.NewWithOllama(t)
 
 	body := s.PageOf(mmcat.LocalLLM)
@@ -27,12 +27,17 @@ func TestThePageHasTheSectionOnceWithTheThreeModelsInOrder(t *testing.T) {
 	for _, m := range regexp.MustCompile(`data-testid="mm-ollama-model"`).FindAllStringIndex(body, -1) {
 		names = append(names, regexp.MustCompile(`data-model="([^"]+)"`).FindStringSubmatch(body[m[0]-200 : m[0]+200])[1])
 	}
-	assert.Equal(t, []string{"gemma4:12b", "qwen3.8:27b", "deepseek-r1:14b"}, names)
+	assert.Equal(t, []string{
+		"gemma4:12b", "qwen3.8:27b", "deepseek-r1:14b",
+		"huihui_ai/gemma-4-abliterated:12b", "huihui_ai/qwen3.8-abliterated:27b", "huihui_ai/deepseek-r1-abliterated:14b",
+	}, names)
+	assert.Equal(t, 3, strings.Count(body, `data-testid="mm-ollama-uncensored"`), "the abliterated three say they are for adults, the library's three do not")
+	assert.Contains(t, body, `data-model="huihui_ai/deepseek-r1-abliterated:14b"`)
 	assert.Contains(t, body, `data-testid="mm-ollama-models"`)
 	assert.Contains(t, body, modelcard.GridClass)
 	assert.Contains(t, body, `aria-live="polite"`)
 	assert.Contains(t, body, "Ollama は停止中です")
-	assert.Equal(t, 3, strings.Count(body, `data-testid="mm-ollama-pull"`), "a pull button for every model")
+	assert.Equal(t, 6, strings.Count(body, `data-testid="mm-ollama-pull"`), "a pull button for every model")
 	assert.Zero(t, disabledPulls(body), "the server is installed: every pull button is on")
 	assert.NotContains(t, s.PageOf(mmcat.LocalRuntimes), ` id="mm-ollama" `, "the section is the page of the language model's")
 }
@@ -47,9 +52,9 @@ func TestWithoutOllamaThePullButtonsAreOffAndTheLineSaysSo(t *testing.T) {
 	assert.Contains(t, body, "Ollama は未導入です。")
 	assert.Contains(t, body, "から導入してください。")
 	assert.Contains(t, body, `href="#mm-runtime-ollama"`)
-	assert.Equal(t, 3, strings.Count(body, `aria-describedby="mm-ollama-`), "every disabled button names its reason")
-	assert.Equal(t, 3, strings.Count(body, "先に Ollama を導入してください"))
-	assert.Equal(t, 3, disabledPulls(body))
+	assert.Equal(t, 6, strings.Count(body, `aria-describedby="mm-ollama-`), "every disabled button names its reason")
+	assert.Equal(t, 6, strings.Count(body, "先に Ollama を導入してください"))
+	assert.Equal(t, 6, disabledPulls(body))
 	assert.Equal(t, "unavailable", stateOf(t, body, gemma))
 
 	rec := pull(s, gemma)
@@ -68,7 +73,7 @@ func TestACardSaysWhenTheDiskHasNoRoomForIt(t *testing.T) {
 
 	body := s.Get(sectionPath()).Body.String()
 
-	assert.Equal(t, 3, strings.Count(body, `data-testid="mm-ollama-nospace"`))
+	assert.Equal(t, 6, strings.Count(body, `data-testid="mm-ollama-nospace"`))
 }
 
 // A machine that cannot run it: the line says why, the pull is refused with the reason and nothing is asked of Ollama.
@@ -117,10 +122,10 @@ func TestAPullIsAJobThatTheSectionPollsUntilItEnds(t *testing.T) {
 	assert.Equal(t, "installed", stateOf(t, again, gemma))
 }
 
-// A name that is not one of the three is refused (422) before any request to Ollama: a cloud model, another namespace, an empty form, a model of the library that is not in the list.
-func TestOnlyTheThreeModelsAreAccepted(t *testing.T) {
+// A name that is not one of the list is refused (422) before any request to Ollama: a cloud model, another namespace, an empty form, a model of the library that is not in the list.
+func TestOnlyTheModelsOfTheListAreAccepted(t *testing.T) {
 	s := screentest.NewWithOllama(t)
-	for _, bad := range []string{"qwen3.8:27b-cloud", "gpt-oss:120b-cloud", "huihui_ai/qwen3.8:27b", "hf.co/org/repo:Q4_K_M", "", "llama3.2:3b", "gemma4:12b\n"} {
+	for _, bad := range []string{"qwen3.8:27b-cloud", "gpt-oss:120b-cloud", "someone/qwen3.8:27b", "huihui_ai/qwen3.8:27b", "huihui_ai/gemma3-abliterated:12b", "hf.co/org/repo:Q4_K_M", "", "llama3.2:3b", "gemma4:12b\n"} {
 		rec := pull(s, bad)
 		assert.Equal(t, http.StatusUnprocessableEntity, rec.Code, "name %q", bad)
 		assert.Contains(t, rec.Body.String(), `data-testid="mm-ollama-error"`, "name %q", bad)

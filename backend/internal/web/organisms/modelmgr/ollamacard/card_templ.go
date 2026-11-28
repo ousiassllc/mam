@@ -353,10 +353,19 @@ func card(m Model) modelcard.Card {
 		State: modelcard.Badge{Tone: tone, Label: label, Attrs: templ.Attributes{"data-testid": "mm-ollama-badge"}}, Commercial: &m.Commercial,
 		Attrs: templ.Attributes{"data-testid": "mm-ollama-model", "data-model": m.Name, "data-state": m.State, "data-commercial": m.Commercial.Answer()},
 	}
+	if m.Uncensored {
+		c.Badges = append(c.Badges, UncensoredBadge())
+	}
+	c.Note = m.Commercial.ShortNote()
 	if m.NoSpace {
 		c.Badges = append(c.Badges, modelcard.Badge{Tone: atoms.BadgeWarn, Label: "導入先の空きが足りません", Attrs: templ.Attributes{"data-testid": "mm-ollama-nospace"}})
 	}
 	return c
+}
+
+// UncensoredBadge is the badge of a model whose refusals were removed: the words are those of the llama.cpp models' (runtimecard) so that one kind of model is called one thing.
+func UncensoredBadge() modelcard.Badge {
+	return modelcard.Badge{Tone: atoms.BadgeWarn, Label: "成人向け相当（非検閲）", Attrs: templ.Attributes{"data-testid": "mm-ollama-uncensored"}}
 }
 
 func detailURL(name string) string {
@@ -405,7 +414,7 @@ func ModelCard(m Model) templ.Component {
 			var templ_7745c5c3_Var20 string
 			templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(m.Description)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/ollamacard/card.templ`, Line: 95, Col: 45}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/ollamacard/card.templ`, Line: 104, Col: 45}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 			if templ_7745c5c3_Err != nil {
@@ -521,7 +530,7 @@ func ModelCard(m Model) templ.Component {
 					var templ_7745c5c3_Var24 string
 					templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.ResolveAttributeValue(ModelID(m.Name) + "-blocked")
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/ollamacard/card.templ`, Line: 125, Col: 41}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/ollamacard/card.templ`, Line: 134, Col: 41}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var24)
 					if templ_7745c5c3_Err != nil {
@@ -534,7 +543,7 @@ func ModelCard(m Model) templ.Component {
 					var templ_7745c5c3_Var25 string
 					templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(m.Blocked)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/ollamacard/card.templ`, Line: 125, Col: 113}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `backend/internal/web/organisms/modelmgr/ollamacard/card.templ`, Line: 134, Col: 113}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 					if templ_7745c5c3_Err != nil {

@@ -24,6 +24,7 @@ import (
 	"github.com/ousiassllc/mam/backend/internal/credential"
 	"github.com/ousiassllc/mam/backend/internal/httpclient"
 	"github.com/ousiassllc/mam/backend/internal/modelfilter"
+	"github.com/ousiassllc/mam/backend/internal/service/llmlocal"
 )
 
 // Source says where a list comes from.
@@ -66,12 +67,6 @@ func (f Fallback) Message() string {
 		return "ローカルサーバーに接続できません"
 	}
 	return ""
-}
-
-// Model is one model to offer. Name is empty when the provider gave none (the candidates of mam have none).
-type Model struct {
-	ID   string
-	Name string
 }
 
 // List is the models of one provider.
@@ -119,6 +114,9 @@ type Options struct {
 	LocalBaseURL func() string
 	// LocalManaged is the model of mam's own llama.cpp while the user has chosen it (managed true; see managed.go). Nil: never managed.
 	LocalManaged func(ctx context.Context) (models []string, managed bool)
+	// LocalCatalog is every model of the servers mam manages (llama.cpp's list, Ollama's) with why one cannot be chosen now, whichever server the calls go to: the picker lists them with
+	// the models of the provider "local" so that a model this PC hides is shown with its reason (#1235). Nil: none.
+	LocalCatalog func(ctx context.Context) []llmlocal.ManagedModel
 	// Logger receives why a list could not be read (never a token or a key); nil discards it.
 	Logger *slog.Logger
 	// Now replaces the clock (tests).

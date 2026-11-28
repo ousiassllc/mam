@@ -89,14 +89,18 @@ describe('the results of the history are chosen for the ZIP export by a tap (#93
     expect(card('r2'), 'a running result is offered').to.equal(null);
   });
 
-  it('keeps the choice when the history refreshes itself and draws the cards again', async function () {
-    this.timeout(20_000);
+  it('keeps the choice when the history refreshes itself and draws the cards again', async () => {
     await show('gentest-history-running.html');
     tapMark('r0');
     const before = card('r0');
     expect(count()).to.equal('1');
 
-    await waitUntil(() => !statuses().includes('running'), 'the finished result did not arrive', { timeout: 8000 });
+    // The refresh that the poll (`every 2s`) makes, asked at once: the same request and swap, without the 2 s wait that a
+    // loaded host stretches. That the section polls by itself is tested in poll/history-live.
+    const live = byTestId('gt-history-live');
+    expect(live.getAttribute('hx-trigger')).to.equal('every 2s');
+    await htmx.ajax('get', live.getAttribute('hx-get')!, { source: live, target: live, swap: 'outerHTML' });
+    expect(statuses(), 'the finished result did not arrive').not.to.include('running');
 
     expect(card('r0'), 'the cards were not drawn again').not.to.equal(before);
     expect(input('r0').checked, 'the choice was lost by the refresh').to.equal(true);
