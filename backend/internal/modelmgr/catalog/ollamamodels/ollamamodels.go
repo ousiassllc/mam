@@ -1,7 +1,8 @@
 // Package ollamamodels is the short list of Ollama models that mam fetches (spec/architecture/model-manager/local-runtime.md §19.2): a model of the registry of Ollama with its
 // layers (the sizes and digests of the registry's manifest on the day it was checked), the license of the model and the answer for commercial use. It is a list of names, not
 // a pin: the tags of the registry can be moved, so what a pull brings can differ from what is recorded here, and mam only compares the manifest it got with the record afterwards.
-// Nothing outside the list is fetched: a name that is not in it, is not of the namespace "library" or has a tag with "cloud" (a model that runs on the servers of Ollama and sends the
+// Nothing outside the list is fetched: a name that is not in it, is not of the namespace "library" (the plain "<name>:<tag>") or of one of Namespaces (Issue #1235: the
+// abliterated models of huihui_ai, whose Hugging Face weights the llama.cpp list has) or has a tag with "cloud" (a model that runs on the servers of Ollama and sends the
 // prompt there) is refused before any request. It is a package of its own because the directory of the catalog is at its line budget.
 package ollamamodels
 
@@ -29,7 +30,12 @@ type Layer struct {
 	Size   int64  `json:"size"`
 }
 
-// Model is one model of the list. Name is "<name>:<tag>" of the namespace library (the one the user types: "gemma4:12b").
+// Namespaces are the namespaces other than library that a model of the list may be of (the part before the "/" of "huihui_ai/gemma-4-abliterated:12b"). A model of another
+// publisher is not fetched: the license and the adult-content note of a derivative are read for the publisher the list names, not for whoever uploaded a model of the same name.
+var Namespaces = []string{"huihui_ai"}
+
+// Model is one model of the list. Name is what the user types: "<name>:<tag>" of the namespace library ("gemma4:12b") or "<namespace>/<name>:<tag>" of one of Namespaces
+// ("huihui_ai/gemma-4-abliterated:12b"); it is lower case, as the registry and Ollama's own listing write it.
 type Model struct {
 	Name        string `json:"name"`
 	DisplayName string `json:"display_name"`
@@ -43,6 +49,43 @@ type Model struct {
 	LicenseSummary string            `json:"license_summary"`
 	// CheckedAt is the date (YYYY-MM-DD) the manifest and the license were read.
 	CheckedAt string `json:"checked_at"`
+	// Uncensored: the refusals of the model were removed (an abliterated derivative; "非検閲"). The screens say it is for adults, as they do for the llama.cpp models of the same kind
+	// (choice.Choice.Uncensored), and show Cautions.
+	Uncensored bool `json:"uncensored,omitempty"`
+	// Cautions are the restrictions of the use of the model, as its page and its card state them (required for an uncensored model).
+	Cautions []string `json:"cautions,omitempty"`
+}
+
+// Namespace is the namespace of the name: "library" for "gemma4:12b", "huihui_ai" for "huihui_ai/gemma-4-abliterated:12b".
+func Namespace(name string) string {
+	if ns, _, ok := strings.Cut(name, "/"); ok {
+		return ns
+	}
+	return "library"
+}
+
+// Repo is the name without its namespace and tag ("gemma-4-abliterated"), Tag the tag ("12b").
+func Repo(name string) string {
+	_, rest, ok := strings.Cut(name, "/")
+	if !ok {
+		rest = name
+	}
+	repo, _, _ := strings.Cut(rest, ":")
+	return repo
+}
+
+// Tag is the tag of the name ("12b" for "huihui_ai/gemma-4-abliterated:12b").
+func Tag(name string) string {
+	_, tag, _ := strings.Cut(name, ":")
+	return tag
+}
+
+// PageURL is the page of the model on ollama.com (the source the screens link to).
+func (m Model) PageURL() string {
+	if Namespace(m.Name) == "library" {
+		return "https://ollama.com/library/" + m.Name
+	}
+	return "https://ollama.com/" + m.Name
 }
 
 // ModelLayer is the layer that holds the weights: the one a pull is checked by.
@@ -55,19 +98,21 @@ func (m Model) ModelLayer() Layer {
 	return Layer{}
 }
 
-// ErrName is a name that cannot be fetched: it is not "<name>:<tag>" of the namespace library, or its tag names a cloud model.
-var ErrName = errors.New("ollamamodels: not a name of a model of the library")
+// ErrName is a name that cannot be fetched: it is not "<name>:<tag>" of the namespace library or "<namespace>/<name>:<tag>" of one of Namespaces, or its tag names a cloud model.
+var ErrName = errors.New("ollamamodels: not a name of a model that may be fetched")
 
 var (
-	namePattern   = regexp.MustCompile(`^[a-z0-9][a-z0-9._-]{0,63}:[a-z0-9][a-z0-9._-]{0,63}$`)
+	namePattern   = regexp.MustCompile(`^(?:[a-z0-9][a-z0-9_-]{0,63}/)?[a-z0-9][a-z0-9._-]{0,63}:[a-z0-9][a-z0-9._-]{0,63}$`)
 	digestPattern = regexp.MustCompile(`^sha256:[0-9a-f]{64}$`)
 )
 
-// CheckName reports whether name is the form that may be fetched: "<name>:<tag>" without a namespace (so the namespace is library) and with a tag that does not
-// name a cloud model. It does not say the model is in the list (Find does).
+// CheckName reports whether name is the form that may be fetched: "<name>:<tag>" without a namespace (so the namespace is library) or with one of Namespaces, and with a tag
+// that does not name a cloud model. It does not say the model is in the list (Find does).
 func CheckName(name string) error {
-	_, tag, _ := strings.Cut(name, ":")
-	if !namePattern.MatchString(name) || strings.Contains(tag, "cloud") {
+	if !namePattern.MatchString(name) || strings.Contains(Tag(name), "cloud") {
+		return ErrName
+	}
+	if ns, _, namespaced := strings.Cut(name, "/"); namespaced && !slices.Contains(Namespaces, ns) { // "library/…" is refused too: the library's models are written without it
 		return ErrName
 	}
 	return nil
@@ -99,6 +144,8 @@ func Check(models []Model) []error {
 			errs = append(errs, fmt.Errorf("%s: duplicate name", where))
 		case m.DisplayName == "" || strings.TrimSpace(m.Description) == "" || strings.TrimSpace(m.LicenseSummary) == "":
 			errs = append(errs, fmt.Errorf("%s: display_name, description and license_summary are required", where))
+		case m.Uncensored && len(m.Cautions) == 0:
+			errs = append(errs, fmt.Errorf("%s: an uncensored model needs the cautions that say what it may output", where))
 		}
 		seen[m.Name] = true
 		errs = append(errs, checkLayers(where, m)...)

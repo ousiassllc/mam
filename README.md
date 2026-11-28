@@ -42,7 +42,7 @@ LLM（企画・脚本・Shot 計画など）も、この PC のローカルモ�
 
 llama.cpp のほかに、モデルマネージャーの「ローカル LLM」から Ollama（[ollama/ollama](https://github.com/ollama/ollama)。MIT。固定版 v0.40.15）も導入・起動・停止できます（Windows。NVIDIA の GPU・Intel の GPU・GPU なしで導入できます。AMD の GPU だけの PC は、別のサーバーにつなぎます）。公式の GitHub リリースの zip を、固定した SHA-256 を確かめて取得します（`localai\ollama` に展開。`127.0.0.1` だけで待ち受け、Ollama のクラウド機能は無効にします）。
 
-- モデルは、同じページの「Ollama のモデル」から、次の 3 つだけを Ollama 自身で取得します（`gemma4:12b`・`qwen3.8:27b`・`deepseek-r1:14b`。cloud のモデルや、一覧にない名前は取得できません）。
+- モデルは、同じページの「Ollama のモデル」から、次の 6 つだけを Ollama 自身で取得します（純正の `gemma4:12b`・`qwen3.8:27b`・`deepseek-r1:14b` と、Huihui の非検閲〔abliterated。成人向け相当〕の `huihui_ai/gemma-4-abliterated:12b`・`huihui_ai/qwen3.8-abliterated:27b`・`huihui_ai/deepseek-r1-abliterated:14b`。DeepSeek の非検閲は商用可否が不明です。cloud のモデルや、一覧にない名前は取得できません）。
 
 | モデル（Ollama のタグ） | 取得量 | 出典 | ライセンス |
 |---|---|---|---|

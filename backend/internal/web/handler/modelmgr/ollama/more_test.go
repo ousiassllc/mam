@@ -217,15 +217,15 @@ func TestOllamaIsOfferedAsAServerAndTheOverviewCountsItsModels(t *testing.T) {
 	s := screentest.NewWithOllama(t)
 	page := s.PageOf(mmcat.LocalLLM)
 	assert.Contains(t, page, `value="ollama"`)
-	assert.Contains(t, s.Page(), "Ollama のモデル 0 / 3 件", "the server is installed: its models are counted whichever is in use")
+	assert.Contains(t, s.Page(), "Ollama のモデル 0 / 6 件", "the server is installed: its models are counted whichever is in use")
 
 	use := s.Do(http.MethodPut, paths.ModelManagerLocalLLMUse(), url.Values{"use": {"ollama"}})
 
 	require.Equal(t, http.StatusOK, use.Code, use.Body.String())
 	assert.Contains(t, use.Body.String(), "Ollama")
-	assert.Contains(t, s.Page(), "使うサーバー: Ollama（導入済み・停止中）・Ollama のモデル 0 / 3 件")
+	assert.Contains(t, s.Page(), "使うサーバー: Ollama（導入済み・停止中）・Ollama のモデル 0 / 6 件")
 	fetched(t, s, gemma)
-	assert.Contains(t, s.Page(), "Ollama のモデル 1 / 3 件")
+	assert.Contains(t, s.Page(), "Ollama のモデル 1 / 6 件")
 	s.Ollama.Runtime.Installed = false
 	assert.NotContains(t, s.Page(), "Ollama のモデル 1", "a server that is not installed has no models to count")
 }

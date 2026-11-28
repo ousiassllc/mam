@@ -37,9 +37,10 @@ const (
 	ServerFailed       = "failed"
 )
 
-// ModelID is the id of the card of a model: the name with the characters an id should not have turned into "-" ("gemma4:12b" → "mm-ollama-gemma4-12b").
+// ModelID is the id of the card of a model: the name with the characters an id should not have turned into "-" ("gemma4:12b" → "mm-ollama-gemma4-12b",
+// "huihui_ai/gemma-4-abliterated:12b" → "mm-ollama-huihui_ai-gemma-4-abliterated-12b").
 func ModelID(name string) string {
-	return "mm-ollama-" + strings.NewReplacer(":", "-", ".", "-").Replace(name)
+	return "mm-ollama-" + strings.NewReplacer(":", "-", ".", "-", "/", "-").Replace(name)
 }
 
 // Model is the card of a model of the catalog.
@@ -54,6 +55,9 @@ type Model struct {
 	State string
 	// Commercial is the answer for commercial use.
 	Commercial commercial.View
+	// Uncensored: the model's refusals were removed (an abliterated derivative); the card says it is for adults (#1235). Cautions are the restrictions of its use.
+	Uncensored bool
+	Cautions   []string
 	// Install is the progress of a running pull (nil when none).
 	Install *view.Progress
 	// NoSpace says the disk of the models has not the room a pull needs (the model and 1 GiB): the card says so, and a pull is refused with the sizes.
@@ -161,8 +165,11 @@ type Detail struct {
 	// Check is what the comparison of the manifest on disk with the record says ("" while the model is not fetched): the sentence.
 	Check string
 	// Changed says the manifest differs from the record.
-	Changed        bool
-	CheckedAt      string
+	Changed   bool
+	CheckedAt string
+	// Uncensored and Cautions are those of the model (#1235): the badge in the head of the modal and the list of what its use is subject to.
+	Uncensored     bool
+	Cautions       []string
 	LicenseName    string
 	LicenseURL     string
 	LicenseSummary string

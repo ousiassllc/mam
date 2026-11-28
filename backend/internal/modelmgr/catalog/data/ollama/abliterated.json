@@ -1,0 +1,143 @@
+[
+ {
+  "name": "huihui_ai/gemma-4-abliterated:12b",
+  "display_name": "Gemma 4 12B 非検閲（Huihui abliterated）",
+  "description": "Gemma 4 の 12B の非検閲（abliterated）派生。画像の入力に使う projector の層を含みます。llama.cpp の「Gemma 4 12B-it 非検閲」と同じ系統（Huihui 版）です。",
+  "layers": [
+   {
+    "kind": "projector",
+    "digest": "sha256:1dcc37d89299e1f04d662c64d60522508838c67e25087b02cebc8c9c9017bc35",
+    "size": 175115328
+   },
+   {
+    "kind": "model",
+    "digest": "sha256:b8d7a9b7fe82999937638293d83c157557b946c30d6d9577463261fc1680a0b1",
+    "size": 7381381760
+   },
+   {
+    "kind": "template",
+    "digest": "sha256:b507b9c2f6ca642bffcd06665ea7c91f235fd32daeefdf875a0f938db05fb315",
+    "size": 13
+   },
+   {
+    "kind": "license",
+    "digest": "sha256:0d542e0c8804e39aa7f37eb00da5a762149dc682d7829451287e11b938e94594",
+    "size": 10174
+   },
+   {
+    "kind": "params",
+    "digest": "sha256:56380ca2ab89f1f68c283f4d50863c0bcab52ae3f1b9a88e4ab5617b176f71a3",
+    "size": 42
+   }
+  ],
+  "config_bytes": 602,
+  "total_bytes": 7556507919,
+  "license": {
+   "commercial": "yes",
+   "license_name": "Apache License 2.0",
+   "source_url": "https://huggingface.co/huihui-ai/Huihui-gemma-4-12B-it-abliterated",
+   "checked_at": "2026-11-28"
+  },
+  "license_summary": "registry の license の層の本文は Apache License 2.0（商用可。元の Gemma 4 の層と同じ digest）。派生の元の重み huihui-ai/Huihui-gemma-4-12B-it-abliterated の Hugging Face のカードも apache-2.0 と記載している（2026-11-28 に API で確認）。",
+  "checked_at": "2026-11-28",
+  "uncensored": true,
+  "cautions": [
+   "安全のための拒否の挙動を取り除いた派生モデル（abliterated・非検閲）です。暴力・性的表現など、成人向け相当の内容や不適切・過激な内容を、拒否せずに出力することがあります。成人向け相当として扱い、利用者の責任で、年齢・法令・公開先の規約に従って使ってください。",
+   "元のモデルより、質や指示への従い方が落ちることがあります。JSON を守る力も落ちうるので、Nefos Video は読めない答えを最大 2 回やり直させます。",
+   "Ollama のレジストリの名前の空間 huihui_ai（Huihui の公式の公開先）のモデルです。Ollama 公式（library）のモデルではないので、中身は固定されておらず、公開元が差し替えることがあります。"
+  ]
+ },
+ {
+  "name": "huihui_ai/qwen3.8-abliterated:27b",
+  "display_name": "Qwen3.8 27B 非検閲（Huihui abliterated）",
+  "description": "Qwen3.8 の 27B の非検閲（abliterated）派生。projector の層を含みます。大きいので VRAM が 16 GB 未満の GPU では、一部の層が CPU に載り遅くなります。llama.cpp の「Qwen3.8-27B 非検閲」と同じ系統（Huihui 版）です。",
+  "layers": [
+   {
+    "kind": "projector",
+    "digest": "sha256:c9a09064683620bea3d3bfed5d4462e1a97a7d2fff7e5045d6862a0a85eeb5b5",
+    "size": 931145888
+   },
+   {
+    "kind": "model",
+    "digest": "sha256:6c2c13cef89238c3604d756b07b3ef5fafebbd61095feb8553ff449c95e4c1c6",
+    "size": 16810714400
+   },
+   {
+    "kind": "template",
+    "digest": "sha256:b507b9c2f6ca642bffcd06665ea7c91f235fd32daeefdf875a0f938db05fb315",
+    "size": 13
+   },
+   {
+    "kind": "license",
+    "digest": "sha256:4c6a8e842ef0d8504549facfb03f1273a8d0022991519bc1888522cc1a5517d1",
+    "size": 11345
+   },
+   {
+    "kind": "params",
+    "digest": "sha256:906ee87bde6cff7bf3c3b1550f55cbbec261e027187fbb9f511f908ffc418334",
+    "size": 114
+   }
+  ],
+  "config_bytes": 194,
+  "total_bytes": 17741871954,
+  "license": {
+   "commercial": "yes",
+   "license_name": "Apache License 2.0",
+   "source_url": "https://huggingface.co/huihui-ai/Huihui-Qwen3.8-27B-abliterated",
+   "checked_at": "2026-11-28"
+  },
+  "license_summary": "registry の license の層の本文は Apache License 2.0（商用可。元の Qwen3.8 の層と同じ digest）。派生の元の重み huihui-ai/Huihui-Qwen3.8-27B-abliterated の Hugging Face のカードも apache-2.0 と記載している（2026-11-28 に API で確認）。",
+  "checked_at": "2026-11-28",
+  "uncensored": true,
+  "cautions": [
+   "安全のための拒否の挙動を取り除いた派生モデル（abliterated・非検閲）です。暴力・性的表現など、成人向け相当の内容や不適切・過激な内容を、拒否せずに出力することがあります。成人向け相当として扱い、利用者の責任で、年齢・法令・公開先の規約に従って使ってください。",
+   "元のモデルより、質や指示への従い方が落ちることがあります。JSON を守る力も落ちうるので、Nefos Video は読めない答えを最大 2 回やり直させます。",
+   "Ollama のレジストリの名前の空間 huihui_ai（Huihui の公式の公開先）のモデルです。Ollama 公式（library）のモデルではないので、中身は固定されておらず、公開元が差し替えることがあります。"
+  ]
+ },
+ {
+  "name": "huihui_ai/deepseek-r1-abliterated:14b",
+  "display_name": "DeepSeek-R1-Distill-Qwen-14B 非検閲（Huihui abliterated）",
+  "description": "DeepSeek-R1 を Qwen-2.5 14B に蒸留したモデルの非検閲（abliterated）派生。考える過程（<think>）を出力します。llama.cpp の「DeepSeek-R1-Distill-Qwen-14B 非検閲」と同じ系統（Huihui 版）です。",
+  "layers": [
+   {
+    "kind": "model",
+    "digest": "sha256:38b5e20078675a1e3040eced1859e432b423ec732c42f5dab03b0a8ae7ba1bdd",
+    "size": 8988110400
+   },
+   {
+    "kind": "template",
+    "digest": "sha256:369ca498f347f710d068cbb38bf0b8692dd3fa30f30ca2ff755e211c94768150",
+    "size": 387
+   },
+   {
+    "kind": "license",
+    "digest": "sha256:6e4c38e1172f42fdbff13edf9a7a017679fb82b0fde415a3e8b3c31c6ed4a4e4",
+    "size": 1065
+   },
+   {
+    "kind": "params",
+    "digest": "sha256:f4d24e9138dd4603380add165d2b0d970bef471fac194b436ebd50e6147c6588",
+    "size": 148
+   }
+  ],
+  "config_bytes": 488,
+  "total_bytes": 8988112488,
+  "license": {
+   "commercial": "unknown",
+   "license_name": "ライセンス不明（派生側に記載なし）",
+   "source_url": "https://huggingface.co/huihui-ai/DeepSeek-R1-Distill-Qwen-14B-abliterated",
+   "checked_at": "2026-11-28",
+   "notice": "商用可否はわかりません。registry の license の層は DeepSeek-R1 本体の MIT License の本文（純正の層と同じ digest）ですが、派生の元の重み huihui-ai/DeepSeek-R1-Distill-Qwen-14B-abliterated の Hugging Face のカードには license の記載がありません。商用で使う前に、公開元に確かめてください。"
+  },
+  "license_summary": "registry の license の層の本文は MIT License（DeepSeek 本体のコピー）。派生の元の重みのカードには license が無いので、商用は「わからない」として扱う（llama.cpp の abliterated-v2 と同じ扱い）。",
+  "checked_at": "2026-11-28",
+  "uncensored": true,
+  "cautions": [
+   "安全のための拒否の挙動を取り除いた派生モデル（abliterated・非検閲）です。暴力・性的表現など、成人向け相当の内容や不適切・過激な内容を、拒否せずに出力することがあります。成人向け相当として扱い、利用者の責任で、年齢・法令・公開先の規約に従って使ってください。",
+   "元のモデルより、質や指示への従い方が落ちることがあります。JSON を守る力も落ちうるので、Nefos Video は読めない答えを最大 2 回やり直させます。",
+   "Ollama のレジストリの名前の空間 huihui_ai（Huihui の公式の公開先）のモデルです。Ollama 公式（library）のモデルではないので、中身は固定されておらず、公開元が差し替えることがあります。",
+   "考える過程（<think>…</think>）を常に出力し、公式のオフ手段はありません。Nefos Video が答えの <think>…</think> を取り除いてから JSON を読みます。"
+  ]
+ }
+]

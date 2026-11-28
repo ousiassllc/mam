@@ -3,6 +3,8 @@ package llmlocal
 import (
 	"context"
 	"errors"
+
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 )
 
 // ErrManagedUnavailable means the user chose "この PC の llama.cpp" but the app has no llama.cpp runtime (no local runtime manager is wired).
@@ -30,6 +32,22 @@ const (
 	ManagedFailed ManagedState = "failed"
 )
 
+// ManagedModel is one model the managed server offers (its catalog: every model of llama.cpp's list, every model of Ollama's), with what the model picker of the LLM assignment says of
+// it (#1235): whether it is a model without refusals, its license and why it cannot be chosen now.
+type ManagedModel struct {
+	// ID is the name the server answers to ("gemma-4-12b-it" for llama.cpp, "gemma4:12b" for Ollama); Name what the screens call it.
+	ID, Name string
+	// Server is the use the model belongs to ("この PC の llama.cpp", "Ollama"), set by ManagedCatalog.
+	Server string
+	// Uncensored: the model's refusals were removed (an abliterated derivative).
+	Uncensored bool
+	// License is the license of the model with its answer for commercial use (Commercial Unknown, with the notice, when nothing says).
+	License modellicense.Info
+	// Reason says why the model cannot be chosen now, with what to do ("" when it can): the PC cannot run the server, the server or its weights are not installed, the model is not the
+	// one in force (llama.cpp) or is not fetched (Ollama), or the calls go to another server (ManagedCatalog).
+	Reason string
+}
+
 // ManagedInfo is what the card and the model list show of the managed server.
 type ManagedInfo struct {
 	State  ManagedState
@@ -42,6 +60,8 @@ type ManagedInfo struct {
 	URL string
 	// Models are the models the server answers to, when it holds several (the managed Ollama: every model it fetched); empty for a server that answers to Model only.
 	Models []string
+	// Catalog is every model of the server's list, chosen or not, with why one cannot be chosen now (ManagedCatalog); empty when the server has no list.
+	Catalog []ManagedModel
 }
 
 // Managed is a server that mam installs, starts and stops itself (package llamaserver, the local runtime "llama-cpp"; the local runtime "ollama" of #1105):
@@ -129,4 +149,26 @@ func (s *Service) ManagedModels(ctx context.Context) (models []string, managed b
 		return nil, true
 	}
 	return models, true
+}
+
+// ManagedCatalog is every model of the servers that mam manages (llama.cpp's list and Ollama's), each with why it cannot be chosen now, whichever server the calls go to: a PC that cannot
+// run the server, a server or its weights that are not installed, a model that is not the one in force or not fetched, or "使うサーバー" set to another server. The picker of the LLM
+// assignment lists them, so that a model that this PC hides is shown with its reason rather than missing (#1235).
+func (s *Service) ManagedCatalog(ctx context.Context) []ManagedModel {
+	active := s.settingsView().Use
+	var out []ManagedModel
+	for _, u := range []Use{UseLlamaCpp, UseOllama} {
+		m := s.managedFor(u)
+		if m == nil {
+			continue
+		}
+		for _, cm := range m.Info(ctx).Catalog {
+			cm.Server = u.Name()
+			if cm.Reason == "" && active != u {
+				cm.Reason = "今の「使うサーバー」は「" + active.Name() + "」です。モデルマネージャーの「ローカル LLM」で「" + u.Name() + "」を選ぶと使えます"
+			}
+			out = append(out, cm)
+		}
+	}
+	return out
 }

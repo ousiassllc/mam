@@ -16,15 +16,25 @@ templ ModelDetail(d Detail) {
 		<div class={ "flex flex-wrap items-center gap-2", modal.StartClass } tabindex="-1" autofocus data-testid="mm-ollama-detail" data-model={ d.Name }>
 			@atoms.Badge(atoms.BadgeInfo, "Ollama のモデル")
 			@commercial.Badge(d.Commercial)
+			if d.Uncensored {
+				@atoms.Badge(atoms.BadgeWarn, "成人向け相当（非検閲）")
+			}
 		</div>
 		@commercial.Note(d.Commercial)
+		if len(d.Cautions) > 0 {
+			<ul class="list-disc pl-6 text-sm text-warning" data-testid="mm-ollama-cautions">
+				for _, c := range d.Cautions {
+					<li class="break-words">{ c }</li>
+				}
+			</ul>
+		}
 		<p class="text-sm text-warning" role="note" data-testid="mm-ollama-tag-note">{ TagNote }</p>
 		if d.Check != "" {
 			<p class={ "text-sm", templ.KV("text-warning", d.Changed), templ.KV("text-ink", !d.Changed) } data-testid="mm-ollama-check">{ d.Check }</p>
 		}
 		<dl class="grid grid-cols-2 gap-x-4 gap-y-2 text-sm text-ink" data-testid="mm-ollama-facts">
 			<div class="col-span-2">
-				<dt class="text-xs text-mute">取得元（Ollama のライブラリ。{ d.CheckedAt } に確認）</dt>
+				<dt class="text-xs text-mute">取得元（Ollama のレジストリ。{ d.CheckedAt } に確認）</dt>
 				<dd class="break-all"><a class="underline" href={ templ.SafeURL(d.SourceURL) } target="_blank" rel="noopener noreferrer">{ d.SourceURL }</a></dd>
 			</div>
 			<div class="col-span-2"><dt class="text-xs text-mute">重みの SHA-256</dt><dd class="break-all"><code data-testid="mm-sha256">{ d.Digest }</code></dd></div>

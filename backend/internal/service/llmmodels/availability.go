@@ -65,7 +65,8 @@ type Candidate struct {
 }
 
 // Item is the model as the filter reads it (modelfilter.Condition.Match): an LLM, served by its provider through an API key or a subscription, or by the
-// local server (llm.ProviderLocal: on this PC or the LAN, so its origin is local and it is installed when the server lists it).
+// local server (llm.ProviderLocal: on this PC or the LAN, so its origin is local and it is installed when the server lists it). A model of the servers mam manages carries its
+// license and whether it is uncensored (an uncensored model is an adult one, as in the runtimes' lists), and says why it cannot be chosen now when it cannot.
 func (c Candidate) Item() modelfilter.Item {
 	name := c.Model.Name
 	if name == "" {
@@ -75,8 +76,13 @@ func (c Candidate) Item() modelfilter.Item {
 	if c.Provider == string(llm.ProviderLocal) {
 		origin = modelfilter.OriginLocal
 	}
+	var tags []string
+	if c.Model.Server != "" {
+		tags = append(tags, c.Model.Server, c.Model.License.LicenseName)
+	}
 	return c.Availability.Item(modelfilter.Item{
 		ID: c.Model.ID, Name: name, Kinds: []modelfilter.Kind{modelfilter.KindLLM}, Installed: true, Origin: origin, Provider: c.Provider,
+		Adult: c.Model.Uncensored, Uncensored: c.Model.Uncensored, Commercial: c.Model.License.Commercial, Tags: tags,
 	})
 }
 
@@ -91,8 +97,16 @@ func (s *Service) Candidates(ctx context.Context, c modelfilter.Condition) ([]Ca
 		if err != nil {
 			return nil, err
 		}
-		for _, m := range l.Models {
-			out = append(out, Candidate{Provider: l.Provider, Model: m, Source: l.Source, Fallback: l.Fallback, Availability: l.Availability})
+		models := l.Models
+		if p == llm.ProviderLocal {
+			models = s.withManaged(ctx, l)
+		}
+		for _, m := range models {
+			a := l.Availability
+			if m.Unavailable != nil {
+				a = *m.Unavailable
+			}
+			out = append(out, Candidate{Provider: l.Provider, Model: m, Source: l.Source, Fallback: l.Fallback, Availability: a})
 		}
 	}
 	return modelfilter.Filter(c, out, Candidate.Item), nil

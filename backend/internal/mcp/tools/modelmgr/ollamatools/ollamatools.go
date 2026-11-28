@@ -26,10 +26,10 @@ const NoAuthNotice = "管理している Ollama には認証がありません�
 func Register(r *mcpkit.Registrar, svc *service.Services) {
 	h := handlers{svc: svc, registrar: r}
 	mcpkit.Read(r, "list_ollama_models",
-		"Nefos Video が管理する Ollama（runtime_id=ollama）に取得できるモデルの一覧。カタログの 3 つ（gemma4:12b・qwen3.8:27b・deepseek-r1:14b）ごとに、状態（missing・pulling・installed・changed=取得元のタグが記録と違う内容に書き換わっている・unavailable=Ollama が未導入か、この PC では使えない）、取得量（size_bytes）、ライセンスと商用利用の可否（license。unknown / no は notice を読む）、取得後の照合の結果（verified）、取得中のジョブ（pull_job）を返す。others は、カタログに無い取得済みのモデルの名前とサイズ（取得も削除もできない）。Ollama が未導入・停止中でも返す（server と reason）。タグは書き換えられるため、取得する内容は固定できない。noauth: true は、この Ollama に認証が無いこと / The models of the Ollama that Nefos Video manages: the three of the catalog with state, size, license and the check after the pull.",
+		"Nefos Video が管理する Ollama（runtime_id=ollama）に取得できるモデルの一覧。カタログの 6 つ（純正の gemma4:12b・qwen3.8:27b・deepseek-r1:14b と、非検閲〔uncensored: true。成人向け相当〕の huihui_ai/gemma-4-abliterated:12b・huihui_ai/qwen3.8-abliterated:27b・huihui_ai/deepseek-r1-abliterated:14b）ごとに、非検閲か（uncensored と cautions）、状態（missing・pulling・installed・changed=取得元のタグが記録と違う内容に書き換わっている・unavailable=Ollama が未導入か、この PC では使えない）、取得量（size_bytes）、ライセンスと商用利用の可否（license。unknown / no は notice を読む）、取得後の照合の結果（verified）、取得中のジョブ（pull_job）を返す。others は、カタログに無い取得済みのモデルの名前とサイズ（取得も削除もできない）。Ollama が未導入・停止中でも返す（server と reason）。タグは書き換えられるため、取得する内容は固定できない。noauth: true は、この Ollama に認証が無いこと / The models of the Ollama that Nefos Video manages: the three of the catalog with state, size, license and the check after the pull.",
 		h.list)
 	mcpkit.Write(r, "pull_ollama_model",
-		"Nefos Video が管理する Ollama にモデルを取得する（ollama pull 相当。Ollama の /api/pull）。取得できるのはカタログの 3 つだけで、それ以外の名前・library 以外の名前空間・cloud を含むタグは、何も始めずに拒否される。Ollama が未導入・この PC では使えない・空き容量不足も、始めずに拒否される。止まっている Ollama は起動する。job_id を返すので get_job で進捗を見る（取得中の同じモデルは同じジョブ）。中断は cancel_model_install / Pull a model of the catalog as a job (get_job).",
+		"Nefos Video が管理する Ollama にモデルを取得する（ollama pull 相当。Ollama の /api/pull）。取得できるのはカタログの 6 つだけで、それ以外の名前・library と huihui_ai 以外の名前空間・cloud を含むタグは、何も始めずに拒否される。Ollama が未導入・この PC では使えない・空き容量不足も、始めずに拒否される。止まっている Ollama は起動する。job_id を返すので get_job で進捗を見る（取得中の同じモデルは同じジョブ）。中断は cancel_model_install / Pull a model of the catalog as a job (get_job).",
 		h.pull, mcpkit.OpenWorld())
 	mcpkit.Destroy(r, "delete_ollama_model",
 		"取得したモデルを削除する（Ollama の /api/delete。ほかのモデルが使っていない層だけが消える）。LLM の割り当て（Agent の primary / fallback）が指しているモデルは、削除せずに拒否される。取得中・未取得も拒否される / Delete a fetched model; refused while an Agent's LLM assignment uses it.",
@@ -68,10 +68,13 @@ func MapError(err error) error {
 
 // ModelOutput is a model of the catalog with where it stands.
 type ModelOutput struct {
-	Name        string `json:"name" jsonschema:"<name>:<tag>（pull_ollama_model に渡す名前）"`
+	Name        string `json:"name" jsonschema:"<name>:<tag>（Ollama 公式の library）または huihui_ai/<name>:<tag>（Huihui の非検閲。pull_ollama_model に渡す名前）"`
 	DisplayName string `json:"display_name"`
-	State       string `json:"state" jsonschema:"missing / pulling / installed / changed / unavailable"`
-	SizeBytes   int64  `json:"size_bytes" jsonschema:"取得量（層と config の合計）"`
+	// Uncensored and Cautions are those of the model (#1235): an abliterated derivative says so and what its use is subject to.
+	Uncensored bool     `json:"uncensored,omitempty" jsonschema:"非検閲（abliterated。安全のための拒否を取り除いた派生。成人向け相当として扱う）"`
+	Cautions   []string `json:"cautions,omitempty" jsonschema:"使うときの制限・注意（非検閲のモデルでは必ず付く）"`
+	State      string   `json:"state" jsonschema:"missing / pulling / installed / changed / unavailable"`
+	SizeBytes  int64    `json:"size_bytes" jsonschema:"取得量（層と config の合計）"`
 	// License is the answer for commercial use (the same shape as list_models).
 	License modellicense.Info `json:"license" jsonschema:"ライセンスと商用利用の可否（license_info）"`
 	// Verified says the manifest Ollama wrote is the recorded one; Changed that it differs (the tag was moved: it still works, and is never deleted).
@@ -105,7 +108,7 @@ func (h handlers) list(ctx context.Context, _ struct{}) (ListOutput, error) {
 	out := ListOutput{Server: string(v.Server), Reason: v.Reason, Models: []ModelOutput{}, Others: []OtherOutput{}, NoAuth: true, Notice: NoAuthNotice}
 	for _, m := range v.Models {
 		out.Models = append(out.Models, ModelOutput{
-			Name: m.Model.Name, DisplayName: m.Model.DisplayName, State: string(m.State), SizeBytes: m.Model.TotalBytes, License: m.Model.License,
+			Name: m.Model.Name, DisplayName: m.Model.DisplayName, Uncensored: m.Model.Uncensored, Cautions: m.Model.Cautions, State: string(m.State), SizeBytes: m.Model.TotalBytes, License: m.Model.License,
 			Verified: m.Check == ollamapull.CheckVerified, Changed: m.Check == ollamapull.CheckChanged, PullJob: m.PullJob,
 		})
 	}

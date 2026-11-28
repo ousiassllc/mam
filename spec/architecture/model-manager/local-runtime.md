@@ -10,7 +10,7 @@
 | MuseTalk 1.5 のランタイム（環境の組み立て・起動・口パクの入口） | **#921（§13）** |
 | Irodori-TTS のランタイム（環境の組み立て・起動）、モデルの選択、Gemma Terms の同意 | **#1015（§14）** |
 | llama.cpp のランタイム（ローカル LLM。GGUF の重み 6 系統 8 本の選択、同梱ランタイムとしての起動、プロバイダー `local` への結びつき） | **#1008（後半。§17）** |
-| Ollama のランタイムと、Ollama のモデルの取得（`ollama pull`。厳選 3 つ。認証なし・クラウド機能は無効。状態: 実装済み） | **#1105（§19）** |
+| Ollama のランタイムと、Ollama のモデルの取得（`ollama pull`。厳選 6 つ＝純正 3 つ＋非検閲 3 つ。認証なし・クラウド機能は無効。状態: 実装済み） | **#1105（§19）。非検閲の追加と LLM の選択画面は #1235（§19.2・§19.8）** |
 | Irodori-TTS の声のプロバイダー（Audio Director。参照音声・キャプション・絵文字・GPU の扱い） | **#1015**（[model-adapters-m3.md §14.11・§14.12](../model-adapters-m3.md)。この文書の範囲外） |
 | MuseTalk の口パクプロバイダー（Audio Director。実行ごとの選択の入口まで） | **#923**（[model-adapters-m3.md §14.9](../model-adapters-m3.md)。この文書の範囲外） |
 | プロバイダーの選択の保存・クラウドへのフォールバック・利用者向けの文言 | #924（この文書の範囲外） |
@@ -862,7 +862,7 @@ Irodori の選択肢（§14.5）と同じ仕組み（`ResourceSet.Choices`・`Re
 
 ## 19. Ollama のランタイムと、Ollama のモデルの取得（ローカル LLM。Issue #1105）
 
-> **状態: 実装済み（Issue #1105。実機〔Windows での実際の導入・起動・モデルの取得〕は未確認。§19.7）**。#1104（ローカル LLM の統合。[../local-llm.md](../local-llm.md) §11）と同じ分類 `local-llm` に載る。Issue 本文の「エルラマ」は **Ollama**（音声入力の表記ゆれ。llama.cpp は §17 で導入済み）。実装の置き場所: ランタイム `catalog/data/runtimes/ollama.json`（`own_models`・`launch.listen_env`・`launch.home_files`・`support.cpu_ok`）、モデルの一覧 `catalog/ollamamodels` と `catalog/data/ollama/models.json`（`Catalog.OllamaModels`）、取得・照合・削除 `service/ollamapull`（偽の Ollama の `ollamatest`）、管理サーバーとしての呼び出し `service/llamaserver`（`ID`・`NoKey`・`Models`）、画面 `handler/modelmgr/ollama`・`organisms/modelmgr/ollamacard`、MCP `mcp/tools/modelmgr/ollamatools`。
+> **状態: 実装済み（Issue #1105。実機〔Windows での実際の導入・起動・モデルの取得〕は未確認。§19.7）**。#1104（ローカル LLM の統合。[../local-llm.md](../local-llm.md) §11）と同じ分類 `local-llm` に載る。Issue 本文の「エルラマ」は **Ollama**（音声入力の表記ゆれ。llama.cpp は §17 で導入済み）。実装の置き場所: ランタイム `catalog/data/runtimes/ollama.json`（`own_models`・`launch.listen_env`・`launch.home_files`・`support.cpu_ok`）、モデルの一覧 `catalog/ollamamodels` と `catalog/data/ollama/models.json`（純正）・`catalog/data/ollama/abliterated.json`（非検閲。#1235。どちらも `Catalog.OllamaModels` に入る）、取得・照合・削除 `service/ollamapull`（偽の Ollama の `ollamatest`）、管理サーバーとしての呼び出し `service/llamaserver`（`ID`・`NoKey`・`Models`）、画面 `handler/modelmgr/ollama`・`organisms/modelmgr/ollamacard`、MCP `mcp/tools/modelmgr/ollamatools`。
 
 ### 19.1 実行環境（`data/runtimes/ollama.json`。新設）
 
@@ -878,7 +878,7 @@ llama.cpp（§17.1）と同じ「ネイティブのサーバー」のランタ�
 | 起動 | `env\ollama.exe serve` を**直接**起動する。引数は `serve` だけ（任意の引数・実行ファイルは受け付けない。利用者・MCP・設定が渡せるのはモデルの名前だけ）。環境変数: `OLLAMA_HOST=127.0.0.1:{port}`（**`127.0.0.1` だけ**。カタログの検証が、`OLLAMA_HOST` に `127.0.0.1` と `{port}` を含み `0.0.0.0`・`::`・`[` を含まないことを確かめる）・`OLLAMA_MODELS`・`OLLAMA_KEEP_ALIVE=15m`（llama.cpp の `--sleep-idle-seconds 900` と同じ長さ。§17.1）。**利用者自身の `OLLAMA_*`（Nefos Video を起動した環境の `OLLAMA_ORIGINS=*`・`OLLAMA_NOPRUNE`・`OLLAMA_NO_CLOUD` など。自分で入れた別の Ollama のための設定）は、管理している Ollama に渡さない**（ランタイム定義の `launch.drop_env_prefixes: ["OLLAMA_"]` に当たる変数を、Nefos Video の環境から落としてから、上の Nefos Video が決めた値だけを足す）。したがって `OLLAMA_ORIGINS`・`OLLAMA_NOPRUNE` は常に Ollama の既定のまま（既定は localhost 系のみ。Nefos Video が `OLLAMA_ORIGINS` を決めて渡すことはしない）。他のランタイム（GPT-SoVITS・llama.cpp など）の環境の引き継ぎは変えない。**Ollama のクラウド機能（クラウドのモデル・Web 検索）は無効にする**: `server.json` の `disable_ollama_cloud: true`（公式の faq.mdx の手順。置き場所は上の `home` の下の `.ollama\server.json`。Nefos Video が起動のたびに書く）。クラウドのモデルは、プロンプトを Ollama のサーバーへ送るので、「ローカルで動く」という Issue の前提に反する |
 | 準備の確認 | `GET /api/version` が 200（最長 60 秒。モデルはこの時点では読み込まない。読み込みは最初の生成のとき） |
 | 認証 | **無い**（Ollama には API キーの仕組みが無い。llama.cpp の `LLAMA_API_KEY` に当たるものが無い）。§19.4 |
-| 同梱 | しない。実行時に取得する。`THIRD_PARTY_NOTICES.md`・README に Ollama（MIT）と 3 つのモデルの一覧（出典・ライセンス）を足す |
+| 同梱 | しない。実行時に取得する。`THIRD_PARTY_NOTICES.md`・README に Ollama（MIT）と 6 つのモデルの一覧（出典・ライセンス）を足す |
 
 導入・起動・停止・自動起動（既定オフ。最初の LLM の呼び出しで起動）・削除・状態・排他・`View` は §5〜§8 と同じ。`Remove` は `env\`・`downloads\`・`cache\`・`tmp\`・`home\` を消し、**`models\`（取得したモデル。数十 GB）は消す前に確認する**（`hx-confirm`「取得した Ollama のモデルも消えます」。他のランタイムの `Remove`〔重みも消す〕と同じ振る舞いで、確認の文だけが違う）。更新（固定版が上がった）は導入し直しで、`models\` は残す。**モデルの取得（`ollama:<名前>:<タグ>` のジョブ。待ちを含む）が動いている間は、`Remove`・導入し直し（更新。`InstallWeights` も）・`Stop`（カードの「停止」）を `ErrBusy`（HTTP 409。理由に取得中のモデル名: 「<名前> を取得している最中です。取得が終わってから、または取得を中断してからやり直してください」）で断る**（サーバーは止めず、ファイルは消さない。取得は同じサーバーの `/api/pull` を使っていて、止めると取得が途中で失敗するため）。取得が終わった（または中断した）あとは通る。層をまたぐので `localruntime.Deps.HeldBy`（関数値）で取得側〔`ollamapull.Service.Pulling`〕から渡す（循環 import を作らない）。LLM の呼び出しの前の `Prepare` と、生成の前のメモリ降ろし（§19.5。止めずに `keep_alive: 0`）は、この規則の外。Nefos Video の終了（`Close`）は断らない。
 
@@ -893,11 +893,18 @@ Ollama のモデルは、**Nefos Video の `fetch` ではなく、管理して�
 | `gemma4:12b` | Gemma 4 12B（純正） | 7,381,383,680 B・`sha256:bb722270d54346adc198f213851dbe0207e87c3ecf2a0aff4d92262726215391` | 約 8.02 GB（8,021,618,941 B。projector・draft の層を含む） | Apache-2.0（商用可） |
 | `qwen3.8:27b` | Qwen3.8 27B（純正） | 16,810,714,464 B・`sha256:f5f1dd8920d417aac2718b0bda3403da274301efdd6760b4f0f4b864ff2ad57d` | 約 17.74 GB（17,741,872,154 B） | Apache-2.0（商用可） |
 | `deepseek-r1:14b` | DeepSeek-R1-Distill-Qwen-14B（純正） | 8,988,109,952 B・`sha256:6e9f90f02bb3b39b59e81916e8cfce9deb45aeaeb9a54a5be4414486b907dc1e` | 約 8.99 GB（8,988,112,209 B） | MIT（商用可） |
+| `huihui_ai/gemma-4-abliterated:12b` | Gemma 4 12B 非検閲（Huihui abliterated） | 7,381,381,760 B・`sha256:b8d7a9b7fe82999937638293d83c157557b946c30d6d9577463261fc1680a0b1` | 約 7.56 GB（7,556,507,919 B。projector の層を含む） | Apache-2.0（商用可）。**非検閲** |
+| `huihui_ai/qwen3.8-abliterated:27b` | Qwen3.8 27B 非検閲（Huihui abliterated） | 16,810,714,400 B・`sha256:6c2c13cef89238c3604d756b07b3ef5fafebbd61095feb8553ff449c95e4c1c6` | 約 17.74 GB（17,741,871,954 B） | Apache-2.0（商用可）。**非検閲** |
+| `huihui_ai/deepseek-r1-abliterated:14b` | DeepSeek-R1-Distill-Qwen-14B 非検閲（Huihui abliterated） | 8,988,110,400 B・`sha256:38b5e20078675a1e3040eced1859e432b423ec732c42f5dab03b0a8ae7ba1bdd` | 約 8.99 GB（8,988,112,488 B） | **商用不明（`unknown`。派生側に license の記載なし）**。**非検閲** |
 
-（確認日 2026-11-07。`GET https://registry.ollama.ai/v2/library/<名前>/manifests/<タグ>` の `layers[]`、`license` の層の本文は `…/blobs/<digest>`。**Ollama のタグは書き換えられる**ので、digest は「その日の実物」を記録したもので、将来 `pull` が別の中身を返すことがある。照合の扱いは §19.3。）
+（純正 3 つの確認日 2026-11-07・非検閲 3 つの確認日 2026-11-28。`GET https://registry.ollama.ai/v2/library/<名前>/manifests/<タグ>`（非検閲は `…/v2/huihui_ai/<名前>/manifests/<タグ>`） の `layers[]`、`license` の層の本文は `…/blobs/<digest>`。**Ollama のタグは書き換えられる**ので、digest は「その日の実物」を記録したもので、将来 `pull` が別の中身を返すことがある。照合の扱いは §19.3。）
 
-- 選んだ 3 つは llama.cpp の選択肢（§17.2）の純正モデルと同じ系統。**非検閲（abliterated）の派生は載せない**（Ollama のレジストリのコミュニティ版は、ライセンスの層が無いものが多く、`huihui_ai/…` などの名前の空間にあって、Nefos Video がライセンスと成人向けの扱いを確かめられない。#1008 後半の llama.cpp では Hugging Face のカードで確かめた）。載せる名前を増やすときは、上と同じ確認（manifest の層・ライセンスの本文）を要する。
-- **画面に出さない・使わない**: タグが `cloud` を含むもの（クラウドのモデル）。レジストリの名前の空間が `library` 以外のもの。
+- 純正の 3 つは llama.cpp の選択肢（§17.2）の純正モデルと同じ系統。**非検閲（abliterated）は #1235 で載せた**（#1105 では「ライセンスと成人向けの扱いを確かめられない」として載せなかった。今回、次のとおり確かめた）。
+- **非検閲の 3 つ（#1235）**: llama.cpp（§17.2）の非検閲と同じ系統（Huihui の abliterated。Gemma 4 12B・Qwen3.8 27B・DeepSeek-R1-Distill-Qwen-14B）。名前の空間 **`huihui_ai`**（Huihui 本人の公開先。Ollama のレジストリ `registry.ollama.ai/v2/huihui_ai/…` の manifest を 2026-11-28 に読んだ）だけを許し、ほかの名前の空間（`someone/…`・`hf.co/…`）は従来どおり取得しない（`ollamamodels.Namespaces`）。llama.cpp の Qwen Q3_K_M 軽量版に当たる量子化のタグは、manifest とライセンスを確かめていないので載せていない。
+  - **ライセンス層**: Gemma 4・Qwen3.8 は、レジストリの `license` の層が純正と**同じ digest**（Apache License 2.0 の本文）で、派生の元の重み（`huihui-ai/Huihui-gemma-4-12B-it-abliterated`・`huihui-ai/Huihui-Qwen3.8-27B-abliterated`）の Hugging Face のカードも `apache-2.0`（2026-11-28 に API で確認）→ 商用可（`yes`）。DeepSeek は、レジストリの層は DeepSeek 本体の MIT の本文のコピーだが、派生の元の重み `huihui-ai/DeepSeek-R1-Distill-Qwen-14B-abliterated` のカードに `license` が**無い**ので、llama.cpp の abliterated-v2（§17.2）と同じく **商用は「わからない」（`unknown`）と明記**し、商用可として扱わない（注記は「商用で使う前に、公開元に確かめてください」）。商用 OK の選択肢は Gemma 4 12B・Qwen3.8 27B の 2 つ。
+  - **成人向けの扱い**: `ollamamodels.Model.Uncensored: true` と `Cautions`（必須。検証が拒否する）。llama.cpp と同じバッジ「成人向け相当（非検閲）」と、同じ注記（安全のための拒否を取り除いた派生で、暴力・性的表現などを拒否せず出力しうる・質や JSON を守る力が落ちうる・使い道は利用者の責任）に、「Ollama 公式の library のモデルではないので、中身は固定されておらず、公開元が差し替えることがある」を足す。非検閲を LLM の割り当ての選択画面で「成人向け」とも数える（`modelfilter.Item.Adult`＝`Uncensored`。ランタイムのモデル一覧〔§17.2〕と同じ）。**成人向けの年齢確認（`set_adult_content`）の対象にはしていない**（#1008 の llama.cpp と同じ。画像・動画のカタログの年齢確認とは別の仕組みで、LLM の非検閲は表示と注記で扱う）。
+  - **取得・照合**: 取得は純正と同じ（§19.3）。manifest は `OLLAMA_MODELS\manifests\registry.ollama.ai\<名前空間>\<名前>\<タグ>`（純正は `library`、非検閲は `huihui_ai`）。カードの ID は `mm-ollama-huihui_ai-gemma-4-abliterated-12b` のように `/` を `-` にする。**自由入力の `ollama pull` はしない**ことは変えない。
+- **画面に出さない・使わない**: タグが `cloud` を含むもの（クラウドのモデル）。レジストリの名前の空間が `library`（名前の空間なし）と `huihui_ai` 以外のもの（`library/…` と書いた名前も拒否する）。
 
 ### 19.3 取得（`pull`）の流れ・進捗・中断・照合
 
@@ -923,7 +930,30 @@ llama.cpp（local-llm.md §10.3）と同じ `gpufree.Guard` に載せる: LLM �
 
 公式のリリースには `ollama-darwin.tgz`（185,971,671 B。SHA-256 `607c79d5d6315ef9d896db83adde736a4c0057196329843544e79b95afb260a8`）と `Ollama-darwin.zip`（アプリ。229,106,611 B）がある。llama.cpp（§17.4）と同じ理由で、`os_reasons.darwin` に理由を書き、導入・起動のボタンを出さずに案内する: ①`.tgz` の展開後の構成・実行権限・Gatekeeper（未署名の実行ファイルの扱い）・Metal の動作は、macOS の実機なしで確かめられない。②Apple Silicon の自動導入はオーナーの判断（#1008 の前例）。案内は「Ollama の公式のアプリ（ollama.com）を入れて、『別のサーバー』（`http://localhost:11434`）につないでください」（local-llm.md §8.1 の手順を指す）。**この案内は、Ollama のカードの理由の行と、`#mm-llm-use` の「別のサーバー」の説明に出す**。
 
+### 19.8 LLM の割り当ての選択画面に、非検閲が出ない原因と直し（Issue #1235）
+
+悠太さんの実機（2026-11-28 の報告）で、T2T（テキストからテキスト）のモデル選択に非検閲が見当たらなかった。調べた原因（この開発環境〔Linux〕で、同じ画面を起動して再現した）:
+
+| 原因 | 内容 | 直し |
+|---|---|---|
+| ① Ollama に非検閲が無い | #1105 で載せなかった（§19.2） | `huihui_ai` の 3 つを足した（§19.2） |
+| ② LLM の割り当ての選択画面（`/model-picker/settings-llm`）に、Nefos Video が管理する 2 つのサーバーのモデルが**そもそも出ない** | プロバイダー `local` の一覧は「向き先のサーバーに聞く」だけ（`llmmodels`）。llama.cpp を選ぶと**使用中の 1 つ**だけ、対応外の PC・未導入では**0 件**（`ManagedModels` が nil を返す）。「別のサーバー」のままだと llama.cpp・Ollama のモデルは出ない | 両サーバーのカタログ全体（llama.cpp 8 本・Ollama 6 本）を、選べないものも**理由つき**で出す（下） |
+| ③ LLM のモデルが**商用・非検閲の絞り込みに載らない** | `llmmodels.Candidate.Item` が `Commercial`・`Uncensored` を持たないので、「商用OKのモデルだけを使う」を入れると、プロバイダー `local` のモデルも含めて**すべて隠れ**（実機の再現: 全 18 件のうち 0 件）、「非検閲だけ」では常に 0 件だった | `Item` に `Commercial`・`Uncensored`（`Adult` も）を持たせた。パネルに「商用利用」「非検閲」の区画を足した |
+| ④ ランタイムのモデル一覧（§17.2。`#mm-runtime-llama-cpp` の詳細）の既定 | 商用不明の `deepseek-r1-14b-abliterated-v2` は、「商用OKのモデルだけを使う」を入れていると隠れる（仕様どおり。チップ「商用利用: 商用OKのみ」と「7 件（全 8 件のうち）」が出る） | 変えない。仕様どおりで、理由は画面に出ている |
+
+**② の仕様**（`llmlocal.Service.ManagedCatalog`・`llmmodels.Options.LocalCatalog`・`llamaserver.Server.Catalog`・`llamaserver.LlamaCatalog`・`ollamapull.Service.Choices`）:
+
+- 選択画面は、プロバイダー `local` に、2 つのサーバーの**全モデル**を並べる。各モデルは `llmlocal.ManagedModel`（id・名前・サーバー名・`Uncensored`・ライセンス〔商用の答えを含む〕・**選べない理由**）。サーバーが答える一覧にあるモデルは選べる（サーバーが持っている）。
+- **選べない理由**（`Reason`。先に当たったものを出す）: ①この PC が対応外（`Support.Message()`。例「Linux では llama.cpp の自動導入に対応していません…」）②サーバーが未導入（導入の案内）③llama.cpp: 使用中のモデルではない（「今の llama.cpp のモデルは『…』です。モデルマネージャーの『ローカル LLM』の llama.cpp で、このモデルを選んで『重みを導入』してください」。llama.cpp は**1 つのモデルだけを読み込む**ので、割り当てを先に変えても動かない）④Ollama: 未取得（「…『Ollama のモデル』で取得してください」）・取得中⑤「使うサーバー」が別のサーバー（「今の『使うサーバー』は『…』です。…で『…』を選ぶと使えます」）。道すじは `/model-manager/local-llm`（`ReasonEndpoint`・`SourceLocalLLM`）。
+- 既定（「選べるものだけ」）では選べないモデルは隠れ、行頭に**「N 件は今は選べません」**と「使えないものも表示」が出る。押すと、各カードに「選べません」・理由・「ローカル LLM を開く」リンクが出る。カードには、サーバー名・バッジ「成人向け相当（非検閲）」・ライセンスの商用の答え（`commercial.Mark`）と注記が出る。
+- パネルに足した区画: 「商用利用」「非検閲」（`modelpick.Facets{Commercial, Uncensored}`）。「商用OKのモデルだけを使う」の既定はそのまま効く（商用不明のモデルは隠れ、チップで分かる。クラウドの LLM は Nefos Video がライセンスを持たないので、設定を入れると隠れる〔別の問題。変えていない〕）。
+- MCP: `list_ollama_models` に `uncensored`・`cautions`、`list_local_runtime_models` はもともと `uncensored`・`cautions` を返す。`list_llm_models` は変えない（ソースは `api`／`default` の別で、サーバーごとの理由は選択画面の話）。
+
+**テスト（#1235）**: `catalog/ollamatest`（非検閲 3 つのピン・`uncensored`・注記・DeepSeek だけ `unknown`・名前の空間）、`service/ollamapull`・`handler/modelmgr/ollama`・`ollamatools`（6 つの一覧・取得・非検閲のバッジ・名前の拒否）、`service/llmlocal`（`ManagedCatalog`: 2 サーバー・理由の優先・使うサーバー）、`service/llamaserver/llamaservertest`（llama.cpp のカタログ: 対応外の PC で 8 本とも理由つき・導入済みでは使用中の 1 本だけが選べて残りは使用中のモデルを案内・DeepSeek の `unknown`）、`service/llmmodels`（カタログの合流・「選べるものだけ」・非検閲／商用の絞り込み・カタログなしでは変わらない）、`web/llmsettingstest`（選択画面で、対応外の PC の非検閲が「N 件は今は選べません」→理由・バッジ・リンクつきで出る）。
+
+**未確認（#1235）**: 実物の Windows ＋ NVIDIA の画面（悠太さんの実機。`device_only`）。Ollama のレジストリに載った 3 つの `pull`（この環境では manifest とライセンスの層を読んだだけで、数 GB のモデルは取得していない）。`huihui_ai` のモデルは公開元が差し替えられる（§19.2・照合 §19.3）。
+
 ### 19.7 テスト・未確認
 
-- **テスト（実装済み）**: `catalog/ollamatest`（ピン: URL が `github.com/ollama/ollama/releases/download/` のアセットだけ・SHA-256・サイズ・`OLLAMA_HOST` が `127.0.0.1` と `{port}` を含み `0.0.0.0`・`::` を含まない・引数が `serve` だけ・`disable_ollama_cloud`・モデルの名前が `library` で `cloud` を含まない・ライセンスの答えが 3 つとも `yes`）、`service/ollamapull`（新設。偽の Ollama〔NDJSON を返す HTTP サーバー〕で、進捗の合計・層の切り替え・`error` の行・中断・`success` 後の照合〔`verified`・`changed`・manifest が読めない〕・空き容量不足・削除〔使用中の 422・取得中の 409〕）、`handler/modelmgr/ollama`（画面・ルート・CSRF・状態コード）、`runtimes_test.go`（Ollama のカードの表示・非対応の理由）。実物の Ollama・GPU・レジストリは使わない。
+- **テスト（実装済み）**: `catalog/ollamatest`（ピン: URL が `github.com/ollama/ollama/releases/download/` のアセットだけ・SHA-256・サイズ・`OLLAMA_HOST` が `127.0.0.1` と `{port}` を含み `0.0.0.0`・`::` を含まない・引数が `serve` だけ・`disable_ollama_cloud`・モデルの名前が `library` か `huihui_ai` で `cloud` を含まない・純正 3 つのライセンスの答えが `yes`・非検閲 3 つが `uncensored` と注記を持ち、DeepSeek だけ `unknown`・名前の空間の拒否〔`someone/…`・`library/…`・`HUIHUI_AI/…`・`huihui_ai/…:12b-cloud`〕）、`service/ollamapull`（新設。偽の Ollama〔NDJSON を返す HTTP サーバー〕で、進捗の合計・層の切り替え・`error` の行・中断・`success` 後の照合〔`verified`・`changed`・manifest が読めない〕・空き容量不足・削除〔使用中の 422・取得中の 409〕）、`handler/modelmgr/ollama`（画面・ルート・CSRF・状態コード）、`runtimes_test.go`（Ollama のカードの表示・非対応の理由）。実物の Ollama・GPU・レジストリは使わない。
 - **未確認**: 実物の Windows での導入（zip の取得・展開・`ollama.exe serve`・`/api/version`）・`/api/pull` の実際の応答（`total`・`completed` の動き）・中断後の再開・`USERPROFILE` の付け替えの効き方・`server.json` の `disable_ollama_cloud` が起動の前に置いて効くこと・認証が無いことの実際の危険（§19.4）・VRAM と ComfyUI の同居（以上は `device_only`。この開発環境は Linux で GPU が無く、テストは偽の Ollama で行った。展開後のサイズ〔2,263,717,391 B〕と zip の SHA-256 は実物で確かめた）。公式の `docs/api.md`・`windows.mdx`・`faq.mdx`・GitHub のリリースの API・レジストリの manifest は読んで確かめた。

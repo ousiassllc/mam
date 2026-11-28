@@ -1,6 +1,7 @@
 package llmsettingstest_test
 
 import (
+	"context"
 	"encoding/json"
 	htmlpkg "html"
 	"net/http"
@@ -16,10 +17,12 @@ import (
 
 	"github.com/ousiassllc/mam/backend/internal/agent/llm"
 	"github.com/ousiassllc/mam/backend/internal/credential/credentialtest"
+	"github.com/ousiassllc/mam/backend/internal/domain/modellicense"
 	"github.com/ousiassllc/mam/backend/internal/repository/testdb"
 	"github.com/ousiassllc/mam/backend/internal/router"
 	"github.com/ousiassllc/mam/backend/internal/router/settingsroutes"
 	"github.com/ousiassllc/mam/backend/internal/service"
+	"github.com/ousiassllc/mam/backend/internal/service/llmlocal"
 	"github.com/ousiassllc/mam/backend/internal/service/llmmodels"
 	"github.com/ousiassllc/mam/backend/internal/service/servicetest"
 	"github.com/ousiassllc/mam/backend/internal/web/paths"
@@ -55,10 +58,16 @@ func llmScreenWithModels(t *testing.T, base string) *llmScreen {
 	t.Helper()
 	keys := credentialtest.New()
 	require.NoError(t, keys.Set("openai", "sk-test"))
+	return llmScreenWith(t, llmmodels.Options{Keys: keys, BaseURLs: map[llm.Provider]string{llm.ProviderOpenAI: base}})
+}
+
+// llmScreenWith is the settings screen whose model lists are made as o says.
+func llmScreenWith(t *testing.T, o llmmodels.Options) *llmScreen {
+	t.Helper()
 	file := filepath.Join(t.TempDir(), "data", "llm.json")
 	svc := servicetest.New(t, service.Deps{DB: testdb.Open(t), Credentials: credentialtest.New()})
 	st := settingsroutes.New(file, false, filepath.Join(t.TempDir(), "models.json"), false)
-	st.LLMModels = llmmodels.New(llmmodels.Options{Keys: keys, BaseURLs: map[llm.Provider]string{llm.ProviderOpenAI: base}})
+	st.LLMModels = llmmodels.New(o)
 	s := &llmScreen{t: t, file: file, engine: router.New(svc, router.Options{Settings: st})}
 	rec := s.send(httptest.NewRequest(http.MethodGet, paths.Settings(), nil))
 	require.Equal(t, http.StatusOK, rec.Code)
@@ -89,6 +98,37 @@ func TestLLMSettings_WithoutKeysThePickerHidesTheModelsAndShowsThemWithTheReason
 	assert.Contains(t, body, "API キーが登録されていません")
 	assert.Contains(t, body, `href="/settings/api-keys"`, "the way to the setting that fixes it")
 	assert.Contains(t, body, "選べません")
+}
+
+// The picker lists the models of the servers mam manages whichever server the calls go to (#1235): on a PC that cannot run llama.cpp the uncensored ones are not missing but hidden by
+// "選べるものだけ" at first, counted, and listed on request with the reason of the PC, the badge, the license and the way to the page that fixes it; "非検閲だけ" and "商用OK" tell them apart.
+func TestLLMSettings_TheModelsOfTheServersOfMamAreInThePickerWithTheirReasons(t *testing.T) {
+	yes := modellicense.Info{Commercial: modellicense.Yes, LicenseName: "Apache License 2.0", SourceURL: "https://example.com/apache"}
+	unknown := modellicense.Info{Commercial: modellicense.Unknown, LicenseName: "ライセンス不明", Notice: "商用で使う前に確かめてください"}
+	reason := "Linux では llama.cpp の自動導入に対応していません"
+	catalog := []llmlocal.ManagedModel{
+		{ID: "gemma-4-12b-it", Name: "Gemma 4 12B-it（純正）", Server: "この PC の llama.cpp", License: yes, Reason: reason},
+		{ID: "gemma-4-12b-it-abliterated", Name: "Gemma 4 12B-it 非検閲", Server: "この PC の llama.cpp", Uncensored: true, License: yes, Reason: reason},
+		{ID: "deepseek-r1-14b-abliterated-v2", Name: "DeepSeek 非検閲 v2", Server: "この PC の llama.cpp", Uncensored: true, License: unknown, Reason: reason},
+	}
+	s := llmScreenWith(t, llmmodels.Options{Keys: credentialtest.New(), LocalBaseURL: func() string { return "http://127.0.0.1:1" }, LocalCatalog: func(context.Context) []llmlocal.ManagedModel { return catalog }})
+	uncensored := "?mf=1&providers=local&uncensored=uncensored_only&commercial=all&available_only=1"
+
+	body := s.requestTo(http.MethodGet, pickerURL+uncensored, nil).Body.String()
+	assert.Empty(t, pickerModels(t, body), "nothing can be chosen on this PC, and the picker starts at 選べるものだけ")
+	assert.Contains(t, body, "2 件は今は選べません", "the two are counted, not missing")
+
+	body = s.requestTo(http.MethodGet, pickerURL+strings.TrimSuffix(uncensored, "&available_only=1")+"&available_only=0", nil).Body.String()
+	assert.Equal(t, []string{"local/gemma-4-12b-it-abliterated", "local/deepseek-r1-14b-abliterated-v2"}, pickerModels(t, body))
+	assert.Contains(t, body, "Gemma 4 12B-it 非検閲")
+	assert.Equal(t, 2, strings.Count(body, `data-testid="model-badge-uncensored"`))
+	assert.Equal(t, 2, strings.Count(body, reason), "each says why")
+	assert.Contains(t, body, `href="/model-manager/local-llm"`, "and where it is fixed")
+	assert.Contains(t, body, "商用で使う前に確かめてください", "the answer of the unlicensed one is said")
+	assert.NotContains(t, body, "Gemma 4 12B-it（純正）", "the original is not asked for")
+
+	body = s.requestTo(http.MethodGet, pickerURL+"?mf=1&providers=local&uncensored=uncensored_only&commercial=ok&available_only=0", nil).Body.String()
+	assert.Equal(t, []string{"local/gemma-4-12b-it-abliterated"}, pickerModels(t, body), "商用OK leaves out the one with no license")
 }
 
 // The modal of an Agent is the two model fields, each posting the provider and the model it holds; a provider without a key says so, with the way to the setting.

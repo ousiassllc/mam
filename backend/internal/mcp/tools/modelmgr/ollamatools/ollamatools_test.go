@@ -52,15 +52,17 @@ func lines(t *testing.T, name string) []ollamatest.Line {
 	return nil
 }
 
-// The list has the three models of the catalog in order with the size, the license and the answer for commercial use; it says the server has no authentication; it answers with a stopped server too.
-func TestListHasTheThreeModelsTheLicenseAndTheNoAuthNotice(t *testing.T) {
+// The list has the models of the catalog in order (the library's three, then the abliterated three, which say uncensored and carry their cautions; #1235) with the size, the license and the
+// answer for commercial use; it says the server has no authentication; it answers with a stopped server too.
+func TestListHasTheModelsTheLicenseAndTheNoAuthNotice(t *testing.T) {
 	env, _, _ := newEnv(t)
 
 	var list ollamatools.ListOutput
 	env.CallOK("list_ollama_models", map[string]any{}, &list)
 
-	require.Len(t, list.Models, 3)
+	require.Len(t, list.Models, 6)
 	assert.Equal(t, []string{"gemma4:12b", "qwen3.8:27b", "deepseek-r1:14b"}, []string{list.Models[0].Name, list.Models[1].Name, list.Models[2].Name})
+	assert.Equal(t, []string{"huihui_ai/gemma-4-abliterated:12b", "huihui_ai/qwen3.8-abliterated:27b", "huihui_ai/deepseek-r1-abliterated:14b"}, []string{list.Models[3].Name, list.Models[4].Name, list.Models[5].Name})
 	assert.Equal(t, "stopped", list.Server)
 	assert.True(t, list.NoAuth)
 	assert.Contains(t, list.Notice, "認証がありません")
@@ -68,7 +70,9 @@ func TestListHasTheThreeModelsTheLicenseAndTheNoAuthNotice(t *testing.T) {
 	for _, m := range list.Models {
 		assert.Equal(t, "missing", m.State, m.Name)
 		assert.Positive(t, m.SizeBytes, m.Name)
-		assert.Equal(t, "yes", string(m.License.Commercial), m.Name)
+		assert.Equal(t, m.Name == "huihui_ai/deepseek-r1-abliterated:14b", m.License.Commercial == "unknown", "only the DeepSeek derivative has no license: %s", m.Name)
+		assert.Equal(t, strings.HasPrefix(m.Name, "huihui_ai/"), m.Uncensored, m.Name)
+		assert.Equal(t, m.Uncensored, len(m.Cautions) > 0, m.Name)
 		assert.NotEmpty(t, m.License.LicenseName, m.Name)
 		assert.False(t, m.Verified, m.Name)
 	}

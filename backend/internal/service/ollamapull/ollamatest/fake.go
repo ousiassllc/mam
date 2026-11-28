@@ -1,6 +1,6 @@
 // Package ollamatest is an ollamapull.Service over fakes, for the tests of the layers above it (the screen's handlers, the MCP tools) and its own: a fake Ollama (an HTTP server that streams the NDJSON
 // of /api/pull, lists /api/tags and answers /api/delete, and writes the manifest the way Ollama does), a fake runtime manager that starts and stops it, and a temporary directory next to the "exe". The models are
-// the three of the real catalog. Not for production code.
+// the six of the real catalog. Not for production code.
 package ollamatest
 
 import (
@@ -10,7 +10,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -166,10 +165,14 @@ func (f *Fake) writeManifest(name string) {
 	if str, ok := body.(string); ok {
 		data = []byte(str) // a manifest that is not JSON
 	}
-	repo, tag, _ := strings.Cut(name, ":")
-	path := filepath.Join(f.modelsd, "manifests", "registry.ollama.ai", "library", repo, tag)
+	path := manifestFile(f.modelsd, name)
 	require.NoError(f.t, os.MkdirAll(filepath.Dir(path), 0o750))
 	require.NoError(f.t, os.WriteFile(path, data, 0o600))
+}
+
+// manifestFile is where Ollama writes the manifest of the model below its models directory: the namespace ("library" or "huihui_ai"), the name and the tag are the directories.
+func manifestFile(modelsDir, name string) string {
+	return filepath.Join(modelsDir, "manifests", "registry.ollama.ai", ollamamodels.Namespace(name), ollamamodels.Repo(name), ollamamodels.Tag(name))
 }
 
 func (f *Fake) modelsOrCatalog() []ollamamodels.Model {
@@ -227,7 +230,6 @@ func (f *Fake) delete(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprintf(w, `{"error":"model %q not found"}`, in.Model)
 		return
 	}
-	repo, tag, _ := strings.Cut(in.Model, ":")
-	_ = os.Remove(filepath.Join(f.modelsd, "manifests", "registry.ollama.ai", "library", repo, tag))
+	_ = os.Remove(manifestFile(f.modelsd, in.Model))
 	w.WriteHeader(http.StatusOK)
 }

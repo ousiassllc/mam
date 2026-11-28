@@ -51,6 +51,8 @@ type Server struct {
 	NoKey bool
 	// Models says which models the server answers to now (nil: only the one the runtime's choice names, llama-server's --alias). It is read without starting the server.
 	Models func(ctx context.Context) []string
+	// Catalog is every model of the server's list as the picker of the LLM assignment shows it, with why one cannot be chosen apart from the state of the server (nil: no list; #1235).
+	Catalog func(ctx context.Context) []llmlocal.ManagedModel
 	// MakeRoom runs before the server is started, only when it is not running (nil for nothing): busy says the bundled ComfyUI is generating
 	// (gpufree.Guard.MakeRoom frees its memory when it is idle).
 	MakeRoom func(ctx context.Context) (busy bool, err error)
@@ -229,6 +231,15 @@ func (s Server) Info(ctx context.Context) llmlocal.ManagedInfo {
 	default:
 		info.State = managedState(v.Process)
 		info.Reason = v.Process.Error
+	}
+	if s.Catalog != nil {
+		info.Catalog = s.Catalog(ctx)
+		// A PC that cannot run the server, or a server that is not there, is why none of its models can be chosen, before whatever each model says of itself.
+		if info.State == llmlocal.ManagedUnsupported || (info.State == llmlocal.ManagedNotInstalled && !v.Installed) {
+			for i := range info.Catalog {
+				info.Catalog[i].Reason = info.Reason
+			}
+		}
 	}
 	return info
 }
